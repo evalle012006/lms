@@ -22,6 +22,7 @@ const formatPrice = (value) => {
 
 export default function DenominationPage() {
     const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const branchList = useSelector(state => state.branch.list);
     const dispatch = useDispatch();
     const router = useRouter();
@@ -29,7 +30,7 @@ export default function DenominationPage() {
     const [loading, setLoading] = useState(true);
     const [denominationData, setDenominationData] = useState([]);
     const [initialData, setInitialData] = useState([]);
-    const [dateFilter, setDateFilter] = useState(moment().format('YYYY-MM-DD'));
+    const [dateFilter, setDateFilter] = useState(currentDate || moment().format('YYYY-MM-DD'));
     const [filter, setFilter] = useState('branch');
     const [canEdit, setCanEdit] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
@@ -61,6 +62,8 @@ export default function DenominationPage() {
     const [remittanceChanges, setRemittanceChanges] = useState({});
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [selectedItemHistory, setSelectedItemHistory] = useState(null);
+
+    const isViewingHistoricalData = dateFilter !== currentDate;
 
     const handleViewHistory = (item) => {
         setSelectedItemHistory(item);
@@ -134,7 +137,7 @@ export default function DenominationPage() {
             console.log('=== ROLE SETUP ===');
             console.log('User role:', currentUser.role.shortCode, 'rep:', currentUser.role.rep);
             
-            const hasEditPermission = currentUser.role.shortCode === 'cashier';
+            const hasEditPermission = currentUser.role.shortCode === 'cashier' && currentDate === dateFilter;
             setCanEdit(hasEditPermission);
             
             if (currentUser.role.rep <= 2) {
@@ -149,7 +152,7 @@ export default function DenominationPage() {
                 fetchGroupList();
             }
         }
-    }, [currentUser?.role]);
+    }, [currentUser?.role, currentDate, dateFilter]);
     
     // Fetch LO list for branch managers
     const fetchLOList = async () => {
@@ -239,9 +242,16 @@ export default function DenominationPage() {
             if (response.data) {
                 // Filter out the _total row and any rows with _id === '_total'
                 const filteredData = response.data.filter(client => 
+                    // 1. Exclude the '_total' row
                     client._id !== '_total' && 
                     client.name !== '_total' &&
-                    client.code !== '_total'
+                    client.code !== '_total' &&
+                    
+                    // 2. Keep clients UNLESS they meet the first set of 'zero' conditions
+                    !(client.activeBorrowers == 0 && client.activeClients == 0 && client.totalLoanBalance == 0) &&
+                    
+                    // 3. Keep clients UNLESS they meet the second set of 'zero'/'null' conditions
+                    !(client.totalLoanBalance == 0 && (client.actualLoanCollection == null || client.actualLoanCollection == 0))
                 );
                 
                 setClientData(filteredData);
@@ -362,6 +372,92 @@ export default function DenominationPage() {
                 date: dateFilter
             });
             
+            // Pass filters based on user role and current view
+            const effectiveFilter = router.query.filter || filter;
+            
+            // Determine which filters to apply (avoid duplicates)
+            let shouldAddBranchFilter = false;
+            let shouldAddLoFilter = false;
+            let shouldAddGroupFilter = false;
+            let branchIdToUse = null;
+            let loIdToUse = null;
+            let groupIdToUse = null;
+            
+            // Priority 1: Nested navigation filters (highest priority)
+            if (router.query.id && router.query.filter) {
+                if (router.query.filter === 'lo') {
+                    // Viewing a specific branch's LOs
+                    branchIdToUse = router.query.id;
+                    shouldAddBranchFilter = true;
+                    console.log('✓ [Nested] Fetching denominations for branch:', router.query.id);
+                } else if (router.query.filter === 'group') {
+                    // Viewing a specific LO's groups
+                    loIdToUse = router.query.id;
+                    shouldAddLoFilter = true;
+                    console.log('✓ [Nested] Fetching denominations for LO:', router.query.id);
+                    
+                    // Also pass branch context if available
+                    if (router.query.parentId) {
+                        branchIdToUse = router.query.parentId;
+                        shouldAddBranchFilter = true;
+                        console.log('✓ [Nested] With branch context:', router.query.parentId);
+                    }
+                }
+            } 
+            // Priority 2: User role-based filters (if not in nested view)
+            else {
+                // For Branch Manager (rep 3) - always pass their designated branch
+                if (currentUser.role.rep === 3 && currentUser.designatedBranchId) {
+                    branchIdToUse = currentUser.designatedBranchId;
+                    shouldAddBranchFilter = true;
+                    console.log('✓ [Role] Fetching denominations for branch manager branch:', currentUser.designatedBranchId);
+                }
+                
+                // For Cashier with designated branch - always pass their designated branch
+                else if (currentUser.role.shortCode === 'cashier' && currentUser.designatedBranchId) {
+                    branchIdToUse = currentUser.designatedBranchId;
+                    shouldAddBranchFilter = true;
+                    console.log('✓ [Role] Fetching denominations for cashier branch:', currentUser.designatedBranchId);
+                }
+                
+                // For Loan Officer (rep 4) - pass their user ID as loId
+                else if (currentUser.role.rep === 4 && currentUser._id) {
+                    loIdToUse = currentUser._id;
+                    shouldAddLoFilter = true;
+                    console.log('✓ [Role] Fetching denominations for loan officer:', currentUser._id);
+                }
+                
+                // Priority 3: Selected dropdown filters (lowest priority, only if no role filter)
+                if (!shouldAddBranchFilter && selectedBranch?.value) {
+                    branchIdToUse = selectedBranch.value;
+                    shouldAddBranchFilter = true;
+                    console.log('✓ [Filter] Fetching denominations with branch filter:', selectedBranch.value);
+                }
+                
+                if (!shouldAddLoFilter && selectedLO?.value) {
+                    loIdToUse = selectedLO.value;
+                    shouldAddLoFilter = true;
+                    console.log('✓ [Filter] Fetching denominations with LO filter:', selectedLO.value);
+                }
+                
+                if (!shouldAddGroupFilter && selectedGroup?.value) {
+                    groupIdToUse = selectedGroup.value;
+                    shouldAddGroupFilter = true;
+                    console.log('✓ [Filter] Fetching denominations with group filter:', selectedGroup.value);
+                }
+            }
+            
+            // Add parameters only once
+            if (shouldAddBranchFilter && branchIdToUse) {
+                params.append('branchId', branchIdToUse);
+            }
+            if (shouldAddLoFilter && loIdToUse) {
+                params.append('loId', loIdToUse);
+            }
+            if (shouldAddGroupFilter && groupIdToUse) {
+                params.append('groupId', groupIdToUse);
+            }
+            
             const url = getApiBaseUrl() + 'transactions/denomination/get-denomination?' + params.toString();
             console.log('Fetching denomination data from:', url);
             
@@ -370,6 +466,7 @@ export default function DenominationPage() {
             
             if (response.success) {
                 setDenominationData(response.data || []);
+                console.log('✓ Loaded', response.data?.length || 0, 'saved denominations');
             }
         } catch (error) {
             console.error('Error fetching denomination data:', error);
@@ -568,7 +665,6 @@ export default function DenominationPage() {
         }).length;
     };
     
-    // Handle submit
     const handleSubmit = async () => {
         if (!canEdit) {
             toast.error('You do not have permission to submit');
@@ -610,13 +706,70 @@ export default function DenominationPage() {
                 return;
             }
             
+            // ==========================================
+            // NEW: VALIDATION FOR SUBMISSION
+            // Check if all groups with totalNetCollection > 0 have remittances
+            // ==========================================
+            const groupsWithCollection = mergedData.filter(item => 
+                item.entityType === 'group' && 
+                item.hasCollection && 
+                item.totalNetCollection > 0
+            );
+            
+            const missingRemittances = [];
+            
+            for (const item of groupsWithCollection) {
+                const currentRemittance = remittanceChanges[item.entityId] !== undefined 
+                    ? remittanceChanges[item.entityId] 
+                    : (item.savedRemittance || 0);
+                
+                if (currentRemittance === 0 || currentRemittance === '') {
+                    missingRemittances.push({
+                        entityName: item.entityName,
+                        totalNetCollection: item.totalNetCollection
+                    });
+                }
+            }
+            
+            // If there are groups with collection but no remittance, show error
+            if (missingRemittances.length > 0) {
+                console.error('❌ Cannot submit: Missing remittances for groups with collections');
+                console.error('Groups missing remittances:', missingRemittances);
+                
+                // Show detailed error messages
+                toast.error('Cannot submit: All groups with collections must have remittances entered', {
+                    autoClose: 8000
+                });
+                
+                // Show first 3 groups with issues
+                const groupsToShow = missingRemittances.slice(0, 3);
+                groupsToShow.forEach(group => {
+                    toast.warning(
+                        `${group.entityName}: Has collection of ${formatPrice(group.totalNetCollection)} but no remittance entered`,
+                        { autoClose: 6000 }
+                    );
+                });
+                
+                if (missingRemittances.length > 3) {
+                    toast.info(`... and ${missingRemittances.length - 3} more groups with missing remittances`);
+                }
+                
+                setLoading(false);
+                return;
+            }
+            
+            console.log('✓ Validation passed: All groups with collections have remittances');
             console.log('Submitting', itemsToSave.length, 'modified group(s)');
             
+            // ==========================================
+            // MODIFIED: Add isSubmission flag to API call
+            // ==========================================
             const response = await fetchWrapper.post(
                 getApiBaseUrl() + 'transactions/denomination/batch-save',
                 {
                     items: itemsToSave,
-                    date: dateFilter
+                    date: dateFilter,
+                    isSubmission: true  // <-- NEW: Flag to indicate this is a submission
                 }
             );
             
@@ -625,43 +778,63 @@ export default function DenominationPage() {
                 setRemittanceChanges({});
                 await fetchInitialData();
             } else {
-                const { results, summary } = response;
-                
-                if (summary) {
-                    if (summary.successful > 0 || summary.reopened > 0) {
-                        toast.success(`${summary.successful + summary.reopened} records saved successfully`);
-                    }
+                // ==========================================
+                // NEW: Handle validation errors from API
+                // ==========================================
+                if (response.validationError && response.missingRemittances) {
+                    toast.error(response.message, { autoClose: 8000 });
                     
-                    if (summary.failed > 0) {
-                        toast.error(`${summary.failed} records failed to save`);
+                    // Show specific groups with issues
+                    const groupsToShow = response.missingRemittances.slice(0, 3);
+                    groupsToShow.forEach(group => {
+                        toast.warning(
+                            `${group.name}: Has collection of ${formatPrice(group.collection)} but no remittance entered`,
+                            { autoClose: 6000 }
+                        );
+                    });
+                    
+                    if (response.missingRemittances.length > 3) {
+                        toast.info(`... and ${response.missingRemittances.length - 3} more groups with missing remittances`);
+                    }
+                } else {
+                    const { results, summary } = response;
+                    
+                    if (summary) {
+                        if (summary.successful > 0 || summary.reopened > 0) {
+                            toast.success(`${summary.successful + summary.reopened} records saved successfully`);
+                        }
                         
-                        if (results.failed && results.failed.length > 0) {
-                            results.failed.slice(0, 3).forEach(failure => {
-                                toast.error(`${failure.entityName}: ${failure.error}`, {
+                        if (summary.failed > 0) {
+                            toast.error(`${summary.failed} records failed to save`);
+                            
+                            if (results.failed && results.failed.length > 0) {
+                                results.failed.slice(0, 3).forEach(failure => {
+                                    toast.error(`${failure.entityName}: ${failure.error}`, {
+                                        autoClose: 5000
+                                    });
+                                });
+                                
+                                if (results.failed.length > 3) {
+                                    toast.info(`... and ${results.failed.length - 3} more errors`);
+                                }
+                            }
+                        }
+                        
+                        if (summary.reopened > 0 && results.reopened) {
+                            results.reopened.forEach(reopened => {
+                                toast.info(`${reopened.entityName}: ${reopened.message}`, {
                                     autoClose: 5000
                                 });
                             });
-                            
-                            if (results.failed.length > 3) {
-                                toast.info(`... and ${results.failed.length - 3} more errors`);
-                            }
                         }
+                    } else {
+                        toast.error(response.message || 'Error saving denomination data');
                     }
                     
-                    if (summary.reopened > 0 && results.reopened) {
-                        results.reopened.forEach(reopened => {
-                            toast.info(`${reopened.entityName}: ${reopened.message}`, {
-                                autoClose: 5000
-                            });
-                        });
+                    if (summary && (summary.successful > 0 || summary.reopened > 0)) {
+                        setRemittanceChanges({});
+                        await fetchInitialData();
                     }
-                } else {
-                    toast.error(response.message || 'Error saving denomination data');
-                }
-                
-                if (summary && (summary.successful > 0 || summary.reopened > 0)) {
-                    setRemittanceChanges({});
-                    await fetchInitialData();
                 }
             }
         } catch (error) {
@@ -835,8 +1008,12 @@ export default function DenominationPage() {
     // Show actions column when viewing groups
     const showActionsColumn = effectiveFilter === 'group';
 
-    // Check if user can approve/reject (role rep 3 or 4)
-    const userCanApproveReject = currentUser.role.rep === 3 || currentUser.role.rep === 4;
+    // ==========================================
+    // MODIFIED: Explicitly exclude cashiers from approving/rejecting
+    // Even though cashiers now have rep=3, they should NOT be able to approve/reject
+    // ==========================================
+    const userCanApproveReject = (currentUser.role.rep === 3 || currentUser.role.rep === 4) && 
+                                currentUser.role.shortCode !== 'cashier';
 
     const shouldShowRemittanceInput = (item) => {
         // Only cashiers can edit remittances
@@ -847,6 +1024,9 @@ export default function DenominationPage() {
         
         // Must have collection
         if (!item.hasCollection) return false;
+
+        // Not filter
+        if (dateFilter !== currentDate) return false;
         
         // Calculate current BCC vs Remittances
         const currentRemittance = remittanceChanges[item.entityId] !== undefined 
@@ -873,6 +1053,18 @@ export default function DenominationPage() {
     useEffect(() => {
         setRemittanceChanges({});
     }, [dateFilter, selectedBranch, selectedLO, selectedGroup]);
+
+    const calculateGrandTotal = (data) => {
+        // Filter out the _total row if it exists in the data
+        const dataWithoutTotal = data.filter(item => item.entityId !== '_total');
+        
+        return {
+            activeClients: dataWithoutTotal.reduce((sum, item) => sum + (item.activeClients || 0), 0),
+            totalNetCollection: dataWithoutTotal.reduce((sum, item) => sum + (item.totalNetCollection || 0), 0),
+            totalRemittance: dataWithoutTotal.reduce((sum, item) => sum + (item.currentRemittance || 0), 0),
+            amountSitDown: dataWithoutTotal.reduce((sum, item) => sum + (item.amountSitDown || 0), 0),
+        };
+    };
     
     return (
         <Layout header={true} noPad={true}>
@@ -1070,187 +1262,232 @@ export default function DenominationPage() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            mergedData.map((item, index) => {
-                                                const currentRemittance = item.currentRemittance || 0;
-                                                const bccVsRemittances = calculateBccVsRemittances(
-                                                    item.totalNetCollection,
-                                                    currentRemittance
-                                                );
-                                                
-                                                const isClickable = effectiveFilter !== 'group';
-                                                
-                                                // Check if we should show the client button for this row
-                                                const showClientButton = effectiveFilter === 'group' && 
-                                                    item.amountSitDown > 0 && 
-                                                    item.activeClients > 0 && 
-                                                    item.totalNetCollection > 0;
-                                                
-                                                // Check if we should show approve/reject buttons for this row
-                                                const canApproveRejectThisRow = userCanApproveReject && 
-                                                    effectiveFilter === 'group' &&
-                                                    item._id &&
-                                                    (item.status === 'pending' || item.status === 'initial');
-                                                
-                                                return (
-                                                    <tr 
-                                                        key={index} 
-                                                        onClick={isClickable ? () => handleRowClick(item) : undefined}
-                                                        className={`transition-colors ${
-                                                            isClickable ? 'hover:bg-gray-50 cursor-pointer' : ''
-                                                        } ${
-                                                            isItemDirty(item) ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                                                        } ${
-                                                            item.status === 'rejected' ? 'bg-red-50 border-l-4 border-l-red-500' : ''
-                                                        }`}
-                                                    >
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                                                            <div className="flex items-center gap-2">
-                                                                {isItemDirty(item) && (
-                                                                    <span 
-                                                                        className="flex h-2 w-2 relative"
-                                                                        title="Unsaved changes"
-                                                                    >
-                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                                                                    </span>
-                                                                )}
-                                                                <span>{item.entityName}</span>
-                                                                {item.wasApproved && item.collectionChanged && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                                                                        Reopened
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            {item.activeClients || 0}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                                                            {formatPrice(item.totalNetCollection || 0)}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            {shouldShowRemittanceInput(item) ? (
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    <input
-                                                                        type="number"
-                                                                        value={currentRemittance === '' ? '' : currentRemittance}
-                                                                        onChange={(e) => handleRemittanceChange(item.entityId, e.target.value)}
-                                                                        onBlur={() => handleRemittanceBlur(item.entityId)}
-                                                                        min={item.savedRemittance || 0}
-                                                                        step="0.01"
-                                                                        className="w-36 px-3 py-1.5 border border-gray-300 rounded-md text-right focus:ring-indigo-500 focus:border-indigo-500"
-                                                                    />
+                                            <>
+                                                {mergedData.map((item, index) => {
+                                                    const currentRemittance = item.currentRemittance || 0;
+                                                    const bccVsRemittances = calculateBccVsRemittances(
+                                                        item.totalNetCollection,
+                                                        currentRemittance
+                                                    );
+                                                    
+                                                    const isClickable = effectiveFilter !== 'group';
+                                                    
+                                                    // Check if we should show the client button for this row
+                                                    // const showClientButton = effectiveFilter === 'group' && 
+                                                    //     item.amountSitDown > 0 && 
+                                                    //     item.activeClients > 0 && 
+                                                    //     item.totalNetCollection > 0;
+                                                    const showClientButton = true;
+                                                    
+                                                    // Check if we should show approve/reject buttons for this row
+                                                    const canApproveRejectThisRow = userCanApproveReject && 
+                                                        effectiveFilter === 'group' &&
+                                                        item._id &&
+                                                        (item.status === 'pending' || item.status === 'initial');
+                                                    
+                                                    return (
+                                                        <tr 
+                                                            key={index} 
+                                                            onClick={isClickable ? () => handleRowClick(item) : undefined}
+                                                            className={`transition-colors ${
+                                                                isClickable ? 'hover:bg-gray-50 cursor-pointer' : ''
+                                                            } ${
+                                                                isItemDirty(item) ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                                                            } ${
+                                                                item.status === 'rejected' ? 'bg-red-50 border-l-4 border-l-red-500' : ''
+                                                            }`}
+                                                        >
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                                                                <div className="flex items-center gap-2">
+                                                                    {isItemDirty(item) && (
+                                                                        <span 
+                                                                            className="flex h-2 w-2 relative"
+                                                                            title="Unsaved changes"
+                                                                        >
+                                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                                                        </span>
+                                                                    )}
+                                                                    <span>{item.entityName}</span>
                                                                     {item.wasApproved && item.collectionChanged && (
-                                                                        <span className="text-xs text-orange-600 italic" title="Collection updated after approval">
-                                                                            Updated
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                                                            Reopened
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                            ) : (
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    <span className="font-medium">{formatPrice(currentRemittance)}</span>
-                                                                    {item.status === 'approved' && (
-                                                                        <span className="text-xs text-green-600">✓</span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                                            {item.amountSitDown ? Number(item.amountSitDown).toFixed(0) : '0'}
-                                                        </td>
-                                                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                                                            bccVsRemittances < 0 ? 'text-red-600' : 
-                                                            bccVsRemittances > 0 ? 'text-orange-600' : 
-                                                            'text-green-600'
-                                                        }`}>
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                {formatPrice(bccVsRemittances)}
-                                                                {bccVsRemittances > 0 && item.hasCollection && (
-                                                                    <span className="text-xs" title="Needs remittance adjustment">⚠️</span>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {item.activeClients || 0}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                                                                {formatPrice(item.totalNetCollection || 0)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {shouldShowRemittanceInput(item) ? (
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={currentRemittance === '' ? '' : currentRemittance}
+                                                                            onChange={(e) => handleRemittanceChange(item.entityId, e.target.value)}
+                                                                            onBlur={() => handleRemittanceBlur(item.entityId)}
+                                                                            min={item.savedRemittance || 0}
+                                                                            step="0.01"
+                                                                            className="w-36 px-3 py-1.5 border border-gray-300 rounded-md text-right focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        />
+                                                                        {item.wasApproved && item.collectionChanged && (
+                                                                            <span className="text-xs text-orange-600 italic" title="Collection updated after approval">
+                                                                                Updated
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <span className="font-medium">{formatPrice(currentRemittance)}</span>
+                                                                        {item.status === 'approved' && (
+                                                                            <span className="text-xs text-green-600">✓</span>
+                                                                        )}
+                                                                    </div>
                                                                 )}
-                                                            </div>
-                                                        </td>
-                                                        {showStatusColumn && (
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center uppercase">
-                                                                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                                                                    item.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                                    item.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                                    'bg-gray-100 text-gray-800'
-                                                                }`}>
-                                                                    {item.status || 'draft'}
-                                                                </span>
                                                             </td>
-                                                        )}
-                                                        {showActionsColumn && (
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    {/* History button - ONLY show if there's MORE THAN ONE history entry */}
-                                                                    {item.history && item.history.length > 1 && (
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleViewHistory(item);
-                                                                            }}
-                                                                            className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
-                                                                            title="View history"
-                                                                        >
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                                                                            </svg>
-                                                                        </button>
-                                                                    )}
-                                                                    
-                                                                    {showClientButton && (
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                fetchClientData(item.entityId, item.entityName);
-                                                                            }}
-                                                                            className="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-md transition-colors"
-                                                                            title="View clients with sit down"
-                                                                        >
-                                                                            <Users size={24} />
-                                                                        </button>
-                                                                    )}
-                                                                    
-                                                                    {canApproveRejectThisRow && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleApprove(item);
-                                                                                }}
-                                                                                className="p-1.5 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md transition-colors"
-                                                                                title="Approve"
-                                                                                disabled={loading}
-                                                                            >
-                                                                                <Check size={24} />
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleRejectClick(item);
-                                                                                }}
-                                                                                className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition-colors"
-                                                                                title="Reject"
-                                                                                disabled={loading}
-                                                                            >
-                                                                                <X size={24} />
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                    
-                                                                    {/* Show dash only if there are NO buttons visible */}
-                                                                    {!showClientButton && !canApproveRejectThisRow && (!item.history || item.history.length <= 1) && (
-                                                                        <span className="text-gray-400 text-xs">-</span>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                                                                {item.amountSitDown ? Number(item.amountSitDown).toFixed(0) : '0'}
+                                                            </td>
+                                                            <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                                                                bccVsRemittances < 0 ? 'text-red-600' : 
+                                                                bccVsRemittances > 0 ? 'text-orange-600' : 
+                                                                'text-green-600'
+                                                            }`}>
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    {formatPrice(bccVsRemittances)}
+                                                                    {bccVsRemittances > 0 && item.hasCollection && (
+                                                                        <span className="text-xs" title="Needs remittance adjustment">⚠️</span>
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                        )}
-                                                    </tr>
-                                                );
-                                            })
+                                                            {showStatusColumn && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center uppercase">
+                                                                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                                                                        item.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                                        item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                        'bg-gray-100 text-gray-800'
+                                                                    }`}>
+                                                                        {item.status || 'draft'}
+                                                                    </span>
+                                                                </td>
+                                                            )}
+                                                            {showActionsColumn && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        {/* History button - ONLY show if there's MORE THAN ONE history entry */}
+                                                                        {item.history && item.history.length > 1 && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleViewHistory(item);
+                                                                                }}
+                                                                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                                                                                title="View history"
+                                                                            >
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        )}
+
+                                                                        {(showClientButton && currentDate === dateFilter) && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    fetchClientData(item.entityId, item.entityName);
+                                                                                }}
+                                                                                className="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-md transition-colors"
+                                                                                title="View clients with sit down"
+                                                                            >
+                                                                                <Users size={24} />
+                                                                            </button>
+                                                                        )}
+                                                                        
+                                                                        {(canApproveRejectThisRow && currentDate === dateFilter) && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleApprove(item);
+                                                                                    }}
+                                                                                    className="p-1.5 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md transition-colors"
+                                                                                    title="Approve"
+                                                                                    disabled={loading}
+                                                                                >
+                                                                                    <Check size={24} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleRejectClick(item);
+                                                                                    }}
+                                                                                    className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition-colors"
+                                                                                    title="Reject"
+                                                                                    disabled={loading}
+                                                                                >
+                                                                                    <X size={24} />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        
+                                                                        {/* Show dash only if there are NO buttons visible */}
+                                                                        {!showClientButton && !canApproveRejectThisRow && (!item.history || item.history.length <= 1) && (
+                                                                            <span className="text-gray-400 text-xs">-</span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })}
+                                                
+                                                {/* Grand Total Row */}
+                                                {(() => {
+                                                    const grandTotal = calculateGrandTotal(mergedData);
+                                                    const grandTotalBccVsRemittances = calculateBccVsRemittances(
+                                                        grandTotal.totalNetCollection,
+                                                        grandTotal.totalRemittance
+                                                    );
+                                                    
+                                                    return (
+                                                        <tr className="bg-red-50 border-t-4 border-red-600">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 uppercase sticky left-0 bg-red-50">
+                                                                GRAND TOTAL
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {grandTotal.activeClients}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {formatPrice(grandTotal.totalNetCollection)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {formatPrice(grandTotal.totalRemittance)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {Number(grandTotal.amountSitDown).toFixed(0)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {formatPrice(grandTotalBccVsRemittances)}
+                                                            </td>
+                                                            {showStatusColumn && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                                    <span className="text-red-700">-</span>
+                                                                </td>
+                                                            )}
+                                                            {showActionsColumn && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                                    <span className="text-red-700">-</span>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })()}
+                                            </>
                                         )}
                                     </tbody>
                                 </table>

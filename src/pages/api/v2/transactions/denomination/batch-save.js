@@ -16,11 +16,12 @@ const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
 
 async function batchSaveDenomination(req, res) {
     const user = await findUserById(req.auth.sub);
-    const { items, date } = req.body;
+    const { items, date, isSubmission } = req.body; // Added isSubmission flag
     
     console.log('=== BATCH SAVE START ===');
     console.log('Items received:', items.length);
     console.log('Date:', date);
+    console.log('Is Submission:', isSubmission);
     console.log('User:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
     
     // Check if user has permission to save (only cashier)
@@ -43,11 +44,89 @@ async function batchSaveDenomination(req, res) {
         const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
         const currentDate = date || moment().format('YYYY-MM-DD');
         
+        // ==========================================
+        // NEW: VALIDATION FOR SUBMISSION
+        // ==========================================
+        if (isSubmission) {
+            console.log('=== VALIDATING SUBMISSION ===');
+            
+            // Get all group IDs from the items being submitted
+            const groupIds = items.map(item => item.entityId);
+            
+            // Fetch all groups to check their totalNetCollection
+            const groupsQuery = await graph.query(
+                queryQl(GROUP_TYPE, {
+                    where: { _id: { _in: groupIds } }
+                })
+            );
+            
+            const groups = groupsQuery?.data?.groups || [];
+            console.log('Found groups:', groups.length);
+            
+            // Build a map of groupId -> group data for easy lookup
+            const groupMap = new Map();
+            groups.forEach(group => {
+                groupMap.set(group._id, group);
+            });
+            
+            // Check each item being submitted
+            const missingRemittances = [];
+            
+            for (const item of items) {
+                const group = groupMap.get(item.entityId);
+                
+                if (!group) {
+                    console.warn(`Group not found: ${item.entityId}`);
+                    continue;
+                }
+                
+                // If totalNetCollection > 0, remittance must be entered
+                const totalNetCollection = parseFloat(item.totalNetCollection) || 0;
+                const totalRemittance = parseFloat(item.totalRemittance) || 0;
+                
+                console.log(`Validating ${item.entityName}:`, {
+                    totalNetCollection,
+                    totalRemittance,
+                    hasCollection: totalNetCollection > 0,
+                    hasRemittance: totalRemittance > 0
+                });
+                
+                if (totalNetCollection > 0 && totalRemittance === 0) {
+                    missingRemittances.push({
+                        entityId: item.entityId,
+                        entityName: item.entityName || group.name || 'Unknown Group',
+                        totalNetCollection: totalNetCollection
+                    });
+                }
+            }
+            
+            // If there are groups with collection but no remittance, reject the submission
+            if (missingRemittances.length > 0) {
+                console.log('❌ VALIDATION FAILED: Missing remittances');
+                console.log('Groups with missing remittances:', missingRemittances);
+                
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot submit: All groups with collections must have remittances entered',
+                    validationError: true,
+                    missingRemittances: missingRemittances.map(mr => ({
+                        name: mr.entityName,
+                        collection: mr.totalNetCollection
+                    }))
+                });
+            }
+            
+            console.log('✓ Validation passed: All groups with collections have remittances');
+        }
+        
+        // ==========================================
+        // EXISTING LOGIC: Process each item
+        // ==========================================
         const results = {
             success: [],
             failed: [],
             reopened: [],
-            reprocessed: []  // NEW: Track reprocessed rejected items
+            reprocessed: []
         };
         
         const mutationQl = [];
@@ -121,7 +200,7 @@ async function batchSaveDenomination(req, res) {
                 const group = groupQuery?.data?.groups?.[0];
                 
                 if (!group) {
-                    console.log('Group not found:', data.entityId);
+                    console.log('Group not found');
                     results.failed.push({
                         entityId: data.entityId,
                         entityName: data.entityName || 'Unknown',
@@ -130,27 +209,72 @@ async function batchSaveDenomination(req, res) {
                     continue;
                 }
                 
-                // Map group data to denomination fields
+                // Map group data
                 const groupId = data.entityId;
                 const loId = group.loanOfficerId;
                 const branchId = group.branchId;
                 
-                console.log('Group info:', { groupId, groupName: group.name, loId, branchId });
+                console.log('Group data:', { groupId, loId, branchId });
                 
                 // Calculate BCC vs Remittances
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 
-                // Check if record exists for this specific group and date
-                const existingQuery = await graph.query(
-                    queryQl(DENOMINATION_TYPE(`query_results_${i}`), {
+                // Check existing records
+                mutationQl.push(
+                    queryQl(DENOMINATION_TYPE, {
                         where: {
                             group_id: { _eq: groupId },
                             date_added: { _eq: currentDate }
                         }
+                    }, `query_results_${i}`)
+                );
+            } catch (error) {
+                console.error(`Error processing item ${i + 1}:`, error);
+                results.failed.push({
+                    entityId: data.entityId,
+                    entityName: data.entityName || 'Unknown',
+                    error: error.message
+                });
+            }
+        }
+        
+        // Execute all queries in batch
+        console.log('\n=== EXECUTING BATCH QUERY ===');
+        const queryResults = await graph.query(mutationQl.join('\n'));
+        console.log('Query results received');
+        
+        // Now process updates/inserts
+        const mutations = [];
+        
+        for (let i = 0; i < items.length; i++) {
+            const data = items[i];
+            
+            // Skip if already failed
+            if (results.failed.find(f => f.entityId === data.entityId)) {
+                continue;
+            }
+            
+            try {
+                const totalNetCollection = parseFloat(data.totalNetCollection) || 0;
+                const totalRemittance = parseFloat(data.totalRemittance) || 0;
+                const activeClients = parseInt(data.activeClients) || 0;
+                const amountSitDown = parseFloat(data.amountSitDown) || 0;
+                const bccVsRemittances = totalNetCollection - totalRemittance;
+                
+                // Get group data again
+                const groupQuery = await graph.query(
+                    queryQl(GROUP_TYPE, {
+                        where: { _id: { _eq: data.entityId } }
                     })
                 );
                 
-                const existingRecords = existingQuery?.data?.[`query_results_${i}`] || [];
+                const group = groupQuery?.data?.groups?.[0];
+                const groupId = data.entityId;
+                const loId = group.loanOfficerId;
+                const branchId = group.branchId;
+                
+                // Get existing records from batch query
+                const existingRecords = queryResults?.data?.[`query_results_${i}`] || [];
                 
                 console.log('Existing records found:', existingRecords.length);
                 if (existingRecords.length > 0) {
@@ -158,12 +282,11 @@ async function batchSaveDenomination(req, res) {
                         _id: existingRecords[0]._id,
                         group_id: existingRecords[0].group_id,
                         status: existingRecords[0].status,
-                        total_remittance: existingRecords[0].total_remittance,
-                        rejection_reason: existingRecords[0].rejection_reason
+                        total_remittance: existingRecords[0].total_remittance
                     });
                 }
                 
-                // Prepare history entry for new submission
+                // Prepare history entry
                 const historyEntry = {
                     date_time: currentDateTime,
                     user_id: user._id,
@@ -173,208 +296,134 @@ async function batchSaveDenomination(req, res) {
                     total_remittance: totalRemittance,
                     amount_sit_down: amountSitDown,
                     bcc_vs_remittances: bccVsRemittances,
-                    action: 'saved'
+                    action: isSubmission ? 'submitted' : 'saved'
                 };
                 
-                // NOW PROCESS: Update or Insert
+                // Process update or insert
                 if (existingRecords.length > 0) {
-                    // UPDATE PATH
                     const existingRecord = existingRecords[0];
                     
                     if (existingRecord.status === 'approved') {
-                        // APPROVED STATUS HANDLING
                         const collectionChanged = totalNetCollection !== (existingRecord.total_net_collection || 0);
                         
                         if (collectionChanged) {
-                            console.log('Reopening approved record due to collection change');
+                            console.log('Collection changed after approval - reopening');
                             
-                            // Archive the approved record in history
-                            const approvedSnapshot = {
-                                date_time: currentDateTime,
-                                action: 'reopened_due_to_collection_change',
-                                user_id: user._id,
-                                user_name: `${user.firstName} ${user.lastName}`,
-                                previous_status: 'approved',
-                                active_clients: activeClients,
-                                amount_sit_down: amountSitDown,
-                                previous_total_net_collection: existingRecord.total_net_collection,
-                                previous_total_remittance: existingRecord.total_remittance,
-                                previous_bcc_vs_remittances: existingRecord.bcc_vs_remittances,
-                                previous_approval_date: existingRecord.approval_date,
-                                new_total_net_collection: totalNetCollection,
-                                total_remittance: totalRemittance,
-                                bcc_vs_remittances: bccVsRemittances,
-                                reason: `Collection updated from ₱${existingRecord.total_net_collection.toFixed(2)} to ₱${totalNetCollection.toFixed(2)}`
-                            };
-                            
-                            const updateData = {
-                                active_clients: activeClients,
-                                total_net_collection: totalNetCollection,
-                                total_remittance: totalRemittance,
-                                amount_sit_down: amountSitDown,
-                                bcc_vs_remittances: bccVsRemittances,
-                                status: 'pending',
-                                modified_date: currentDateTime,
-                                modified_by: user._id,
-                                approval_date: null,
-                                rejection_reason: null,
-                                rejection_date: null
-                            };
-                            
-                            mutationQl.push(
-                                updateQl(DENOMINATION_TYPE(`update_results_${mutationQl.length}`), {
-                                    where: { 
-                                        _id: { _eq: existingRecord._id },
-                                        group_id: { _eq: groupId }
+                            mutations.push(
+                                updateQl(DENOMINATION_TYPE, {
+                                    where: { _id: { _eq: existingRecord._id } },
+                                    set: {
+                                        active_clients: activeClients,
+                                        total_net_collection: totalNetCollection,
+                                        total_remittance: totalRemittance,
+                                        amount_sit_down: amountSitDown,
+                                        bcc_vs_remittances: bccVsRemittances,
+                                        status: 'pending',
+                                        modified_date: currentDateTime,
+                                        modified_by: user._id,
+                                        approval_date: null,
+                                        rejection_reason: null,
+                                        rejection_date: null
                                     },
-                                    set: updateData,
                                     jsonAppend: {
-                                        history: approvedSnapshot
+                                        history: {
+                                            ...historyEntry,
+                                            note: 'Reopened due to collection change after approval'
+                                        }
                                     }
-                                })
+                                }, `mutation_${i}`)
                             );
                             
                             results.reopened.push({
                                 entityId: data.entityId,
-                                entityName: data.entityName || 'Unknown',
-                                message: 'Reopened due to collection change'
-                            });
-                            
-                            console.log('Added UPDATE mutation (reopened)');
-                        } else {
-                            console.log('Cannot modify approved record without collection change');
-                            results.failed.push({
-                                entityId: data.entityId,
-                                entityName: data.entityName || 'Unknown',
-                                error: 'Cannot modify approved denomination without collection changes'
-                            });
-                        }
-                        // to do:
-                        // - add total in the denomination
-                        // - in closing of transaction, update the query to check for pending denomination
-                        // - freeze the column row and the first column like the moderncashcollection page
-                        // - filter by branch should show in filter = lo so that it can be easily switch data of branch
-                    } else if (existingRecord.status === 'rejected') {
-                        // REJECTED STATUS HANDLING - Allow reprocessing
-                        console.log('Reprocessing rejected record');
-                        
-                        // Get the LAST history entry to find the actual previous values
-                        const historyArray = existingRecord.history || [];
-                        const lastHistoryEntry = historyArray.length > 0 ? historyArray[historyArray.length - 1] : null;
-                        
-                        // Use values from the rejection history entry (which has the correct values)
-                        const actualPreviousRemittance = lastHistoryEntry?.total_remittance || existingRecord.total_remittance || 0;
-                        const actualPreviousCollection = lastHistoryEntry?.total_net_collection || existingRecord.total_net_collection || 0;
-                        const actualPreviousBccVsRemittances = actualPreviousCollection - actualPreviousRemittance;
-                        
-                        console.log('Previous values from history:', {
-                            previousRemittance: actualPreviousRemittance,
-                            previousCollection: actualPreviousCollection,
-                            previousBccVsRemittances: actualPreviousBccVsRemittances
-                        });
-                        
-                        // Create reprocessed history entry with CORRECT previous values
-                        const reprocessedEntry = {
-                            date_time: currentDateTime,
-                            action: 'reprocessed_after_rejection',
-                            user_id: user._id,
-                            user_name: `${user.firstName} ${user.lastName}`,
-                            previous_status: 'rejected',
-                            previous_rejection_reason: existingRecord.rejection_reason,
-                            previous_rejection_date: existingRecord.rejection_date,
-                            previous_total_net_collection: actualPreviousCollection,
-                            previous_total_remittance: actualPreviousRemittance,
-                            previous_bcc_vs_remittances: actualPreviousBccVsRemittances,
-                            active_clients: activeClients,
-                            total_net_collection: totalNetCollection,
-                            total_remittance: totalRemittance,
-                            amount_sit_down: amountSitDown,
-                            bcc_vs_remittances: bccVsRemittances,
-                            reason: `Reprocessed after rejection. Previous remittance: ₱${actualPreviousRemittance.toFixed(2)}, New remittance: ₱${totalRemittance.toFixed(2)}`
-                        };
-                        
-                        const updateData = {
-                            active_clients: activeClients,
-                            total_net_collection: totalNetCollection,
-                            total_remittance: totalRemittance,
-                            amount_sit_down: amountSitDown,
-                            bcc_vs_remittances: bccVsRemittances,
-                            status: 'pending',  // Change back to pending
-                            modified_date: currentDateTime,
-                            modified_by: user._id,
-                            rejection_reason: null,  // Clear rejection info
-                            rejection_date: null
-                        };
-                        
-                        mutationQl.push(
-                            updateQl(DENOMINATION_TYPE(`update_results_${mutationQl.length}`), {
-                                where: { 
-                                    _id: { _eq: existingRecord._id },
-                                    group_id: { _eq: groupId }
-                                },
-                                set: updateData,
-                                jsonAppend: {
-                                    history: reprocessedEntry
-                                }
-                            })
-                        );
-                        
-                        results.reprocessed.push({
-                            entityId: data.entityId,
-                            entityName: data.entityName || 'Unknown',
-                            message: 'Reprocessed after rejection',
-                            previousRejectionReason: existingRecord.rejection_reason
-                        });
-                        
-                        console.log('Added UPDATE mutation (reprocessed from rejected)');
-                    } else {
-                        // PENDING/DRAFT STATUS HANDLING
-                        console.log('Updating pending/draft record');
-                        
-                        // Validate remittance - must be >= previously saved amount
-                        if (totalRemittance < (existingRecord.total_remittance || 0)) {
-                            console.log('Remittance too low');
-                            results.failed.push({
-                                entityId: data.entityId,
-                                entityName: data.entityName || 'Unknown',
-                                error: `Remittance cannot be less than previously saved amount (₱${existingRecord.total_remittance.toFixed(2)})`
+                                entityName: data.entityName,
+                                message: 'Collection changed - status reset to pending'
                             });
                         } else {
-                            const updateData = {
-                                active_clients: activeClients,
-                                total_net_collection: totalNetCollection,
-                                total_remittance: totalRemittance,
-                                amount_sit_down: amountSitDown,
-                                bcc_vs_remittances: bccVsRemittances,
-                                status: 'pending',
-                                modified_date: currentDateTime,
-                                modified_by: user._id
-                            };
+                            console.log('No collection change - updating remittance only');
                             
-                            mutationQl.push(
-                                updateQl(DENOMINATION_TYPE(`update_results_${mutationQl.length}`), {
-                                    where: { 
-                                        _id: { _eq: existingRecord._id },
-                                        group_id: { _eq: groupId }
+                            mutations.push(
+                                updateQl(DENOMINATION_TYPE, {
+                                    where: { _id: { _eq: existingRecord._id } },
+                                    set: {
+                                        total_remittance: totalRemittance,
+                                        amount_sit_down: amountSitDown,
+                                        bcc_vs_remittances: bccVsRemittances,
+                                        modified_date: currentDateTime,
+                                        modified_by: user._id
                                     },
-                                    set: updateData,
                                     jsonAppend: {
                                         history: historyEntry
                                     }
-                                })
+                                }, `mutation_${i}`)
                             );
                             
                             results.success.push({
                                 entityId: data.entityId,
-                                entityName: data.entityName || 'Unknown'
+                                entityName: data.entityName
                             });
-                            
-                            console.log('Added UPDATE mutation (normal)');
                         }
+                    } else if (existingRecord.status === 'rejected') {
+                        console.log('Reprocessing rejected record');
+                        
+                        mutations.push(
+                            updateQl(DENOMINATION_TYPE, {
+                                where: { _id: { _eq: existingRecord._id } },
+                                set: {
+                                    active_clients: activeClients,
+                                    total_net_collection: totalNetCollection,
+                                    total_remittance: totalRemittance,
+                                    amount_sit_down: amountSitDown,
+                                    bcc_vs_remittances: bccVsRemittances,
+                                    status: 'pending',
+                                    modified_date: currentDateTime,
+                                    modified_by: user._id,
+                                    rejection_reason: null,
+                                    rejection_date: null
+                                },
+                                jsonAppend: {
+                                    history: {
+                                        ...historyEntry,
+                                        note: 'Resubmitted after rejection'
+                                    }
+                                }
+                            }, `mutation_${i}`)
+                        );
+                        
+                        results.reprocessed.push({
+                            entityId: data.entityId,
+                            entityName: data.entityName,
+                            message: 'Rejected entry reprocessed'
+                        });
+                    } else {
+                        console.log('Updating pending/draft record');
+                        
+                        mutations.push(
+                            updateQl(DENOMINATION_TYPE, {
+                                where: { _id: { _eq: existingRecord._id } },
+                                set: {
+                                    active_clients: activeClients,
+                                    total_net_collection: totalNetCollection,
+                                    total_remittance: totalRemittance,
+                                    amount_sit_down: amountSitDown,
+                                    bcc_vs_remittances: bccVsRemittances,
+                                    status: 'pending',
+                                    modified_date: currentDateTime,
+                                    modified_by: user._id
+                                },
+                                jsonAppend: {
+                                    history: historyEntry
+                                }
+                            }, `mutation_${i}`)
+                        );
+                        
+                        results.success.push({
+                            entityId: data.entityId,
+                            entityName: data.entityName
+                        });
                     }
                 } else {
-                    // INSERT PATH - No existing record
-                    console.log('Creating new record');
+                    console.log('Inserting new record');
                     
                     const denominationData = {
                         _id: generateUUID(),
@@ -398,90 +447,66 @@ async function batchSaveDenomination(req, res) {
                         rejection_reason: null
                     };
                     
-                    mutationQl.push(
-                        insertQl(DENOMINATION_TYPE(`insert_results_${mutationQl.length}`), {
+                    mutations.push(
+                        insertQl(DENOMINATION_TYPE, {
                             objects: [denominationData]
-                        })
+                        }, `mutation_${i}`)
                     );
                     
                     results.success.push({
                         entityId: data.entityId,
-                        entityName: data.entityName || 'Unknown'
+                        entityName: data.entityName
                     });
-                    
-                    console.log('Added INSERT mutation');
                 }
-                
-            } catch (itemError) {
-                console.error(`Error processing item ${data.entityId}:`, itemError);
+            } catch (error) {
+                console.error(`Error preparing mutation for item ${i + 1}:`, error);
                 results.failed.push({
                     entityId: data.entityId,
                     entityName: data.entityName || 'Unknown',
-                    error: itemError.message
+                    error: error.message
                 });
             }
         }
         
-        console.log('\n=== MUTATION SUMMARY ===');
-        console.log('Total mutations to execute:', mutationQl.length);
-        console.log('Success:', results.success.length);
-        console.log('Reprocessed:', results.reprocessed.length);
-        console.log('Reopened:', results.reopened.length);
-        console.log('Failed:', results.failed.length);
-        
-        // Execute all mutations in a single request
-        if (mutationQl.length > 0) {
-            console.log('Executing mutations...');
+        // Execute all mutations
+        if (mutations.length > 0) {
+            console.log('\n=== EXECUTING BATCH MUTATIONS ===');
+            console.log('Mutations to execute:', mutations.length);
             
-            const mutationResult = await graph.mutation(...mutationQl);
+            const mutationResult = await graph.mutation(mutations.join('\n'));
             
             if (mutationResult.errors && mutationResult.errors.length > 0) {
-                console.error('GraphQL mutation errors:', mutationResult.errors);
+                console.error('Mutation errors:', mutationResult.errors);
                 throw new Error(mutationResult.errors[0].message);
             }
             
-            console.log('Mutations executed successfully');
-        } else {
-            console.log('No mutations to execute');
+            console.log('✓ Batch mutations completed successfully');
         }
         
-        // Determine overall success
-        const totalProcessed = results.success.length + results.failed.length + results.reopened.length + results.reprocessed.length;
-        const allSuccessful = results.failed.length === 0;
-        
-        // Build success message
-        let successMessage = '';
-        const successfulCount = results.success.length + results.reopened.length + results.reprocessed.length;
-        
-        if (allSuccessful) {
-            if (results.reprocessed.length > 0) {
-                successMessage = `${successfulCount} record(s) saved successfully (${results.reprocessed.length} reprocessed after rejection)`;
-            } else if (results.reopened.length > 0) {
-                successMessage = `${successfulCount} record(s) saved successfully (${results.reopened.length} reopened)`;
-            } else {
-                successMessage = `All ${totalProcessed} denomination record(s) saved successfully`;
-            }
-        } else {
-            successMessage = `${successfulCount} saved, ${results.failed.length} failed`;
-        }
-        
-        console.log('=== BATCH SAVE COMPLETE ===\n');
+        console.log('\n=== BATCH SAVE COMPLETE ===');
+        console.log('Summary:', {
+            successful: results.success.length,
+            failed: results.failed.length,
+            reopened: results.reopened.length,
+            reprocessed: results.reprocessed.length
+        });
         
         res.status(200).json({
-            success: allSuccessful,
-            message: successMessage,
+            success: true,
+            message: 'Batch save completed',
             results: results,
             summary: {
-                total: totalProcessed,
+                total: items.length,
                 successful: results.success.length,
-                reprocessed: results.reprocessed.length,
+                failed: results.failed.length,
                 reopened: results.reopened.length,
-                failed: results.failed.length
+                reprocessed: results.reprocessed.length
             }
         });
         
     } catch (error) {
-        console.error('Error in batch save denomination:', error);
+        console.error('Error in batch save:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Error saving denomination data',

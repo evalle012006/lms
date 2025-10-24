@@ -24,8 +24,19 @@ async function approveDenomination(req, res) {
     const targetId = id || denominationId;
     const user_role = user.role.rep || userRole;
     
-    // Check if user has permission to approve (managers and above - rep 3 or less)
-    if (user_role < 3) {
+    // ==========================================
+    // MODIFIED: Explicitly block cashiers from approving
+    // Even though cashiers now have rep=3, they should NOT be able to approve
+    // ==========================================
+    if (user.role.shortCode === 'cashier') {
+        return res.status(403).json({
+            success: false,
+            message: 'Cashiers are not allowed to approve denominations. Only managers can approve.'
+        });
+    }
+    
+    // Check if user has permission to approve (managers and above - rep 3 or less, but NOT cashiers)
+    if (user_role > 3) {
         return res.status(403).json({
             success: false,
             message: 'You do not have permission to approve denomination data'
@@ -57,6 +68,19 @@ async function approveDenomination(req, res) {
                 message: 'Denomination record not found'
             });
         }
+        
+        // Verify the status is pending (can only approve pending records)
+        if (existingRecord.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot approve: Record status is "${existingRecord.status}". Only pending records can be approved.`
+            });
+        }
+        
+        console.log('=== APPROVAL PROCESS ===');
+        console.log('Approver:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
+        console.log('Record ID:', targetId);
+        console.log('Current status:', existingRecord.status);
         
         // Update the last history entry to mark it as approved
         let updatedHistory = [...(existingRecord.history || [])];
@@ -90,8 +114,12 @@ async function approveDenomination(req, res) {
         );
         
         if (result.errors && result.errors.length > 0) {
+            console.error('GraphQL errors:', result.errors);
             throw new Error(result.errors[0].message);
         }
+        
+        console.log('✓ Approval successful');
+        console.log('=== APPROVAL COMPLETE ===');
         
         res.status(200).json({
             success: true,
@@ -120,8 +148,19 @@ async function rejectDenomination(req, res) {
     const targetId = id || denominationId;
     const user_role = user.role.rep || userRole;
     
-    // Check if user has permission to reject (managers and above - rep 3 or less)
-    if (user.role.rep < 3) {
+    // ==========================================
+    // MODIFIED: Explicitly block cashiers from rejecting
+    // Even though cashiers now have rep=3, they should NOT be able to reject
+    // ==========================================
+    if (user.role.shortCode === 'cashier') {
+        return res.status(403).json({
+            success: false,
+            message: 'Cashiers are not allowed to reject denominations. Only managers can reject.'
+        });
+    }
+    
+    // Check if user has permission to reject (managers and above - rep 3 or less, but NOT cashiers)
+    if (user_role > 3) {
         return res.status(403).json({
             success: false,
             message: 'You do not have permission to reject denomination data'
@@ -161,7 +200,19 @@ async function rejectDenomination(req, res) {
             });
         }
         
+        // Verify the status is pending (can only reject pending records)
+        if (existingRecord.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot reject: Record status is "${existingRecord.status}". Only pending records can be rejected.`
+            });
+        }
+        
         console.log('=== REJECTION PROCESS ===');
+        console.log('Rejector:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
+        console.log('Record ID:', targetId);
+        console.log('Current status:', existingRecord.status);
+        console.log('Rejection reason:', rejectionReason);
         console.log('Existing history entries:', existingRecord.history?.length || 0);
         
         // Create a NEW rejection history entry (don't modify the last one)
@@ -207,7 +258,7 @@ async function rejectDenomination(req, res) {
             throw new Error(result.errors[0].message);
         }
         
-        console.log('Rejection successful');
+        console.log('✓ Rejection successful');
         console.log('=== REJECTION COMPLETE ===');
         
         res.status(200).json({

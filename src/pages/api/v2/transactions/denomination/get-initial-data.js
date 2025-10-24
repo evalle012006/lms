@@ -1,3 +1,6 @@
+// src/pages/api/v2/transactions/denomination/get-initial-data.js
+// MODIFIED VERSION - Add cashier designated branch filtering
+
 import { apiHandler } from '@/services/api-handler';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
@@ -18,6 +21,11 @@ async function getInitialData(req, res) {
         
         const currentDate = date || moment().format('YYYY-MM-DD');
         
+        console.log('=== GET INITIAL DATA ===');
+        console.log('User:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
+        console.log('Query params:', { date: currentDate, branchId, loId, groupId, filter });
+        console.log('User designated branch:', user.designatedBranchId);
+        
         // Build parameters matching ModernBranchCashCollections format
         const params = new URLSearchParams({
             dateAdded: currentDate,
@@ -26,19 +34,47 @@ async function getInitialData(req, res) {
             filter: filter || 'branch'
         });
         
-        // Add entity-specific filters
-        if (branchId) {
-            params.append('branchId', branchId);
-        } else if (user.designatedBranchId) {
-            params.append('branchId', user.designatedBranchId);
-        }
-        
-        if (loId) {
-            params.append('loId', loId);
-        }
-        
-        if (groupId) {
-            params.append('groupId', groupId);
+        // ==========================================
+        // MODIFIED: Handle cashier with designated branch
+        // ==========================================
+        if (user.role.shortCode === 'cashier' && user.designatedBranchId) {
+            // Cashier with designated branch
+            if (filter === 'lo') {
+                // When viewing LO level, use their designated branch
+                params.append('branchId', user.designatedBranchId);
+                console.log('✓ Cashier viewing LO level for designated branch:', user.designatedBranchId);
+                
+                // If specific LO is selected, add it
+                if (loId) {
+                    params.append('loId', loId);
+                    console.log('✓ Filtering by specific LO:', loId);
+                }
+            } else if (filter === 'group') {
+                // When drilling down to groups, preserve branch context
+                params.append('branchId', user.designatedBranchId);
+                if (loId) {
+                    params.append('loId', loId);
+                    console.log('✓ Cashier viewing groups for LO:', loId);
+                }
+            }
+        } else {
+            // ==========================================
+            // ORIGINAL LOGIC for other roles
+            // ==========================================
+            // Add entity-specific filters
+            if (branchId) {
+                params.append('branchId', branchId);
+            } else if (user.designatedBranchId) {
+                params.append('branchId', user.designatedBranchId);
+            }
+            
+            if (loId) {
+                params.append('loId', loId);
+            }
+            
+            if (groupId) {
+                params.append('groupId', groupId);
+            }
         }
         
         // Add hierarchical filters based on user role
@@ -187,6 +223,13 @@ async function getInitialData(req, res) {
         });
         
         console.log('Transformed data count:', transformedData.length);
+        console.log('Applied filters:', {
+            branchId: user.role.shortCode === 'cashier' && user.designatedBranchId 
+                ? user.designatedBranchId 
+                : branchId,
+            loId,
+            groupId
+        });
         
         res.status(200).json({
             success: true,
@@ -198,6 +241,7 @@ async function getInitialData(req, res) {
         
     } catch (error) {
         console.error('Error fetching initial denomination data:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Error retrieving initial data',
