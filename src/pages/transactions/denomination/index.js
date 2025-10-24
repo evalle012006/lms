@@ -1294,11 +1294,10 @@ export default function DenominationPage() {
                                                     const isClickable = effectiveFilter !== 'group';
                                                     
                                                     // Check if we should show the client button for this row
-                                                    // const showClientButton = effectiveFilter === 'group' && 
-                                                    //     item.amountSitDown > 0 && 
-                                                    //     item.activeClients > 0 && 
-                                                    //     item.totalNetCollection > 0;
-                                                    const showClientButton = true; // for testing only
+                                                    const showClientButton = effectiveFilter === 'group' && 
+                                                        item.amountSitDown > 0 && 
+                                                        item.activeClients > 0 && 
+                                                        item.totalNetCollection > 0;
                                                     
                                                     // Check if we should show approve/reject buttons for this row
                                                     const canApproveRejectThisRow = userCanApproveReject && 

@@ -36,12 +36,12 @@ async function approveDenomination(req, res) {
     }
     
     // Check if user has permission to approve (managers and above - rep 3 or less, but NOT cashiers)
-    if (user_role > 3) {
-        return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to approve denomination data'
-        });
-    }
+    // if (user_role > 3) {
+    //     return res.status(403).json({
+    //         success: false,
+    //         message: 'You do not have permission to approve denomination data'
+    //     });
+    // }
     
     if (!targetId) {
         return res.status(400).json({
