@@ -21,7 +21,7 @@ import {
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 import moment from "moment";
-import { getCurrentDate } from "@/lib/date-utils";
+import { getCurrentDate, getEndDate } from "@/lib/date-utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -41,9 +41,7 @@ async function processData(req, res) {
   let response = {};
   const errorMsg = [];
 
-  let loanData = req.body;
-
-  const origin = loanData && loanData.length > 0 && loanData[0].origin;
+  let { loanData, origin } = req.body;
 
   if (origin === "ldf") {
     const promise = await new Promise(async (resolve) => {
@@ -67,7 +65,6 @@ async function processData(req, res) {
             status: { _in: ["active", "completed"] },
           });
 
-          console.log(active)
           if (active.length > 0) {
             const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
             errorMsg.push(error);
@@ -97,7 +94,9 @@ async function processData(req, res) {
     }
   } else {
     const result = await Promise.all(
-      loanData.map(async (loan) => {
+      loanData.map(async (l) => {
+        let loan = { ...l };
+
         const active = await findLoans({
           clientId: { _eq: loan.clientId },
           status: { _in: ["active", "completed"] },
@@ -126,6 +125,7 @@ async function processData(req, res) {
 
             if (loan.status === "active") {
               await updateClient(loan, addToMutationList);
+
               if (loan.coMaker) {
                 if (typeof loan.coMaker === "string") {
                   loan.coMakerId = loan.coMaker;
@@ -146,30 +146,33 @@ async function processData(req, res) {
                   }
                 }
               }
-            } else if (loan.status === "reject") {
-              if (!groupData.availableSlots.includes(loan.slotNo)) {
-                groupData.availableSlots.push(loan.slotNo);
-                groupData.availableSlots.sort((a, b) => {
-                  return a - b;
-                });
-                groupData.noOfClients = groupData.noOfClients - 1;
-                groupData.status =
-                  groupData.status === "full"
-                    ? "available"
-                    : groupData.status;
-                await updateGroup(groupData, addToMutationList);
-              }
             }
 
-            if (loan.status === "active" || loan.status === "reject") {
+            if (loan.status === "active") {
               logger.debug({
                 page: `Loan: ${loan._id}`,
                 message: "Updating loan data.",
                 status: loan.status,
               });
-              await updateLoan(loanId, { ... loan, status: 'active' }, addToMutationList);
+
+              loan.dateGranted = currentDate
+              loan.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+              loan.loanTerms = loan.loanTerms ? loan.loanTerms : groupData.occurence == 'daily' ? 60 : 24;
+              loan.endDate = getEndDate(currentDate, loan.loanTerms);
+
+              await updateLoan(loanId, { ... loan }, addToMutationList);
+              
               loan._id = loanId;
+              
               await saveCashCollection(loan, groupData, currentDate, addToMutationList);
+            } else if (loan.status === "pending" && loan.preApproved) {
+              logger.debug({
+                page: `Loan: ${loan._id}`,
+                message: "Updating loan data pre approval.",
+                status: loan.status,
+              });
+
+              await updateLoan(loanId, { ... loan }, addToMutationList);
             }
           }
         }

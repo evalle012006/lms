@@ -169,6 +169,8 @@ export const LOAN_FIELDS = `
   csfReturnAmt
   csfIn
   addHospitalization
+  preApproved
+  preApprovedDate
   `;
 
 export const GROUP_FIELDS = `

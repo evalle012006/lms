@@ -15,7 +15,7 @@ async function list(req, res) {
   let rowMapper;
   let args;
 
-  const { branchId, groupId, loId, status, currentUserId, mode } = req.query;
+  const { branchId, groupId, loId, status, currentUserId, mode, pendingApproved } = req.query;
   const currentDate = new Date(req.query).toString() === 'Invalid Date' ? moment(new Date()).format("YYYY-MM-DD") : req.query.currentDate;
   if (status) {
     // for lo
@@ -68,6 +68,7 @@ async function list(req, res) {
         }
 
         args.currentDate = currentDate;
+        args.pendingApproved = pendingApproved;
 
         rowMapper = (row) => {
           row.branch = [row.branch];
@@ -117,6 +118,8 @@ async function list(req, res) {
     }
   `;
   args.status = status;
+  // console.log("Arguments: ", args);
+  // console.log("Query: ", query)
   loans = await graph.apollo
     .query({ query, variables: { args } })
     .then((res) => {

@@ -43,6 +43,7 @@ async function processLOSummary(req, res) {
             const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
             const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
             const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
+            const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
             if (mode === 'close') {
                 if (noCollections.length > 0) {
@@ -53,8 +54,10 @@ async function processLOSummary(req, res) {
                     response = { error: true, message: "Some groups have pending MCBU withdrawals for the selected Loan Officer. Please reject or delete them." };
                 } else if (hasPendingFundTransfers.length > 0) {
                     response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
-                } else if (hasPendingDenominations.length > 0) {
-                    response = { error: true, message: "Branch has pending Denomination entries. Please check and approve or contact Cashier." };
+                } else if (hasPendingDenominations.length === 0) {
+                    response = { error: true, message: "LO has pending Denomination entries. Please check and approve or contact Cashier." };
+                } else if (hasPendingLoans.length > 0) {
+                    response = { error: true, message: "LO has pending Loan entries. Please check and approve or contact Loan Officer." };
                 }
             } else {
                 let result;

@@ -110,6 +110,7 @@ async function batchSaveDenomination(req, res) {
         // ✅ FOLLOWING WORKING REFERENCE PATTERN
         const queryList = [];
         const addToQueryList = addToList => queryList.push(addToList(`query_${queryList.length}`));
+        const queryIndexMap = {}; // Track which query index corresponds to which entityId
         
         // Process each item and prepare queries
         for (let i = 0; i < items.length; i++) {
@@ -192,6 +193,9 @@ async function batchSaveDenomination(req, res) {
                 
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 
+                // Track query index for this entity
+                queryIndexMap[data.entityId] = queryList.length;
+                
                 // ✅ Add query as a FUNCTION following working reference pattern
                 addToQueryList(alias => queryQl(DENOMINATION_TYPE(alias), {
                     where: {
@@ -246,8 +250,11 @@ async function batchSaveDenomination(req, res) {
                 const loId = group.loanOfficerId;
                 const branchId = group.branchId;
                 
-                // Get existing records from batch query
-                const existingRecords = queryResults?.data?.[`mutation_${i}`] || [];
+                // Get existing records from batch query using the correct query index
+                const queryIndex = queryIndexMap[data.entityId];
+                const existingRecords = queryIndex !== undefined 
+                    ? (queryResults?.data?.[`query_${queryIndex}`] || [])
+                    : [];
                 
                 console.log('Existing records found:', existingRecords.length);
                 if (existingRecords.length > 0) {

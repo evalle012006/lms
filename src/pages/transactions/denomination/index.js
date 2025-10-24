@@ -63,11 +63,44 @@ export default function DenominationPage() {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [selectedItemHistory, setSelectedItemHistory] = useState(null);
 
-    const isViewingHistoricalData = dateFilter !== currentDate;
-
     const handleViewHistory = (item) => {
         setSelectedItemHistory(item);
         setShowHistoryModal(true);
+    };
+
+    // Helper function to determine if back button should be shown
+    const shouldShowBackButton = () => {
+        // If not viewing nested content, no back button needed
+        if (!viewingNestedContent) {
+                console.log("shouldShowBackButton: Not viewing nested content - no back button");
+            return false;
+        }
+        
+        // Check user role and current filter state
+        if (currentUser?.role && !router.query?.parentId) {
+            // Loan Officer (rep = 4): initial view is groups, no back button at group level
+            if (currentUser.role.rep === 4 && filter === 'group') {
+                console.log("shouldShowBackButton: LO at group level - no back button");
+                return false;
+            }
+            
+            // Branch Manager (rep = 3): initial view is loan officers, no back button to branches
+            if (currentUser.role.rep === 3 && filter === 'lo') {
+                console.log("shouldShowBackButton: Branch Manager at LO level - no back button");
+                return false;
+            }
+            
+            // Cashier without designated branch: initial view is branches, no back button at branch level
+            if (currentUser.role.shortCode === 'cashier' && 
+                currentUser.designatedBranchId == null && 
+                filter === 'branch') {
+                console.log("shouldShowBackButton: Cashier without branch at branch level - no back button");
+                return false;
+            }
+        }
+        
+        // For all other cases when viewing nested content, show back button
+        return true;
     };
     
     // Initialize from router query
@@ -80,16 +113,28 @@ export default function DenominationPage() {
             console.log('Setting filter from router query:', router.query.filter);
             setFilter(router.query.filter);
         } else if (!router.query.id) {
+            // Determine initial filter based on user role
             if (currentUser?.role) {
+                // Admin/Super Admin (rep <= 2): start at branch level
                 if (currentUser.role.rep <= 2) {
                     console.log('Resetting to branch filter for admin role');
                     setFilter('branch');
-                } else if (currentUser.role.rep === 3) {
+                }
+                // Branch Manager (rep = 3): start at loan officer level
+                else if (currentUser.role.rep === 3) {
                     console.log('Resetting to lo filter for branch manager');
                     setFilter('lo');
-                } else if (currentUser.role.rep === 4) {
+                }
+                // Loan Officer (rep = 4): start at group level
+                else if (currentUser.role.rep === 4) {
                     console.log('Resetting to group filter for loan officer');
                     setFilter('group');
+                }
+                // Cashier without designated branch: start at branch level
+                else if (currentUser.role.shortCode === 'cashier' && 
+                         currentUser.designatedBranchId == null) {
+                    console.log('Cashier without designated branch - setting to branch filter');
+                    setFilter('branch');
                 }
             }
         }
@@ -103,7 +148,9 @@ export default function DenominationPage() {
             id: router.query.id,
             parentId: router.query.parentId,
             viewingNested: hasNestedContent,
-            currentFilter: filter
+            currentFilter: filter,
+            userRole: currentUser?.role,
+            shouldShowBack: shouldShowBackButton()
         });
     }, [router.query.date, router.query.filter, router.query.id, router.query.parentId, currentUser?.role]);
     
@@ -129,7 +176,7 @@ export default function DenominationPage() {
         };
         
         fetchBranches();
-    }, [currentUser?.role, branchList.length, dispatch]);
+    }, [branchList.length, currentUser, dispatch]);
     
     // Determine filter level based on user role
     useEffect(() => {
@@ -251,11 +298,13 @@ export default function DenominationPage() {
                     !(client.activeBorrowers == 0 && client.activeClients == 0 && client.totalLoanBalance == 0) &&
                     
                     // 3. Keep clients UNLESS they meet the second set of 'zero'/'null' conditions
-                    !(client.totalLoanBalance == 0 && (client.actualLoanCollection == null || client.actualLoanCollection == 0))
+                    !(client.totalLoanBalance == 0 && (client.actualLoanCollection == null || client.actualLoanCollection == 0)) &&
+                    
+                    // 4. Exclude has actualLoanCollection
+                    !(client.actualLoanCollection != null && client.actualLoanCollection != 0)
                 );
                 
                 setClientData(filteredData);
-                console.log('Client data received:', filteredData.length, 'clients (filtered)');
             } else {
                 toast.error('No client data found');
                 setClientData([]);
@@ -279,14 +328,7 @@ export default function DenominationPage() {
     // Fetch initial data from cash collections API
     const fetchInitialData = async () => {
         const effectiveFilter = router.query.filter || filter;
-        
-        console.log('fetchInitialData called', {
-            stateFilter: filter,
-            routerFilter: router.query.filter,
-            effectiveFilter: effectiveFilter,
-            routerQuery: router.query,
-            currentUserRole: currentUser.role.rep
-        });
+
         setLoading(true);
         try {
             const params = new URLSearchParams({
@@ -295,26 +337,18 @@ export default function DenominationPage() {
             });
             
             if (router.query.id && router.query.filter) {
-                console.log('Nested navigation detected:', router.query.filter);
-                
                 if (router.query.filter === 'lo') {
                     params.append('branchId', router.query.id);
-                    console.log('Loading LOs for branch:', router.query.id);
                 } else if (router.query.filter === 'group') {
                     params.append('loId', router.query.id);
-                    console.log('Loading groups for LO:', router.query.id);
                     
                     if (router.query.parentId) {
                         params.append('branchId', router.query.parentId);
-                        console.log('With branch context:', router.query.parentId);
                     }
                 }
             } else {
-                console.log('Initial load based on role');
-                
                 if (effectiveFilter === 'branch') {
                     if (selectedBranch) {
-                        console.log('Adding branchId filter:', selectedBranch.value);
                         params.append('branchId', selectedBranch.value);
                     } else {
                         console.log('Loading all branches (no branch filter)');
@@ -322,19 +356,15 @@ export default function DenominationPage() {
                 } else if (effectiveFilter === 'lo') {
                     if (currentUser.designatedBranchId) {
                         params.append('branchId', currentUser.designatedBranchId);
-                        console.log('Loading all LOs for branch:', currentUser.designatedBranchId);
                     }
                     if (selectedLO) {
-                        console.log('Adding loId filter:', selectedLO.value);
                         params.append('loId', selectedLO.value);
                     }
                 } else if (effectiveFilter === 'group') {
                     if (currentUser._id) {
                         params.append('loId', currentUser._id);
-                        console.log('Loading all groups for LO:', currentUser._id);
                     }
                     if (selectedGroup) {
-                        console.log('Adding groupId filter:', selectedGroup.value);
                         params.append('groupId', selectedGroup.value);
                     }
                 }
@@ -344,12 +374,10 @@ export default function DenominationPage() {
             
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                console.log('Data received:', response.data?.length, 'items');
                 setInitialData(response.data || []);
                 
                 if (response.parentName) {
                     setParentEntityName(response.parentName);
-                    console.log('Parent entity name:', response.parentName);
                 }
                 
                 await fetchDenominationData();
@@ -389,18 +417,15 @@ export default function DenominationPage() {
                     // Viewing a specific branch's LOs
                     branchIdToUse = router.query.id;
                     shouldAddBranchFilter = true;
-                    console.log('✓ [Nested] Fetching denominations for branch:', router.query.id);
                 } else if (router.query.filter === 'group') {
                     // Viewing a specific LO's groups
                     loIdToUse = router.query.id;
                     shouldAddLoFilter = true;
-                    console.log('✓ [Nested] Fetching denominations for LO:', router.query.id);
                     
                     // Also pass branch context if available
                     if (router.query.parentId) {
                         branchIdToUse = router.query.parentId;
                         shouldAddBranchFilter = true;
-                        console.log('✓ [Nested] With branch context:', router.query.parentId);
                     }
                 }
             } 
@@ -410,40 +435,34 @@ export default function DenominationPage() {
                 if (currentUser.role.rep === 3 && currentUser.designatedBranchId) {
                     branchIdToUse = currentUser.designatedBranchId;
                     shouldAddBranchFilter = true;
-                    console.log('✓ [Role] Fetching denominations for branch manager branch:', currentUser.designatedBranchId);
                 }
                 
                 // For Cashier with designated branch - always pass their designated branch
                 else if (currentUser.role.shortCode === 'cashier' && currentUser.designatedBranchId) {
                     branchIdToUse = currentUser.designatedBranchId;
                     shouldAddBranchFilter = true;
-                    console.log('✓ [Role] Fetching denominations for cashier branch:', currentUser.designatedBranchId);
                 }
                 
                 // For Loan Officer (rep 4) - pass their user ID as loId
                 else if (currentUser.role.rep === 4 && currentUser._id) {
                     loIdToUse = currentUser._id;
                     shouldAddLoFilter = true;
-                    console.log('✓ [Role] Fetching denominations for loan officer:', currentUser._id);
                 }
                 
                 // Priority 3: Selected dropdown filters (lowest priority, only if no role filter)
                 if (!shouldAddBranchFilter && selectedBranch?.value) {
                     branchIdToUse = selectedBranch.value;
                     shouldAddBranchFilter = true;
-                    console.log('✓ [Filter] Fetching denominations with branch filter:', selectedBranch.value);
                 }
                 
                 if (!shouldAddLoFilter && selectedLO?.value) {
                     loIdToUse = selectedLO.value;
                     shouldAddLoFilter = true;
-                    console.log('✓ [Filter] Fetching denominations with LO filter:', selectedLO.value);
                 }
                 
                 if (!shouldAddGroupFilter && selectedGroup?.value) {
                     groupIdToUse = selectedGroup.value;
                     shouldAddGroupFilter = true;
-                    console.log('✓ [Filter] Fetching denominations with group filter:', selectedGroup.value);
                 }
             }
             
@@ -459,14 +478,11 @@ export default function DenominationPage() {
             }
             
             const url = getApiBaseUrl() + 'transactions/denomination/get-denomination?' + params.toString();
-            console.log('Fetching denomination data from:', url);
             
             const response = await fetchWrapper.get(url);
-            console.log('Denomination data response:', response);
             
             if (response.success) {
                 setDenominationData(response.data || []);
-                console.log('✓ Loaded', response.data?.length || 0, 'saved denominations');
             }
         } catch (error) {
             console.error('Error fetching denomination data:', error);
@@ -528,7 +544,7 @@ export default function DenominationPage() {
             (d.branch_id === entityId || d.lo_id === entityId || d.group_id === entityId)
         );
         
-        const minValue = savedItem?.total_remittance || 0;
+        const minValue = item.totalNetCollection || 0;
         const currentValue = parseFloat(remittanceChanges[entityId]) || 0;
         
         // Calculate what the new BCC vs Remittances would be
@@ -571,7 +587,6 @@ export default function DenominationPage() {
     // Handle row click for navigation
     const handleRowClick = (item) => {
         const effectiveFilter = router.query.filter || filter;
-        console.log('Row clicked:', item, 'effectiveFilter:', effectiveFilter);
         
         let nextFilter = '';
         let updatedQuery = {
@@ -582,7 +597,6 @@ export default function DenominationPage() {
             nextFilter = 'lo';
             updatedQuery.id = item.entityId;
             updatedQuery.filter = nextFilter;
-            console.log('Navigating to LOs for branch:', item.entityId);
         } else if (effectiveFilter === 'lo') {
             nextFilter = 'group';
             updatedQuery.id = item.entityId;
@@ -593,7 +607,6 @@ export default function DenominationPage() {
             } else if (currentUser.designatedBranchId) {
                 updatedQuery.parentId = currentUser.designatedBranchId;
             }
-            console.log('Navigating to groups for LO:', item.entityId, 'with parentId:', updatedQuery.parentId);
         } else if (effectiveFilter === 'group') {
             console.log('Groups are the deepest level, no navigation');
             return;
@@ -609,35 +622,34 @@ export default function DenominationPage() {
     
     // Handle back navigation
     const handleBackNavigation = () => {
-        console.log('Back button clicked, current query:', router.query);
-        
-        if (router.query.filter === 'group') {
-            const query = {
-                id: router.query.parentId,
-                filter: 'lo',
-                date: dateFilter
-            };
-            
-            console.log('Navigating back to LOs with query:', query);
-            
+        // Don't allow back navigation if shouldShowBackButton returns false
+        if (!shouldShowBackButton()) {
+            return;
+        }
+
+        if (filter === 'group' && router.query.parentId) {
+            // Going back from groups to loan officers
             router.push({
                 pathname: router.pathname,
-                query
-            }, undefined, { shallow: true });
-        } else if (router.query.filter === 'lo') {
-            const query = {
-                date: dateFilter
-            };
-            
-            console.log('Navigating back to initial view with query:', query);
-            
-            router.push({
-                pathname: router.pathname,
-                query
-            }, undefined, { shallow: true });
-            
-            setViewingNestedContent(false);
-            setParentEntityName('');
+                query: { 
+                    date: dateFilter, 
+                    filter: 'lo',
+                    id: router.query.parentId,
+                    // parentId: selectedBranch?.id // will need to check if there will be branch list after the lo list
+                }
+            }, undefined, { shallow: true }); 
+        } else if (filter === 'lo' && router.query.parentId) {
+            // Going back from loan officers to branches
+            // Only allow this if user is not a Branch Manager (rep = 3)
+            if (currentUser?.role?.rep !== 3) {
+                router.push({
+                    pathname: router.pathname,
+                    query: { 
+                        date: dateFilter, 
+                        filter: 'branch'
+                    }
+                }, undefined, { shallow: true }); 
+            }
         }
     };
     
@@ -658,6 +670,12 @@ export default function DenominationPage() {
     const getDirtyItemsCount = () => {
         const mergedData = getMergedData();
         return mergedData.filter(item => {
+            // ✅ NEW: Allow items with zero or negative collections
+            if (item.totalNetCollection < 0) {
+                return isItemDirty(item);
+            }
+            
+            // For positive collections, keep existing validation
             if (!item.hasCollection) return false;
             const currentRemittance = item.currentRemittance || 0;
             if (currentRemittance <= 0) return false;
@@ -678,17 +696,24 @@ export default function DenominationPage() {
             // Only submit items that were actually changed (dirty)
             const itemsToSave = mergedData
                 .filter(item => {
-                    if (!item.hasCollection) return false;
-                    
-                    const currentRemittance = item.currentRemittance || 0;
-                    if (currentRemittance <= 0) return false;
-                    
                     // Check if dirty and value changed
                     const isDirty = remittanceChanges.hasOwnProperty(item.entityId);
                     if (!isDirty) return false;
                     
                     const savedRemittance = item.savedRemittance || 0;
-                    return currentRemittance !== savedRemittance;
+                    const currentRemittance = item.currentRemittance || 0;
+                    if (currentRemittance === savedRemittance) return false;
+                    
+                    // ✅ NEW: Allow items with negative collections
+                    if (item.totalNetCollection < 0) {
+                        return true;
+                    }
+                    
+                    // For positive collections, keep existing validation
+                    if (!item.hasCollection) return false;
+                    if (currentRemittance <= 0) return false;
+                    
+                    return true;
                 })
                 .map(item => ({
                     entityId: item.entityId,
@@ -757,9 +782,6 @@ export default function DenominationPage() {
                 setLoading(false);
                 return;
             }
-            
-            console.log('✓ Validation passed: All groups with collections have remittances');
-            console.log('Submitting', itemsToSave.length, 'modified group(s)');
             
             // ==========================================
             // MODIFIED: Add isSubmission flag to API call
@@ -938,21 +960,6 @@ export default function DenominationPage() {
     useEffect(() => {
         const effectiveFilter = router.query.filter || filter;
         
-        console.log('Data fetch useEffect triggered:', {
-            hasUser: !!currentUser?.role,
-            stateFilter: filter,
-            routerFilter: router.query.filter,
-            effectiveFilter: effectiveFilter,
-            routerId: router.query.id,
-            selectedBranch: selectedBranch?.label,
-            selectedLO: selectedLO?.label,
-            selectedGroup: selectedGroup?.label,
-            dateFilter,
-            designatedBranchId: currentUser?.designatedBranchId,
-            userId: currentUser?._id,
-            isInitialized
-        });
-        
         if (!currentUser || !currentUser.role) {
             console.log('No user, skipping fetch');
             setLoading(false);
@@ -985,7 +992,6 @@ export default function DenominationPage() {
         }
         
         if (canFetch) {
-            console.log('All parameters ready, fetching data...');
             const timeoutId = setTimeout(() => {
                 fetchInitialData();
                 setIsInitialized(true);
@@ -1022,10 +1028,7 @@ export default function DenominationPage() {
         // Only at group level
         if (effectiveFilter !== 'group') return false;
         
-        // Must have collection
-        if (!item.hasCollection) return false;
-
-        // Not filter
+        // Date filter check
         if (dateFilter !== currentDate) return false;
         
         // Calculate current BCC vs Remittances
@@ -1034,8 +1037,18 @@ export default function DenominationPage() {
             : item.savedRemittance || 0;
         const bccVsRemittances = calculateBccVsRemittances(item.totalNetCollection, currentRemittance);
 
-        // If approved, never show input
+        // If approved and balanced, never show input
         if (item.status === 'approved' && bccVsRemittances === 0) return false;
+        
+        // NEW LOGIC:
+        // 1. If totalNetCollection is negative, always allow input
+        if (item.totalNetCollection < 0) {
+            return item.status === 'draft' || item.status === 'pending' || item.status === 'approved';
+        }
+        
+        // 2. If totalNetCollection is positive, only allow input if there's a collection
+        //    (this maintains the restriction for positive collections)
+        if (!item.hasCollection) return false;
         
         // Show input if:
         // 1. Status is draft or pending (normal flow)
@@ -1067,24 +1080,32 @@ export default function DenominationPage() {
     };
     
     return (
-        <Layout header={true} noPad={true}>
+        <Layout header={false} noPad={true}>
             <div className="flex flex-col h-full bg-gray-50">
                 {/* Header Section */}
-                <div className="bg-white shadow px-4 py-2 sm:px-6">
-                    {viewingNestedContent && parentEntityName && (
+                <div className="bg-white shadow px-4 py-6 sm:px-6">
+                    <h1 className="text-2xl font-semibold text-gray-900">Denomination Page</h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        {moment(dateFilter).format('dddd, MMMM DD, YYYY')}
+                    </p>
+                    
+                    {/* {shouldShowBackButton() && (
                         <div className="mt-2 flex items-center">
                             <button
                                 onClick={handleBackNavigation}
                                 className="text-sm font-medium text-indigo-600 hover:text-indigo-900 flex items-center"
                             >
                                 <ChevronLeft size={16} className="mr-1" />
-                                Back
+                                Back to {router.query.parentId ? 'Loan Officers' : 'Branches'}
                             </button>
-                            <span className="ml-2 text-sm text-gray-700">
-                                Viewing: <span className="font-medium">{parentEntityName}</span>
-                            </span>
+                            
+                            {parentEntityName && (
+                                <span className="ml-2 text-sm text-gray-700">
+                                    Viewing: <span className="font-medium">{parentEntityName}</span>
+                                </span>
+                            )}
                         </div>
-                    )}
+                    )} */}
                 </div>
                 
                 {/* Filters Section */}
@@ -1277,7 +1298,7 @@ export default function DenominationPage() {
                                                     //     item.amountSitDown > 0 && 
                                                     //     item.activeClients > 0 && 
                                                     //     item.totalNetCollection > 0;
-                                                    const showClientButton = true;
+                                                    const showClientButton = true; // for testing only
                                                     
                                                     // Check if we should show approve/reject buttons for this row
                                                     const canApproveRejectThisRow = userCanApproveReject && 

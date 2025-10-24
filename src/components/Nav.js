@@ -477,7 +477,19 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+                roles: ["admin", "branch_manager"]
+            },
+            {
+                label: "Loan Approval",
+                url: "/transactions/loan-applications/admin-view",
+                icon: {
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin"]
             },
             {
                 label: "Loan Officer Register",

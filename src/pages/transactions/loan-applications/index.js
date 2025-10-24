@@ -1195,9 +1195,9 @@ const LoanApplicationPage = () => {
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
                     errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
                 }
-                if (!client.profile || !client.profile.trim()) {
-                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
-                }
+                // if (!client.profile || !client.profile.trim()) {
+                //     errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
+                // }
 
                 delete temp.group;
                 delete temp.client;
@@ -1218,12 +1218,11 @@ const LoanApplicationPage = () => {
                     }
                 } else {
                     temp.groupLeader = client.groupLeader ? client.groupLeader : false;
-                    temp.dateGranted = currentDate
-                    temp.status = 'active';
-                    temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
-                    temp.endDate = getEndDate(currentDate, group.occurence === lo.transactionType ? 60 : 24 );
+                    temp.status = 'pending';
+                    temp.preApproved = true;
+                    temp.preApprovedDate = currentDate;
                     temp.mispayment = 0;
-                    temp.insertedBy = currentUser._id;
+                    
                     temp.currentDate = currentDate;
 
                     if (temp.coMaker) {
@@ -1257,7 +1256,8 @@ const LoanApplicationPage = () => {
                     errorMsg += "\n\nPlease update each missing info by clicking the row.";
                     toast.error(errorMsg, { autoClose: 10000 });
                 } else {
-                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', selectedLoanList);
+                    const params = { loanData: selectedLoanList, origin: origin, user: currentUser };
+                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', params);
 
                     if (response.success) {
                         setLoading(false);
