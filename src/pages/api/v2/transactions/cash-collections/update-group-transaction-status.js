@@ -22,7 +22,7 @@ async function processLOSummary(req, res) {
     if (loId) {
         const dayName = moment(currentDate).format('dddd').toLowerCase();
         const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
-        console.log(cashCollectionCounts);
+
         if (cashCollectionCounts) {
             const noCollections = cashCollectionCounts.filter(cc => { 
                 if (cc.cashCollections.length === 0) {
