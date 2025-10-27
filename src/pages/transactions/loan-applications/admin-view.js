@@ -510,12 +510,14 @@ const LoanApprovalsPage = () => {
                                     {selectedLoans.length} loan(s) selected
                                 </span>
                             </div>
-                            <ButtonSolid
-                                label="Approve Selected"
-                                onClick={handleBulkApprove}
-                                disabled={isProcessing}
-                                className="bg-green-600 hover:bg-green-700"
-                            />
+                            <div className="w-36">
+                                <ButtonSolid
+                                    label="Approve Selected"
+                                    onClick={handleBulkApprove}
+                                    disabled={isProcessing}
+                                    className="bg-green-600 hover:bg-green-700"
+                                />
+                            </div>
                         </div>
                     </div>
                 )}

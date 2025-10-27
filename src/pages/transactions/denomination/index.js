@@ -500,8 +500,21 @@ export default function DenominationPage() {
                 const savedData = denominationData.find(d => 
                     (d.branch_id === item.entityId || d.lo_id === item.entityId || d.group_id === item.entityId)
                 );
+
+                let totalRemittance = 0;
+                if (effectiveFilter !== 'group') {
+                    const matchingRecords = denominationData.filter(d => {
+                        return d.lo_id === item.entityId;
+                    });
+                    matchingRecords.forEach(record => {
+                        const value = parseFloat(record.total_remittance) || 0;
+                        totalRemittance += value;
+                    });
+                }
                 
-                const currentRemittance = remittanceChanges[item.entityId] !== undefined 
+                const currentRemittance = totalRemittance != 0 
+                    ? totalRemittance 
+                    : remittanceChanges[item.entityId] !== undefined 
                     ? remittanceChanges[item.entityId]
                     : savedData?.total_remittance || 0;
                 

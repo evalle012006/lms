@@ -106,7 +106,7 @@ async function processData(req, res) {
           errorMsg.push(error);
         } else {
           const loanId = loan._id;
-          const currentDate = loan.currentDate;
+          const currentDate = moment(getCurrentDate()).format("YYYY-MM-DD");
           logger.debug({ page: `Approving Loan: ${loanId}`, data: loan });
           delete loan._id;
           delete loan.loanOfficer;
@@ -155,6 +155,7 @@ async function processData(req, res) {
                 status: loan.status,
               });
 
+              loan.dateAdded = currentDate;
               loan.dateGranted = currentDate
               loan.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
               loan.loanTerms = loan.loanTerms ? loan.loanTerms : groupData.occurence == 'daily' ? 60 : 24;
