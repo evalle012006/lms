@@ -58,46 +58,46 @@ async function processLOSummary(req, res) {
                     response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
                 } else if (noDenominationTransactions.length > 0) {
                     response = { error: true, message: "LO has no Denomination entries. Please check and add them." };
-                } else if (hasPendingDenominations.length === 0) {
+                } else if (hasPendingDenominations.length > 0) {
                     response = { error: true, message: "LO has pending Denomination entries. Please check and approve or contact Cashier." };
                 } else if (hasPendingLoans.length > 0) {
                     response = { error: true, message: "LO has pending Loan entries. Please check and approve or contact Branch Manager." };
                 }
-            } else {
-                let result;
-                if (mode == 'close' && hasClosingTime.length == 0) {
-                    result = await graph.mutation(
-                        updateQl(CASH_COLLECTION_TYPE, {
-                            set: {
-                                groupStatus: 'closed',
-                                closingTime: currentTime
-                            },
-                            where: {
-                                loId: {  _eq: loId },
-                                dateAdded: { _eq: currentDate }
-                            }
-                        })
-                    );
-                } else {
-                    result = await graph.mutation(
-                        updateQl(CASH_COLLECTION_TYPE, {
-                            set: {
-                                groupStatus: mode === 'close' ? 'closed' : 'pending',
-                                closingTime: mode === 'close' ? currentTime : null,
-                            },
-                            where: {
-                                loId: {  _eq: loId },
-                                dateAdded: { _eq: currentDate }
-                            }
-                        })
-                    );
-                }
+            } 
 
-                if(result.data.collections.affected_rows === 0) {
-                    response = { error: true, message: "No transactions found for this Loan Officer." };
-                } else {
-                    response = { success: true };
-                }
+            let result;
+            if (mode == 'close' && hasClosingTime.length == 0) {
+                result = await graph.mutation(
+                    updateQl(CASH_COLLECTION_TYPE, {
+                        set: {
+                            groupStatus: 'closed',
+                            closingTime: currentTime
+                        },
+                        where: {
+                            loId: {  _eq: loId },
+                            dateAdded: { _eq: currentDate }
+                        }
+                    })
+                );
+            } else {
+                result = await graph.mutation(
+                    updateQl(CASH_COLLECTION_TYPE, {
+                        set: {
+                            groupStatus: mode === 'close' ? 'closed' : 'pending',
+                            closingTime: mode === 'close' ? currentTime : null,
+                        },
+                        where: {
+                            loId: {  _eq: loId },
+                            dateAdded: { _eq: currentDate }
+                        }
+                    })
+                );
+            }
+
+            if(result.data.collections.affected_rows === 0) {
+                response = { error: true, message: "No transactions found for this Loan Officer." };
+            } else {
+                response = { success: true };
             }
         }
 

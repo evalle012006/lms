@@ -1055,7 +1055,7 @@ export default function DenominationPage() {
         
         // NEW LOGIC:
         // 1. If totalNetCollection is negative, always allow input
-        if (item.totalNetCollection < 0) {
+        if (item.totalNetCollection < 0 || bccVsRemittances < 0) {
             return item.status === 'draft' || item.status === 'pending' || item.status === 'approved';
         }
         
