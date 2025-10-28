@@ -1195,9 +1195,9 @@ const LoanApplicationPage = () => {
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
                     errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
                 }
-                // if (!client.profile || !client.profile.trim()) {
-                //     errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
-                // }
+                if (!client.profile || !client.profile.trim()) {
+                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
+                }
 
                 delete temp.group;
                 delete temp.client;
@@ -1218,7 +1218,7 @@ const LoanApplicationPage = () => {
                     }
                 } else {
                     temp.groupLeader = client.groupLeader ? client.groupLeader : false;
-                    temp.status = 'pending';
+                    temp.status = 'active';
                     temp.preApproved = true;
                     temp.preApprovedDate = currentDate;
                     temp.mispayment = 0;
