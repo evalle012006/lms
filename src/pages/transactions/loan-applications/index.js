@@ -39,6 +39,7 @@ const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
+    const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.loan.list);
     const pendingList = useSelector(state => state.loan.pendingList);
@@ -1521,7 +1522,7 @@ const LoanApplicationPage = () => {
         return () => {
             mounted = false;
         };
-    }, [currentDate]);
+    }, [currentDate, currentUser]);
 
     useEffect(() => {
         if (isFiltering) {
@@ -1721,7 +1722,7 @@ const LoanApplicationPage = () => {
                 );
             }
 
-            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate) {
+            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction) {
                 // actBtns.splice(0, 1);
                 actBtns.splice(0, 2);
                 if (selectedTab == 'application') {
@@ -1731,7 +1732,7 @@ const LoanApplicationPage = () => {
                 }
             }
 
-            if (selectedTab == 'duplicate' && !isWeekend && !isHoliday && currentDate) {
+            if (selectedTab == 'duplicate' && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction) {
                 actBtns.push(<ButtonOutline label="Approved Selected Duplicate Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('duplicate')} />);
             }
         }

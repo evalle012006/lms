@@ -75,27 +75,45 @@ async function updateBranch(req, res) {
     const branch = req.body;
     const branchId = branch._id;
     delete branch._id;
+    delete branch.cashOnHand;
+    delete branch.noOfLO;
 
-    const resp = await graph.mutation(
-        updateQl(createGraphType('branches', `_id`)('branches'), {
-            set: {
-                ... branch
-            },
-            where: {
-                _id: { _eq: branchId }
-            }
-        }),
-        updateQl(USER_TYPE(), {
-            set: {
-                areaId: branch.areaId,
-                regionId: branch.regionId,
-                divisionId: branch.divisionId,
-            },
-            where: {
-                designatedBranchId: { _eq: branchId } 
-            }
-        })
-    )
+    const branchlock = branch.forLock ?? false;
+    delete branch.forLock;
+    let resp = null;
+    if (!branchlock) {
+        resp = await graph.mutation(
+            updateQl(createGraphType('branches', `_id`)('branches'), {
+                set: {
+                    ... branch
+                },
+                where: {
+                    _id: { _eq: branchId }
+                }
+            }),
+            updateQl(USER_TYPE(), {
+                set: {
+                    areaId: branch.areaId,
+                    regionId: branch.regionId,
+                    divisionId: branch.divisionId,
+                },
+                where: {
+                    designatedBranchId: { _eq: branchId } 
+                }
+            })
+        )
+    } else {
+        resp = await graph.mutation(
+            updateQl(createGraphType('branches', `_id`)('branches'), {
+                set: {
+                    ... branch
+                },
+                where: {
+                    _id: { _eq: branchId }
+                }
+            })
+        )
+    }
 
     response = { success: true, branch: resp };
 

@@ -32,6 +32,26 @@ const BranchesPage = () => {
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
+    const handleLockBranchTransaction = async (row) => {
+        const branch = { ...row.original };
+        let updatedBranch = { ...branch, lockTransaction: !branch.lockTransaction };
+
+        const apiUrl = getApiBaseUrl() + 'branches';
+        fetchWrapper.post(apiUrl, updatedBranch)
+            .then(response => {
+                if (response.success) {
+                    toast.success("Selected branch successfully locked.");
+                    setTimeout(() => {
+                        getListBranch();
+                    }, 3000);
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
@@ -129,7 +149,8 @@ const BranchesPage = () => {
 
     const rowActionButtons = [
         { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
+        // { label: 'Delete', action: handleDeleteAction },
+        { label: 'Lock', action: handleLockBranchTransaction }
     ];
 
     const handleDelete = () => {

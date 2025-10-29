@@ -17,7 +17,7 @@ import { toast } from "react-toastify";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
-                            handleShowWarningDialog, loading, allowMcbuInterest }) => {
+                            handleShowWarningDialog, loading, allowMcbuInterest, branchLock = false }) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -285,7 +285,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     )}
 
-                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && currentUser.role.rep == 3 && !allowMcbuInterest && !allowMcbuWithdrawal) && (
+                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && !branchLock && currentUser.role.rep == 3 && !allowMcbuInterest && !allowMcbuWithdrawal) && (
                         <div className="w-40 ml-4">
                             <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
                         </div>

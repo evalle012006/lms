@@ -521,6 +521,11 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
                   </svg>
                 </div>
               )}
+              {item.label === 'Lock' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Lock">
+                  { row.original?.lockTransaction ? <LockClosedIcon className="cursor-pointer h-5" /> : <LockOpenIcon className="cursor-pointer h-5" />}
+                </div>
+              )}
             </React.Fragment>
           );
         })}

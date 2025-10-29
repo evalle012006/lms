@@ -18,7 +18,7 @@ import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateL
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
-import { setBranchList } from '@/redux/actions/branchActions';
+import { setBranch, setBranchList } from '@/redux/actions/branchActions';
 import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
@@ -39,6 +39,7 @@ const CashCollectionDetailsPage = () => {
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
     const dispatch = useDispatch();
     const router = useRouter();
+    const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
@@ -3298,8 +3299,14 @@ const CashCollectionDetailsPage = () => {
                     );
                 });
     
-                if (currentUser.role.rep < 3 && selectedBranchSubject.value) {
-                    branches = [branches.find(b => b._id === selectedBranchSubject.value)];
+                if (currentUser.role.rep < 3 && (selectedBranchSubject.value || router?.query?.sourceParentId)) {
+                    const currentBranchId = selectedBranchSubject.value ? selectedBranchSubject.value : router?.query?.sourceParentId;
+                    branches = [branches.find(b => b._id === currentBranchId)];
+                    if (branches.length > 0) {
+                        dispatch(setBranch(branches[0]));
+                    }
+                } else if (currentUser.role.rep >= 3 && branches.length > 0) {
+                    dispatch(setBranch(branches[0]));
                 }
                 
                 dispatch(setBranchList(branches));
@@ -3311,7 +3318,7 @@ const CashCollectionDetailsPage = () => {
         if (branchList && branchList.length == 0) {
             getListBranch();
         }
-    }, [branchList.length]);
+    }, [branchList.length, router]);
 
     useEffect(() => {
         let mounted = true;
@@ -3441,11 +3448,11 @@ const CashCollectionDetailsPage = () => {
                 // </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch?.lockTransaction) ? false : editMode : false}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} handleShowWarningDialog={handleShowWarningDialog} loading={loading} 
+                        changeRemarks={changeRemarks} handleShowWarningDialog={handleShowWarningDialog} loading={loading} branchLock={currentBranch?.lockTransaction}
                         allowMcbuInterest={allowMcbuInterest} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
@@ -3562,7 +3569,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && cc?.groupLeader && editMode
+                                                    { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && cc?.groupLeader && editMode
                                                         && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
                                                         <React.Fragment>
@@ -3586,7 +3593,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
+                                                    { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
                                                         || cc?.reverted || cc.draft) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                             <React.Fragment>
                                                                 <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount')}
@@ -3638,7 +3645,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
                                                 </td>
-                                                { (!isWeekend && !isHoliday && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
+                                                { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
                                                     && (cc.draft || editMode
                                                         || (!cc?._id || cc?.reverted) 
                                                         || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
@@ -3678,7 +3685,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
+                                                        {(!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2 justify-end'>
                                                                 {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth, currentDate: currentDate, last5DaysOfTheMonth: last5DaysOfTheMonth }} />}
                                                             </div>

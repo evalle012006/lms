@@ -35,6 +35,7 @@ export const BRANCH_FIELDS = `
   areaId
   regionId
   divisionId
+  lockTransaction
   `;
 
 export const CLIENT_FIELDS = `
