@@ -1330,7 +1330,7 @@ const CashCollectionDetailsPage = () => {
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
-                    if (hour < 9 && !staging) {
+                    if (hour < 8 && !staging) {
                         setEditMode(false);
                         setGroupSummaryIsClose(true);
                     }
