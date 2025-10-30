@@ -18,8 +18,10 @@ async function batchSaveDenomination(req, res) {
     const user = await findUserById(req.auth.sub);
     const { items, date, isSubmission } = req.body;
     
-    // Check if user has permission to save (only cashier)
-    if (user.role.shortCode !== 'cashier') {
+    const isAdmin = user.role.rep === 1;
+    const isCashier = user.role.shortCode === 'cashier';
+    
+    if (!isCashier && !isAdmin) {
         return res.status(403).json({
             success: false,
             message: 'You do not have permission to modify denomination data'
@@ -277,12 +279,44 @@ async function batchSaveDenomination(req, res) {
                     no_sit_down: noSitDown,
                     amount_sit_down: amountSitDown,
                     bcc_vs_remittances: bccVsRemittances,
-                    action: isSubmission ? 'submitted' : 'saved'
+                    action: isAdmin ? 'admin_adjustment' : (isSubmission ? 'submitted' : 'saved'),
+                    ...(isAdmin && { note: 'Admin balance adjustment' })
                 };
                 
                 // Process update or insert
                 if (existingRecords.length > 0) {
                     const existingRecord = existingRecords[0];
+
+                    // NEW: Admin can edit regardless of status when balancing
+                    if (isAdmin && bccVsRemittances === 0 && existingRecord.bcc_vs_remittances !== 0) {
+                        console.log('Admin balancing adjustment');
+                        
+                        addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
+                            where: { _id: { _eq: existingRecord._id } },
+                            set: {
+                                morning_remittance: morningRemittance,
+                                afternoon_remittance: afternoonRemittance,
+                                bcc_vs_remittances: bccVsRemittances,
+                                modified_date: currentDateTime,
+                                modified_by: user._id
+                            },
+                            jsonAppend: {
+                                history: {
+                                    ...historyEntry,
+                                    previous_morning_remittance: existingRecord.morning_remittance,
+                                    previous_afternoon_remittance: existingRecord.afternoon_remittance,
+                                    previous_bcc_vs_remittances: existingRecord.bcc_vs_remittances
+                                }
+                            }
+                        }));
+                        
+                        results.success.push({
+                            entityId: data.entityId,
+                            entityName: data.entityName,
+                            adminAdjustment: true
+                        });
+                        continue;
+                    }
                     
                     if (existingRecord.status === 'approved') {
                         const collectionChanged = totalNetCollection !== (existingRecord.total_net_collection || 0);

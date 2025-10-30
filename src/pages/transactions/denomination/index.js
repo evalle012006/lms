@@ -146,7 +146,7 @@ export default function DenominationPage() {
     // Determine filter level based on user role
     useEffect(() => {
         if (currentUser?.role) {
-            const hasEditPermission = currentUser.role.shortCode === 'cashier' && currentDate === dateFilter;
+            const hasEditPermission = (currentUser.role.rep === 1 || currentUser.role.shortCode === 'cashier') && currentDate === dateFilter;
             setCanEdit(hasEditPermission);
             
             if (currentUser.role.rep <= 2 || (currentUser.role.shortCode === 'cashier' && !currentUser.designatedBranchId)) {
@@ -1035,12 +1035,34 @@ export default function DenominationPage() {
     const userCanApproveReject = (currentUser.role.rep === 3 || currentUser.role.rep === 4) && 
                                 currentUser.role.shortCode !== 'cashier';
 
+    // Admin edit permissions - simpler and more permissive
+    const canAdminEdit = (item) => {
+        // Only for role.rep = 1 (admin/CEO level)
+        if (currentUser.role.rep !== 1) return false;
+        
+        // Only at group level
+        if (effectiveFilter !== 'group') return false;
+        
+        // Only when BCC vs Remittances is not balanced
+        if (item.bccVsRemittances === 0) return false;
+        
+        // Can edit regardless of date, status, or existing values
+        return true;
+    };
+
+    // UPDATED: Check if morning remittance should show input
     const shouldShowMorningRemittanceInput = (item) => {
+        // Admin can always edit when BCC is unbalanced
+        if (canAdminEdit(item)) {
+            return true;
+        }
+        
+        // Original cashier logic
         if (currentUser.role.shortCode !== 'cashier') return false;
         if (effectiveFilter !== 'group') return false;
         if (dateFilter !== currentDate) return false;
         
-        // CRITICAL FIX: Allow editing if rejected
+        // Allow editing if rejected
         if (item.status === 'rejected') return true;
         
         // Check if user is currently editing this field (has unsaved changes)
@@ -1072,8 +1094,11 @@ export default function DenominationPage() {
             (item.status === 'draft' || item.status === 'pending' || item.bccVsRemittances > 0);
     };
 
-    // UPDATED: Check if morning remittance input should be disabled - NOT DISABLED FOR REJECTED
+    // UPDATED: Check if morning remittance input should be disabled
     const isMorningRemittanceDisabled = (item) => {
+        // Admin is never disabled when they can edit
+        if (canAdminEdit(item)) return false;
+        
         // CRITICAL FIX: Don't disable if status is rejected (allow editing)
         if (item.status === 'rejected') return false;
         
@@ -1081,7 +1106,14 @@ export default function DenominationPage() {
         return item.savedMorningRemittance && item.savedMorningRemittance !== 0;
     };
 
+    // UPDATED: Check if afternoon remittance should show input
     const shouldShowAfternoonRemittanceInput = (item) => {
+        // Admin can always edit when BCC is unbalanced
+        if (canAdminEdit(item)) {
+            return true;
+        }
+        
+        // Original cashier logic
         if (currentUser.role.shortCode !== 'cashier') return false;
         if (effectiveFilter !== 'group') return false;
         if (dateFilter !== currentDate) return false;
@@ -1103,8 +1135,11 @@ export default function DenominationPage() {
             (item.status === 'approved' && (item.bccVsRemittances > 0 || isCurrentlyEditingAfternoon));
     };
 
-    // UPDATED: Check if afternoon remittance input should be disabled - NOT DISABLED FOR REJECTED
+    // UPDATED: Check if afternoon remittance input should be disabled
     const isAfternoonRemittanceDisabled = (item) => {
+        // Admin is never disabled when they can edit
+        if (canAdminEdit(item)) return false;
+        
         if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance === 0 && item.status === 'rejected') {
             return true;
         }
@@ -1226,7 +1261,7 @@ export default function DenominationPage() {
                     </div>
                     
                     {/* Submit Button */}
-                    {(canEdit && router.query?.filter === "group") && (
+                    {((canEdit && router.query?.filter === "group") || (currentUser.role.rep === 1 && effectiveFilter === 'group')) && (
                         <div className="flex-shrink-0 flex items-center gap-3">
                             {getDirtyItemsCount() > 0 && (
                                 <span className="text-sm text-gray-600">
@@ -1237,7 +1272,10 @@ export default function DenominationPage() {
                                 label={
                                     <div className="flex items-center gap-2">
                                         <Save size={18} />
-                                        <span>Submit {getDirtyItemsCount() > 0 ? `(${getDirtyItemsCount()})` : ''}</span>
+                                        <span>
+                                            {currentUser.role.rep === 1 ? 'Save Admin Adjustment' : 'Submit'} 
+                                            {getDirtyItemsCount() > 0 ? ` (${getDirtyItemsCount()})` : ''}
+                                        </span>
                                     </div>
                                 }
                                 onClick={handleSubmit}
@@ -1247,6 +1285,26 @@ export default function DenominationPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Admin Balance Adjustment Info */}
+                {currentUser.role.rep === 1 && effectiveFilter === 'group' && mergedData.some(item => item.bccVsRemittances !== 0) && (
+                    <div className="mx-4 mt-4 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+                        <div className="flex items-start">
+                            <svg className="h-5 w-5 text-purple-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-medium text-purple-800">
+                                    Admin Balance Adjustment Mode
+                                </h3>
+                                <p className="text-sm text-purple-700 mt-1">
+                                    You can edit remittances for groups with unbalanced BCC (BCC vs Remittances ≠ 0).
+                                    Fields marked with ⚖️ are available for admin adjustment.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {canEdit && mergedData.some(item => item.status === 'rejected') && (
                     <div className="mx-4 mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
@@ -1393,15 +1451,21 @@ export default function DenominationPage() {
                                                                             onChange={(e) => handleMorningRemittanceChange(item.entityId, e.target.value)}
                                                                             onBlur={() => handleMorningRemittanceBlur(item.entityId)}
                                                                             disabled={isMorningRemittanceDisabled(item)}
-                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right focus:ring-indigo-500 focus:border-indigo-500 ${
-                                                                                isMorningRemittanceDisabled(item) 
+                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right ${
+                                                                                canAdminEdit(item)
+                                                                                    ? 'border-2 border-purple-400 bg-purple-50 focus:ring-purple-500 focus:border-purple-600'
+                                                                                    : isMorningRemittanceDisabled(item) 
                                                                                     ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
                                                                                     : item.status === 'rejected'
-                                                                                    ? 'border-red-300 bg-red-50'
-                                                                                    : 'border-gray-300'
+                                                                                    ? 'border-red-300 bg-red-50 focus:ring-indigo-500 focus:border-indigo-500'
+                                                                                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                                                                             }`}
+                                                                            placeholder={canAdminEdit(item) ? "Admin Edit" : ""}
                                                                         />
-                                                                        {isMorningRemittanceDisabled(item) && (
+                                                                        {canAdminEdit(item) && (
+                                                                            <span className="text-xs text-purple-600" title="Admin balance adjustment">⚖️</span>
+                                                                        )}
+                                                                        {isMorningRemittanceDisabled(item) && !canAdminEdit(item) && (
                                                                             <span className="text-xs text-green-600" title="Already saved">🔒</span>
                                                                         )}
                                                                     </div>
@@ -1430,15 +1494,21 @@ export default function DenominationPage() {
                                                                             onChange={(e) => handleAfternoonRemittanceChange(item.entityId, e.target.value)}
                                                                             onBlur={() => handleAfternoonRemittanceBlur(item)}
                                                                             disabled={isAfternoonRemittanceDisabled(item)}
-                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right focus:ring-green-500 focus:border-green-500 ${
-                                                                                isAfternoonRemittanceDisabled(item)
+                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right ${
+                                                                                canAdminEdit(item)
+                                                                                    ? 'border-2 border-purple-400 bg-purple-50 focus:ring-purple-500 focus:border-purple-600'
+                                                                                    : isAfternoonRemittanceDisabled(item)
                                                                                     ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                                                                                     : item.status === 'rejected'
-                                                                                    ? 'border-red-300 bg-red-50'
-                                                                                    : 'border-green-300 bg-green-50'
+                                                                                    ? 'border-red-300 bg-red-50 focus:ring-green-500 focus:border-green-500'
+                                                                                    : 'border-green-300 bg-green-50 focus:ring-green-500 focus:border-green-500'
                                                                             }`}
+                                                                            placeholder={canAdminEdit(item) ? "Admin Edit" : ""}
                                                                         />
-                                                                        {isAfternoonRemittanceDisabled(item) && (
+                                                                        {canAdminEdit(item) && (
+                                                                            <span className="text-xs text-purple-600" title="Admin balance adjustment">⚖️</span>
+                                                                        )}
+                                                                        {isAfternoonRemittanceDisabled(item) && !canAdminEdit(item) && (
                                                                             <span className="text-xs text-green-600" title="Already saved">🔒</span>
                                                                         )}
                                                                     </div>
