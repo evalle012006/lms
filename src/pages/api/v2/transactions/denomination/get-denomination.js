@@ -48,7 +48,7 @@ async function getDenomination(req, res) {
                 } else {
                     // Unassigned cashier - no branch filter (show all branches)
                     filterApplied = 'role(cashier):no designation (show all branches)';
-                    console.log('✓ Unassigned cashier - showing all branches');
+                    // console.log('✓ Unassigned cashier - showing all branches');
                 }
             }
             // Branch Manager (rep 3)
@@ -81,7 +81,7 @@ async function getDenomination(req, res) {
                     filterApplied = `hierarchy:divisionId=${user.divisionId}`;
                 } else {
                     filterApplied = 'none (show all)';
-                    console.log('✓ [No Filter] Showing all denominations');
+                    // console.log('✓ [No Filter] Showing all denominations');
                 }
             }
         }
@@ -93,22 +93,6 @@ async function getDenomination(req, res) {
         
         const denominations = result?.data?.results || [];
         
-        // Debug: Log first 3 results if exist
-        if (denominations.length > 0) {
-            denominations.slice(0, 3).forEach((d, idx) => {
-                console.log(`  [${idx + 1}]`, {
-                    _id: d._id?.substring(0, 8) + '...',
-                    branch_id: d.branch_id,
-                    lo_id: d.lo_id?.substring(0, 8) + '...',
-                    group_id: d.group_id?.substring(0, 8) + '...',
-                    date_added: d.date_added,
-                    status: d.status
-                });
-            });
-        } else {
-            console.log('⚠️ No records found - this might be expected if no denominations exist for the filters');
-        }
-        
         // Verify filtering worked - check if all returned records match the filter
         if (branchId && denominations.length > 0) {
             const mismatch = denominations.find(d => d.branch_id !== branchId);
@@ -118,8 +102,6 @@ async function getDenomination(req, res) {
                     actual: mismatch.branch_id,
                     record_id: mismatch._id
                 });
-            } else {
-                console.log('✅ Filter verification passed - all records match branchId');
             }
         }
         

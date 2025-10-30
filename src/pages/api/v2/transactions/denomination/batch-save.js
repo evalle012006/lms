@@ -44,7 +44,7 @@ async function batchSaveDenomination(req, res) {
         if (isSubmission) {
             const groupIds = items.map(item => item.entityId);
             
-            // Fetch all groups - single query, passed directly
+            // Fetch all groups - single query
             const groupsQuery = await graph.query(
                 queryQl(GROUP_TYPE(), {
                     where: { _id: { _in: groupIds } }
@@ -69,8 +69,11 @@ async function batchSaveDenomination(req, res) {
                 }
                 
                 const totalNetCollection = parseFloat(item.totalNetCollection) || 0;
-                const totalRemittance = parseFloat(item.totalRemittance) || 0;
+                const morningRemittance = parseFloat(item.morningRemittance) || 0;
+                const afternoonRemittance = parseFloat(item.afternoonRemittance) || 0;
+                const totalRemittance = morningRemittance + afternoonRemittance;
                 
+                // NEW: Check if at least one remittance is entered when there's collection
                 if (totalNetCollection > 0 && totalRemittance === 0) {
                     missingRemittances.push({
                         entityId: item.entityId,
@@ -94,7 +97,6 @@ async function batchSaveDenomination(req, res) {
                     }))
                 });
             }
-            
         }
         
         // ==========================================
@@ -107,10 +109,9 @@ async function batchSaveDenomination(req, res) {
             reprocessed: []
         };
         
-        // ✅ FOLLOWING WORKING REFERENCE PATTERN
         const queryList = [];
         const addToQueryList = addToList => queryList.push(addToList(`query_${queryList.length}`));
-        const queryIndexMap = {}; // Track which query index corresponds to which entityId
+        const queryIndexMap = {};
         
         // Process each item and prepare queries
         for (let i = 0; i < items.length; i++) {
@@ -139,29 +140,32 @@ async function batchSaveDenomination(req, res) {
                     continue;
                 }
                 
-                // Validate numeric fields
-                const totalNetCollection = parseFloat(data.totalNetCollection) || 0;
-                const totalRemittance = parseFloat(data.totalRemittance) || 0;
+                const totalNetCollection = (data.totalNetCollection && data.totalNetCollection > 0) ? parseFloat(data.totalNetCollection) : data.totalNetCollection < 0 ? data.totalNetCollection : 0;
+                const morningRemittance = (data.morningRemittance && data.morningRemittance > 0) ? parseFloat(data.morningRemittance) : data.morningRemittance < 0 ? data.morningRemittance : 0;
+                const afternoonRemittance = (data.afternoonRemittance && data.afternoonRemittance > 0) ? parseFloat(data.afternoonRemittance) : data.afternoonRemittance < 0 ? data.afternoonRemittance : 0;
+                const totalRemittance = morningRemittance + afternoonRemittance;
                 const activeClients = parseInt(data.activeClients) || 0;
                 const amountSitDown = parseFloat(data.amountSitDown) || 0;
+                const noSitDown = parseInt(data.noSitDown) || 0;
                 
-                // Validate remittance
-                if (totalRemittance == 0) {
-                    console.log('Zero remittance');
-                    results.failed.push({
-                        entityId: data.entityId,
-                        entityName: data.entityName || 'Unknown',
-                        error: 'Total remittance cannot be zero'
-                    });
-                    continue;
-                }
+                // // Validate remittances are not negative
+                // if (morningRemittance == 0 || afternoonRemittance == 0) {
+                //     console.log('Negative remittance');
+                //     results.failed.push({
+                //         entityId: data.entityId,
+                //         entityName: data.entityName || 'Unknown',
+                //         error: 'Remittances cannot be zero'
+                //     });
+                //     continue;
+                // }
                 
+                // NEW: Validate total remittance doesn't exceed collection
                 if (totalRemittance > totalNetCollection) {
                     console.log('Remittance exceeds collection');
                     results.failed.push({
                         entityId: data.entityId,
                         entityName: data.entityName || 'Unknown',
-                        error: `Total remittance (₱${totalRemittance.toFixed(2)}) cannot exceed net collection (₱${totalNetCollection.toFixed(2)})`
+                        error: `Total remittances (₱${totalRemittance.toFixed(2)}) cannot exceed net collection (₱${totalNetCollection.toFixed(2)})`
                     });
                     continue;
                 }
@@ -191,12 +195,12 @@ async function batchSaveDenomination(req, res) {
                 
                 console.log('Group data:', { groupId, loId, branchId });
                 
+                // NEW: Calculate BCC vs Remittances with both morning and afternoon
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 
                 // Track query index for this entity
                 queryIndexMap[data.entityId] = queryList.length;
                 
-                // ✅ Add query as a FUNCTION following working reference pattern
                 addToQueryList(alias => queryQl(DENOMINATION_TYPE(alias), {
                     where: {
                         group_id: { _eq: groupId },
@@ -214,7 +218,7 @@ async function batchSaveDenomination(req, res) {
             }
         }
         
-        // Execute all queries in batch - ✅ Using spread operator like working reference
+        // Execute all queries in batch
         console.log('\n=== EXECUTING BATCH QUERY ===');
         const queryResults = queryList.length > 0 ? await graph.query(...queryList) : { data: {} };
         console.log('Query results received');
@@ -233,9 +237,12 @@ async function batchSaveDenomination(req, res) {
             
             try {
                 const totalNetCollection = parseFloat(data.totalNetCollection) || 0;
-                const totalRemittance = parseFloat(data.totalRemittance) || 0;
+                const morningRemittance = parseFloat(data.morningRemittance) || 0;
+                const afternoonRemittance = parseFloat(data.afternoonRemittance) || 0;
+                const totalRemittance = morningRemittance + afternoonRemittance;
                 const activeClients = parseInt(data.activeClients) || 0;
                 const amountSitDown = parseFloat(data.amountSitDown) || 0;
+                const noSitDown = parseInt(data.noSitDown) || 0;
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 
                 // Get group data again
@@ -250,36 +257,30 @@ async function batchSaveDenomination(req, res) {
                 const loId = group.loanOfficerId;
                 const branchId = group.branchId;
                 
-                // Get existing records from batch query using the correct query index
+                // Get existing records from batch query
                 const queryIndex = queryIndexMap[data.entityId];
                 const existingRecords = queryIndex !== undefined 
                     ? (queryResults?.data?.[`query_${queryIndex}`] || [])
                     : [];
                 
                 console.log('Existing records found:', existingRecords.length);
-                if (existingRecords.length > 0) {
-                    console.log('Existing record:', {
-                        _id: existingRecords[0]._id,
-                        group_id: existingRecords[0].group_id,
-                        status: existingRecords[0].status,
-                        total_remittance: existingRecords[0].total_remittance
-                    });
-                }
                 
-                // Prepare history entry
+                // NEW: Prepare history entry with both remittances
                 const historyEntry = {
                     date_time: currentDateTime,
                     user_id: user._id,
                     user_name: `${user.firstName} ${user.lastName}`,
                     active_clients: activeClients,
                     total_net_collection: totalNetCollection,
-                    total_remittance: totalRemittance,
+                    morning_remittance: morningRemittance,
+                    afternoon_remittance: afternoonRemittance,
+                    no_sit_down: noSitDown,
                     amount_sit_down: amountSitDown,
                     bcc_vs_remittances: bccVsRemittances,
                     action: isSubmission ? 'submitted' : 'saved'
                 };
                 
-                // Process update or insert - ✅ Following working reference pattern
+                // Process update or insert
                 if (existingRecords.length > 0) {
                     const existingRecord = existingRecords[0];
                     
@@ -294,7 +295,9 @@ async function batchSaveDenomination(req, res) {
                                 set: {
                                     active_clients: activeClients,
                                     total_net_collection: totalNetCollection,
-                                    total_remittance: totalRemittance,
+                                    morning_remittance: morningRemittance,
+                                    afternoon_remittance: afternoonRemittance,
+                                    no_sit_down: noSitDown,
                                     amount_sit_down: amountSitDown,
                                     bcc_vs_remittances: bccVsRemittances,
                                     status: 'pending',
@@ -318,12 +321,14 @@ async function batchSaveDenomination(req, res) {
                                 message: 'Collection changed - status reset to pending'
                             });
                         } else {
-                            console.log('No collection change - updating remittance only');
+                            console.log('No collection change - updating remittances only');
                             
                             addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                                 where: { _id: { _eq: existingRecord._id } },
                                 set: {
-                                    total_remittance: totalRemittance,
+                                    morning_remittance: morningRemittance,
+                                    afternoon_remittance: afternoonRemittance,
+                                    no_sit_down: noSitDown,
                                     amount_sit_down: amountSitDown,
                                     bcc_vs_remittances: bccVsRemittances,
                                     modified_date: currentDateTime,
@@ -347,7 +352,9 @@ async function batchSaveDenomination(req, res) {
                             set: {
                                 active_clients: activeClients,
                                 total_net_collection: totalNetCollection,
-                                total_remittance: totalRemittance,
+                                morning_remittance: morningRemittance,
+                                afternoon_remittance: afternoonRemittance,
+                                no_sit_down: noSitDown,
                                 amount_sit_down: amountSitDown,
                                 bcc_vs_remittances: bccVsRemittances,
                                 status: 'pending',
@@ -377,7 +384,9 @@ async function batchSaveDenomination(req, res) {
                             set: {
                                 active_clients: activeClients,
                                 total_net_collection: totalNetCollection,
-                                total_remittance: totalRemittance,
+                                morning_remittance: morningRemittance,
+                                afternoon_remittance: afternoonRemittance,
+                                no_sit_down: noSitDown,
                                 amount_sit_down: amountSitDown,
                                 bcc_vs_remittances: bccVsRemittances,
                                 status: 'pending',
@@ -404,7 +413,9 @@ async function batchSaveDenomination(req, res) {
                         group_id: groupId,
                         active_clients: activeClients,
                         total_net_collection: totalNetCollection,
-                        total_remittance: totalRemittance,
+                        morning_remittance: morningRemittance,
+                        afternoon_remittance: afternoonRemittance,
+                        no_sit_down: noSitDown,
                         amount_sit_down: amountSitDown,
                         bcc_vs_remittances: bccVsRemittances,
                         status: 'pending',
@@ -438,7 +449,7 @@ async function batchSaveDenomination(req, res) {
             }
         }
         
-        // Execute all mutations - ✅ Using spread operator like working reference
+        // Execute all mutations
         if (mutationList.length > 0) {
             console.log('\n=== EXECUTING BATCH MUTATIONS ===');
             console.log('Mutations to execute:', mutationList.length);

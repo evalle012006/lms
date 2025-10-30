@@ -59,7 +59,10 @@ export default function DenominationPage() {
     const [clientData, setClientData] = useState([]);
     const [selectedGroupForClients, setSelectedGroupForClients] = useState(null);
     
-    const [remittanceChanges, setRemittanceChanges] = useState({});
+    // NEW: Separate state for morning and afternoon remittances
+    const [morningRemittanceChanges, setMorningRemittanceChanges] = useState({});
+    const [afternoonRemittanceChanges, setAfternoonRemittanceChanges] = useState({});
+    
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [selectedItemHistory, setSelectedItemHistory] = useState(null);
 
@@ -70,36 +73,26 @@ export default function DenominationPage() {
 
     // Helper function to determine if back button should be shown
     const shouldShowBackButton = () => {
-        // If not viewing nested content, no back button needed
         if (!viewingNestedContent) {
-                console.log("shouldShowBackButton: Not viewing nested content - no back button");
             return false;
         }
         
-        // Check user role and current filter state
         if (currentUser?.role && !router.query?.parentId) {
-            // Loan Officer (rep = 4): initial view is groups, no back button at group level
             if (currentUser.role.rep === 4 && filter === 'group') {
-                console.log("shouldShowBackButton: LO at group level - no back button");
                 return false;
             }
             
-            // Branch Manager (rep = 3): initial view is loan officers, no back button to branches
             if (currentUser.role.rep === 3 && filter === 'lo') {
-                console.log("shouldShowBackButton: Branch Manager at LO level - no back button");
                 return false;
             }
             
-            // Cashier without designated branch: initial view is branches, no back button at branch level
             if (currentUser.role.shortCode === 'cashier' && 
                 currentUser.designatedBranchId == null && 
                 filter === 'branch') {
-                console.log("shouldShowBackButton: Cashier without branch at branch level - no back button");
                 return false;
             }
         }
         
-        // For all other cases when viewing nested content, show back button
         return true;
     };
     
@@ -110,30 +103,17 @@ export default function DenominationPage() {
         }
         
         if (router.query.filter) {
-            console.log('Setting filter from router query:', router.query.filter);
             setFilter(router.query.filter);
         } else if (!router.query.id) {
-            // Determine initial filter based on user role
             if (currentUser?.role) {
-                // Admin/Super Admin (rep <= 2): start at branch level
                 if (currentUser.role.rep <= 2) {
-                    console.log('Resetting to branch filter for admin role');
                     setFilter('branch');
-                }
-                // Branch Manager (rep = 3): start at loan officer level
-                else if (currentUser.role.rep === 3) {
-                    console.log('Resetting to lo filter for branch manager');
+                } else if (currentUser.role.rep === 3) {
                     setFilter('lo');
-                }
-                // Loan Officer (rep = 4): start at group level
-                else if (currentUser.role.rep === 4) {
-                    console.log('Resetting to group filter for loan officer');
+                } else if (currentUser.role.rep === 4) {
                     setFilter('group');
-                }
-                // Cashier without designated branch: start at branch level
-                else if (currentUser.role.shortCode === 'cashier' && 
+                } else if (currentUser.role.shortCode === 'cashier' && 
                          currentUser.designatedBranchId == null) {
-                    console.log('Cashier without designated branch - setting to branch filter');
                     setFilter('branch');
                 }
             }
@@ -141,33 +121,18 @@ export default function DenominationPage() {
         
         const hasNestedContent = !!router.query.id;
         setViewingNestedContent(hasNestedContent);
-        
-        console.log('Router initialization:', {
-            date: router.query.date,
-            filter: router.query.filter,
-            id: router.query.id,
-            parentId: router.query.parentId,
-            viewingNested: hasNestedContent,
-            currentFilter: filter,
-            userRole: currentUser?.role,
-            shouldShowBack: shouldShowBackButton()
-        });
     }, [router.query.date, router.query.filter, router.query.id, router.query.parentId, currentUser?.role]);
     
     // Fetch branch list if empty (for cashiers)
     useEffect(() => {
         const fetchBranches = async () => {
             if (branchList.length === 0 && currentUser?.role) {
-                console.log('BranchList is empty, fetching...');
                 try {
                     const url = getApiBaseUrl() + 'branches/list';
                     const response = await fetchWrapper.get(url);
                     
                     if (response.success && response.branches) {
-                        console.log('Fetched branches:', response.branches.length);
                         dispatch({ type: 'SET_BRANCH_LIST', payload: response.branches });
-                    } else {
-                        console.error('Failed to fetch branches:', response);
                     }
                 } catch (error) {
                     console.error('Error fetching branches:', error);
@@ -181,9 +146,6 @@ export default function DenominationPage() {
     // Determine filter level based on user role
     useEffect(() => {
         if (currentUser?.role) {
-            console.log('=== ROLE SETUP ===');
-            console.log('User role:', currentUser.role.shortCode, 'rep:', currentUser.role.rep);
-            
             const hasEditPermission = currentUser.role.shortCode === 'cashier' && currentDate === dateFilter;
             setCanEdit(hasEditPermission);
             
@@ -191,11 +153,9 @@ export default function DenominationPage() {
                 setFilter('branch');
             } else if (currentUser.role.rep === 3) {
                 setFilter('lo');
-                console.log('✓ Branch Manager detected, fetching LO list');
                 fetchLOList();
             } else if (currentUser.role.rep === 4) {
                 setFilter('group');
-                console.log('✓ Loan Officer detected, fetching group list');
                 fetchGroupList();
             }
         }
@@ -282,25 +242,15 @@ export default function DenominationPage() {
             const host = window.location.host;
             const apiUrl = `${protocol}//${host}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
             
-            console.log('Fetching client data from:', apiUrl);
-            
             const response = await fetchWrapper.get(apiUrl);
             
             if (response.data) {
-                // Filter out the _total row and any rows with _id === '_total'
                 const filteredData = response.data.filter(client => 
-                    // 1. Exclude the '_total' row
                     client._id !== '_total' && 
                     client.name !== '_total' &&
                     client.code !== '_total' &&
-                    
-                    // 2. Keep clients UNLESS they meet the first set of 'zero' conditions
                     !(client.activeBorrowers == 0 && client.activeClients == 0 && client.totalLoanBalance == 0) &&
-                    
-                    // 3. Keep clients UNLESS they meet the second set of 'zero'/'null' conditions
                     !(client.totalLoanBalance == 0 && (client.actualLoanCollection == null || client.actualLoanCollection == 0)) &&
-                    
-                    // 4. Exclude has actualLoanCollection
                     !(client.actualLoanCollection != null && client.actualLoanCollection != 0)
                 );
                 
@@ -351,7 +301,6 @@ export default function DenominationPage() {
                     if (selectedBranch) {
                         params.append('branchId', selectedBranch.value);
                     } else if (currentUser?.designatedBranchId && currentUser.designatedBranchId !== '') {
-                        // Only add if user has a designated branch
                         params.append('branchId', currentUser.designatedBranchId);
                     }
                 } else if (effectiveFilter === 'lo') {
@@ -401,10 +350,8 @@ export default function DenominationPage() {
                 date: dateFilter
             });
             
-            // Pass filters based on user role and current view
             const effectiveFilter = router.query.filter || filter;
             
-            // Determine which filters to apply (avoid duplicates)
             let shouldAddBranchFilter = false;
             let shouldAddLoFilter = false;
             let shouldAddGroupFilter = false;
@@ -412,45 +359,36 @@ export default function DenominationPage() {
             let loIdToUse = null;
             let groupIdToUse = null;
             
-            // Priority 1: Nested navigation filters (highest priority)
             if (router.query.id && router.query.filter) {
                 if (router.query.filter === 'lo') {
-                    // Viewing a specific branch's LOs
                     branchIdToUse = router.query.id;
                     shouldAddBranchFilter = true;
                 } else if (router.query.filter === 'group') {
-                    // Viewing a specific LO's groups
                     loIdToUse = router.query.id;
                     shouldAddLoFilter = true;
                     
-                    // Also pass branch context if available
                     if (router.query.parentId) {
                         branchIdToUse = router.query.parentId;
                         shouldAddBranchFilter = true;
                     }
                 }
             } 
-            // Priority 2: User role-based filters (if not in nested view)
             else {
-                // For Branch Manager (rep 3) - always pass their designated branch
                 if (currentUser.role.rep === 3 && currentUser.designatedBranchId) {
                     branchIdToUse = currentUser.designatedBranchId;
                     shouldAddBranchFilter = true;
                 }
                 
-                // For Cashier with designated branch - always pass their designated branch
                 else if (currentUser.role.shortCode === 'cashier' && currentUser.designatedBranchId) {
                     branchIdToUse = currentUser.designatedBranchId;
                     shouldAddBranchFilter = true;
                 }
                 
-                // For Loan Officer (rep 4) - pass their user ID as loId
                 else if (currentUser.role.rep === 4 && currentUser._id) {
                     loIdToUse = currentUser._id;
                     shouldAddLoFilter = true;
                 }
                 
-                // Priority 3: Selected dropdown filters (lowest priority, only if no role filter)
                 if (!shouldAddBranchFilter && selectedBranch?.value) {
                     branchIdToUse = selectedBranch.value;
                     shouldAddBranchFilter = true;
@@ -467,7 +405,6 @@ export default function DenominationPage() {
                 }
             }
             
-            // Add parameters only once
             if (shouldAddBranchFilter && branchIdToUse) {
                 params.append('branchId', branchIdToUse);
             }
@@ -488,7 +425,6 @@ export default function DenominationPage() {
         } catch (error) {
             console.error('Error fetching denomination data:', error);
         } finally {
-            console.log('Fetch complete, setting loading to false');
             setLoading(false);
         }
     };
@@ -502,95 +438,182 @@ export default function DenominationPage() {
                     (d.branch_id === item.entityId || d.lo_id === item.entityId || d.group_id === item.entityId)
                 );
 
-                let totalRemittance = 0;
+                // NEW: Calculate aggregated morning remittances for branch/LO level
+                let totalMorningRemittance = 0;
+                let totalAfternoonRemittance = 0;
                 if (effectiveFilter !== 'group') {
                     const matchingRecords = denominationData.filter(d => {
                         return d.lo_id === item.entityId;
                     });
                     matchingRecords.forEach(record => {
-                        const value = parseFloat(record.total_remittance) || 0;
-                        totalRemittance += value;
+                        totalMorningRemittance += parseFloat(record.morning_remittance) || 0;
+                        totalAfternoonRemittance += parseFloat(record.afternoon_remittance) || 0;
                     });
                 }
                 
-                const currentRemittance = totalRemittance != 0 
-                    ? totalRemittance 
-                    : remittanceChanges[item.entityId] !== undefined 
-                    ? remittanceChanges[item.entityId]
-                    : savedData?.total_remittance || 0;
+                // NEW: Determine current remittance values
+                const currentMorningRemittance = totalMorningRemittance != 0 
+                    ? totalMorningRemittance 
+                    : morningRemittanceChanges[item.entityId] !== undefined 
+                    ? parseFloat(morningRemittanceChanges[item.entityId]) || 0
+                    : savedData?.morning_remittance || 0;
+
+                const currentAfternoonRemittance = totalAfternoonRemittance != 0
+                    ? totalAfternoonRemittance
+                    : afternoonRemittanceChanges[item.entityId] !== undefined
+                    ? parseFloat(afternoonRemittanceChanges[item.entityId]) || 0
+                    : savedData?.afternoon_remittance || 0;
                 
-                // Check if collection changed after approval
                 const wasApproved = savedData?.approval_date && savedData?.status === 'draft';
                 const collectionChanged = wasApproved && 
                     savedData?.total_net_collection !== item.totalNetCollection;
+
+                const bccVsRemittances = calculateBccVsRemittances(
+                    item.totalNetCollection,
+                    currentMorningRemittance,
+                    currentAfternoonRemittance
+                );
                 
                 return {
                     ...item,
-                    savedRemittance: savedData?.total_remittance || 0,
-                    currentRemittance: currentRemittance,
+                    savedMorningRemittance: savedData?.morning_remittance || 0,
+                    savedAfternoonRemittance: savedData?.afternoon_remittance || 0,
+                    currentMorningRemittance: currentMorningRemittance,
+                    currentAfternoonRemittance: currentAfternoonRemittance,
                     status: savedData?.status || 'draft',
                     _id: savedData?._id,
                     wasApproved: wasApproved,
                     collectionChanged: collectionChanged,
                     approval_date: savedData?.approval_date,
-                    history: savedData?.history || []
+                    history: savedData?.history || [],
+                    bccVsRemittances: bccVsRemittances
                 };
             });
     };
 
     
-    // Handle remittance change - allow typing without validation
-    const handleRemittanceChange = (entityId, value) => {
-        const numValue = value === '' ? '' : parseFloat(value) || 0;
+    // NEW: Handle morning remittance change
+    const handleMorningRemittanceChange = (entityId, value) => {
+        let cleanedValue = value.replace(/[^0-9.-]/g, '');
         
-        setRemittanceChanges(prev => ({
+        setMorningRemittanceChanges(prev => ({
             ...prev,
-            [entityId]: numValue
+            [entityId]: cleanedValue
         }));
     };
 
-    // Handle validation on blur
-    const handleRemittanceBlur = (entityId) => {
+    // NEW: Handle afternoon remittance change
+    const handleAfternoonRemittanceChange = (entityId, value) => {
+        let cleanedValue = value.replace(/[^0-9.-]/g, '');
+        
+        setAfternoonRemittanceChanges(prev => ({
+            ...prev,
+            [entityId]: cleanedValue
+        }));
+    };
+
+    // NEW: Handle morning remittance validation on blur
+    const handleMorningRemittanceBlur = (entityId) => {
         const item = initialData.find(i => i.entityId === entityId);
         if (!item) return;
         
-        const savedItem = denominationData.find(d => 
-            (d.branch_id === entityId || d.lo_id === entityId || d.group_id === entityId)
-        );
+        // Get the raw string value first
+        const rawValue = morningRemittanceChanges[entityId];
         
-        const minValue = item.totalNetCollection || 0;
-        const currentValue = parseFloat(remittanceChanges[entityId]) || 0;
+        // If the value is empty or just being typed, don't validate yet
+        if (rawValue === undefined || rawValue === '' || rawValue === '-') {
+            return;
+        }
         
-        // Calculate what the new BCC vs Remittances would be
-        const newBccVsRemittances = (item.totalNetCollection || 0) - currentValue;
+        const currentValue = parseFloat(rawValue) || 0;
+        const afternoonValue = parseFloat(afternoonRemittanceChanges[entityId]) || 0;
         
-        if (currentValue < minValue) {
-            toast.warning(`Remittance cannot be less than ${formatPrice(minValue)}`);
-            // Reset to minimum value
-            setRemittanceChanges(prev => ({
-                ...prev,
-                [entityId]: minValue
-            }));
-        } else if (newBccVsRemittances < 0) {
-            toast.warning(`Remittance cannot exceed net collection of ${formatPrice(item.totalNetCollection)}`);
-            // Reset to net collection (perfect match)
-            setRemittanceChanges(prev => ({
-                ...prev,
-                [entityId]: item.totalNetCollection
-            }));
-        } else if (newBccVsRemittances > 0) {
-            toast.warning(`Remittance cannot be less than net collection of ${formatPrice(item.totalNetCollection)}`);
-            // Reset to net collection (perfect match)
-            setRemittanceChanges(prev => ({
-                ...prev,
-                [entityId]: item.totalNetCollection
-            }));
+        const totalRemittance = currentValue + afternoonValue;
+        const expectedTotal = item.totalNetCollection || 0;
+        
+        // Only validate and auto-adjust if the value seems complete
+        // (not just a single digit being typed)
+        const isCompleteValue = rawValue.length > 0 && !rawValue.endsWith('.');
+        
+        if (!isCompleteValue) {
+            return; // Don't validate while still typing
+        }
+        
+        // If totalNetCollection is negative, allow negative remittances
+        if (item.totalNetCollection < 0) {
+            // Only show warning, don't auto-adjust
+            if (totalRemittance !== expectedTotal) {
+                toast.warning(`Total remittances should equal net collection of ${formatPrice(expectedTotal)}`);
+            }
+        } else {
+            // For positive/zero collections, don't allow negative remittances
+            if (currentValue < 0) {
+                toast.warning('Morning remittance cannot be negative when net collection is positive');
+                setMorningRemittanceChanges(prev => ({
+                    ...prev,
+                    [entityId]: 0
+                }));
+            } else if (totalRemittance > expectedTotal) {
+                // Only prevent exceeding, don't force exact match
+                toast.warning(`Total remittances (${formatPrice(totalRemittance)}) cannot exceed net collection (${formatPrice(expectedTotal)})`);
+            }
+        }
+    };
+
+    // NEW: Handle afternoon remittance validation on blur
+    const handleAfternoonRemittanceBlur = (item) => {
+        if (!item) return;
+        const entityId = item.entityId;
+
+        // Get the raw string value first
+        const rawValue = afternoonRemittanceChanges[entityId];
+        
+        // If the value is empty or just being typed, don't validate yet
+        if (rawValue === undefined || rawValue === '' || rawValue === '-') {
+            return;
+        }
+
+        const morningValue = parseFloat(morningRemittanceChanges[entityId]) || 0;
+        const currentValue = parseFloat(rawValue) || 0;
+        
+        const totalRemittance = morningValue + currentValue;
+        const expectedTotal = item.totalNetCollection || 0;
+        
+        // Only validate and auto-adjust if the value seems complete
+        const isCompleteValue = rawValue.length > 0 && !rawValue.endsWith('.');
+        
+        if (!isCompleteValue) {
+            return; // Don't validate while still typing
+        }
+        
+        // If totalNetCollection is negative, allow negative remittances
+        if (item.totalNetCollection < 0) {
+            // Only show warning, don't auto-adjust
+            if (totalRemittance !== expectedTotal) {
+                toast.warning(`Total remittances should equal net collection of ${formatPrice(expectedTotal)}`);
+            }
+        } else {
+            // For positive/zero collections, don't allow negative remittances
+            if (currentValue < 0) {
+                toast.warning('Afternoon remittance cannot be negative when net collection is positive');
+                setAfternoonRemittanceChanges(prev => ({
+                    ...prev,
+                    [entityId]: 0
+                }));
+            } else if (totalRemittance > expectedTotal) {
+                // Only prevent exceeding, don't force exact match
+                toast.warning(`Total remittances (${formatPrice(totalRemittance)}) cannot exceed net collection (${formatPrice(expectedTotal)})`);
+            }
         }
     };
     
-    // Calculate BCC vs Remittances
-    const calculateBccVsRemittances = (totalNetCollection, totalRemittance) => {
-        return (totalNetCollection || 0) - (totalRemittance || 0);
+    // NEW: Calculate BCC vs Remittances (morning + afternoon)
+    const calculateBccVsRemittances = (totalNetCollection, morningRemittance, afternoonRemittance) => {
+        const netCollection = parseFloat(totalNetCollection) || 0;
+        const morning = parseFloat(morningRemittance) || 0;
+        const afternoon = parseFloat(afternoonRemittance) || 0;
+        
+        return netCollection - (morning + afternoon);
     };
     
     // Handle date change
@@ -622,7 +645,6 @@ export default function DenominationPage() {
                 updatedQuery.parentId = currentUser.designatedBranchId;
             }
         } else if (effectiveFilter === 'group') {
-            console.log('Groups are the deepest level, no navigation');
             return;
         }
         
@@ -636,25 +658,20 @@ export default function DenominationPage() {
     
     // Handle back navigation
     const handleBackNavigation = () => {
-        // Don't allow back navigation if shouldShowBackButton returns false
         if (!shouldShowBackButton()) {
             return;
         }
 
         if (filter === 'group' && router.query.parentId) {
-            // Going back from groups to loan officers
             router.push({
                 pathname: router.pathname,
                 query: { 
                     date: dateFilter, 
                     filter: 'lo',
                     id: router.query.parentId,
-                    // parentId: selectedBranch?.id // will need to check if there will be branch list after the lo list
                 }
             }, undefined, { shallow: true }); 
         } else if (filter === 'lo' && router.query.parentId) {
-            // Going back from loan officers to branches
-            // Only allow this if user is not a Branch Manager (rep = 3)
             if (currentUser?.role?.rep !== 3) {
                 router.push({
                     pathname: router.pathname,
@@ -672,31 +689,37 @@ export default function DenominationPage() {
         fetchInitialData();
     };
 
+    // NEW: Check if item has changes in either morning or afternoon remittance
     const isItemDirty = (item) => {
-        if (!remittanceChanges.hasOwnProperty(item.entityId)) return false;
+        const hasMorningChange = morningRemittanceChanges.hasOwnProperty(item.entityId) &&
+            morningRemittanceChanges[item.entityId] !== item.savedMorningRemittance;
         
-        const currentRemittance = remittanceChanges[item.entityId];
-        const savedRemittance = item.savedRemittance || 0;
+        const hasAfternoonChange = afternoonRemittanceChanges.hasOwnProperty(item.entityId) &&
+            afternoonRemittanceChanges[item.entityId] !== item.savedAfternoonRemittance;
         
-        return currentRemittance !== savedRemittance;
+        return hasMorningChange || hasAfternoonChange;
     };
 
+    // NEW: Get count of dirty items
     const getDirtyItemsCount = () => {
         const mergedData = getMergedData();
         return mergedData.filter(item => {
-            // ✅ NEW: Allow items with zero or negative collections
             if (item.totalNetCollection < 0) {
                 return isItemDirty(item);
             }
             
-            // For positive collections, keep existing validation
             if (!item.hasCollection) return false;
-            const currentRemittance = item.currentRemittance || 0;
-            if (currentRemittance <= 0) return false;
+            
+            const currentMorning = item.currentMorningRemittance || 0;
+            const currentAfternoon = item.currentAfternoonRemittance || 0;
+            
+            if (currentMorning <= 0 && currentAfternoon <= 0) return false;
+            
             return isItemDirty(item);
         }).length;
     };
     
+    // NEW: Updated submit handler to include both remittances
     const handleSubmit = async () => {
         if (!canEdit) {
             toast.error('You do not have permission to submit');
@@ -707,25 +730,21 @@ export default function DenominationPage() {
         try {
             const mergedData = getMergedData();
             
-            // Only submit items that were actually changed (dirty)
             const itemsToSave = mergedData
                 .filter(item => {
-                    // Check if dirty and value changed
-                    const isDirty = remittanceChanges.hasOwnProperty(item.entityId);
+                    const isDirty = isItemDirty(item);
                     if (!isDirty) return false;
                     
-                    const savedRemittance = item.savedRemittance || 0;
-                    const currentRemittance = item.currentRemittance || 0;
-                    if (currentRemittance === savedRemittance) return false;
-                    
-                    // ✅ NEW: Allow items with negative collections
                     if (item.totalNetCollection < 0) {
                         return true;
                     }
                     
-                    // For positive collections, keep existing validation
                     if (!item.hasCollection) return false;
-                    if (currentRemittance <= 0) return false;
+                    
+                    const currentMorning = item.currentMorningRemittance || 0;
+                    const currentAfternoon = item.currentAfternoonRemittance || 0;
+                    
+                    if (currentMorning <= 0 && currentAfternoon <= 0) return false;
                     
                     return true;
                 })
@@ -735,8 +754,10 @@ export default function DenominationPage() {
                     entityType: item.entityType,
                     activeClients: item.activeClients,
                     totalNetCollection: item.totalNetCollection,
-                    totalRemittance: item.currentRemittance || 0,
-                    amountSitDown: item.amountSitDown || 0
+                    morningRemittance: item.currentMorningRemittance || 0,
+                    afternoonRemittance: item.currentAfternoonRemittance || 0,
+                    amountSitDown: item.amountSitDown || 0,
+                    noSitDown: item.noSitDown || 0
                 }));
             
             if (itemsToSave.length === 0) {
@@ -745,10 +766,6 @@ export default function DenominationPage() {
                 return;
             }
             
-            // ==========================================
-            // NEW: VALIDATION FOR SUBMISSION
-            // Check if all groups with totalNetCollection > 0 have remittances
-            // ==========================================
             const groupsWithCollection = mergedData.filter(item => 
                 item.entityType === 'group' && 
                 item.hasCollection && 
@@ -758,11 +775,16 @@ export default function DenominationPage() {
             const missingRemittances = [];
             
             for (const item of groupsWithCollection) {
-                const currentRemittance = remittanceChanges[item.entityId] !== undefined 
-                    ? remittanceChanges[item.entityId] 
-                    : (item.savedRemittance || 0);
+                const currentMorning = morningRemittanceChanges[item.entityId] !== undefined 
+                    ? morningRemittanceChanges[item.entityId] 
+                    : (item.savedMorningRemittance || 0);
                 
-                if (currentRemittance === 0 || currentRemittance === '') {
+                const currentAfternoon = afternoonRemittanceChanges[item.entityId] !== undefined
+                    ? afternoonRemittanceChanges[item.entityId]
+                    : (item.savedAfternoonRemittance || 0);
+                
+                if ((currentMorning === 0 || currentMorning === '') && 
+                    (currentAfternoon === 0 || currentAfternoon === '')) {
                     missingRemittances.push({
                         entityName: item.entityName,
                         totalNetCollection: item.totalNetCollection
@@ -770,17 +792,11 @@ export default function DenominationPage() {
                 }
             }
             
-            // If there are groups with collection but no remittance, show error
             if (missingRemittances.length > 0) {
-                console.error('❌ Cannot submit: Missing remittances for groups with collections');
-                console.error('Groups missing remittances:', missingRemittances);
-                
-                // Show detailed error messages
                 toast.error('Cannot submit: All groups with collections must have remittances entered', {
                     autoClose: 8000
                 });
                 
-                // Show first 3 groups with issues
                 const groupsToShow = missingRemittances.slice(0, 3);
                 groupsToShow.forEach(group => {
                     toast.warning(
@@ -797,30 +813,24 @@ export default function DenominationPage() {
                 return;
             }
             
-            // ==========================================
-            // MODIFIED: Add isSubmission flag to API call
-            // ==========================================
             const response = await fetchWrapper.post(
                 getApiBaseUrl() + 'transactions/denomination/batch-save',
                 {
                     items: itemsToSave,
                     date: dateFilter,
-                    isSubmission: true  // <-- NEW: Flag to indicate this is a submission
+                    isSubmission: true
                 }
             );
             
             if (response.success) {
                 toast.success(response.message || `${itemsToSave.length} denomination record(s) submitted successfully`);
-                setRemittanceChanges({});
+                setMorningRemittanceChanges({});
+                setAfternoonRemittanceChanges({});
                 await fetchInitialData();
             } else {
-                // ==========================================
-                // NEW: Handle validation errors from API
-                // ==========================================
                 if (response.validationError && response.missingRemittances) {
                     toast.error(response.message, { autoClose: 8000 });
                     
-                    // Show specific groups with issues
                     const groupsToShow = response.missingRemittances.slice(0, 3);
                     groupsToShow.forEach(group => {
                         toast.warning(
@@ -868,7 +878,8 @@ export default function DenominationPage() {
                     }
                     
                     if (summary && (summary.successful > 0 || summary.reopened > 0)) {
-                        setRemittanceChanges({});
+                        setMorningRemittanceChanges({});
+                        setAfternoonRemittanceChanges({});
                         await fetchInitialData();
                     }
                 }
@@ -975,7 +986,6 @@ export default function DenominationPage() {
         const effectiveFilter = router.query.filter || filter;
         
         if (!currentUser || !currentUser.role) {
-            console.log('No user, skipping fetch');
             setLoading(false);
             return;
         }
@@ -983,7 +993,6 @@ export default function DenominationPage() {
         let canFetch = false;
         
         if (router.query.id && router.query.filter) {
-            console.log('Nested navigation detected, can fetch');
             canFetch = true;
         } else {
             if (currentUser.role.rep <= 2) {
@@ -991,19 +1000,16 @@ export default function DenominationPage() {
                     canFetch = true;
                 }
             } else if (currentUser.role.rep === 3) {
-                // Special case: Cashier without designated branch should view all branches (like admin)
                 if (currentUser.role.shortCode === 'cashier' && 
                     (!currentUser.designatedBranchId || currentUser.designatedBranchId === '')) {
                     if (effectiveFilter === 'branch') {
-                        console.log('✓ Cashier without branch - can fetch all branches');
                         canFetch = true;
                     }
                 } else if (currentUser.designatedBranchId && effectiveFilter === 'lo') {
-                    // Branch manager or cashier with designated branch
                     canFetch = true;
-                } else {
-                    console.log('Waiting for designatedBranchId or filter setup...');
                 }
+            } else if (currentUser.role.rep === 4) {
+                canFetch = true;
             }
         }
         
@@ -1024,52 +1030,90 @@ export default function DenominationPage() {
 
     const effectiveFilter = router.query.filter || filter;
 
-    // Show status column only when viewing groups
     const showStatusColumn = effectiveFilter === 'group';
-
-    // Show actions column when viewing groups
     const showActionsColumn = effectiveFilter === 'group';
-
-    // ==========================================
-    // MODIFIED: Explicitly exclude cashiers from approving/rejecting
-    // Even though cashiers now have rep=3, they should NOT be able to approve/reject
-    // ==========================================
     const userCanApproveReject = (currentUser.role.rep === 3 || currentUser.role.rep === 4) && 
                                 currentUser.role.shortCode !== 'cashier';
 
-    const shouldShowRemittanceInput = (item) => {
-        // Only cashiers can edit remittances
+    const shouldShowMorningRemittanceInput = (item) => {
         if (currentUser.role.shortCode !== 'cashier') return false;
-        
-        // Only at group level
         if (effectiveFilter !== 'group') return false;
-        
-        // Date filter check
         if (dateFilter !== currentDate) return false;
         
-        // Calculate current BCC vs Remittances
-        const currentRemittance = remittanceChanges[item.entityId] !== undefined 
-            ? remittanceChanges[item.entityId]
-            : item.savedRemittance || 0;
-        const bccVsRemittances = calculateBccVsRemittances(item.totalNetCollection, currentRemittance);
-
-        // If approved and balanced, never show input
-        if (item.status === 'approved' && bccVsRemittances === 0) return false;
+        // CRITICAL FIX: Allow editing if rejected
+        if (item.status === 'rejected') return true;
         
-        // NEW LOGIC:
-        // 1. If totalNetCollection is negative, always allow input
-        if (item.totalNetCollection < 0 || bccVsRemittances < 0) {
+        // Check if user is currently editing this field (has unsaved changes)
+        const isCurrentlyEditing = morningRemittanceChanges.hasOwnProperty(item.entityId);
+        
+        // If approved and BCC is balanced, don't show input
+        if (item.status === 'approved') {
+            const currentMorning = morningRemittanceChanges[item.entityId] !== undefined 
+                ? morningRemittanceChanges[item.entityId]
+                : item.savedMorningRemittance || 0;
+            const currentAfternoon = afternoonRemittanceChanges[item.entityId] !== undefined
+                ? afternoonRemittanceChanges[item.entityId]
+                : item.savedAfternoonRemittance || 0;
+            const bccVsRemittances = calculateBccVsRemittances(item.totalNetCollection, currentMorning, currentAfternoon);
+            
+            if (bccVsRemittances === 0 && !isCurrentlyEditing) return false;
+        }
+        
+        // Show input if collection is negative or if BCC needs balancing
+        if (item.totalNetCollection < 0) {
             return item.status === 'draft' || item.status === 'pending' || item.status === 'approved';
         }
         
-        // 2. If totalNetCollection is positive, only allow input if there's a collection
-        //    (this maintains the restriction for positive collections)
+        // Don't show if there's no collection
         if (!item.hasCollection) return false;
         
-        // Show input if:
-        // 1. Status is draft or pending (normal flow)
-        // 2. OR if there's a positive BCC difference (needs adjustment)
-        return item.status === 'draft' || item.status === 'pending' || bccVsRemittances > 0;
+        // Show if: no saved morning remittance yet OR user is currently editing
+        return (item.savedMorningRemittance === 0 || item.savedMorningRemittance === null || isCurrentlyEditing) && 
+            (item.status === 'draft' || item.status === 'pending' || item.bccVsRemittances > 0);
+    };
+
+    // UPDATED: Check if morning remittance input should be disabled - NOT DISABLED FOR REJECTED
+    const isMorningRemittanceDisabled = (item) => {
+        // CRITICAL FIX: Don't disable if status is rejected (allow editing)
+        if (item.status === 'rejected') return false;
+        
+        // Disable if there's already saved morning remittance data
+        return item.savedMorningRemittance && item.savedMorningRemittance !== 0;
+    };
+
+    const shouldShowAfternoonRemittanceInput = (item) => {
+        if (currentUser.role.shortCode !== 'cashier') return false;
+        if (effectiveFilter !== 'group') return false;
+        if (dateFilter !== currentDate) return false;
+        
+        // Check if user is currently editing this field
+        const isCurrentlyEditingAfternoon = afternoonRemittanceChanges.hasOwnProperty(item.entityId);
+        
+        if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance === 0 && item.status === 'rejected') {
+            return false;
+        }
+
+        if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance > 0 && item.status === 'rejected') {
+            return true;
+        }
+
+        // Show if there's a saved morning remittance, status is approved, and BCC needs balancing
+        // OR if user is currently editing
+        return item.savedMorningRemittance > 0 && 
+            (item.status === 'approved' && (item.bccVsRemittances > 0 || isCurrentlyEditingAfternoon));
+    };
+
+    // UPDATED: Check if afternoon remittance input should be disabled - NOT DISABLED FOR REJECTED
+    const isAfternoonRemittanceDisabled = (item) => {
+        if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance === 0 && item.status === 'rejected') {
+            return true;
+        }
+
+        if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance > 0 && item.status === 'rejected') {
+            return false;
+        }
+
+        return false;
     };
     
     const getFilterLabel = () => {
@@ -1080,18 +1124,20 @@ export default function DenominationPage() {
     };
     
     useEffect(() => {
-        setRemittanceChanges({});
+        setMorningRemittanceChanges({});
+        setAfternoonRemittanceChanges({});
     }, [dateFilter, selectedBranch, selectedLO, selectedGroup]);
 
     const calculateGrandTotal = (data) => {
-        // Filter out the _total row if it exists in the data
         const dataWithoutTotal = data.filter(item => item.entityId !== '_total');
         
         return {
             activeClients: dataWithoutTotal.reduce((sum, item) => sum + (item.activeClients || 0), 0),
             totalNetCollection: dataWithoutTotal.reduce((sum, item) => sum + (item.totalNetCollection || 0), 0),
-            totalRemittance: dataWithoutTotal.reduce((sum, item) => sum + (item.currentRemittance || 0), 0),
+            morningRemittance: dataWithoutTotal.reduce((sum, item) => sum + (item.currentMorningRemittance || 0), 0),
+            noSitDown: dataWithoutTotal.reduce((sum, item) => sum + (item.noSitDown || 0), 0),
             amountSitDown: dataWithoutTotal.reduce((sum, item) => sum + (item.amountSitDown || 0), 0),
+            afternoonRemittance: dataWithoutTotal.reduce((sum, item) => sum + (item.currentAfternoonRemittance || 0), 0),
         };
     };
     
@@ -1104,24 +1150,6 @@ export default function DenominationPage() {
                     <p className="mt-1 text-sm text-gray-500">
                         {moment(dateFilter).format('dddd, MMMM DD, YYYY')}
                     </p>
-                    
-                    {/* {shouldShowBackButton() && (
-                        <div className="mt-2 flex items-center">
-                            <button
-                                onClick={handleBackNavigation}
-                                className="text-sm font-medium text-indigo-600 hover:text-indigo-900 flex items-center"
-                            >
-                                <ChevronLeft size={16} className="mr-1" />
-                                Back to {router.query.parentId ? 'Loan Officers' : 'Branches'}
-                            </button>
-                            
-                            {parentEntityName && (
-                                <span className="ml-2 text-sm text-gray-700">
-                                    Viewing: <span className="font-medium">{parentEntityName}</span>
-                                </span>
-                            )}
-                        </div>
-                    )} */}
                 </div>
                 
                 {/* Filters Section */}
@@ -1144,7 +1172,6 @@ export default function DenominationPage() {
                                 <Select
                                     value={selectedBranch}
                                     onChange={(selected) => {
-                                        console.log('Branch filter selected:', selected);
                                         setSelectedBranch(selected);
                                     }}
                                     options={branchList.map(b => ({
@@ -1266,10 +1293,16 @@ export default function DenominationPage() {
                                                 Total Net Collection
                                             </th>
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Total Remittances
+                                                Morning Remittances
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                No. of Sit Down
                                             </th>
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Amount of Sit Down
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Afternoon Remittances
                                             </th>
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 BCC vs Remittances
@@ -1289,7 +1322,7 @@ export default function DenominationPage() {
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {mergedData.length === 0 ? (
                                             <tr>
-                                                <td colSpan={showStatusColumn && showActionsColumn ? "8" : showStatusColumn || showActionsColumn ? "7" : "6"} className="px-6 py-12 text-center">
+                                                <td colSpan={showStatusColumn && showActionsColumn ? "10" : showStatusColumn || showActionsColumn ? "9" : "8"} className="px-6 py-12 text-center">
                                                     <div className="text-gray-500">
                                                         <p className="text-lg font-medium">No data available</p>
                                                         <p className="text-sm mt-1">
@@ -1301,21 +1334,13 @@ export default function DenominationPage() {
                                         ) : (
                                             <>
                                                 {mergedData.map((item, index) => {
-                                                    const currentRemittance = item.currentRemittance || 0;
-                                                    const bccVsRemittances = calculateBccVsRemittances(
-                                                        item.totalNetCollection,
-                                                        currentRemittance
-                                                    );
-                                                    
                                                     const isClickable = effectiveFilter !== 'group';
                                                     
-                                                    // Check if we should show the client button for this row
                                                     const showClientButton = effectiveFilter === 'group' && 
                                                         item.amountSitDown > 0 && 
                                                         item.activeClients > 0 && 
                                                         item.totalNetCollection > 0;
                                                     
-                                                    // Check if we should show approve/reject buttons for this row
                                                     const canApproveRejectThisRow = userCanApproveReject && 
                                                         effectiveFilter === 'group' &&
                                                         item._id &&
@@ -1359,26 +1384,30 @@ export default function DenominationPage() {
                                                                 {formatPrice(item.totalNetCollection || 0)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                                {shouldShowRemittanceInput(item) ? (
+                                                                {shouldShowMorningRemittanceInput(item) ? (
                                                                     <div className="flex items-center justify-end gap-2">
                                                                         <input
-                                                                            type="number"
-                                                                            value={currentRemittance === '' ? '' : currentRemittance}
-                                                                            onChange={(e) => handleRemittanceChange(item.entityId, e.target.value)}
-                                                                            onBlur={() => handleRemittanceBlur(item.entityId)}
-                                                                            min={item.savedRemittance || 0}
-                                                                            step="0.01"
-                                                                            className="w-36 px-3 py-1.5 border border-gray-300 rounded-md text-right focus:ring-indigo-500 focus:border-indigo-500"
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={item.currentMorningRemittance === '' ? '' : item.currentMorningRemittance}
+                                                                            onChange={(e) => handleMorningRemittanceChange(item.entityId, e.target.value)}
+                                                                            onBlur={() => handleMorningRemittanceBlur(item.entityId)}
+                                                                            disabled={isMorningRemittanceDisabled(item)}
+                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right focus:ring-indigo-500 focus:border-indigo-500 ${
+                                                                                isMorningRemittanceDisabled(item) 
+                                                                                    ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                                                                                    : item.status === 'rejected'
+                                                                                    ? 'border-red-300 bg-red-50'
+                                                                                    : 'border-gray-300'
+                                                                            }`}
                                                                         />
-                                                                        {item.wasApproved && item.collectionChanged && (
-                                                                            <span className="text-xs text-orange-600 italic" title="Collection updated after approval">
-                                                                                Updated
-                                                                            </span>
+                                                                        {isMorningRemittanceDisabled(item) && (
+                                                                            <span className="text-xs text-green-600" title="Already saved">🔒</span>
                                                                         )}
                                                                     </div>
                                                                 ) : (
                                                                     <div className="flex items-center justify-end gap-2">
-                                                                        <span className="font-medium">{formatPrice(currentRemittance)}</span>
+                                                                        <span className="font-medium">{formatPrice(item.currentMorningRemittance)}</span>
                                                                         {item.status === 'approved' && (
                                                                             <span className="text-xs text-green-600">✓</span>
                                                                         )}
@@ -1386,16 +1415,45 @@ export default function DenominationPage() {
                                                                 )}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                                                {item.amountSitDown ? Number(item.amountSitDown).toFixed(0) : '0'}
+                                                                {item.noSitDown ? Number(item.noSitDown).toFixed(0) : '0'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                                                                {formatPrice(item.amountSitDown || 0)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {shouldShowAfternoonRemittanceInput(item) ? (
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={item.currentAfternoonRemittance === '' ? '' : item.currentAfternoonRemittance}
+                                                                            onChange={(e) => handleAfternoonRemittanceChange(item.entityId, e.target.value)}
+                                                                            onBlur={() => handleAfternoonRemittanceBlur(item)}
+                                                                            disabled={isAfternoonRemittanceDisabled(item)}
+                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right focus:ring-green-500 focus:border-green-500 ${
+                                                                                isAfternoonRemittanceDisabled(item)
+                                                                                    ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                                                                                    : item.status === 'rejected'
+                                                                                    ? 'border-red-300 bg-red-50'
+                                                                                    : 'border-green-300 bg-green-50'
+                                                                            }`}
+                                                                        />
+                                                                        {isAfternoonRemittanceDisabled(item) && (
+                                                                            <span className="text-xs text-green-600" title="Already saved">🔒</span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="font-medium">{formatPrice(item.currentAfternoonRemittance)}</span>
+                                                                )}
                                                             </td>
                                                             <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                                                                bccVsRemittances < 0 ? 'text-red-600' : 
-                                                                bccVsRemittances > 0 ? 'text-orange-600' : 
+                                                                item.bccVsRemittances < 0 ? 'text-red-600' : 
+                                                                item.bccVsRemittances > 0 ? 'text-orange-600' : 
                                                                 'text-green-600'
                                                             }`}>
                                                                 <div className="flex items-center justify-end gap-2">
-                                                                    {formatPrice(bccVsRemittances)}
-                                                                    {bccVsRemittances > 0 && item.hasCollection && (
+                                                                    {formatPrice(item.bccVsRemittances)}
+                                                                    {item.bccVsRemittances > 0 && item.hasCollection && (
                                                                         <span className="text-xs" title="Needs remittance adjustment">⚠️</span>
                                                                     )}
                                                                 </div>
@@ -1415,7 +1473,6 @@ export default function DenominationPage() {
                                                             {showActionsColumn && (
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                                                     <div className="flex items-center justify-center gap-2">
-                                                                        {/* History button - ONLY show if there's MORE THAN ONE history entry */}
                                                                         {item.history && item.history.length > 1 && (
                                                                             <button
                                                                                 onClick={(e) => {
@@ -1471,7 +1528,6 @@ export default function DenominationPage() {
                                                                             </>
                                                                         )}
                                                                         
-                                                                        {/* Show dash only if there are NO buttons visible */}
                                                                         {!showClientButton && !canApproveRejectThisRow && (!item.history || item.history.length <= 1) && (
                                                                             <span className="text-gray-400 text-xs">-</span>
                                                                         )}
@@ -1487,7 +1543,8 @@ export default function DenominationPage() {
                                                     const grandTotal = calculateGrandTotal(mergedData);
                                                     const grandTotalBccVsRemittances = calculateBccVsRemittances(
                                                         grandTotal.totalNetCollection,
-                                                        grandTotal.totalRemittance
+                                                        grandTotal.morningRemittance,
+                                                        grandTotal.afternoonRemittance
                                                     );
                                                     
                                                     return (
@@ -1502,10 +1559,16 @@ export default function DenominationPage() {
                                                                 {formatPrice(grandTotal.totalNetCollection)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
-                                                                {formatPrice(grandTotal.totalRemittance)}
+                                                                {formatPrice(grandTotal.morningRemittance)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
-                                                                {Number(grandTotal.amountSitDown).toFixed(0)}
+                                                                {Number(grandTotal.noSitDown).toFixed(0)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {formatPrice(grandTotal.amountSitDown)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
+                                                                {formatPrice(grandTotal.afternoonRemittance)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
                                                                 {formatPrice(grandTotalBccVsRemittances)}
@@ -1578,7 +1641,6 @@ export default function DenominationPage() {
             {showClientModal && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
                     <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-                        {/* Modal Header */}
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900">Clients with Sit Down</h3>
@@ -1597,7 +1659,6 @@ export default function DenominationPage() {
                             </button>
                         </div>
                         
-                        {/* Modal Body */}
                         <div className="flex-1 overflow-auto px-6 py-4">
                             {clientModalLoading ? (
                                 <div className="flex items-center justify-center h-64">
@@ -1612,7 +1673,6 @@ export default function DenominationPage() {
                             ) : (
                                 <div className="space-y-3">
                                     {clientData.map((client, index) => {
-                                        // Remove leading zeros from code
                                         const displayCode = client.code ? parseInt(client.code, 10).toString() : 'N/A';
                                         
                                         return (
@@ -1631,7 +1691,7 @@ export default function DenominationPage() {
                                                 <div className="text-right">
                                                     <p className="text-sm text-gray-600">Net Collection</p>
                                                     <p className={`text-lg font-semibold text-gray-900 ${client.totalNetCollection > 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                                        {formatPrice(client.totalNetCollection || 0)}
+                                                        {formatPrice(client.targetLoanCollection || 0)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1641,7 +1701,6 @@ export default function DenominationPage() {
                             )}
                         </div>
                         
-                        {/* Modal Footer */}
                         <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
                             <p className="text-sm text-gray-600">
                                 Total Clients: <span className="font-medium">{clientData.length}</span>
@@ -1661,7 +1720,6 @@ export default function DenominationPage() {
             {showHistoryModal && selectedItemHistory && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
                     <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-                        {/* Modal Header */}
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900">Denomination History</h3>
@@ -1678,15 +1736,13 @@ export default function DenominationPage() {
                             </button>
                         </div>
                         
-                        {/* Modal Body */}
                         <div className="flex-1 overflow-auto px-6 py-4">
                             {selectedItemHistory.history && selectedItemHistory.history.length > 0 ? (
                                 <div className="space-y-4">
                                     {selectedItemHistory.history
                                         .slice()
-                                        .reverse() // Show most recent first
+                                        .reverse()
                                         .map((entry, index) => {
-                                            // Determine the styling based on action
                                             const isReopened = entry.action === 'reopened_due_to_collection_change';
                                             const isApproved = entry.action === 'approved';
                                             const isRejected = entry.action === 'rejected';
@@ -1768,11 +1824,20 @@ export default function DenominationPage() {
                                                             </span>
                                                         </div>
                                                         <div>
-                                                            <span className="text-gray-600">Remittance:</span>
+                                                            <span className="text-gray-600">Morning Remittance:</span>
                                                             <span className="ml-2 font-medium">
                                                                 {formatPrice(
-                                                                    entry.total_remittance || 
-                                                                    entry.previous_total_remittance || 0
+                                                                    entry.morning_remittance || 
+                                                                    entry.previous_morning_remittance || 0
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-gray-600">Afternoon Remittance:</span>
+                                                            <span className="ml-2 font-medium">
+                                                                {formatPrice(
+                                                                    entry.afternoon_remittance || 
+                                                                    entry.previous_afternoon_remittance || 0
                                                                 )}
                                                             </span>
                                                         </div>
@@ -1790,7 +1855,6 @@ export default function DenominationPage() {
                                                         </div>
                                                     </div>
                                                     
-                                                    {/* Show previous values for reopened entries */}
                                                     {isReopened && entry.previous_total_net_collection && (
                                                         <div className="mt-3 pt-3 border-t border-gray-300">
                                                             <div className="text-xs text-gray-600 font-semibold mb-2">Previous Values (Before Reopening):</div>
@@ -1800,8 +1864,12 @@ export default function DenominationPage() {
                                                                     <span className="ml-2 font-medium">{formatPrice(entry.previous_total_net_collection)}</span>
                                                                 </div>
                                                                 <div>
-                                                                    <span className="text-gray-500">Previous Remittance:</span>
-                                                                    <span className="ml-2 font-medium">{formatPrice(entry.previous_total_remittance)}</span>
+                                                                    <span className="text-gray-500">Previous Morning:</span>
+                                                                    <span className="ml-2 font-medium">{formatPrice(entry.previous_morning_remittance)}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500">Previous Afternoon:</span>
+                                                                    <span className="ml-2 font-medium">{formatPrice(entry.previous_afternoon_remittance)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1817,7 +1885,6 @@ export default function DenominationPage() {
                             )}
                         </div>
                         
-                        {/* Modal Footer */}
                         <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
                             <button
                                 onClick={() => setShowHistoryModal(false)}

@@ -1,6 +1,3 @@
-// src/pages/api/v2/transactions/denomination/get-initial-data.js
-// MODIFIED VERSION - Add cashier designated branch filtering
-
 import { apiHandler } from '@/services/api-handler';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
@@ -21,10 +18,10 @@ async function getInitialData(req, res) {
         
         const currentDate = date || moment().format('YYYY-MM-DD');
         
-        console.log('=== GET INITIAL DATA ===');
-        console.log('User:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
-        console.log('Query params:', { date: currentDate, branchId, loId, groupId, filter });
-        console.log('User designated branch:', user.designatedBranchId);
+        // console.log('=== GET INITIAL DATA ===');
+        // console.log('User:', user.firstName, user.lastName, '- Role:', user.role.shortCode);
+        // console.log('Query params:', { date: currentDate, branchId, loId, groupId, filter });
+        // console.log('User designated branch:', user.designatedBranchId);
         
         // Build parameters matching ModernBranchCashCollections format
         const params = new URLSearchParams({
@@ -34,34 +31,25 @@ async function getInitialData(req, res) {
             filter: filter || 'branch'
         });
         
-        // ==========================================
-        // MODIFIED: Handle cashier with designated branch
-        // ==========================================
+        // Handle cashier with designated branch
         if (user.role.shortCode === 'cashier' && user.designatedBranchId) {
-            // Cashier with designated branch
             if (filter === 'lo') {
-                // When viewing LO level, use their designated branch
                 params.append('branchId', user.designatedBranchId);
-                console.log('✓ Cashier viewing LO level for designated branch:', user.designatedBranchId);
+                // console.log('✓ Cashier viewing LO level for designated branch:', user.designatedBranchId);
                 
-                // If specific LO is selected, add it
                 if (loId) {
                     params.append('loId', loId);
-                    console.log('✓ Filtering by specific LO:', loId);
+                    // console.log('✓ Filtering by specific LO:', loId);
                 }
             } else if (filter === 'group') {
-                // When drilling down to groups, preserve branch context
                 params.append('branchId', user.designatedBranchId);
                 if (loId) {
                     params.append('loId', loId);
-                    console.log('✓ Cashier viewing groups for LO:', loId);
+                    // console.log('✓ Cashier viewing groups for LO:', loId);
                 }
             }
         } else {
-            // ==========================================
-            // ORIGINAL LOGIC for other roles
-            // ==========================================
-            // Add entity-specific filters
+            // Original logic for other roles
             if (branchId) {
                 params.append('branchId', branchId);
             } else if (user.designatedBranchId) {
@@ -101,8 +89,8 @@ async function getInitialData(req, res) {
         
         const apiUrl = `${getLocalhost()}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
         
-        console.log('Fetching cash collections from:', apiUrl);
-        console.log('Params:', Object.fromEntries(params));
+        // console.log('Fetching cash collections from:', apiUrl);
+        // console.log('Params:', Object.fromEntries(params));
         
         // Make the internal API call with proper headers
         const response = await fetch(apiUrl, {
@@ -116,11 +104,11 @@ async function getInitialData(req, res) {
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('API Response Error:', {
-                status: response.status,
-                statusText: response.statusText,
-                body: errorText.substring(0, 500) // Log first 500 chars
-            });
+            // console.error('API Response Error:', {
+            //     status: response.status,
+            //     statusText: response.statusText,
+            //     body: errorText.substring(0, 500)
+            // });
             
             return res.status(response.status).json({
                 success: false,
@@ -130,7 +118,7 @@ async function getInitialData(req, res) {
         }
         
         const data = await response.json();
-        console.log('API Response success:', !!data.success, 'Data count:', data.data?.length || 0);
+        // console.log('API Response success:', !!data.success, 'Data count:', data.data?.length || 0);
         
         if (!data || !data.data) {
             return res.status(200).json({
@@ -141,11 +129,10 @@ async function getInitialData(req, res) {
         }
 
         let sort = 'code';
-        if (filter === 'branch') sort = 'code'; // string
-        else if (filter === 'lo') sort = 'loNo'; // integer
-        else if (filter === 'group') sort = 'groupNo'; // integer
+        if (filter === 'branch') sort = 'code';
+        else if (filter === 'lo') sort = 'loNo';
+        else if (filter === 'group') sort = 'groupNo';
 
-        // Function to check if the current 'sort' field should be treated as a number
         const isNumericSort = (sortField) => {
             return sortField === 'loNo' || sortField === 'groupNo';
         };
@@ -154,7 +141,6 @@ async function getInitialData(req, res) {
             const valA = a[sort];
             const valB = b[sort];
 
-            // --- 1. Null/Empty Value Logic (Prioritized) ---
             const isANull = valA === null || valA === undefined || valA === '' || valA === '_total';
             const isBNull = valB === null || valB === undefined || valB === '' || valA === '_total';
 
@@ -162,25 +148,17 @@ async function getInitialData(req, res) {
                 return 0;
             }
             if (isANull) {
-                return 1; // Push A to the bottom
+                return 1;
             }
             if (isBNull) {
-                return -1; // Push B to the bottom
+                return -1;
             }
-
-            // --- 2. Sorting Logic (for non-null/non-empty values) ---
             
             if (isNumericSort(sort)) {
-                // --- NUMERIC SORTING ---
-                // Convert values to actual numbers for correct comparison
                 const numA = Number(valA);
                 const numB = Number(valB);
-                
-                // This is the standard way to sort numbers ascendingly
                 return numA - numB; 
-
             } else {
-                // --- STRING SORTING (Case-Insensitive) ---
                 const strA = String(valA).toLowerCase();
                 const strB = String(valB).toLowerCase();
 
@@ -194,6 +172,105 @@ async function getInitialData(req, res) {
             }
         });
         
+        // ==========================================
+        // OPTIMIZED: Fetch ALL client data in ONE call instead of looping
+        // ==========================================
+        let clientDataMap = new Map();
+        
+        if (filter === 'group') {
+            console.log('🚀 OPTIMIZED: Fetching all client data in one call');
+            
+            // Determine which loId to use for fetching client data
+            let effectiveLoId = null;
+            
+            // Priority 1: loId from query params (drilling down)
+            if (loId) {
+                effectiveLoId = loId;
+            }
+            // Priority 2: User's own ID if they're a loan officer
+            else if (user.role.rep === 4 && user._id) {
+                effectiveLoId = user._id;
+            }
+            
+            if (effectiveLoId) {
+                try {
+                    console.log(`Fetching client data for LO: ${effectiveLoId}`);
+                    
+                    // ✅ OPTIMIZED: Single API call with loId to get all clients at once
+                    const clientParams = new URLSearchParams({
+                        dateAdded: currentDate,
+                        currentDate: currentDate,
+                        filter: 'client',
+                        loId: effectiveLoId,  // ← KEY: Pass loId instead of groupId
+                        _name: 'get_cash_collections_page_data'
+                    });
+                    
+                    const clientApiUrl = `${getLocalhost()}/api/v2/data/get_cash_collections_page_data?${clientParams.toString()}`;
+                    
+                    const startTime = Date.now();
+                    const clientResponse = await fetch(clientApiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': req.headers.authorization || '',
+                            'Content-Type': 'application/json',
+                            'Cookie': req.headers.cookie || ''
+                        }
+                    });
+                    const fetchTime = Date.now() - startTime;
+                    
+                    if (clientResponse.ok) {
+                        const clientData = await clientResponse.json();
+                        // console.log(`✅ Fetched all client data in ${fetchTime}ms`);
+                        
+                        if (clientData.success && clientData.data) {
+                            // ✅ OPTIMIZED: Group clients by groupId in memory
+                            const clientsByGroup = new Map();
+                            
+                            clientData.data.forEach(client => {
+                                // Skip total row
+                                if (client._id === '_total' || !client.groupId) {
+                                    return;
+                                }
+                                
+                                // Initialize array for this group if not exists
+                                if (!clientsByGroup.has(client.groupId)) {
+                                    clientsByGroup.set(client.groupId, []);
+                                }
+                                
+                                // Add client to their group
+                                clientsByGroup.get(client.groupId).push(client);
+                            });
+                            
+                            // console.log(`📊 Grouped clients into ${clientsByGroup.size} groups`);
+                            
+                            // ✅ Calculate no_sit_down for each group
+                            clientsByGroup.forEach((clients, groupId) => {
+                                const clientsWithZeroCollection = clients.filter(client => 
+                                    client.totalNetCollection === 0 || !client.totalNetCollection
+                                ).length;
+                                
+                                clientDataMap.set(groupId, clientsWithZeroCollection);
+                            });
+                            
+                            // console.log(`✅ Calculated no_sit_down for ${clientDataMap.size} groups`);
+                            
+                            // Log sample data for verification
+                            if (clientDataMap.size > 0) {
+                                const firstThree = Array.from(clientDataMap.entries()).slice(0, 3);
+                                // console.log('Sample no_sit_down values:', firstThree);
+                            }
+                        }
+                    } else {
+                        console.error('Failed to fetch client data:', clientResponse.status, clientResponse.statusText);
+                    }
+                } catch (error) {
+                    console.error('Error fetching client data:', error);
+                }
+            } else {
+                console.warn('⚠️ No loId available to fetch client data');
+            }
+        }
+        
         // Transform the data to match denomination table structure
         const transformedData = data.data.map(item => {
             let itemName = item.name === '_total' ? "TOTAL" : item.name || item.label;
@@ -201,8 +278,15 @@ async function getInitialData(req, res) {
                 itemName = `${item.code} - ${item.name}`
             }
 
+            // ✅ Get no_sit_down from optimized client data map
+            const noSitDown = clientDataMap.get(item._id) || calculateNoSitDown(
+                item.targetLoanCollection || item.loanTarget || 0,
+                item.actualLoanCollection || item.total || 0,
+                item.excess || 0,
+                item.activeClients || 0
+            );
+
             return {
-                ...item,
                 entityId: item._id || item.id,
                 entityName: itemName,
                 entityType: filter || 'branch',
@@ -212,31 +296,27 @@ async function getInitialData(req, res) {
                 targetCollection: item.targetLoanCollection || item.loanTarget || 0,
                 actualCollection: item.actualLoanCollection || item.total || 0,
                 excess: item.excess || 0,
-                // Calculate no sit down
-                noSitDown: calculateNoSitDown(
-                    item.targetLoanCollection || item.loanTarget || 0,
-                    item.actualLoanCollection || item.total || 0,
-                    item.excess || 0,
-                    item.activeClients || 0
-                ),
+                // ✅ Use optimized client-based count
+                noSitDown: noSitDown,
                 // Calculate amount sit down
                 amountSitDown: calculateAmountSitDown(
                     item.targetLoanCollection || item.loanTarget || 0,
                     item.actualLoanCollection || item.total || 0,
+                    item.excess || 0,
                     item.activeClients || 0
                 ),
                 hasCollection: item.totalNetCollection > 0,
             };
         });
         
-        console.log('Transformed data count:', transformedData.length);
-        console.log('Applied filters:', {
-            branchId: user.role.shortCode === 'cashier' && user.designatedBranchId 
-                ? user.designatedBranchId 
-                : branchId,
-            loId,
-            groupId
-        });
+        // console.log('Transformed data count:', transformedData.length);
+        // console.log('Applied filters:', {
+        //     branchId: user.role.shortCode === 'cashier' && user.designatedBranchId 
+        //         ? user.designatedBranchId 
+        //         : branchId,
+        //     loId,
+        //     groupId
+        // });
         
         res.status(200).json({
             success: true,
@@ -258,7 +338,7 @@ async function getInitialData(req, res) {
 }
 
 /**
- * Calculate No of Sit Down
+ * Calculate No of Sit Down (fallback if client data not available)
  * Formula: (targetCollection - (actualCollection - excess)) / (targetCollection / activeClients)
  */
 function calculateNoSitDown(targetCollection, actualCollection, excess, activeClients) {
@@ -281,7 +361,7 @@ function calculateNoSitDown(targetCollection, actualCollection, excess, activeCl
  * Calculate Amount of Sit Down
  * Formula: actualCollection - targetCollection
  */
-function calculateAmountSitDown(targetCollection, actualCollection, activeClients) {
+function calculateAmountSitDown(targetCollection, actualCollection, excess, activeClients) {
     if (!targetCollection ||  targetCollection === 0 || activeClients === 0) {
         return 0;
     }
@@ -290,7 +370,7 @@ function calculateAmountSitDown(targetCollection, actualCollection, activeClient
         return targetCollection;
     }
     
-    const result = actualCollection - targetCollection;
+    const result = targetCollection - (actualCollection - excess);
     
     return Math.max(0, result);
 }

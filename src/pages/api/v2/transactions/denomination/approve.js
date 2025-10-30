@@ -160,7 +160,7 @@ async function rejectDenomination(req, res) {
     }
     
     // Check if user has permission to reject (managers and above - rep 3 or less, but NOT cashiers)
-    if (user_role > 3) {
+    if (user_role < 3) {
         return res.status(403).json({
             success: false,
             message: 'You do not have permission to reject denomination data'
