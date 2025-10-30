@@ -343,8 +343,6 @@ export const CASH_COLLECTIONS_FIELDS = `
   csfIn
   otherIncome
   addHospitalization
-  approvedBySupervisor
-  approvedBySupervisorId
   `;
 
 export const LOS_TOTALS_FIELDS = `
