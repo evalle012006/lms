@@ -508,8 +508,10 @@ export const TRANSFER_CLIENT_FIELDS = `
   branch_id
   active_clients
   total_net_collection
-  total_remittance
+  morning_remittance
+  no_sit_down
   amount_sit_down
+  afternoon_remittance
   bcc_vs_remittances
   status
   rejection_reason

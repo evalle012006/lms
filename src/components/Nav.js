@@ -525,7 +525,7 @@ const MenuItems = [
               active: false,
               hasSub: false,
               hidden: false,
-              roles: ["admin", "cashier", "branch_manager"]
+              roles: []
             },
             {
               label: "MCBU/CSF Withdrawals",
