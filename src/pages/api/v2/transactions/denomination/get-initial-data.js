@@ -202,6 +202,7 @@ async function getInitialData(req, res) {
             }
 
             return {
+                ...item,
                 entityId: item._id || item.id,
                 entityName: itemName,
                 entityType: filter || 'branch',
@@ -211,11 +212,17 @@ async function getInitialData(req, res) {
                 targetCollection: item.targetLoanCollection || item.loanTarget || 0,
                 actualCollection: item.actualLoanCollection || item.total || 0,
                 excess: item.excess || 0,
+                // Calculate no sit down
+                noSitDown: calculateNoSitDown(
+                    item.targetLoanCollection || item.loanTarget || 0,
+                    item.actualLoanCollection || item.total || 0,
+                    item.excess || 0,
+                    item.activeClients || 0
+                ),
                 // Calculate amount sit down
                 amountSitDown: calculateAmountSitDown(
                     item.targetLoanCollection || item.loanTarget || 0,
                     item.actualLoanCollection || item.total || 0,
-                    item.excess || 0,
                     item.activeClients || 0
                 ),
                 hasCollection: item.totalNetCollection > 0,
@@ -251,10 +258,10 @@ async function getInitialData(req, res) {
 }
 
 /**
- * Calculate Amount of Sit Down
+ * Calculate No of Sit Down
  * Formula: (targetCollection - (actualCollection - excess)) / (targetCollection / activeClients)
  */
-function calculateAmountSitDown(targetCollection, actualCollection, excess, activeClients) {
+function calculateNoSitDown(targetCollection, actualCollection, excess, activeClients) {
     if (!targetCollection || !activeClients || targetCollection === 0 || activeClients === 0) {
         return 0;
     }
@@ -267,5 +274,23 @@ function calculateAmountSitDown(targetCollection, actualCollection, excess, acti
     }
     
     const result = numerator / denominator;
+    return Math.max(0, result);
+}
+
+/**
+ * Calculate Amount of Sit Down
+ * Formula: actualCollection - targetCollection
+ */
+function calculateAmountSitDown(targetCollection, actualCollection, activeClients) {
+    if (!targetCollection ||  targetCollection === 0 || activeClients === 0) {
+        return 0;
+    }
+
+    if (actualCollection <= 0) {
+        return targetCollection;
+    }
+    
+    const result = actualCollection - targetCollection;
+    
     return Math.max(0, result);
 }

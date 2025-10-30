@@ -187,7 +187,7 @@ export default function DenominationPage() {
             const hasEditPermission = currentUser.role.shortCode === 'cashier' && currentDate === dateFilter;
             setCanEdit(hasEditPermission);
             
-            if (currentUser.role.rep <= 2) {
+            if (currentUser.role.rep <= 2 || (currentUser.role.shortCode === 'cashier' && !currentUser.designatedBranchId)) {
                 setFilter('branch');
             } else if (currentUser.role.rep === 3) {
                 setFilter('lo');
@@ -350,8 +350,9 @@ export default function DenominationPage() {
                 if (effectiveFilter === 'branch') {
                     if (selectedBranch) {
                         params.append('branchId', selectedBranch.value);
-                    } else {
-                        console.log('Loading all branches (no branch filter)');
+                    } else if (currentUser?.designatedBranchId && currentUser.designatedBranchId !== '') {
+                        // Only add if user has a designated branch
+                        params.append('branchId', currentUser.designatedBranchId);
                     }
                 } else if (effectiveFilter === 'lo') {
                     if (currentUser.designatedBranchId) {
@@ -990,16 +991,18 @@ export default function DenominationPage() {
                     canFetch = true;
                 }
             } else if (currentUser.role.rep === 3) {
-                if (currentUser.designatedBranchId && effectiveFilter === 'lo') {
+                // Special case: Cashier without designated branch should view all branches (like admin)
+                if (currentUser.role.shortCode === 'cashier' && 
+                    (!currentUser.designatedBranchId || currentUser.designatedBranchId === '')) {
+                    if (effectiveFilter === 'branch') {
+                        console.log('✓ Cashier without branch - can fetch all branches');
+                        canFetch = true;
+                    }
+                } else if (currentUser.designatedBranchId && effectiveFilter === 'lo') {
+                    // Branch manager or cashier with designated branch
                     canFetch = true;
                 } else {
                     console.log('Waiting for designatedBranchId or filter setup...');
-                }
-            } else if (currentUser.role.rep === 4) {
-                if (currentUser._id && effectiveFilter === 'group') {
-                    canFetch = true;
-                } else {
-                    console.log('Waiting for user _id or filter setup...');
                 }
             }
         }

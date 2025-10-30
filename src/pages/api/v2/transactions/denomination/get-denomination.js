@@ -40,8 +40,19 @@ async function getDenomination(req, res) {
         }
         // Priority 2: User role-based filtering (if no query params)
         else {
+            if (user.role.shortCode === 'cashier') {
+                if (user.designatedBranchId && user.designatedBranchId !== '') {
+                    // Assigned cashier - filter by their designated branch
+                    where.branch_id = { _eq: user.designatedBranchId };
+                    filterApplied = `role(cashier):branchId=${user.designatedBranchId}`;
+                } else {
+                    // Unassigned cashier - no branch filter (show all branches)
+                    filterApplied = 'role(cashier):no designation (show all branches)';
+                    console.log('✓ Unassigned cashier - showing all branches');
+                }
+            }
             // Branch Manager (rep 3)
-            if (user.role.rep === 3 && user.designatedBranchId) {
+            else if (user.role.rep === 3 && user.designatedBranchId) {
                 where.branch_id = { _eq: user.designatedBranchId };
                 filterApplied = `role(rep=3):branchId=${user.designatedBranchId}`;
             }
