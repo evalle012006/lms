@@ -473,9 +473,19 @@ export default function DenominationPage() {
                     currentMorningRemittance,
                     currentAfternoonRemittance
                 );
+
+                const noSitDown = savedData?.no_sit_down !== undefined && savedData?.no_sit_down !== null 
+                    ? savedData.no_sit_down 
+                    : (item.noSitDown || 0);
+                    
+                const amountSitDown = savedData?.amount_sit_down !== undefined && savedData?.amount_sit_down !== null
+                    ? savedData.amount_sit_down 
+                    : (item.amountSitDown || 0);
                 
                 return {
                     ...item,
+                    noSitDown: noSitDown,     
+                    amountSitDown: amountSitDown, 
                     savedMorningRemittance: savedData?.morning_remittance || 0,
                     savedAfternoonRemittance: savedData?.afternoon_remittance || 0,
                     currentMorningRemittance: currentMorningRemittance,
