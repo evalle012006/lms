@@ -35,7 +35,7 @@ async function revertTransfer(req, res) {
 
     const mutationList = [];
     const addToMutationList = (handler) => {
-      mutationList.push(handler('update_' + mutationList));
+      mutationList.push(handler('update_' + mutationList.length));
     }
     
     if (transfer.length > 0) {
@@ -73,7 +73,7 @@ async function revertTransfer(req, res) {
         addToMutationList((alias) => updateQl(loansType(alias), {
           where: { _id: { _eq: originalLoanId } },
           set: filterGraphFields(LOAN_FIELDS, {
-            transferred: null,
+            transferred: false,
             transferId: null,
             ...originalLoan,
           })
@@ -92,11 +92,11 @@ async function revertTransfer(req, res) {
         addToMutationList((alias) => updateQl(ccType(alias), {
           where: { _id: { _eq: originalCCId }},
           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
-            transferred: null,
+            transferred: false,
             transferId: null,
-            sameLo: null,
-            loToLo: null,
-            branchToBranch: null,
+            sameLo: false,
+            loToLo: false,
+            branchToBranch: false,
             ...originalCC
           })
         }));
@@ -121,7 +121,7 @@ async function revertTransfer(req, res) {
 
         const originalGroupId = originalGroup._id;
         delete originalGroup._id;
-
+        console.log('originalGroupId', originalGroupId);
         addToMutationList((alias) => updateQl(groupsType(alias), {
           where: { _id: { _eq: originalGroupId } },
           set: { ...originalGroup }
@@ -130,9 +130,9 @@ async function revertTransfer(req, res) {
 
         const newGroupId = newGroup._id;
         delete newGroup._id;
-
+        console.log('newGroupId', newGroupId);
         addToMutationList((alias) => updateQl(groupsType(alias), {
-          where: { _id: newGroupId },
+          where: { _id: { _eq: newGroupId } },
           set: { ...newGroup }
         }));
         
@@ -143,7 +143,7 @@ async function revertTransfer(req, res) {
           }
         }));
         
-        addToMutationList((alias) => deleteQl(transferClientsType(alias), { _id: transferData._id }));
+        addToMutationList((alias) => deleteQl(transferClientsType(alias), { _id: { _eq: transferData._id } }));
 
         await graph.mutation(
           ... mutationList
