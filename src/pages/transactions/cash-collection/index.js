@@ -56,6 +56,23 @@ const ModernBranchCashCollections = () => {
   const [cohData, setCohData] = useState();
   const [cohAmount, setCohAmount] = useState(0);
 
+  const fetchBranchApprovalStatus = async (branchIds, date) => {
+    try {
+      const response = await fetchWrapper.post(getApiBaseUrl() + 'branches/get-approval-status', {
+        branchIds: branchIds,
+        dateFor: date
+      });
+      
+      if (response.success) {
+        return response.data; // Returns array of { branchId, status, userName }
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching branch approval status:', error);
+      return [];
+    }
+  };
+
   const getCurrentBranch = async () => {
     console.log('Fetching current branch data for branch ID:', currentUser);
     if (currentUser.role.rep >= 3) {
@@ -133,18 +150,30 @@ const ModernBranchCashCollections = () => {
     if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
       setLoading(true);
 
+      // Determine if we're operating on a branch or loan officer
+      const isBranchLevel = currentFilter === 'branch';
+      
       let data = { 
-        loId: row._id, 
         mode: 'open', 
         currentDate: currentDate, 
         transactionType: row.transactionType 
       };
 
+      // Add the appropriate ID based on the level
+      if (isBranchLevel) {
+        data.branchId = row._id;
+        data.userId = currentUser._id;
+        data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
+      } else {
+        data.loId = row._id;
+      }
+
       try {
         const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
         
         if (response.success) {
-          toast.success(`${row.name} groups transactions are now open!`);
+          const entityType = isBranchLevel ? 'branch' : 'loan officer';
+          toast.success(`${row.name} ${entityType} transactions are now open!`);
           // Refresh the data instead of reloading the page
           await fetchCashCollectionsData(dateFilter);
         } else if (response.error && response.message) {
@@ -161,7 +190,8 @@ const ModernBranchCashCollections = () => {
     } else if (row.hasOwnProperty("allNew")) {
       toast.error("All transactions are current releases no need to change the group's status.");
     } else {
-      toast.error('No transaction detected for this Loan Officer!');
+      const entityType = currentFilter === 'branch' ? 'Branch' : 'Loan Officer';
+      toast.error(`No transaction detected for this ${entityType}!`);
     }
   };
 
@@ -169,19 +199,31 @@ const ModernBranchCashCollections = () => {
     if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
       setLoading(true);
 
+      // Determine if we're operating on a branch or loan officer
+      const isBranchLevel = currentFilter === 'branch';
+
       let data = { 
-        loId: row._id, 
         mode: 'close', 
         currentDate: currentDate, 
         currentTime: currentTime, 
         transactionType: row.transactionType 
       };
 
+      // Add the appropriate ID based on the level
+      if (isBranchLevel) {
+        data.branchId = row._id;
+        data.userId = currentUser._id;
+        data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
+      } else {
+        data.loId = row._id;
+      }
+
       try {
         const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
         
         if (response.success) {
-          toast.success(`Selected loan officer groups are now closed!`);
+          const entityType = isBranchLevel ? 'branch' : 'loan officer';
+          toast.success(`Selected ${entityType} groups are now closed!`);
           // Refresh the data instead of reloading the page
           await fetchCashCollectionsData(dateFilter);
         } else if (response.error && response.message) {
@@ -198,7 +240,8 @@ const ModernBranchCashCollections = () => {
     } else if (row.hasOwnProperty("allNew")) {
       toast.error("All transactions are current releases no need to change the group's status.");
     } else {
-      toast.error('No transaction detected for this Loan Officer!');
+      const entityType = currentFilter === 'branch' ? 'Branch' : 'Loan Officer';
+      toast.error(`No transaction detected for this ${entityType}!`);
     }
   };
 
@@ -674,6 +717,21 @@ const ModernBranchCashCollections = () => {
           
           return transformedItem;
         });
+
+        // If viewing branches, fetch approval status
+        if (currentFilter === 'branch' && processedData.length > 0) {
+          const branchIds = processedData.map(item => item._id).filter(id => id);
+          const approvalStatus = await fetchBranchApprovalStatus(branchIds, formattedDate);
+          
+          // Merge approval status into processed data
+          processedData.forEach(item => {
+            const approval = approvalStatus.find(a => a.branchId === item._id);
+            if (approval) {
+              item.approvalStatus = approval.status; // 'open' or 'closed'
+              item.approvedBy = approval.userName;
+            }
+          });
+        }
         
         // console.log('Processed data length:', processedData.length);
         // console.log('Current filter:', filter);
@@ -1577,20 +1635,29 @@ const ModernBranchCashCollections = () => {
     { key: 'actions', label: 'Actions', width: 'w-24' }, // ADDED: Actions column
   ], [currentFilter]);
 
-  // UPDATED: Filter visible columns - only show transactionType and actions when filter is 'lo'
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => {
       // Show transactionType column ONLY when currentFilter is 'lo'
       if (col.key === 'transactionType') {
         return currentFilter === 'lo' && visibleColumns[col.key];
       }
-      // Show actions column ONLY when currentFilter is 'lo' AND user has rep === 3
+      
+      // Show actions column when:
+      // 1. currentFilter is 'lo' AND user has rep === 3 (Branch Manager viewing LOs)
+      // 2. currentFilter is 'branch' AND user is area_admin or regional_manager
       if (col.key === 'actions') {
-        return currentFilter === 'lo' && currentUser.role.rep === 3 && visibleColumns[col.key];
+        const isLoLevel = currentFilter === 'lo' && currentUser.role.rep === 3;
+        const isBranchLevel = currentFilter === 'branch' && 
+          currentUser.role.rep === 2 && 
+          (currentUser.role.shortCode === 'area_admin' || 
+          currentUser.role.shortCode === 'regional_manager');
+        
+        return (isLoLevel || isBranchLevel) && visibleColumns[col.key];
       }
+      
       return visibleColumns[col.key];
     });
-  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep]);
+  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep, currentUser.role.shortCode]);
 
   return (
     <Layout header={false} noPad={true}>
@@ -1683,7 +1750,7 @@ const ModernBranchCashCollections = () => {
                         </select>
                       </div>
                     )}
-                    {((currentUser.role && currentUser.role.rep == 3 || currentLevel == "lo") && (numberOfLo > 10 || selectedLoGroup !== 'all')) && (
+                    {((currentUser.role && currentUser.role.rep == 3 && currentLevel == "lo") && (numberOfLo > 10 || selectedLoGroup !== 'all')) && (
                       <div className="relative">
                         <select
                           value={selectedLoGroup}
@@ -1754,32 +1821,43 @@ const ModernBranchCashCollections = () => {
 
             {showColumnSelector && (
                 <div className="absolute right-4 mt-16 bg-white shadow-lg border border-gray-200 rounded-md z-10 p-4 max-h-96 overflow-y-auto">
-                <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
-                <div className="grid grid-cols-2 gap-2">
-                    {columnDefs.map(col => {
-                      if (col.key === 'transactionType' && currentFilter !== 'lo') {
-                        return null;
-                      }
-                      if (col.key === 'actions' && (currentFilter !== 'lo' || currentUser.role.rep !== 3)) {
-                        return null;
-                      }
-                      
-                      return (
-                        <div key={col.key} className="flex items-center">
+                  <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                      {columnDefs.map(col => {
+                        // Hide transactionType column option when not in LO filter
+                        if (col.key === 'transactionType' && currentFilter !== 'lo') {
+                          return null;
+                        }
+                        
+                        // Hide actions column option based on user permissions
+                        if (col.key === 'actions') {
+                          const isLoLevel = currentFilter === 'lo' && currentUser.role.rep === 3;
+                          const isBranchLevel = currentFilter === 'branch' && 
+                            currentUser.role.rep === 2 && 
+                            (currentUser.role.shortCode === 'area_admin' || 
+                            currentUser.role.shortCode === 'regional_manager');
+                          
+                          if (!isLoLevel && !isBranchLevel) {
+                            return null;
+                          }
+                        }
+                        
+                        return (
+                          <div key={col.key} className="flex items-center">
                             <input
-                            type="checkbox"
-                            id={`col-${col.key}`}
-                            checked={visibleColumns[col.key]}
-                            onChange={() => toggleColumnVisibility(col.key)}
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              type="checkbox"
+                              id={`col-${col.key}`}
+                              checked={visibleColumns[col.key]}
+                              onChange={() => toggleColumnVisibility(col.key)}
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                             />
                             <label htmlFor={`col-${col.key}`} className="ml-2 text-sm text-gray-700">
-                            {col.label}
+                              {col.label}
                             </label>
-                        </div>
-                      );
-                    })}
-                </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
             )}
 
@@ -1837,17 +1915,18 @@ const ModernBranchCashCollections = () => {
                                     <tr 
                                         key={row._id || index} 
                                         onClick={(e) => {
-                                            if (e.target.closest('button')) {
-                                                return;
-                                            }
-                                            handleRowClick(row);
+                                          if (e.target.closest('button')) {
+                                            return;
+                                          }
+                                          handleRowClick(row);
                                         }}
                                         className={`
                                           ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
                                           ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
+                                          ${row.approvalStatus === 'closed' ? 'bg-red-50' : ''} // NEW: Highlight locked branches
                                           hover:bg-gray-50 cursor-pointer
                                         `.trim()}
-                                    >
+                                      >
                                         {visibleColumnDefs.map(column => (
                                         <td 
                                           key={`${row._id}-${column.key}`} 
@@ -1868,8 +1947,11 @@ const ModernBranchCashCollections = () => {
                                           } : {}}
                                         >
                                             {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900 break-words leading-tight">
+                                            <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
                                               {row[column.key]}
+                                              {row.approvalStatus === 'closed' && (
+                                                <Lock size={14} className="ml-2 text-red-600" title={`Locked by ${row.approvedBy}`} />
+                                              )}
                                             </div>
                                             ) : column.key === 'actions' ? (
                                               <div className="flex space-x-2">
