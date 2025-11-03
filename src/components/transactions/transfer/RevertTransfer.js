@@ -11,6 +11,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { formatPricePhp } from "@/lib/utils";
 import { getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/date-utils";
 import moment from 'moment'
+import RevertTransferFilters from "@/components/transactions/transfer/RevertTransferFilters";
 
 const RevertTransferPage = () => {
     const holidayList = useSelector(state => state.holidays.list);
@@ -20,6 +21,7 @@ const RevertTransferPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const [list, setList] = useState();
+    const [listData, setListData] = useState([]); // Added for filtered data
     const [selectedTransfer, setSelectedTransfer] = useState();
 
     const [showWarningDialog, setShowWarningDialog] = useState(false);
@@ -43,6 +45,8 @@ const RevertTransferPage = () => {
 
                     temp.lastName = client?.lastName;
                     temp.firstName = client?.firstName;
+                    temp.fullName = `${client?.firstName || ''} ${client?.lastName || ''}`.trim(); // Added fullName
+                    temp.profile = client?.profile || ''; // Added profile for AvatarCell
                     temp.status = client?.status;
 
                     if (loan) {
@@ -83,6 +87,8 @@ const RevertTransferPage = () => {
 
                     temp.lastName = client?.lastName;
                     temp.firstName = client?.firstName;
+                    temp.fullName = `${client?.firstName || ''} ${client?.lastName || ''}`.trim(); // Added fullName
+                    temp.profile = client?.profile || ''; // Added profile for AvatarCell
                     temp.status = client?.status;
 
                     if (loan) {
@@ -114,16 +120,13 @@ const RevertTransferPage = () => {
         }
     }
 
+    // Updated columns - changed Last Name to Name with fullName accessor
     const [columns, setColumns] = useState([
         {
-            Header: "Last Name",
-            accessor: 'lastName',
+            Header: "Name",
+            accessor: 'fullName',
             Cell: AvatarCell,
             imgAccessor: "profile",
-        },
-        {
-            Header: "First Name",
-            accessor: 'firstName'
         },
         {
             Header: "Client Status",
@@ -202,15 +205,37 @@ const RevertTransferPage = () => {
         };
     }, []);
 
+    // Sync listData with list whenever list changes
+    useEffect(() => {
+        if (list) {
+            setListData(list);
+        }
+    }, [list]);
+
     return (
         <React.Fragment>
             <div className="pb-4">
                 {loading ?
                     (
-                        // <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        // </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} />}
+                        <Spinner />
+                    ) : (
+                        <div className="flex flex-col">
+                            {/* Added custom filter component */}
+                            <RevertTransferFilters
+                                revertTransferList={list}
+                                setRevertTransferListData={setListData}
+                            />
+                            
+                            {/* Updated to use listData instead of list */}
+                            <TableComponent 
+                                columns={columns} 
+                                data={listData} 
+                                hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} 
+                                rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} 
+                                showFilters={false} 
+                            />
+                        </div>
+                    )}
             </div>
             <Dialog show={showWarningDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

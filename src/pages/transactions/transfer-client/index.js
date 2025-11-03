@@ -20,6 +20,7 @@ import RevertTransferPage from "@/components/transactions/transfer/RevertTransfe
 import { getApiBaseUrl } from "@/lib/constants";
 import { setTransferList } from "@/redux/actions/transferActions";
 import moment from 'moment'
+import TransferFilters from "@/components/transactions/transfer/TransferFilters";
 
 const TransferClientPage = () => {
     const holidayList = useSelector(state => state.holidays.list);
@@ -33,6 +34,9 @@ const TransferClientPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const transferList = useSelector(state => state.transfer.list);
+    
+    // State for filtered data
+    const [transferListData, setTransferListData] = useState([]);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -51,6 +55,7 @@ const TransferClientPage = () => {
         setShowAddDrawer(true);
     }
 
+    // UPDATED: Removed SelectColumnFilter from columns
     const [columns, setColumns] = useState([
         {
             Header: "Name",
@@ -89,15 +94,15 @@ const TransferClientPage = () => {
         },
         {
             Header: "Source Branch",
-            accessor: 'sourceBranchName'
+            accessor: 'sourceBranchName',
         },
         {
             Header: "Source LO",
-            accessor: 'sourceUserName'
+            accessor: 'sourceUserName',
         },
         {
             Header: "Source Group",
-            accessor: 'sourceGroupName'
+            accessor: 'sourceGroupName',
         },
         {
             Header: "Target Slot No",
@@ -105,24 +110,24 @@ const TransferClientPage = () => {
         },
         {
             Header: "Target Branch",
-            accessor: 'targetBranchName'
+            accessor: 'targetBranchName',
         },
         {
             Header: "Target LO",
-            accessor: 'targetUserName'
+            accessor: 'targetUserName',
         },
         {
             Header: "Target Group",
-            accessor: 'targetGroupName'
+            accessor: 'targetGroupName',
         },
         {
             Header: "Transfer Status",
             accessor: 'transferStatus',
-            Cell: StatusPill
+            Cell: StatusPill,
         },
         {
             Header: "Error Message",
-            accessor: 'errorMsg'
+            accessor: 'errorMsg',
         },
     ]);
 
@@ -551,6 +556,13 @@ const TransferClientPage = () => {
         })
     }, [currentDate, holidayList.length]); // FIXED: Use holidayList.length instead of the whole array
 
+    // UPDATED: Sync transferListData with transferList
+    useEffect(() => {
+        if (transferList) {
+            setTransferListData(transferList);
+        }
+    }, [transferList]);
+
     useEffect(() => {
         if (currentUser.role.rep < 4) {
             const holidays = holidayList.map(holiday => holiday.date);
@@ -621,7 +633,7 @@ const TransferClientPage = () => {
                             <TabPanel hidden={selectedTab !== "transfer-transaction"}>
                                 {/* FIXED: Show sorting info only when there are pending transfers */}
                                 {transferList && transferList.some(t => t.status === 'pending') && (
-                                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 mx-4">
+                                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 mx-4 mt-4">
                                         <div className="flex">
                                             <div className="flex-shrink-0">
                                                 <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
@@ -636,7 +648,23 @@ const TransferClientPage = () => {
                                         </div>
                                     </div>
                                 )}
-                                <TableComponent columns={columns} data={transferList} pageSize={20} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                {/* UPDATED: Added custom TransferFilters component */}
+                                <TransferFilters 
+                                    transferList={transferList}
+                                    setTransferListData={setTransferListData}
+                                />
+                                {/* UPDATED: Changed data to transferListData and showFilters to false */}
+                                <TableComponent 
+                                    columns={columns} 
+                                    data={transferListData} 
+                                    pageSize={20} 
+                                    hasActionButtons={false} 
+                                    dropDownActions={dropDownActions} 
+                                    dropDownActionOrigin="transfer" 
+                                    showFilters={false} 
+                                    multiSelect={currentUser.role.rep <= 3 ? true : false} 
+                                    multiSelectActionFn={handleMultiSelect} 
+                                />
                             </TabPanel>
                             {currentUser.role.rep < 3 && (
                                 <TabPanel className="px-4" hidden={selectedTab !== "history-revert-transfer"}>
