@@ -443,8 +443,9 @@ export default function DenominationPage() {
                 let totalAfternoonRemittance = 0;
                 if (effectiveFilter !== 'group') {
                     const matchingRecords = denominationData.filter(d => {
-                        return d.lo_id === item.entityId;
+                        return d.lo_id === item.entityId || d.branch_id === item.entityId
                     });
+
                     matchingRecords.forEach(record => {
                         totalMorningRemittance += parseFloat(record.morning_remittance) || 0;
                         totalAfternoonRemittance += parseFloat(record.afternoon_remittance) || 0;
