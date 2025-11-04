@@ -13,175 +13,158 @@ const BRANCH_APPROVAL_TYPE = createGraphType('branchApprovals', `_id`)('approval
 const graph = new GraphProvider();
 
 export default apiHandler({
-    post: processTransactionStatus,
+    post: processGroupTransactionStatus,
     get: getLOSummary
 });
 
-async function processTransactionStatus(req, res) {
+async function processGroupTransactionStatus(req, res) {
     const { loId, branchId, mode, currentDate, currentTime, transactionType, userId, userName } = req.body;
 
-    // Determine if we're operating on a branch or loan officer
-    const isBranchLevel = !!branchId;
+    // Determine if this is a branch-level or LO-level operation
+    const isBranchLevel = !!branchId && !loId;
 
-    console.log('Processing transaction status:', {
-        loId,
-        branchId,
-        mode,
-        currentDate,
-        isBranchLevel
-    });
-
-    if (loId || branchId) {
-        const dayName = moment(currentDate).format('dddd').toLowerCase();
-        const entityId = isBranchLevel ? branchId : loId;
-        const entityField = isBranchLevel ? 'branchId' : 'loId';
-        
-        // Try to get validation data, but continue even if function doesn't exist
-        let cashCollectionCounts;
-        let validationAvailable = true;
-        
-        try {
-            cashCollectionCounts = await checkTransactions(
-                entityId, 
-                currentDate, 
-                dayName, 
-                transactionType, 
-                entityField
-            );
-            console.log('Validation data retrieved successfully');
-        } catch (error) {
-            console.warn('Validation function not available, skipping validation checks:', error.message);
-            validationAvailable = false;
-            // Continue without validation
-        }
-
-        // Only run validation checks if function is available
-        if (validationAvailable && cashCollectionCounts) {
-            const noCollections = cashCollectionCounts.filter(cc => { 
-                if (cc.cashCollections.length === 0) {
-                    return cc;
-                }
-            });
-            const hasDrafts = cashCollectionCounts.filter(cc => { 
-                if ( cc.cashCollections.length > 0 && cc.cashCollections[0].hasDrafts > 0 ) {
-                    return cc;
-                }
-            });
-
-            const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
-            const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
-            const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
-            const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0);
-            const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
-
-            if (mode === 'close') {
-                if (noCollections.length > 0) {
-                    const entityType = isBranchLevel ? "branch" : "selected Loan Officer";
-                    response = { error: true, message: `Some groups have no current transactions for the ${entityType}.` };
-                } else if (hasDrafts.length > 0) {
-                    const entityType = isBranchLevel ? "branch" : "selected Loan Officer";
-                    response = { error: true, message: `Some groups have draft transactions for the ${entityType}.` };
-                } else if (hasPendingMcbuWithdrawals.length > 0) {
-                    const entityType = isBranchLevel ? "branch" : "selected Loan Officer";
-                    response = { error: true, message: `Some groups have pending MCBU withdrawals for the ${entityType}. Please reject or delete them.` };
-                } else if (hasPendingFundTransfers.length > 0) {
-                    response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
-                } else if (noDenominationTransactions.length > 0) {
-                    const entityType = isBranchLevel ? "Branch" : "LO";
-                    response = { error: true, message: `${entityType} has no Denomination entries. Please check and add them.` };
-                } else if (hasPendingDenominations.length > 0) {
-                    const entityType = isBranchLevel ? "Branch" : "LO";
-                    response = { error: true, message: `${entityType} has pending Denomination entries. Please check and approve or contact Cashier.` };
-                } else if (hasPendingLoans.length > 0) {
-                    const entityType = isBranchLevel ? "Branch" : "LO";
-                    response = { error: true, message: `${entityType} has pending Loan entries. Please check and approve or contact Branch Manager.` };
-                }
-            }
-        }
-
-        // If validation passed or was skipped, proceed with the operation
-        if (!response.error) {
-            let result;
-
-            if (isBranchLevel) {
-                // For branch-level operations, use the branchApprovals table
-                result = await handleBranchApproval(branchId, currentDate, mode, userId, userName);
-                response = result;
-            } else {
-                // For LO-level operations, update groupStatus and closingTime (existing behavior)
-                const whereClause = { loId: { _eq: loId }, dateAdded: { _eq: currentDate } };
-
-                console.log('Updating cashCollections with whereClause:', whereClause);
-                console.log('Mode:', mode, 'validationAvailable:', validationAvailable);
-
-                try {
-                    // Check if we have closing time info from validation
-                    const hasClosingTime = validationAvailable && cashCollectionCounts 
-                        ? cashCollectionCounts.filter(cc => 
-                            cc.cashCollections.length > 0 && 
-                            cc.cashCollections[0].hasClosingTime && 
-                            cc.cashCollections[0].hasClosingTime.length > 0
-                          )
-                        : [];
-
-                    if (mode === 'close' && hasClosingTime.length === 0) {
-                        result = await graph.mutation(
-                            updateQl(CASH_COLLECTION_TYPE, {
-                                set: {
-                                    groupStatus: 'closed',
-                                    closingTime: currentTime
-                                },
-                                where: whereClause
-                            })
-                        );
-                    } else {
-                        result = await graph.mutation(
-                            updateQl(CASH_COLLECTION_TYPE, {
-                                set: {
-                                    groupStatus: mode === 'close' ? 'closed' : 'pending',
-                                    closingTime: mode === 'close' ? currentTime : null,
-                                },
-                                where: whereClause
-                            })
-                        );
-                    }
-
-                    console.log('Mutation result:', JSON.stringify(result, null, 2));
-
-                    // Check if result and result.data exist
-                    if (!result) {
-                        console.error('Result is null or undefined');
-                        response = { error: true, message: "Mutation returned no result." };
-                    } else if (!result.data) {
-                        console.error('Result.data is undefined:', result);
-                        response = { error: true, message: "Mutation returned unexpected structure." };
-                    } else if (!result.data.collections) {
-                        console.error('Result.data.collections is undefined:', result.data);
-                        response = { error: true, message: "Mutation did not return collections data." };
-                    } else if (result.data.collections.affected_rows === 0) {
-                        console.warn('No rows affected by mutation');
-                        response = { error: true, message: "No transactions found for this Loan Officer." };
-                    } else {
-                        console.log('Mutation successful, affected rows:', result.data.collections.affected_rows);
-                        response = { success: true };
-                    }
-                } catch (mutationError) {
-                    console.error('Error executing mutation:', mutationError);
-                    response = { 
-                        error: true, 
-                        message: "Error updating loan officer status: " + mutationError.message 
-                    };
-                }
-            }
-        }
-
+    if (isBranchLevel) {
+        // BRANCH-LEVEL APPROVAL
+        await processBranchApproval(branchId, currentDate, mode, userId, userName);
+    } else if (loId) {
+        // LO-LEVEL APPROVAL (existing logic)
+        await processLOApproval(loId, currentDate, currentTime, mode, transactionType);
     } else {
-        response = { error: true, message: "Loan Officer Id or Branch Id not found." };
+        response = { error: true, message: "Either Branch ID or Loan Officer ID is required." };
+        statusCode = 400;
     }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+async function processBranchApproval(branchId, dateFor, mode, userId, userName) {
+    try {
+        // Before closing, verify all LO transactions for this branch are closed
+        if (mode === 'close') {
+            const unclosedTransactions = await checkBranchTransactionStatus(branchId, dateFor);
+            
+            if (unclosedTransactions.length > 0) {
+                response = { 
+                    error: true, 
+                    message: "Cannot approve branch. Some Loan Officers still have open or pending transactions. All LO transactions must be closed first." 
+                };
+                return;
+            }
+        }
+
+        // Handle branch approval
+        const approvalResult = await handleBranchApproval(branchId, dateFor, mode, userId, userName);
+        
+        if (approvalResult.success) {
+            const actionText = mode === 'close' ? 'locked and approved' : 'unlocked';
+            response = { 
+                success: true, 
+                message: `Branch has been ${actionText} successfully.` 
+            };
+            statusCode = 200;
+        } else {
+            response = approvalResult;
+            statusCode = 400;
+        }
+    } catch (error) {
+        console.error('Error processing branch approval:', error);
+        response = { error: true, message: "Error processing branch approval." };
+        statusCode = 500;
+    }
+}
+
+async function processLOApproval(loId, currentDate, currentTime, mode, transactionType) {
+    const dayName = moment(currentDate).format('dddd').toLowerCase();
+    const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
+
+    if (cashCollectionCounts) {
+        const noCollections = cashCollectionCounts.filter(cc => { 
+            if (cc.cashCollections.length === 0) {
+                return cc;
+            }
+        });
+        const hasDrafts = cashCollectionCounts.filter(cc => { 
+            if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasDrafts > 0) {
+                return cc;
+            }
+        });
+
+        const hasClosingTime = cashCollectionCounts.filter(cc => { 
+            if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasClosingTime.length > 0) {
+                return cc;
+            }
+        });
+
+        const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
+        const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
+        const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
+        const noDenominationTransactions = [] // cashCollectionCounts.filter(cc => cc.denom === 0);
+        const hasPendingLoans = [] // cashCollectionCounts.filter(cc => cc.pending_count > 0);
+
+        if (mode === 'close') {
+            if (noCollections.length > 0) {
+                response = { error: true, message: "Some groups have no current transactions for the selected Loan Officer." };
+                return;
+            } else if (hasDrafts.length > 0) {
+                response = { error: true, message: "Some groups have draft transactions for the selected Loan Officer." };
+                return;
+            } else if (hasPendingMcbuWithdrawals.length > 0) {
+                response = { error: true, message: "Some groups have pending MCBU withdrawals for the selected Loan Officer. Please reject or delete them." };
+                return;
+            } else if (hasPendingFundTransfers.length > 0) {
+                response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
+                return;
+            } else if (noDenominationTransactions.length > 0) {
+                response = { error: true, message: "LO has no Denomination entries. Please check and add them." };
+                return;
+            } else if (hasPendingDenominations.length > 0) {
+                response = { error: true, message: "LO has pending Denomination entries. Please check and approve or contact Cashier." };
+                return;
+            } else if (hasPendingLoans.length > 0) {
+                response = { error: true, message: "LO has pending Loan entries. Please check and approve or contact Branch Manager." };
+                return;
+            }
+        }
+
+        let result;
+        if (mode === 'close' && hasClosingTime.length === 0) {
+            result = await graph.mutation(
+                updateQl(CASH_COLLECTION_TYPE, {
+                    set: {
+                        groupStatus: 'closed',
+                        closingTime: currentTime
+                    },
+                    where: {
+                        loId: { _eq: loId },
+                        dateAdded: { _eq: currentDate }
+                    }
+                })
+            );
+        } else {
+            result = await graph.mutation(
+                updateQl(CASH_COLLECTION_TYPE, {
+                    set: {
+                        groupStatus: mode === 'close' ? 'closed' : 'pending',
+                        closingTime: mode === 'close' ? currentTime : null,
+                    },
+                    where: {
+                        loId: { _eq: loId },
+                        dateAdded: { _eq: currentDate }
+                    }
+                })
+            );
+        }
+
+        if (result.data.collections.affected_rows === 0) {
+            response = { error: true, message: "No transactions found for this Loan Officer." };
+        } else {
+            response = { success: true };
+        }
+    } else {
+        response = { error: true, message: "Error checking Loan Officer transactions." };
+    }
 }
 
 async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
@@ -211,7 +194,8 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                             set: {
                                 status: 'closed',
                                 userId: userId,
-                                userName: userName
+                                userName: userName,
+                                dateModified: new Date().toISOString()
                             },
                             where: {
                                 _id: { _eq: approval._id }
@@ -236,7 +220,8 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                                 userId: userId,
                                 userName: userName,
                                 status: 'closed',
-                                dateFor: dateFor
+                                dateFor: dateFor,
+                                dateAdded: new Date().toISOString()
                             }]
                         }
                     )
@@ -259,7 +244,8 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                             set: {
                                 status: 'open',
                                 userId: userId,
-                                userName: userName
+                                userName: userName,
+                                dateModified: new Date().toISOString()
                             },
                             where: {
                                 _id: { _eq: approval._id }
@@ -284,7 +270,8 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                                 userId: userId,
                                 userName: userName,
                                 status: 'open',
-                                dateFor: dateFor
+                                dateFor: dateFor,
+                                dateAdded: new Date().toISOString()
                             }]
                         }
                     )
@@ -301,6 +288,58 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
         console.error('Error handling branch approval:', error);
         return { error: true, message: "Error processing branch approval." };
     }
+}
+
+async function checkBranchTransactionStatus(branchId, currentDate) {
+    try {
+        // Get all cash collections for this branch that are NOT closed
+        const unclosedCollections = await graph.query(
+            queryQl(
+                createGraphType('cashCollections', `
+                    _id
+                    loId
+                    groupId
+                    groupStatus
+                `)('cashCollections'),
+                {
+                    where: {
+                        branchId: { _eq: branchId },
+                        dateAdded: { _eq: currentDate },
+                        groupStatus: { _neq: "closed" }
+                    }
+                }
+            )
+        );
+
+        return unclosedCollections.data?.cashCollections || [];
+    } catch (error) {
+        console.error('Error checking branch transaction status:', error);
+        throw error;
+    }
+}
+
+async function checkLoTransactions(loId, currentDate, dayName, transactionType) {
+    const collections = await graph.apollo.query({
+        query: gql`
+            query groups ($where: loan_group_model_bool_exp_bool_exp, $args: get_lo_transaction_summary_arguments!) {
+                collections: get_lo_transaction_summary(args: $args, where: $where) {
+                    _id,
+                    data
+                }
+            }
+        `,
+        variables: {
+            args: {
+                loId,
+                dateAdded: currentDate,
+                dayName: dayName,
+                transactionType: transactionType,
+            }
+        }
+    })
+    .then(res => res.data.collections.map(c => c.data));
+
+    return collections;
 }
 
 async function getLOSummary(req, res) {
@@ -322,77 +361,3 @@ async function getLOSummary(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
-
-const checkTransactions = async (entityId, currentDate, dayName, transactionType, entityField) => {
-    console.log('checkTransactions called with:', {
-        entityId,
-        currentDate,
-        dayName,
-        transactionType,
-        entityField
-    });
-
-    try {
-        const isBranchLevel = entityField === 'branchId';
-        
-        let query, variables;
-        
-        if (isBranchLevel) {
-            // Branch-level query
-            query = gql`
-                query branchTransactions ($args: get_branch_transaction_summary_arguments!) {
-                    collections: get_branch_transaction_summary(args: $args) {
-                        _id,
-                        data
-                    }
-                }
-            `;
-            variables = {
-                args: {
-                    branchId: entityId,
-                    dateAdded: currentDate,
-                    dayName: dayName,
-                    transactionType: transactionType,
-                }
-            };
-        } else {
-            // LO-level query (existing)
-            query = gql`
-                query groups ($where: loan_group_model_bool_exp_bool_exp, $args: get_lo_transaction_summary_arguments!) {
-                    collections: get_lo_transaction_summary(args: $args, where: $where) {
-                        _id,
-                        data
-                    }
-                }
-            `;
-            variables = {
-                args: {
-                    loId: entityId,
-                    dateAdded: currentDate,
-                    dayName: dayName,
-                    transactionType: transactionType,
-                }
-            };
-        }
-
-        console.log(`Using ${isBranchLevel ? 'branch' : 'LO'} level query with entityId:`, entityId);
-
-        const collections = await graph.apollo.query({
-            query,
-            variables
-        })
-        .then(res => {
-            console.log('Transaction summary response:', JSON.stringify(res.data, null, 2));
-            if (!res.data || !res.data.collections) {
-                throw new Error('Function returned no data - function may not exist');
-            }
-            return res.data.collections.map(c => c.data);
-        });
-
-        console.log('Processed collections:', collections);
-        return collections;
-    } catch (error) {
-        console.error('Error in checkTransactions GraphQL query:', error);
-        throw error;
-    }
-};
