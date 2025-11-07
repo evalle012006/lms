@@ -1958,132 +1958,137 @@ const ModernBranchCashCollections = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {sortedData.length > 0 ? (
-                            sortedData.map((row, index) => (
-                              <tr 
-                                key={row._id || index} 
-                                onClick={(e) => {
-                                  if (e.target.closest('button')) {
-                                    return;
-                                  }
-                                  handleRowClick(row);
-                                }}
-                                className={`
-                                  ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
-                                  ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
-                                  ${row.approvalStatus === 'closed' && currentFilter === 'branch' ? 'bg-red-50' : ''}
-                                  hover:bg-gray-50 cursor-pointer
-                                `.trim()}
-                              >
-                                {visibleColumnDefs.map(column => (
-                                  <td 
-                                    key={`${row._id}-${column.key}`} 
-                                    className={`
-                                      px-3 py-4 text-sm 
-                                      ${column.key === 'name' ? 
-                                        `font-medium text-gray-900 border-r-2 border-gray-300 break-words
-                                        ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : 
-                                          (row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : 
-                                          row.approvalStatus === 'closed' && currentFilter === 'branch' ? 'bg-red-50' :
-                                          'bg-white'}` 
-                                        : 'whitespace-nowrap text-gray-500'}
-                                    `}
-                                    style={column.key === 'name' ? {
-                                      boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                      position: 'sticky',
-                                      left: 0,
-                                      zIndex: 10,
-                                    } : {}}
-                                  >
-                                    {column.key === 'name' ? (
-                                      <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
-                                        {row[column.key]}
-                                        {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
-                                          <div className="ml-2 flex items-center" title={`Locked and approved by ${row.approvedBy || 'Admin'}`}>
-                                            <Lock size={14} className="text-red-600" />
-                                          </div>
-                                        )}
-                                        {row.approvalStatus === 'open' && currentFilter === 'branch' && currentUser.role.rep === 2 && (
-                                          <div className="ml-2 flex items-center" title="Branch is unlocked">
-                                            <Unlock size={14} className="text-green-600" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : column.key === 'actions' ? (
-                                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpen(row);
-                                          }}
-                                          className={`p-1 rounded ${
-                                            (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
-                                              ? 'text-gray-400 cursor-not-allowed' 
-                                              : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                                          }`}
-                                          title={currentFilter === 'branch' ? "Unlock Branch" : "Open Transaction"}
-                                          disabled={(currentFilter === 'branch' && row.approvalStatus === 'open') || loading}
-                                        >
-                                          <Unlock size={16} />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleClose(row);
-                                          }}
-                                          className={`p-1 rounded ${
-                                            (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
-                                              ? 'text-gray-400 cursor-not-allowed'
-                                              : 'text-red-600 hover:text-red-900 hover:bg-red-50'
-                                          }`}
-                                          title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
-                                          disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
-                                        >
-                                          <Lock size={16} />
-                                        </button>
-                                      </div>
-                                    ) : column.key === 'transactionType' ? (
-                                      <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                        {row[column.key] || '-'}
-                                      </div>
-                                    ) : column.key === 'excess' && column.hasComparison ? (
-                                      formatWithComparison(row.excessCurrent, row.excessPrevious, row.groupStatus)
-                                    ) : column.key === 'mcbu' && column.hasComparison ? (
-                                      formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn, row.groupStatus)
-                                    ) : column.key === 'csf' && column.hasComparison ? (
-                                      formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt, row.groupStatus)
-                                    ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
-                                      formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious, row.groupStatus)
-                                    ) : column.key === 'activeClients' && column.hasComparison ? (
-                                      formatWithComparison(row.activeClients, row.activeClientsPrevious, row.groupStatus)
-                                    ) : column.key === 'activeBorrowers' && column.hasComparison ? (
-                                      formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious, row.groupStatus)
-                                    ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                      formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
-                                    ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                      formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
-                                    ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
-                                      formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
-                                    ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
-                                      formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious, row.groupStatus)
-                                    ) : column.key === 'mcbuReturn' && column.hasComparison ? (
-                                      formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious, row.groupStatus)
-                                    ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
-                                      formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious, row.groupStatus)
-                                    ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
-                                      formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious, row.groupStatus)
-                                    ) : column.key === 'mispay' && column.hasComparison ? (
-                                      formatWithComparison(row.mispayCurrent, row.mispayPrevious, row.groupStatus)
-                                    ) : column.key === 'noPastDue' && column.hasComparison ? (
-                                      formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious, row.groupStatus)
-                                    ) : row[column.key] === '-' ? (
-                                      <span className="text-gray-400">-</span>
-                                    ) : (
-                                      row[column.key] ?? '-'
-                                    )}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))
+                            sortedData.map((row, index) => {
+                              let bgRowColor = '';
+                              if (currentUser.role.rep >= 3 && currentFilter != 'group' && (row.groupStatus == 'pending' || row.groupStatus == null)) {
+                                bgRowColor = 'bg-blue-100';
+                              } else if (currentUser.role.rep < 3 && currentFilter != 'group' && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
+                                bgRowColor = 'bg-blue-100';
+                              } else if (row.isDraft && currentFilter === 'group') {
+                                bgRowColor = 'bg-orange-100';
+                              }
+
+                              return (
+                                <tr 
+                                  key={row._id || index} 
+                                  onClick={(e) => {
+                                    if (e.target.closest('button')) {
+                                      return;
+                                    }
+                                    handleRowClick(row);
+                                  }}
+                                  className={`
+                                    ${bgRowColor}
+                                    hover:bg-gray-50 cursor-pointer
+                                  `.trim()}
+                                >
+                                  {visibleColumnDefs.map(column => (
+                                    <td 
+                                      key={`${row._id}-${column.key}`} 
+                                      className={`
+                                        px-3 py-4 text-sm 
+                                        ${column.key === 'name' ? 
+                                          `font-medium text-gray-900 border-r-2 border-gray-300 break-words
+                                          ${bgRowColor}` 
+                                          : 'whitespace-nowrap text-gray-500'}
+                                      `}
+                                      style={column.key === 'name' ? {
+                                        boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                        position: 'sticky',
+                                        left: 0,
+                                        zIndex: 10,
+                                      } : {}}
+                                    >
+                                      {column.key === 'name' ? (
+                                        <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
+                                          {row[column.key]}
+                                          {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
+                                            <div className="ml-2 flex items-center" title={`Locked and approved by ${row.approvedBy || 'Admin'}`}>
+                                              <Lock size={14} className="text-red-600" />
+                                            </div>
+                                          )}
+                                          {row.approvalStatus === 'open' && currentFilter === 'branch' && currentUser.role.rep === 2 && (
+                                            <div className="ml-2 flex items-center" title="Branch is unlocked">
+                                              <Unlock size={14} className="text-green-600" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : column.key === 'actions' ? (
+                                        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpen(row);
+                                            }}
+                                            className={`p-1 rounded ${
+                                              (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
+                                                ? 'text-gray-400 cursor-not-allowed' 
+                                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                            }`}
+                                            title={currentFilter === 'branch' ? "Unlock Branch" : "Open Transaction"}
+                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'open') || loading}
+                                          >
+                                            <Unlock size={16} />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleClose(row);
+                                            }}
+                                            className={`p-1 rounded ${
+                                              (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
+                                                ? 'text-gray-400 cursor-not-allowed'
+                                                : 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                            }`}
+                                            title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
+                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
+                                          >
+                                            <Lock size={16} />
+                                          </button>
+                                        </div>
+                                      ) : column.key === 'transactionType' ? (
+                                        <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                          {row[column.key] || '-'}
+                                        </div>
+                                      ) : column.key === 'excess' && column.hasComparison ? (
+                                        formatWithComparison(row.excessCurrent, row.excessPrevious, row.groupStatus)
+                                      ) : column.key === 'mcbu' && column.hasComparison ? (
+                                        formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn, row.groupStatus)
+                                      ) : column.key === 'csf' && column.hasComparison ? (
+                                        formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt, row.groupStatus)
+                                      ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
+                                        formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious, row.groupStatus)
+                                      ) : column.key === 'activeClients' && column.hasComparison ? (
+                                        formatWithComparison(row.activeClients, row.activeClientsPrevious, row.groupStatus)
+                                      ) : column.key === 'activeBorrowers' && column.hasComparison ? (
+                                        formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious, row.groupStatus)
+                                      ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
+                                        formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
+                                      ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
+                                        formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
+                                      ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
+                                        formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
+                                      ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
+                                        formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious, row.groupStatus)
+                                      ) : column.key === 'mcbuReturn' && column.hasComparison ? (
+                                        formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious, row.groupStatus)
+                                      ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
+                                        formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious, row.groupStatus)
+                                      ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
+                                        formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious, row.groupStatus)
+                                      ) : column.key === 'mispay' && column.hasComparison ? (
+                                        formatWithComparison(row.mispayCurrent, row.mispayPrevious, row.groupStatus)
+                                      ) : column.key === 'noPastDue' && column.hasComparison ? (
+                                        formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious, row.groupStatus)
+                                      ) : row[column.key] === '-' ? (
+                                        <span className="text-gray-400">-</span>
+                                      ) : (
+                                        row[column.key] ?? '-'
+                                      )}
+                                    </td>
+                                  ))}
+                                </tr>
+                            )})
                           ) : (
                             <tr>
                               <td colSpan={visibleColumnDefs.length} className="px-3 py-4 text-sm text-gray-500 text-center">
