@@ -523,6 +523,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   inserted_by
   modified_by
   date_added
+  synced
 `;
 
 export const BRANCH_APPROVAL_FIELDS = `

@@ -1746,6 +1746,8 @@ const CashCollectionDetailsPage = () => {
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
 
+                const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
+
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
                 // });
@@ -1761,7 +1763,8 @@ const CashCollectionDetailsPage = () => {
                                 modifiedBy: currentUser._id,
                                 collection: JSON.stringify(draftArr),
                                 currentDate: prevDraftDate,
-                                currentTime: currentTime
+                                currentTime: currentTime,
+                                overallTotalNetCollection: overallTotalNetCollection
                             };
                         } else {
                             cashCollection = {
@@ -1769,7 +1772,8 @@ const CashCollectionDetailsPage = () => {
                                 modifiedBy: currentUser._id,
                                 collection: JSON.stringify(dataArr),
                                 currentDate: currentDate,
-                                currentTime: currentTime
+                                currentTime: currentTime,
+                                overallTotalNetCollection: overallTotalNetCollection
                             };
                         }
                     } else {
@@ -1778,7 +1782,8 @@ const CashCollectionDetailsPage = () => {
                             collection: JSON.stringify(dataArr),
                             mode: 'daily',
                             currentDate: currentDate,
-                            currentTime: currentTime
+                            currentTime: currentTime,
+                            overallTotalNetCollection: overallTotalNetCollection
                         };
                     }
             

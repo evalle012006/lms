@@ -834,10 +834,30 @@ export default function DenominationPage() {
             );
             
             if (response.success) {
-                toast.success(response.message || `${itemsToSave.length} denomination record(s) submitted successfully`);
-                setMorningRemittanceChanges({});
-                setAfternoonRemittanceChanges({});
-                await fetchInitialData();
+                const results = response.results || {};
+                const success = results.success || [];
+                const reopened = results.reopened || [];
+                const failed = results.failed || [];
+                if (failed.length > 0 && (success.length > 0 || reopened.length > 0)) {
+                    let warningMessage = `Some records failed to save:`;
+                    failed.forEach(failure => {
+                        warningMessage += `\n- ${failure.entityName}: ${failure.error}`;
+                    });
+                    toast.warning(warningMessage, { autoClose: 8000 });
+                } else if (failed.length > 0 && (success.length === 0 || reopened.length === 0)) {
+                    let errorMessage = `All records failed to save:`;
+                    failed.forEach(failure => {
+                        errorMessage += `\n- ${failure.entityName}: ${failure.error}`;
+                    });
+                    toast.error(errorMessage, { autoClose: 8000 });
+                }
+
+                if (success.length > 0 || reopened.length > 0) {
+                    toast.success(response.message || `${itemsToSave.length} denomination record(s) submitted successfully`);
+                    setMorningRemittanceChanges({});
+                    setAfternoonRemittanceChanges({});
+                    await fetchInitialData();
+                }
             } else {
                 if (response.validationError && response.missingRemittances) {
                     toast.error(response.message, { autoClose: 8000 });
@@ -1459,6 +1479,12 @@ export default function DenominationPage() {
                                                                             type="text"
                                                                             inputMode="decimal"
                                                                             value={item.currentMorningRemittance === '' ? '' : item.currentMorningRemittance}
+                                                                            onFocus={(e) => {
+                                                                                // Check if the current value is '0' (or 0) before clearing it
+                                                                                if (e.target.value === '0' || e.target.value === 0) {
+                                                                                    e.target.value = ''; // Clear the actual displayed value
+                                                                                }
+                                                                            }}
                                                                             onChange={(e) => handleMorningRemittanceChange(item.entityId, e.target.value)}
                                                                             onBlur={() => handleMorningRemittanceBlur(item.entityId)}
                                                                             disabled={isMorningRemittanceDisabled(item)}
@@ -1502,6 +1528,12 @@ export default function DenominationPage() {
                                                                             type="text"
                                                                             inputMode="decimal"
                                                                             value={item.currentAfternoonRemittance === '' ? '' : item.currentAfternoonRemittance}
+                                                                            onFocus={(e) => {
+                                                                                // Check if the current value is '0' (or 0) before clearing it
+                                                                                if (e.target.value === '0' || e.target.value === 0) {
+                                                                                    e.target.value = ''; // Clear the actual displayed value
+                                                                                }
+                                                                            }}
                                                                             onChange={(e) => handleAfternoonRemittanceChange(item.entityId, e.target.value)}
                                                                             onBlur={() => handleAfternoonRemittanceBlur(item)}
                                                                             disabled={isAfternoonRemittanceDisabled(item)}

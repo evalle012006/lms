@@ -1,4 +1,4 @@
-import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
+import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, DENOMINATION_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID, safeNumber } from '@/lib/utils';
@@ -12,6 +12,7 @@ const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
 const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
 const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
+const DENOMINATION_TYPE = createGraphType('denomination', `${DENOMINATION_FIELDS}`);
 
 export default apiHandler({
     post: save
@@ -25,6 +26,7 @@ async function save(req, res) {
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
     data.collection = JSON.parse(data.collection);
+    const overallTotalNetCollection = data.overallTotalNetCollection || 0;
 
     const mutationQl = [];
 
@@ -147,6 +149,10 @@ async function save(req, res) {
 
         if (existCC.length > 0) {
             await updateCollection(mutationQl, existCC);
+        }
+
+        if (overallTotalNetCollection > 0) {
+            await updateDenomination(mutationQl, data.collection[0]?.groupId, currentDate, overallTotalNetCollection);
         }
 
         // save all changes in one request
@@ -560,6 +566,39 @@ async function updateGroup(user_id, mutationQl, loan) {
                 }
             })
         );
+    }
+}
+
+async function updateDenomination(mutationQl, groupId, currentDate, overallTotalNetCollection) {
+    let denomination = await graph.query(
+        queryQl(DENOMINATION_TYPE('denomination'), {where: { group_id: { _eq: groupId }, date_added: { _eq: currentDate } }})
+    ).then(res => res.data.denomination);
+
+    if (denomination.length > 0) {
+        denomination = denomination[0];
+        const history = denomination.history ? [...denomination.history] : [];
+
+        if (history.length > 0) {
+            const latestHistory = history[history.length -1];
+            if (latestHistory.total_net_collection !== overallTotalNetCollection) {
+                const denominationId = denomination._id;
+                delete denomination._id;
+
+                denomination.bcc_vs_remittances = overallTotalNetCollection;
+                denomination.synced = false;
+
+                mutationQl.push(
+                    updateQl(DENOMINATION_TYPE('denomination_' + (mutationQl.length + 1)), {
+                        set: {
+                            ... denomination
+                        },
+                        where: {
+                            _id: { _eq: denominationId }
+                        }
+                    })
+                );
+            }
+        }
     }
 }
 

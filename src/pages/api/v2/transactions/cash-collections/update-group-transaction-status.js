@@ -100,8 +100,8 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
         const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
         const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
-        const noDenominationTransactions = [] // cashCollectionCounts.filter(cc => cc.denom === 0);
-        const hasPendingLoans = [] // cashCollectionCounts.filter(cc => cc.pending_count > 0);
+        const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0);
+        const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
         if (mode === 'close') {
             if (noCollections.length > 0) {
@@ -120,7 +120,7 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
                 response = { error: true, message: "LO has no Denomination entries. Please check and add them." };
                 return;
             } else if (hasPendingDenominations.length > 0) {
-                response = { error: true, message: "LO has pending Denomination entries. Please check and approve or contact Cashier." };
+                response = { error: true, message: "LO has pending or not balanced Denomination entries. Please check and approve or contact Cashier." };
                 return;
             } else if (hasPendingLoans.length > 0) {
                 response = { error: true, message: "LO has pending Loan entries. Please check and approve or contact Branch Manager." };

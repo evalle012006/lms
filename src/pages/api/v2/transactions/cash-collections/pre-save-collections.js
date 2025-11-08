@@ -111,42 +111,6 @@ async function save(req, res) {
 
 // Helper function to pre-save collections for a single loan officer
 async function preSaveForLoanOfficer(loId, currentDate) {
-    // First, check if collections already exist for this loId and date
-    // Using aggregate to check existence (more efficient)
-    const existingCollections = await graph.apollo.query({
-        query: gql`
-            query checkExisting($loId: String!, $currentDate: date!) {
-                cashCollections_aggregate(
-                    where: {
-                        loId: { _eq: $loId }
-                        dateAdded: { _eq: $currentDate }
-                        origin: { _eq: "pre-save" }
-                    }
-                ) {
-                    aggregate {
-                        count
-                    }
-                }
-            }
-        `,
-        variables: {
-            loId,
-            currentDate
-        }
-    });
-
-    // If collections already exist, return early to prevent duplicates
-    const existingCount = existingCollections.data.cashCollections_aggregate?.aggregate?.count || 0;
-    if (existingCount > 0) {
-        console.log(`Pre-save collections already exist for loId: ${loId} on date: ${currentDate} (count: ${existingCount})`);
-        return { 
-            success: true, 
-            message: 'Collections already pre-saved for this loan officer and date',
-            skipped: true,
-            existingCount
-        };
-    }
-
     // Fetch loans that need pre-save collections
     const loans = await graph.apollo.query({
         query: gql`
@@ -180,10 +144,51 @@ async function preSaveForLoanOfficer(loId, currentDate) {
         };
     }
 
-    console.log(`Pre-saving ${loans.length} collections for loId: ${loId} on date: ${currentDate}`);
+    // Check which clients already have collections for this date
+    const clientIds = loans.map(loan => loan.clientId);
+    
+    const existingCollections = await graph.apollo.query({
+        query: gql`
+            query checkExisting($clientIds: [String!]!, $currentDate: date!) {
+                cashCollections(
+                    where: {
+                        clientId: { _in: $clientIds }
+                        dateAdded: { _eq: $currentDate }
+                        origin: { _eq: "pre-save" }
+                    }
+                ) {
+                    clientId
+                }
+            }
+        `,
+        variables: {
+            clientIds,
+            currentDate
+        }
+    });
 
-    // Create cash collections from loans
-    const cashCollections = loans.map(loan => ({
+    // Create a Set of existing clientIds for fast lookup
+    const existingClientIds = new Set(
+        existingCollections.data.cashCollections.map(c => c.clientId)
+    );
+
+    // Filter out loans that already have collections
+    const loansToPreSave = loans.filter(loan => !existingClientIds.has(loan.clientId));
+
+    if (loansToPreSave.length === 0) {
+        console.log(`All collections already pre-saved for loId: ${loId} on date: ${currentDate}`);
+        return { 
+            success: true, 
+            message: 'All collections already pre-saved for this date',
+            skipped: true,
+            existingCount: existingClientIds.size
+        };
+    }
+
+    console.log(`Pre-saving ${loansToPreSave.length} collections for loId: ${loId} on date: ${currentDate} (${existingClientIds.size} already exist)`);
+
+    // Create cash collections from loans (only for new clients)
+    const cashCollections = loansToPreSave.map(loan => ({
         _id: generateUUID(),
         loanId: loan._id + '',
         branchId: loan.branchId,
@@ -242,6 +247,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
     return { 
         success: true, 
         message: 'Collections pre-saved successfully',
-        count: cashCollections.length
+        count: cashCollections.length,
+        skippedCount: existingClientIds.size
     };
 }
