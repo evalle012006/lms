@@ -524,3 +524,14 @@ export const TRANSFER_CLIENT_FIELDS = `
   modified_by
   date_added
 `;
+
+export const BRANCH_APPROVAL_FIELDS = `
+  _id
+  branchId
+  userId
+  userName
+  status
+  dateFor
+  dateAdded
+  dateModified
+`;

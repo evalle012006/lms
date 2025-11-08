@@ -9,7 +9,7 @@ import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import Layout from '@/components/Layout';
-import { buildModernBranchCashCollectionsSourceQuery, shouldIncludeViewMode } from '@/lib/utils';
+import { buildModernBranchCashCollectionsSourceQuery, getDefaultViewMode, shouldIncludeViewMode } from '@/lib/utils';
 import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
 
@@ -34,9 +34,9 @@ const ModernBranchCashCollections = () => {
   const [viewMode, setViewMode] = useState(() => {
     // Set default based on user role
     if (currentUser && !shouldIncludeViewMode(currentUser)) {
-      return 'branch'; // default for restricted users
+      return getDefaultViewMode(currentUser); // default for restricted users
     }
-    return router.query.viewMode || 'branch';
+    return router.query.viewMode || getDefaultViewMode(currentUser);
   });
   const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
   const [selectedLoGroup, setSelectedLoGroup] = useState('all');
@@ -55,6 +55,23 @@ const ModernBranchCashCollections = () => {
 
   const [cohData, setCohData] = useState();
   const [cohAmount, setCohAmount] = useState(0);
+
+  const fetchBranchApprovalStatus = async (branchIds, date) => {
+    try {
+      const response = await fetchWrapper.post(getApiBaseUrl() + 'branches/get-approval-status', {
+        branchIds: branchIds,
+        dateFor: date
+      });
+      
+      if (response.success) {
+        return response.data; // Returns array of { branchId, status, userName }
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching branch approval status:', error);
+      return [];
+    }
+  };
 
   const getCurrentBranch = async () => {
     console.log('Fetching current branch data for branch ID:', currentUser);
@@ -130,76 +147,149 @@ const ModernBranchCashCollections = () => {
 
   // Action handlers for open/close transactions
   const handleOpen = async (row) => {
-    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
-      setLoading(true);
-
-      let data = { 
-        loId: row._id, 
-        mode: 'open', 
-        currentDate: currentDate, 
-        transactionType: row.transactionType 
-      };
-
-      try {
-        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
-        
-        if (response.success) {
-          toast.success(`${row.name} groups transactions are now open!`);
-          // Refresh the data instead of reloading the page
-          await fetchCashCollectionsData(dateFilter);
-        } else if (response.error && response.message) {
-          toast.error(response.message);
-        } else {
-          toast.error('Error updating group summary.');
-        }
-      } catch (error) {
-        console.error('Error opening transactions:', error);
-        toast.error('Error updating group summary.');
-      }
-
-      setLoading(false);
-    } else if (row.hasOwnProperty("allNew")) {
-      toast.error("All transactions are current releases no need to change the group's status.");
-    } else {
-      toast.error('No transaction detected for this Loan Officer!');
+    // Determine if we're operating on a branch or loan officer
+    const isBranchLevel = viewMode === 'branch';
+    
+    // For branch level, check if there are any transactions
+    if (isBranchLevel && row.approvalStatus === 'open') {
+      toast.info('Branch is already unlocked.');
+      return;
     }
+
+    // For Branch level, check if there are any LO transactions added
+    if (isBranchLevel && row.groupStatus === null) {
+      toast.error('Cannot lock branch transactions when no Loan Officer transactions added for the day!');
+      return;
+    }
+    
+    // For LO level, check if there are active clients
+    if (!isBranchLevel && row.activeClients === 0) {
+      toast.error('No transaction detected for this Loan Officer!');
+      return;
+    }
+    
+    if (!isBranchLevel && row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+      return;
+    }
+
+    setLoading(true);
+    
+    let data = { 
+      mode: 'open', 
+      currentDate: currentDate, 
+      transactionType: row.transactionType 
+    };
+
+    // Add the appropriate ID based on the level
+    if (isBranchLevel) {
+      data.branchId = row._id;
+      data.userId = currentUser._id;
+      data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
+    } else {
+      data.loId = row._id;
+    }
+
+    try {
+      const response = await fetchWrapper.post(
+        getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', 
+        data
+      );
+      
+      if (response.success) {
+        const entityType = isBranchLevel ? 'Branch' : 'Loan Officer';
+        toast.success(`${row.name} ${entityType.toLowerCase()} transactions are now unlocked!`);
+        // Refresh the data
+        await fetchCashCollectionsData(dateFilter);
+      } else if (response.error && response.message) {
+        toast.error(response.message);
+      } else {
+        toast.error(`Error unlocking ${isBranchLevel ? 'branch' : 'loan officer'} transactions.`);
+      }
+    } catch (error) {
+      console.error('Error opening transactions:', error);
+      toast.error(`Error unlocking ${isBranchLevel ? 'branch' : 'loan officer'} transactions.`);
+    }
+
+    setLoading(false);
   };
 
   const handleClose = async (row) => {
-    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
-      setLoading(true);
+    // Determine if we're operating on a branch or loan officer
+    const isBranchLevel = viewMode === 'branch';
 
-      let data = { 
-        loId: row._id, 
-        mode: 'close', 
-        currentDate: currentDate, 
-        currentTime: currentTime, 
-        transactionType: row.transactionType 
-      };
+    console.log(viewMode)
+    
+    // For branch level, check if already closed
+    // if (isBranchLevel && row.approvalStatus === 'closed') {
+    //   toast.info('Branch is already locked and approved.');
+    //   return;
+    // }
 
-      try {
-        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
-        
-        if (response.success) {
-          toast.success(`Selected loan officer groups are now closed!`);
-          // Refresh the data instead of reloading the page
-          await fetchCashCollectionsData(dateFilter);
-        } else if (response.error && response.message) {
-          toast.error(response.message);
-        } else {
-          toast.error('Error updating group summary.');
-        }
-      } catch (error) {
-        console.error('Error closing transactions:', error);
-        toast.error('Error updating group summary.');
-      }
-
-      setLoading(false);
-    } else if (row.hasOwnProperty("allNew")) {
-      toast.error("All transactions are current releases no need to change the group's status.");
-    } else {
-      toast.error('No transaction detected for this Loan Officer!');
+    // For Branch level, check if there are any LO transactions added
+    if (isBranchLevel && row.groupStatus === null) {
+      toast.error('Cannot lock branch transactions when no Loan Officer transactions added for the day!');
+      return;
     }
+
+    // For LO level, check if all LO transactions are already closed
+    if (!isBranchLevel && row.groupStatus === 'closed') {
+      toast.info('All transactions are already closed!')
+      return;
+    }
+    
+    // For LO level, check if there are active clients
+    if (!isBranchLevel && row.activeClients === 0) {
+      toast.error('No transaction detected for this Loan Officer!');
+      return;
+    }
+    
+    if (!isBranchLevel && row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+      return;
+    }
+
+    setLoading(true);
+
+    let data = { 
+      mode: 'close', 
+      currentDate: currentDate, 
+      currentTime: currentTime, 
+      transactionType: row.transactionType 
+    };
+
+    // Add the appropriate ID based on the level
+    if (isBranchLevel) {
+      data.branchId = row._id;
+      data.userId = currentUser._id;
+      data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
+    } else {
+      data.loId = row._id;
+    }
+
+    try {
+      const response = await fetchWrapper.post(
+        getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', 
+        data
+      );
+      
+      if (response.success) {
+        const entityType = isBranchLevel ? 'Branch' : 'Loan Officer';
+        const actionText = isBranchLevel ? 'locked and approved' : 'closed';
+        toast.success(`${row.name} ${entityType.toLowerCase()} transactions are now ${actionText}!`);
+        // Refresh the data
+        await fetchCashCollectionsData(dateFilter);
+      } else if (response.error && response.message) {
+        toast.error(response.message);
+      } else {
+        toast.error(`Error ${isBranchLevel ? 'locking' : 'closing'} ${isBranchLevel ? 'branch' : 'loan officer'} transactions.`);
+      }
+    } catch (error) {
+      console.error('Error closing transactions:', error);
+      toast.error(`Error ${isBranchLevel ? 'locking' : 'closing'} ${isBranchLevel ? 'branch' : 'loan officer'} transactions.`);
+    }
+
+    setLoading(false);
   };
 
   const buildApiParams = (baseParams) => {
@@ -674,6 +764,21 @@ const ModernBranchCashCollections = () => {
           
           return transformedItem;
         });
+
+        // If viewing branches, fetch approval status
+        if (currentFilter === 'branch' && processedData.length > 0) {
+          const branchIds = processedData.map(item => item._id).filter(id => id);
+          const approvalStatus = await fetchBranchApprovalStatus(branchIds, formattedDate);
+          
+          // Merge approval status into processed data
+          processedData.forEach(item => {
+            const approval = approvalStatus.find(a => a.branchId === item._id);
+            if (approval) {
+              item.approvalStatus = approval.status; // 'open' or 'closed'
+              item.approvedBy = approval.userName;
+            }
+          });
+        }
         
         // console.log('Processed data length:', processedData.length);
         // console.log('Current filter:', filter);
@@ -1577,20 +1682,29 @@ const ModernBranchCashCollections = () => {
     { key: 'actions', label: 'Actions', width: 'w-24' }, // ADDED: Actions column
   ], [currentFilter]);
 
-  // UPDATED: Filter visible columns - only show transactionType and actions when filter is 'lo'
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => {
       // Show transactionType column ONLY when currentFilter is 'lo'
       if (col.key === 'transactionType') {
         return currentFilter === 'lo' && visibleColumns[col.key];
       }
-      // Show actions column ONLY when currentFilter is 'lo' AND user has rep === 3
+      
+      // Show actions column when:
+      // 1. currentFilter is 'lo' AND user has rep === 3 (Branch Manager viewing LOs)
+      // 2. currentFilter is 'branch' AND user is area_admin or regional_manager
       if (col.key === 'actions') {
-        return currentFilter === 'lo' && currentUser.role.rep === 3 && visibleColumns[col.key];
+        const isLoLevel = currentFilter === 'lo' && currentUser.role.rep === 3;
+        const isBranchLevel = currentFilter === 'branch' && 
+          currentUser.role.rep === 2 && 
+          (currentUser.role.shortCode === 'area_admin' || 
+          currentUser.role.shortCode === 'regional_manager');
+        
+        return (isLoLevel || isBranchLevel) && visibleColumns[col.key];
       }
+      
       return visibleColumns[col.key];
     });
-  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep]);
+  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep, currentUser.role.shortCode]);
 
   return (
     <Layout header={false} noPad={true}>
@@ -1683,7 +1797,7 @@ const ModernBranchCashCollections = () => {
                         </select>
                       </div>
                     )}
-                    {((currentUser.role && currentUser.role.rep == 3 || currentLevel == "lo") && (numberOfLo > 10 || selectedLoGroup !== 'all')) && (
+                    {((currentUser.role && currentUser.role.rep == 3 && currentLevel == "lo") && (numberOfLo > 10 || selectedLoGroup !== 'all')) && (
                       <div className="relative">
                         <select
                           value={selectedLoGroup}
@@ -1754,32 +1868,43 @@ const ModernBranchCashCollections = () => {
 
             {showColumnSelector && (
                 <div className="absolute right-4 mt-16 bg-white shadow-lg border border-gray-200 rounded-md z-10 p-4 max-h-96 overflow-y-auto">
-                <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
-                <div className="grid grid-cols-2 gap-2">
-                    {columnDefs.map(col => {
-                      if (col.key === 'transactionType' && currentFilter !== 'lo') {
-                        return null;
-                      }
-                      if (col.key === 'actions' && (currentFilter !== 'lo' || currentUser.role.rep !== 3)) {
-                        return null;
-                      }
-                      
-                      return (
-                        <div key={col.key} className="flex items-center">
+                  <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                      {columnDefs.map(col => {
+                        // Hide transactionType column option when not in LO filter
+                        if (col.key === 'transactionType' && currentFilter !== 'lo') {
+                          return null;
+                        }
+                        
+                        // Hide actions column option based on user permissions
+                        if (col.key === 'actions') {
+                          const isLoLevel = currentFilter === 'lo' && currentUser.role.rep === 3;
+                          const isBranchLevel = currentFilter === 'branch' && 
+                            currentUser.role.rep === 2 && 
+                            (currentUser.role.shortCode === 'area_admin' || 
+                            currentUser.role.shortCode === 'regional_manager');
+                          
+                          if (!isLoLevel && !isBranchLevel) {
+                            return null;
+                          }
+                        }
+                        
+                        return (
+                          <div key={col.key} className="flex items-center">
                             <input
-                            type="checkbox"
-                            id={`col-${col.key}`}
-                            checked={visibleColumns[col.key]}
-                            onChange={() => toggleColumnVisibility(col.key)}
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              type="checkbox"
+                              id={`col-${col.key}`}
+                              checked={visibleColumns[col.key]}
+                              onChange={() => toggleColumnVisibility(col.key)}
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                             />
                             <label htmlFor={`col-${col.key}`} className="ml-2 text-sm text-gray-700">
-                            {col.label}
+                              {col.label}
                             </label>
-                        </div>
-                      );
-                    })}
-                </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
             )}
 
@@ -1790,227 +1915,252 @@ const ModernBranchCashCollections = () => {
                 </div>
                 ) : (
                     <div className="inline-block min-w-full align-middle">
-                        <table className="min-w-full divide-y divide-gray-300">
-                            <thead className="bg-gray-50" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
-                              <tr>
-                                {visibleColumnDefs.map(column => (
-                                  <th 
-                                    key={column.key}
-                                    scope="col" 
-                                    className={`
-                                      ${column.width || 'w-auto'} 
-                                      px-3 py-3.5 text-left text-sm font-semibold text-gray-900 
-                                      ${column.key === 'actions' ? '' : 'cursor-pointer group'}
-                                      ${column.key === 'name' ? 'bg-gray-50 border-r-2 border-gray-300' : ''}
-                                    `}
-                                    style={column.key === 'name' ? {
-                                      boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                      position: 'sticky',
-                                      left: 0,
-                                      zIndex: 101,
-                                    } : {}}
-                                    onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
-                                  >
-                                    <div className="flex items-center">
-                                        <span className="break-words">{column.label}</span>
-                                        {column.key !== 'actions' && (
-                                          <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
-                                          {sortConfig.key === column.key ? (
-                                              sortConfig.direction === 'ascending' ? (
-                                              <ChevronUp size={16} />
-                                              ) : (
-                                              <ChevronDown size={16} />
-                                              )
-                                          ) : (
-                                              <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
-                                          )}
-                                          </span>
-                                        )}
-                                    </div>
-                                    </th>
-                                ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {sortedData.length > 0 ? (
-                                  sortedData.map((row, index) => (
-                                    <tr 
-                                        key={row._id || index} 
-                                        onClick={(e) => {
-                                            if (e.target.closest('button')) {
-                                                return;
-                                            }
-                                            handleRowClick(row);
-                                        }}
-                                        className={`
-                                          ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
-                                          ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
-                                          hover:bg-gray-50 cursor-pointer
-                                        `.trim()}
-                                    >
-                                        {visibleColumnDefs.map(column => (
-                                        <td 
-                                          key={`${row._id}-${column.key}`} 
-                                          className={`
-                                            px-3 py-4 text-sm 
-                                            ${column.key === 'name' ? 
-                                              `font-medium text-gray-900 border-r-2 border-gray-300 break-words
-                                              ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : 
-                                                (row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : 
-                                                'bg-white'}` 
-                                              : 'whitespace-nowrap text-gray-500'}
-                                          `}
-                                          style={column.key === 'name' ? {
-                                            boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                            position: 'sticky',
-                                            left: 0,
-                                            zIndex: 10,
-                                          } : {}}
-                                        >
-                                            {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900 break-words leading-tight">
-                                              {row[column.key]}
-                                            </div>
-                                            ) : column.key === 'actions' ? (
-                                              <div className="flex space-x-2">
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleOpen(row);
-                                                  }}
-                                                  className="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
-                                                  title="Open Transaction"
-                                                  disabled={loading}
-                                                >
-                                                  <Unlock size={16} />
-                                                </button>
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleClose(row);
-                                                  }}
-                                                  className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
-                                                  title="Close Transaction"
-                                                  disabled={loading}
-                                                >
-                                                  <Lock size={16} />
-                                                </button>
-                                              </div>
-                                            ) : column.key === 'transactionType' ? (
-                                              <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                                {row[column.key] || '-'}
-                                              </div>
-                                            ) : column.key === 'excess' && column.hasComparison ? (
-                                            formatWithComparison(row.excessCurrent, row.excessPrevious, row.groupStatus)
-                                            ) : column.key === 'mcbu' && column.hasComparison ? (
-                                            formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn, row.groupStatus)
-                                            ) : column.key === 'csf' && column.hasComparison ? (
-                                            formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt, row.groupStatus)
-                                            ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
-                                            formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious, row.groupStatus)
-                                            ) : column.key === 'activeClients' && column.hasComparison ? (
-                                            formatWithComparison(row.activeClients, row.activeClientsPrevious, row.groupStatus)
-                                            ) : column.key === 'activeBorrowers' && column.hasComparison ? (
-                                            formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious, row.groupStatus)
-                                            ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                            formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
-                                            ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                            formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
-                                            ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
-                                            formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
-                                            ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious, row.groupStatus)
-                                            ) : column.key === 'mcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious, row.groupStatus)
-                                            ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
-                                            formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious, row.groupStatus)
-                                            ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
-                                            formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious, row.groupStatus)
-                                            ) : column.key === 'mispay' && column.hasComparison ? (
-                                            formatWithComparison(row.mispayCurrent, row.mispayPrevious, row.groupStatus)
-                                            ) : column.key === 'noPastDue' && column.hasComparison ? (
-                                            formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious, row.groupStatus)
-                                            ) : row[column.key] === '-' ? (
-                                            <span className="text-gray-400">-</span>
-                                            ) : (
-                                            row[column.key] ?? '-'
-                                            )}
-                                        </td>
-                                        ))}
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={visibleColumnDefs.length} className="px-3 py-4 text-sm text-gray-500 text-center">
-                                      No data available
-                                    </td>
-                                  </tr>
-                                )}
-                                
-                                {grandTotalRow && (
-                                <tr className="bg-gray-100 font-medium sticky bottom-0 z-10">
-                                    {visibleColumnDefs.map(column => (
+                      <table className="min-w-full divide-y divide-gray-300">
+                        <thead className="bg-gray-50" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+                          <tr>
+                            {visibleColumnDefs.map(column => (
+                              <th 
+                                key={column.key}
+                                scope="col" 
+                                className={`
+                                  ${column.width || 'w-auto'} 
+                                  px-3 py-3.5 text-left text-sm font-semibold text-gray-900 
+                                  ${column.key === 'actions' ? '' : 'cursor-pointer group'}
+                                  ${column.key === 'name' ? 'bg-gray-50 border-r-2 border-gray-300' : ''}
+                                `}
+                                style={column.key === 'name' ? {
+                                  boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                  position: 'sticky',
+                                  left: 0,
+                                  zIndex: 101,
+                                } : {}}
+                                onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
+                              >
+                                <div className="flex items-center">
+                                  <span className="break-words">{column.label}</span>
+                                  {column.key !== 'actions' && (
+                                    <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
+                                      {sortConfig.key === column.key ? (
+                                        sortConfig.direction === 'ascending' ? (
+                                          <ChevronUp size={16} />
+                                        ) : (
+                                          <ChevronDown size={16} />
+                                        )
+                                      ) : (
+                                        <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {sortedData.length > 0 ? (
+                            sortedData.map((row, index) => {
+                              let bgRowColor = '';
+                              if (currentUser.role.rep >= 3 && currentFilter != 'group' && (row.groupStatus == 'pending' || row.groupStatus == null)) {
+                                bgRowColor = 'bg-blue-100';
+                              } else if (currentUser.role.rep < 3 && currentFilter != 'group' && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
+                                bgRowColor = 'bg-blue-100';
+                              } else if (row.isDraft && currentFilter === 'group') {
+                                bgRowColor = 'bg-orange-100';
+                              }
+
+                              return (
+                                <tr 
+                                  key={row._id || index} 
+                                  onClick={(e) => {
+                                    if (e.target.closest('button')) {
+                                      return;
+                                    }
+                                    handleRowClick(row);
+                                  }}
+                                  className={`
+                                    ${bgRowColor}
+                                    hover:bg-gray-50 cursor-pointer
+                                  `.trim()}
+                                >
+                                  {visibleColumnDefs.map(column => (
                                     <td 
-                                        key={`grand-total-${column.key}`} 
-                                        className={`
-                                          px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300
-                                          ${column.key === 'name' ? 'sticky left-0 z-30 bg-gray-100 border-r-2 break-words' : 'whitespace-nowrap'}
-                                        `}
-                                        style={column.key === 'name' ? {
-                                            boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                            position: 'sticky',
-                                            left: 0,
-                                        } : {}}
+                                      key={`${row._id}-${column.key}`} 
+                                      className={`
+                                        px-3 py-4 text-sm 
+                                        ${column.key === 'name' ? 
+                                          `font-medium text-gray-900 border-r-2 border-gray-300 break-words
+                                          ${bgRowColor}` 
+                                          : 'whitespace-nowrap text-gray-500'}
+                                      `}
+                                      style={column.key === 'name' ? {
+                                        boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                        position: 'sticky',
+                                        left: 0,
+                                        zIndex: 10,
+                                      } : {}}
                                     >
-                                            {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900 break-words leading-tight">GRAND TOTALS</div>
-                                            ) : column.key === 'actions' ? (
-                                              <div className="text-center text-gray-400">-</div>
-                                            ) : column.key === 'transactionType' ? (
-                                              <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-200 px-2 py-1 rounded">
-                                                {grandTotalRow[column.key] || 'ALL'}
-                                              </div>
-                                            ) : column.key === 'excess' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'mcbu' && column.hasComparison ? (
-                                            formatWithComparison2(grandTotalRow.mcbu, grandTotalRow._value.mcbuCollection - grandTotalRow._value.mcbuWithdrawal - grandTotalRow._value.mcbuReturn, grandTotalRow.groupStatus)
-                                            ) : column.key === 'csf' && column.hasComparison ? (
-                                            formatWithComparison2(grandTotalRow.csf, grandTotalRow._value.csfCollection - grandTotalRow._value.csfWithdrawal - grandTotalRow._value.csfReturnAmt, grandTotalRow.groupStatus)
-                                            ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'activeClients' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.activeClients, grandTotalRow.activeClientsPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'activeBorrowers' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                            formatWithComparison2(grandTotalRow.totalReleasesStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.fullPaymentAmount, grandTotalRow.groupStatus)
-                                            ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                            formatWithComparison2(grandTotalRow.totalLoanBalanceStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.actualLoanCollection, grandTotalRow.groupStatus)
-                                            ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.noMcbuReturnCurrent, grandTotalRow.noMcbuReturnPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'mcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mcbuReturnCurrent, grandTotalRow.mcbuReturnPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.fullPaymentPersonCurrent, grandTotalRow.fullPaymentPersonPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.fullPaymentAmountCurrent, grandTotalRow.fullPaymentAmountPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'mispay' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mispayCurrent, grandTotalRow.mispayPrevious, grandTotalRow.groupStatus)
-                                            ) : column.key === 'noPastDue' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.noPastDueCurrent, grandTotalRow.noPastDuePrevious, grandTotalRow.groupStatus)
-                                            ) : grandTotalRow[column.key] === '-' ? (
-                                            <span className="text-gray-400">-</span>
-                                            ) : (
-                                              grandTotalRow[column.key]
-                                            )}
+                                      {column.key === 'name' ? (
+                                        <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
+                                          {row[column.key]}
+                                          {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
+                                            <div className="ml-2 flex items-center" title={`Locked and approved by ${row.approvedBy || 'Admin'}`}>
+                                              <Lock size={14} className="text-red-600" />
+                                            </div>
+                                          )}
+                                          {row.approvalStatus === 'open' && currentFilter === 'branch' && currentUser.role.rep === 2 && (
+                                            <div className="ml-2 flex items-center" title="Branch is unlocked">
+                                              <Unlock size={14} className="text-green-600" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : column.key === 'actions' ? (
+                                        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpen(row);
+                                            }}
+                                            className={`p-1 rounded ${
+                                              (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
+                                                ? 'text-gray-400 cursor-not-allowed' 
+                                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                            }`}
+                                            title={currentFilter === 'branch' ? "Unlock Branch" : "Open Transaction"}
+                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'open') || loading}
+                                          >
+                                            <Unlock size={16} />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleClose(row);
+                                            }}
+                                            className={`p-1 rounded ${
+                                              (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
+                                                ? 'text-gray-400 cursor-not-allowed'
+                                                : 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                            }`}
+                                            title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
+                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
+                                          >
+                                            <Lock size={16} />
+                                          </button>
+                                        </div>
+                                      ) : column.key === 'transactionType' ? (
+                                        <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                          {row[column.key] || '-'}
+                                        </div>
+                                      ) : column.key === 'excess' && column.hasComparison ? (
+                                        formatWithComparison(row.excessCurrent, row.excessPrevious, row.groupStatus)
+                                      ) : column.key === 'mcbu' && column.hasComparison ? (
+                                        formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn, row.groupStatus)
+                                      ) : column.key === 'csf' && column.hasComparison ? (
+                                        formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt, row.groupStatus)
+                                      ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
+                                        formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious, row.groupStatus)
+                                      ) : column.key === 'activeClients' && column.hasComparison ? (
+                                        formatWithComparison(row.activeClients, row.activeClientsPrevious, row.groupStatus)
+                                      ) : column.key === 'activeBorrowers' && column.hasComparison ? (
+                                        formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious, row.groupStatus)
+                                      ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
+                                        formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
+                                      ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
+                                        formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
+                                      ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
+                                        formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
+                                      ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
+                                        formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious, row.groupStatus)
+                                      ) : column.key === 'mcbuReturn' && column.hasComparison ? (
+                                        formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious, row.groupStatus)
+                                      ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
+                                        formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious, row.groupStatus)
+                                      ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
+                                        formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious, row.groupStatus)
+                                      ) : column.key === 'mispay' && column.hasComparison ? (
+                                        formatWithComparison(row.mispayCurrent, row.mispayPrevious, row.groupStatus)
+                                      ) : column.key === 'noPastDue' && column.hasComparison ? (
+                                        formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious, row.groupStatus)
+                                      ) : row[column.key] === '-' ? (
+                                        <span className="text-gray-400">-</span>
+                                      ) : (
+                                        row[column.key] ?? '-'
+                                      )}
                                     </td>
-                                    ))}
+                                  ))}
                                 </tr>
-                                )}
-                            </tbody>
-                        </table>
+                            )})
+                          ) : (
+                            <tr>
+                              <td colSpan={visibleColumnDefs.length} className="px-3 py-4 text-sm text-gray-500 text-center">
+                                No data available
+                              </td>
+                            </tr>
+                          )}
+                          
+                          {grandTotalRow && (
+                            <tr className="bg-gray-100 font-medium sticky bottom-0 z-10">
+                              {visibleColumnDefs.map(column => (
+                                <td 
+                                  key={`grand-total-${column.key}`} 
+                                  className={`
+                                    px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300
+                                    ${column.key === 'name' ? 'sticky left-0 z-30 bg-gray-100 border-r-2 break-words' : 'whitespace-nowrap'}
+                                  `}
+                                  style={column.key === 'name' ? {
+                                    boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                    position: 'sticky',
+                                    left: 0,
+                                  } : {}}
+                                >
+                                  {column.key === 'name' ? (
+                                    <div className="font-medium text-gray-900 break-words leading-tight">GRAND TOTALS</div>
+                                  ) : column.key === 'actions' ? (
+                                    <div className="text-center text-gray-400">-</div>
+                                  ) : column.key === 'transactionType' ? (
+                                    <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-200 px-2 py-1 rounded">
+                                      {grandTotalRow[column.key] || 'ALL'}
+                                    </div>
+                                  ) : column.key === 'excess' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'mcbu' && column.hasComparison ? (
+                                    formatWithComparison2(grandTotalRow.mcbu, grandTotalRow._value.mcbuCollection - grandTotalRow._value.mcbuWithdrawal - grandTotalRow._value.mcbuReturn, grandTotalRow.groupStatus)
+                                  ) : column.key === 'csf' && column.hasComparison ? (
+                                    formatWithComparison2(grandTotalRow.csf, grandTotalRow._value.csfCollection - grandTotalRow._value.csfWithdrawal - grandTotalRow._value.csfReturnAmt, grandTotalRow.groupStatus)
+                                  ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'activeClients' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.activeClients, grandTotalRow.activeClientsPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'activeBorrowers' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
+                                    formatWithComparison2(grandTotalRow.totalReleasesStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.fullPaymentAmount, grandTotalRow.groupStatus)
+                                  ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
+                                    formatWithComparison2(grandTotalRow.totalLoanBalanceStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.actualLoanCollection, grandTotalRow.groupStatus)
+                                  ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.noMcbuReturnCurrent, grandTotalRow.noMcbuReturnPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'mcbuReturn' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.mcbuReturnCurrent, grandTotalRow.mcbuReturnPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.fullPaymentPersonCurrent, grandTotalRow.fullPaymentPersonPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.fullPaymentAmountCurrent, grandTotalRow.fullPaymentAmountPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'mispay' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.mispayCurrent, grandTotalRow.mispayPrevious, grandTotalRow.groupStatus)
+                                  ) : column.key === 'noPastDue' && column.hasComparison ? (
+                                    formatWithComparison(grandTotalRow.noPastDueCurrent, grandTotalRow.noPastDuePrevious, grandTotalRow.groupStatus)
+                                  ) : grandTotalRow[column.key] === '-' ? (
+                                    <span className="text-gray-400">-</span>
+                                  ) : (
+                                    grandTotalRow[column.key]
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                 )}
                 </div>

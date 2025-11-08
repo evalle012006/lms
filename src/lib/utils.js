@@ -205,6 +205,18 @@ export const shouldIncludeViewMode = (currentUser) => {
   return true;
 };
 
+export const getDefaultViewMode = (currentUser, defaultMode = 'branch') => {
+    if (!currentUser?.role) return defaultMode;
+    // For role.rep 3 
+    if (currentUser.role.rep === 3 ) {
+        return 'lo';
+    } else if (currentUser.role.rep === 4) {
+        return 'group';
+    }
+
+    return defaultMode;
+}
+
 export const buildModernBranchCashCollectionsSourceQuery = (router, viewMode, currentFilter, selectedBranchGroup, dateFilter) => {
   return {
     fromModernBranchCashCollections: 'true',
