@@ -100,18 +100,39 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
         const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
         const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
-        // const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
-        const noDenominationTransactions = cashCollectionCounts.filter(cc => {
+        const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
+        const validNoDenominationTransactions = cashCollectionCounts.filter(cc => {
             const currentCc = cc.cashCollections[0];
             const tda = currentCc ? currentCc.tda : 0;
             const mispayments = currentCc ? currentCc.mispayments + tda : 0;
             if (cc.denom === 0 && cc.cashCollections.length > 0 
                 && currentCc.count > 0
+                && mispayments > 0
                 && currentCc.count !== mispayments) {
                 return cc;
             }
         });
-        // console.log('noDenominationTransactions', noDenominationTransactions, noDenominationTransactions[0].cashCollections[0]);
+
+        // 1. Get a Set of IDs from the complex filter (validNoDenominationTransactions)
+        //    Set lookups are highly efficient (O(1)).
+        const validIds = new Set(validNoDenominationTransactions.map(cc => cc._id));
+
+        // 2. Check if any item from the simple filter exists in the complex filter's ID set.
+        const hasIntersection = noDenominationTransactions.some(cc => validIds.has(cc._id));
+
+        let finalNoDenominationTransactions;
+        let finalValidNoDenominationTransactions;
+
+        if (hasIntersection) {
+            // If there is at least one common item, keep both lists as they are
+            finalNoDenominationTransactions = noDenominationTransactions;
+            finalValidNoDenominationTransactions = validNoDenominationTransactions;
+        } else {
+            // If there is NO common item, empty both lists
+            finalNoDenominationTransactions = [];
+            finalValidNoDenominationTransactions = [];
+        }
+        
         const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
         if (mode === 'close') {
@@ -127,7 +148,7 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
             } else if (hasPendingFundTransfers.length > 0) {
                 response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
                 return;
-            } else if (noDenominationTransactions.length > 0) {
+            } else if (finalNoDenominationTransactions.length > 0 || finalValidNoDenominationTransactions.length > 0) {
                 response = { error: true, message: "LO has no Denomination entries. Please check and add them." };
                 return;
             } else if (hasPendingDenominations.length > 0) {

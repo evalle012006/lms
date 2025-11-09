@@ -74,8 +74,7 @@ const ModernBranchCashCollections = () => {
   };
 
   const getCurrentBranch = async () => {
-    console.log('Fetching current branch data for branch ID:', currentUser);
-    if (currentUser.role.rep >= 3) {
+    if (currentUser.role.rep >= 3 && currentDate) {
       try {
         const apiUrl = `${getApiBaseUrl()}branches?`;
         const params = { 
@@ -1960,9 +1959,9 @@ const ModernBranchCashCollections = () => {
                           {sortedData.length > 0 ? (
                             sortedData.map((row, index) => {
                               let bgRowColor = '';
-                              if (currentUser.role.rep >= 3 && currentFilter != 'group' && (row.groupStatus == 'pending' || row.groupStatus == null)) {
+                              if (currentUser.role.rep >= 3 && row.activeClients > 0 && (row.groupStatus == 'pending' || row.groupStatus == null)) {
                                 bgRowColor = 'bg-blue-100';
-                              } else if (currentUser.role.rep < 3 && currentFilter != 'group' && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
+                              } else if (currentUser.role.rep < 3 && currentFilter != 'group' && row.activeClients > 0 && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
                                 bgRowColor = 'bg-blue-100';
                               } else if (row.isDraft && currentFilter === 'group') {
                                 bgRowColor = 'bg-orange-100';

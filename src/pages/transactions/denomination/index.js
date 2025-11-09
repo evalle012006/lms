@@ -1435,21 +1435,28 @@ export default function DenominationPage() {
                                                         item._id &&
                                                         (item.status === 'pending' || item.status === 'initial');
                                                     
+                                                    let rowBgClass = 'bg-blue-100';
+                                                    if (effectiveFilter !== 'group') {
+                                                        if (item.status === 'approved' || item.activeClients === 0) {
+                                                            rowBgClass = '';
+                                                        }
+                                                    }
+                                                    
                                                     return (
                                                         <tr 
                                                             key={index} 
                                                             onClick={isClickable ? () => handleRowClick(item) : undefined}
-                                                            className={`transition-colors ${
+                                                            className={`transition-colors ${rowBgClass} ${
                                                                 isClickable ? 'hover:bg-gray-50 cursor-pointer' : ''
                                                             } ${
-                                                                isItemDirty(item) ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                                                                (effectiveFilter == 'group' && isItemDirty(item)) ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                                                             } ${
-                                                                item.status === 'rejected' ? 'bg-red-50 border-l-4 border-l-red-500' : ''
+                                                                (effectiveFilter == 'group' && item.status === 'rejected') ? 'bg-red-50 border-l-4 border-l-red-500' : ''
                                                             }`}
                                                         >
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                                                                 <div className="flex items-center gap-2">
-                                                                    {isItemDirty(item) && (
+                                                                    {(effectiveFilter == 'group' && isItemDirty(item)) && (
                                                                         <span 
                                                                             className="flex h-2 w-2 relative"
                                                                             title="Unsaved changes"

@@ -582,7 +582,7 @@ async function updateDenomination(mutationQl, groupId, currentDate, overallTotal
             const latestHistory = history[history.length -1];
             const denominationId = denomination._id;
             delete denomination._id;
-            if (latestHistory.total_net_collection !== overallTotalNetCollection) {
+            if (latestHistory.total_net_collection !== overallTotalNetCollection && overallTotalNetCollection > 0) {
 
                 denomination.bcc_vs_remittances = overallTotalNetCollection;
                 denomination.synced = false;
