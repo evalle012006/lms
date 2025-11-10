@@ -102,12 +102,16 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
         // const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
         const noDenominationTransactions = cashCollectionCounts.filter(cc => {
+            const currentCc = cc.cashCollections[0];
+            const tda = currentCc ? currentCc.tda : 0;
+            const mispayments = currentCc ? currentCc.mispayments + tda : 0;
             if (cc.denom === 0 && cc.cashCollections.length > 0 
-                && cc.cashCollections[0].count > 0
-                && cc.cashCollections[0].count !== cc.cashCollections[0].mispayments) {
+                && currentCc.count > 0
+                && currentCc.count !== mispayments) {
                 return cc;
             }
         });
+        // console.log('noDenominationTransactions', noDenominationTransactions, noDenominationTransactions[0].cashCollections[0]);
         const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
         if (mode === 'close') {
