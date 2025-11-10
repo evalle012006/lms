@@ -100,6 +100,8 @@ export default function DenominationPage() {
     useEffect(() => {
         if (router.query.date) {
             setDateFilter(router.query.date);
+        } else {
+            setDateFilter(currentDate);
         }
         
         if (router.query.filter) {
@@ -121,7 +123,7 @@ export default function DenominationPage() {
         
         const hasNestedContent = !!router.query.id;
         setViewingNestedContent(hasNestedContent);
-    }, [router.query.date, router.query.filter, router.query.id, router.query.parentId, currentUser?.role]);
+    }, [router.query.date, router.query.filter, router.query.id, router.query.parentId, currentUser?.role, currentDate]);
     
     // Fetch branch list if empty (for cashiers)
     useEffect(() => {
