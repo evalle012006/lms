@@ -109,7 +109,7 @@ async function approveDenomination(req, res) {
                     rejection_reason: null,
                     rejection_date: null,
                     history: updatedHistory,
-                    sync: true
+                    synced: true
                 }
             })
         );
