@@ -100,7 +100,14 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
         const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
         const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
-        const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0);
+        // const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
+        const noDenominationTransactions = cashCollectionCounts.filter(cc => {
+            if (cc.denom === 0 && cc.cashCollections.length > 0 
+                && cc.cashCollections[0].count > 0
+                && cc.cashCollections[0].count !== cc.cashCollections[0].mispayments) {
+                return cc;
+            }
+        });
         const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
         if (mode === 'close') {
