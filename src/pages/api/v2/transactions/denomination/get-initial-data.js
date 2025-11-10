@@ -13,9 +13,9 @@ export default apiHandler({
  */
 async function getInitialData(req, res) {
     try {
-        const user = await findUserById(req.auth.sub);
-        const { date, branchId, loId, groupId, filter } = req.query;
-        
+        const { date, branchId, loId, groupId, filter, userId } = req.query;
+        const user = await findUserById(req.auth.sub || userId);
+
         const currentDate = date || moment().format('YYYY-MM-DD');
         
         // console.log('=== GET INITIAL DATA ===');

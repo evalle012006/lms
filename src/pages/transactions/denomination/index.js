@@ -285,7 +285,8 @@ export default function DenominationPage() {
         try {
             const params = new URLSearchParams({
                 date: dateFilter,
-                filter: effectiveFilter
+                filter: effectiveFilter,
+                userId: currentUser._id
             });
             
             if (router.query.id && router.query.filter) {
