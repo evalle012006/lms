@@ -577,16 +577,25 @@ async function updateDenomination(mutationQl, groupId, currentDate, overallTotal
     if (denomination.length > 0) {
         denomination = denomination[0];
         const history = denomination.history ? [...denomination.history] : [];
-
         if (history.length > 0) {
+            let needsUpdate = false;
             const latestHistory = history[history.length -1];
+            const denominationId = denomination._id;
+            delete denomination._id;
             if (latestHistory.total_net_collection !== overallTotalNetCollection) {
-                const denominationId = denomination._id;
-                delete denomination._id;
 
                 denomination.bcc_vs_remittances = overallTotalNetCollection;
                 denomination.synced = false;
 
+                needsUpdate = true;
+            } else {
+                denomination.bcc_vs_remittances = overallTotalNetCollection;
+                denomination.synced = true;
+
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
                 mutationQl.push(
                     updateQl(DENOMINATION_TYPE('denomination_' + (mutationQl.length + 1)), {
                         set: {

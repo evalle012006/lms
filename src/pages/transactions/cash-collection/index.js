@@ -2002,7 +2002,7 @@ const ModernBranchCashCollections = () => {
                                       {column.key === 'name' ? (
                                         <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
                                           {row[column.key]}
-                                          {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
+                                          {/* {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
                                             <div className="ml-2 flex items-center" title={`Locked and approved by ${row.approvedBy || 'Admin'}`}>
                                               <Lock size={14} className="text-red-600" />
                                             </div>
@@ -2011,7 +2011,7 @@ const ModernBranchCashCollections = () => {
                                             <div className="ml-2 flex items-center" title="Branch is unlocked">
                                               <Unlock size={14} className="text-green-600" />
                                             </div>
-                                          )}
+                                          )} */}
                                         </div>
                                       ) : column.key === 'actions' ? (
                                         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
