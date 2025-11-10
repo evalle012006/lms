@@ -104,7 +104,8 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const validNoDenominationTransactions = cashCollectionCounts.filter(cc => {
             const currentCc = cc.cashCollections[0];
             const tda = currentCc ? currentCc.tda : 0;
-            const mispayments = currentCc ? currentCc.mispayments + tda : 0;
+            const goodExcused = currentCc ? currentCc.goodExcused : 0;
+            const mispayments = currentCc ? currentCc.mispayments + tda + goodExcused : 0;
             if (cc.denom === 0 && cc.cashCollections.length > 0 
                 && currentCc.count > 0
                 && mispayments > 0
