@@ -79,15 +79,22 @@ async function getInitialData(req, res) {
         }
         
         // Construct full URL for internal API call
+        // const protocol = req.headers['x-forwarded-proto'] || 
+        //                 (req.connection.encrypted ? 'https' : 'http');
+        // const host = req.headers['host'] || req.headers['x-forwarded-host'];
+
         const protocol = req.headers['x-forwarded-proto'] || 
-                        (req.connection.encrypted ? 'https' : 'http');
-        const host = req.headers['host'] || req.headers['x-forwarded-host'];
+                (req.connection?.encrypted ? 'https' : 'http');
+        const host = req.headers['host'];
+        const baseUrl = `${protocol}://${host}`;
         
         if (!host) {
             throw new Error('Unable to determine host from request headers');
         }
+
+        console.log('Base URL for internal API call:', baseUrl);
         
-        const apiUrl = `${getLocalhost()}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
+        const apiUrl = `${baseUrl}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
         
         // console.log('Fetching cash collections from:', apiUrl);
         // console.log('Params:', Object.fromEntries(params));
