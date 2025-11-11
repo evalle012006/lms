@@ -84,20 +84,19 @@ async function getInitialData(req, res) {
         // const host = req.headers['host'] || req.headers['x-forwarded-host'];
 
         const protocol = req.headers['x-forwarded-proto'] || 
-                (req.connection?.encrypted ? 'https' : 'http');
-        const host = req.headers['host'];
-        const baseUrl = `${protocol}://${host}`;
+                        (req.connection?.encrypted ? 'https' : 'http');
+        const host = req.headers['host'] || req.headers['x-forwarded-host'];
         
         if (!host) {
             throw new Error('Unable to determine host from request headers');
         }
-
-        console.log('Base URL for internal API call:', baseUrl);
         
+        const baseUrl = `${protocol}://${host}`;
         const apiUrl = `${baseUrl}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
         
-        // console.log('Fetching cash collections from:', apiUrl);
-        // console.log('Params:', Object.fromEntries(params));
+        console.log('🌐 Base URL:', baseUrl);
+        console.log('🔧 Environment:', process.env.NODE_ENV);
+        console.log('📋 Params:', Object.fromEntries(params));
         
         // Make the internal API call with proper headers
         const response = await fetch(apiUrl, {
@@ -212,7 +211,10 @@ async function getInitialData(req, res) {
                         _name: 'get_cash_collections_page_data'
                     });
                     
-                    const clientApiUrl = `${getLocalhost()}/api/v2/data/get_cash_collections_page_data?${clientParams.toString()}`;
+                    // ========================================
+                    // ✅ PRODUCTION FIX: Use baseUrl instead of getLocalhost()
+                    // ========================================
+                    const clientApiUrl = `${baseUrl}/api/v2/data/get_cash_collections_page_data?${clientParams.toString()}`;
                     
                     const startTime = Date.now();
                     const clientResponse = await fetch(clientApiUrl, {
