@@ -1963,7 +1963,9 @@ const ModernBranchCashCollections = () => {
                                 bgRowColor = 'bg-blue-100';
                               } else if (currentUser.role.rep < 3 && currentFilter != 'group' && row.activeClients > 0 && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
                                 bgRowColor = 'bg-blue-100';
-                              } else if (row.isDraft && currentFilter === 'group') {
+                              }
+                              
+                              if (row.isDraft && currentFilter === 'group') {
                                 bgRowColor = 'bg-orange-100';
                               }
 
@@ -2001,16 +2003,6 @@ const ModernBranchCashCollections = () => {
                                       {column.key === 'name' ? (
                                         <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
                                           {row[column.key]}
-                                          {/* {row.approvalStatus === 'closed' && currentFilter === 'branch' && (
-                                            <div className="ml-2 flex items-center" title={`Locked and approved by ${row.approvedBy || 'Admin'}`}>
-                                              <Lock size={14} className="text-red-600" />
-                                            </div>
-                                          )}
-                                          {row.approvalStatus === 'open' && currentFilter === 'branch' && currentUser.role.rep === 2 && (
-                                            <div className="ml-2 flex items-center" title="Branch is unlocked">
-                                              <Unlock size={14} className="text-green-600" />
-                                            </div>
-                                          )} */}
                                         </div>
                                       ) : column.key === 'actions' ? (
                                         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
