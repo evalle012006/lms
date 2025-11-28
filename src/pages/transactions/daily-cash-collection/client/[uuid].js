@@ -2744,6 +2744,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.loanBalanceStr = loanBalance > 0 ? formatPricePhp(loanBalance) : '-';
                                         temp.pastDue = loanBalance;
                                         temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                        temp.maturedPD = true;
+                                        temp.maturedPastDue = loanBalance;
         
                                         temp.excused = true;
                                         temp.mcbuError = false;
