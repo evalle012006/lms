@@ -2322,6 +2322,8 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuReturnAmtStr = '-';
                             temp.csfReturnAmt = 0;
                             temp.csfReturnAmtStr = '-';
+                            temp.maturedPD = false;
+                            temp.maturedPastDue = 0;
 
                             temp.csfIn = calculateCsfIn(temp, 1);
                             temp.csfInStr = temp.csfIn > 0 ? formatPricePhp(temp.csfIn) : '-';

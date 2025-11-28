@@ -2305,6 +2305,8 @@ const CashCollectionDetailsPage = () => {
                             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                             temp.excused = false;
                             temp.delinquent = false;
+                            temp.maturedPD = false;
+                            temp.maturedPastDue = 0;
                             
                             // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                             // by tomorrow only reloaner and offsets...
