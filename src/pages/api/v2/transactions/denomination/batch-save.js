@@ -16,7 +16,7 @@ const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS);
 
 async function batchSaveDenomination(req, res) {
     const user = await findUserById(req.auth.sub);
-    const { items, date, isSubmission } = req.body;
+    const { items, date, isSubmission, isAdminAdjustment } = req.body;  // NEW: Added isAdminAdjustment
     
     const isAdmin = user.role.rep === 1;
     const isCashier = user.role.shortCode === 'cashier';
@@ -43,7 +43,7 @@ async function batchSaveDenomination(req, res) {
         // ==========================================
         // VALIDATION FOR SUBMISSION
         // ==========================================
-        if (isSubmission) {
+        if (isSubmission && !isAdminAdjustment) {  // UPDATED: Skip validation for admin adjustments
             const groupIds = items.map(item => item.entityId);
             
             // Fetch all groups - single query
@@ -75,7 +75,7 @@ async function batchSaveDenomination(req, res) {
                 const afternoonRemittance = parseFloat(item.afternoonRemittance) || 0;
                 const totalRemittance = morningRemittance + afternoonRemittance;
                 
-                // NEW: Check if at least one remittance is entered when there's collection
+                // Check if at least one remittance is entered when there's collection
                 if (totalNetCollection > 0 && totalRemittance === 0) {
                     missingRemittances.push({
                         entityId: item.entityId,
@@ -150,20 +150,8 @@ async function batchSaveDenomination(req, res) {
                 const amountSitDown = parseFloat(data.amountSitDown) || 0;
                 const noSitDown = parseInt(data.noSitDown) || 0;
                 
-                // // Validate remittances are not negative
-                // if (morningRemittance == 0 || afternoonRemittance == 0) {
-                //     console.log('Negative remittance');
-                //     results.failed.push({
-                //         entityId: data.entityId,
-                //         entityName: data.entityName || 'Unknown',
-                //         error: 'Remittances cannot be zero'
-                //     });
-                //     continue;
-                // }
-                
-                // NEW: Validate total remittance doesn't exceed collection
-                if (totalRemittance > totalNetCollection) {
-                    // console.log('Remittance exceeds collection');
+                // UPDATED: Validate total remittance doesn't exceed collection (skip for admin adjustments)
+                if (!isAdminAdjustment && totalRemittance > totalNetCollection) {
                     results.failed.push({
                         entityId: data.entityId,
                         entityName: data.entityName || 'Unknown',
@@ -195,9 +183,7 @@ async function batchSaveDenomination(req, res) {
                 const loId = group.loanOfficerId;
                 const branchId = group.branchId;
                 
-                // console.log('Group data:', { groupId, loId, branchId });
-                
-                // NEW: Calculate BCC vs Remittances with both morning and afternoon
+                // Calculate BCC vs Remittances with both morning and afternoon
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 
                 // Track query index for this entity
@@ -221,9 +207,7 @@ async function batchSaveDenomination(req, res) {
         }
         
         // Execute all queries in batch
-        // console.log('\n=== EXECUTING BATCH QUERY ===');
         const queryResults = queryList.length > 0 ? await graph.query(...queryList) : { data: {} };
-        // console.log('Query results received');
         
         // Now process updates/inserts
         const mutationList = [];
@@ -246,6 +230,7 @@ async function batchSaveDenomination(req, res) {
                 const amountSitDown = parseFloat(data.amountSitDown) || 0;
                 const noSitDown = parseInt(data.noSitDown) || 0;
                 const bccVsRemittances = totalNetCollection - totalRemittance;
+                const remarks = data.remarks || '';  // NEW: Get remarks from data
                 
                 // Get group data again
                 const groupQuery = await graph.query(
@@ -265,9 +250,7 @@ async function batchSaveDenomination(req, res) {
                     ? (queryResults?.data?.[`query_${queryIndex}`] || [])
                     : [];
                 
-                // console.log('Existing records found:', existingRecords.length);
-                
-                // NEW: Prepare history entry with both remittances
+                // NEW: Prepare history entry with remarks
                 const historyEntry = {
                     date_time: currentDateTime,
                     user_id: user._id,
@@ -279,17 +262,18 @@ async function batchSaveDenomination(req, res) {
                     no_sit_down: noSitDown,
                     amount_sit_down: amountSitDown,
                     bcc_vs_remittances: bccVsRemittances,
-                    action: isAdmin ? 'admin_adjustment' : (isSubmission ? 'submitted' : 'saved'),
-                    ...(isAdmin && { note: 'Admin balance adjustment' })
+                    remarks: remarks,  // NEW: Include remarks in history
+                    action: isAdminAdjustment ? 'admin_adjustment' : (isSubmission ? 'submitted' : 'saved'),
+                    ...(isAdminAdjustment && { note: 'Admin balance adjustment' })
                 };
                 
                 // Process update or insert
                 if (existingRecords.length > 0) {
                     const existingRecord = existingRecords[0];
 
-                    // NEW: Admin can edit regardless of status when balancing
-                    if (isAdmin && bccVsRemittances === 0 && existingRecord.bcc_vs_remittances !== 0) {
-                        // console.log('Admin balancing adjustment');
+                    // NEW: Admin can edit regardless of status
+                    if (isAdmin && isAdminAdjustment) {
+                        console.log('Admin adjustment - updating record');
                         
                         addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                             where: { _id: { _eq: existingRecord._id } },
@@ -297,6 +281,7 @@ async function batchSaveDenomination(req, res) {
                                 morning_remittance: morningRemittance,
                                 afternoon_remittance: afternoonRemittance,
                                 bcc_vs_remittances: bccVsRemittances,
+                                remarks: remarks,  // NEW: Update remarks
                                 modified_date: currentDateTime,
                                 modified_by: user._id
                             },
@@ -305,7 +290,8 @@ async function batchSaveDenomination(req, res) {
                                     ...historyEntry,
                                     previous_morning_remittance: existingRecord.morning_remittance,
                                     previous_afternoon_remittance: existingRecord.afternoon_remittance,
-                                    previous_bcc_vs_remittances: existingRecord.bcc_vs_remittances
+                                    previous_bcc_vs_remittances: existingRecord.bcc_vs_remittances,
+                                    previous_remarks: existingRecord.remarks || ''  // NEW: Track previous remarks
                                 }
                             }
                         }));
@@ -322,7 +308,7 @@ async function batchSaveDenomination(req, res) {
                         const collectionChanged = totalNetCollection !== (existingRecord.total_net_collection || 0);
                         
                         if (collectionChanged) {
-                            // console.log('Collection changed after approval - reopening');
+                            console.log('Collection changed after approval - reopening');
                             
                             addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                                 where: { _id: { _eq: existingRecord._id } },
@@ -334,6 +320,7 @@ async function batchSaveDenomination(req, res) {
                                     no_sit_down: noSitDown,
                                     amount_sit_down: amountSitDown,
                                     bcc_vs_remittances: bccVsRemittances,
+                                    remarks: remarks,  // NEW: Update remarks
                                     status: 'pending',
                                     modified_date: currentDateTime,
                                     modified_by: user._id,
@@ -355,7 +342,7 @@ async function batchSaveDenomination(req, res) {
                                 message: 'Collection changed - status reset to pending'
                             });
                         } else {
-                            // console.log('No collection change - updating remittances only');
+                            console.log('No collection change - updating remittances only');
                             
                             addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                                 where: { _id: { _eq: existingRecord._id } },
@@ -365,6 +352,7 @@ async function batchSaveDenomination(req, res) {
                                     no_sit_down: noSitDown,
                                     amount_sit_down: amountSitDown,
                                     bcc_vs_remittances: bccVsRemittances,
+                                    remarks: remarks,  // NEW: Update remarks
                                     modified_date: currentDateTime,
                                     modified_by: user._id
                                 },
@@ -379,7 +367,7 @@ async function batchSaveDenomination(req, res) {
                             });
                         }
                     } else if (existingRecord.status === 'rejected') {
-                        // console.log('Reprocessing rejected record');
+                        console.log('Reprocessing rejected record');
                         
                         addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                             where: { _id: { _eq: existingRecord._id } },
@@ -391,6 +379,7 @@ async function batchSaveDenomination(req, res) {
                                 no_sit_down: noSitDown,
                                 amount_sit_down: amountSitDown,
                                 bcc_vs_remittances: bccVsRemittances,
+                                remarks: remarks,  // NEW: Update remarks
                                 status: 'pending',
                                 modified_date: currentDateTime,
                                 modified_by: user._id,
@@ -411,7 +400,7 @@ async function batchSaveDenomination(req, res) {
                             message: 'Rejected entry reprocessed'
                         });
                     } else {
-                        // console.log('Updating pending/draft record');
+                        console.log('Updating pending/draft record');
                         
                         addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                             where: { _id: { _eq: existingRecord._id } },
@@ -423,6 +412,7 @@ async function batchSaveDenomination(req, res) {
                                 no_sit_down: noSitDown,
                                 amount_sit_down: amountSitDown,
                                 bcc_vs_remittances: bccVsRemittances,
+                                remarks: remarks,  // NEW: Update remarks
                                 status: 'pending',
                                 modified_date: currentDateTime,
                                 modified_by: user._id
@@ -438,7 +428,7 @@ async function batchSaveDenomination(req, res) {
                         });
                     }
                 } else {
-                    // console.log('Inserting new record');
+                    console.log('Inserting new record');
                     
                     const denominationData = {
                         _id: generateUUID(),
@@ -452,6 +442,7 @@ async function batchSaveDenomination(req, res) {
                         no_sit_down: noSitDown,
                         amount_sit_down: amountSitDown,
                         bcc_vs_remittances: bccVsRemittances,
+                        remarks: remarks,  // NEW: Include remarks in new record
                         status: 'pending',
                         history: [historyEntry],
                         date_added: currentDate,
@@ -504,7 +495,7 @@ async function batchSaveDenomination(req, res) {
         
         res.status(200).json({
             success: true,
-            message: 'Batch save completed',
+            message: isAdminAdjustment ? 'Admin adjustments saved successfully' : 'Batch save completed',  // NEW: Different message for admin
             results: results,
             summary: {
                 total: items.length,

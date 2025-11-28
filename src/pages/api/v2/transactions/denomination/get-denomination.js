@@ -101,6 +101,7 @@ async function getDenomination(req, res) {
         }
         
         // Query denomination data
+        // NOTE: DENOMINATION_FIELDS should include 'remarks' field
         const result = await graph.query(
             queryQl(DENOMINATION_TYPE, { where })
         );
@@ -124,7 +125,7 @@ async function getDenomination(req, res) {
             data: denominations,
             currentDate,
             userRole: user.role.shortCode,
-            canEdit: user.role.shortCode === 'cashier' || user.role.rep === 4,
+            canEdit: user.role.shortCode === 'cashier' || user.role.rep === 1,
             appliedFilters: {
                 filterType: filterApplied,
                 branchId: branchId || (user.role.rep === 3 && user.designatedBranchId) || 

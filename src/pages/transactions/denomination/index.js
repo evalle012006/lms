@@ -8,7 +8,7 @@ import moment from 'moment';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
-import { Calendar, RefreshCw, Save, ChevronLeft, Check, X, Users, XCircle } from 'lucide-react';
+import { Calendar, RefreshCw, Save, ChevronLeft, ChevronUp, Check, X, Users, XCircle } from 'lucide-react';
 import Select from 'react-select';
 
 // Format price helper
@@ -48,6 +48,12 @@ export default function DenominationPage() {
     const [loList, setLoList] = useState([]);
     const [groupList, setGroupList] = useState([]);
     
+    // NEW: Navigation filter states - for nested navigation
+    const [navBranchList, setNavBranchList] = useState([]);
+    const [navLoList, setNavLoList] = useState([]);
+    const [selectedNavBranch, setSelectedNavBranch] = useState(null);
+    const [selectedNavLO, setSelectedNavLO] = useState(null);
+    
     // Rejection modal states
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectingItem, setRejectingItem] = useState(null);
@@ -59,41 +65,96 @@ export default function DenominationPage() {
     const [clientData, setClientData] = useState([]);
     const [selectedGroupForClients, setSelectedGroupForClients] = useState(null);
     
-    // NEW: Separate state for morning and afternoon remittances
+    // Separate state for morning and afternoon remittances
     const [morningRemittanceChanges, setMorningRemittanceChanges] = useState({});
     const [afternoonRemittanceChanges, setAfternoonRemittanceChanges] = useState({});
     
+    // NEW: Remarks state
+    const [remarksChanges, setRemarksChanges] = useState({});
+    
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [selectedItemHistory, setSelectedItemHistory] = useState(null);
+    
+    // NEW: Remarks modal states
+    const [showRemarksModal, setShowRemarksModal] = useState(false);
+    const [remarksModalItem, setRemarksModalItem] = useState(null);
+    const [remarksModalValue, setRemarksModalValue] = useState('');
 
     const handleViewHistory = (item) => {
         setSelectedItemHistory(item);
         setShowHistoryModal(true);
     };
+    
+    // NEW: Handle remarks modal
+    const handleOpenRemarksModal = (item) => {
+        setRemarksModalItem(item);
+        setRemarksModalValue(item.remarks || '');
+        setShowRemarksModal(true);
+    };
+    
+    const handleSaveRemarks = () => {
+        if (remarksModalItem) {
+            setRemarksChanges(prev => ({
+                ...prev,
+                [remarksModalItem.entityId]: remarksModalValue
+            }));
+        }
+        setShowRemarksModal(false);
+        setRemarksModalItem(null);
+        setRemarksModalValue('');
+    };
+    
+    const handleCloseRemarksModal = () => {
+        setShowRemarksModal(false);
+        setRemarksModalItem(null);
+        setRemarksModalValue('');
+    };
+
+    // Get effective filter from router or state
+    const effectiveFilter = router.query.filter || filter;
 
     // Helper function to determine if back button should be shown
     const shouldShowBackButton = () => {
-        if (!viewingNestedContent) {
-            return false;
-        }
-        
-        if (currentUser?.role && !router.query?.parentId) {
-            if (currentUser.role.rep === 4 && filter === 'group') {
-                return false;
+        // Show back button when we have nested navigation via router.query
+        if (router.query.id || router.query.filter) {
+            // Don't show back for users at their base level
+            if (currentUser?.role) {
+                // Cashier without designated branch at branch level
+                if (currentUser.role.shortCode === 'cashier' && 
+                    currentUser.designatedBranchId == null && 
+                    effectiveFilter === 'branch' &&
+                    !router.query.id) {
+                    return false;
+                }
+                
+                // Branch manager (rep 3) at LO level - don't show Back to Branches
+                // They are assigned to a specific branch, so they can't navigate to other branches
+                if (currentUser.role.rep === 3 && effectiveFilter === 'lo') {
+                    return false;
+                }
+                
+                // For LO level, only show "Back to Branches" for admin users (rep <= 2)
+                if (effectiveFilter === 'lo' && currentUser.role.rep > 2) {
+                    return false;
+                }
+                
+                // Loan officer (rep 4) at group level without navigation
+                if (currentUser.role.rep === 4 && 
+                    effectiveFilter === 'group' && 
+                    !router.query.id) {
+                    return false;
+                }
+                
+                // Branch manager (rep 3) at group level - show back to LO button
+                if (currentUser.role.rep === 3 && effectiveFilter === 'group') {
+                    return true;
+                }
             }
             
-            if (currentUser.role.rep === 3 && filter === 'lo') {
-                return false;
-            }
-            
-            if (currentUser.role.shortCode === 'cashier' && 
-                currentUser.designatedBranchId == null && 
-                filter === 'branch') {
-                return false;
-            }
+            return true;
         }
         
-        return true;
+        return false;
     };
     
     // Initialize from router query
@@ -144,6 +205,102 @@ export default function DenominationPage() {
         
         fetchBranches();
     }, [branchList.length, currentUser, dispatch]);
+
+    // NEW: Fetch navigation branch list when viewing LOs
+    useEffect(() => {
+        const fetchNavBranches = async () => {
+            if (effectiveFilter === 'lo' && currentUser?.role?.rep <= 2) {
+                try {
+                    const url = getApiBaseUrl() + 'branches/list';
+                    const response = await fetchWrapper.get(url);
+                    
+                    if (response.success && response.branches) {
+                        const branches = response.branches.map(b => ({
+                            value: b._id,
+                            label: b.code ? `${b.code} - ${b.name}` : b.name
+                        })).sort((a, b) => a.label.localeCompare(b.label));
+                        setNavBranchList(branches);
+                        
+                        // Set selected branch if we have one in the URL
+                        if (router.query.id) {
+                            const currentBranch = branches.find(b => b.value === router.query.id);
+                            if (currentBranch) {
+                                setSelectedNavBranch(currentBranch);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching navigation branches:', error);
+                }
+            }
+        };
+        
+        fetchNavBranches();
+    }, [effectiveFilter, currentUser?.role?.rep, router.query.id]);
+
+    // NEW: Fetch navigation LO list when viewing groups
+    useEffect(() => {
+        const fetchNavLOs = async () => {
+            if (effectiveFilter === 'group') {
+                const branchId = router.query.parentId || currentUser?.designatedBranchId;
+                
+                if (!branchId) return;
+                
+                try {
+                    // Get the branch code first
+                    let branchCode = null;
+                    if (branchList.length > 0) {
+                        const branch = branchList.find(b => b._id === branchId);
+                        branchCode = branch?.code;
+                    }
+                    
+                    if (!branchCode) {
+                        // Fetch branch details if we don't have it in list
+                        const branchResponse = await fetchWrapper.get(
+                            getApiBaseUrl() + `branches?_id=${branchId}`
+                        );
+                        if (branchResponse.success && branchResponse.branch) {
+                            branchCode = branchResponse.branch.code;
+                        }
+                    }
+                    
+                    if (!branchCode) return;
+                    
+                    const params = new URLSearchParams({
+                        branchCode: branchCode
+                    });
+                    
+                    const response = await fetchWrapper.get(
+                        getApiBaseUrl() + 'users/list?' + params.toString()
+                    );
+                    
+                    if (response.success) {
+                        const los = response.users
+                            .filter(u => u.role.rep === 4)
+                            .map(u => ({
+                                value: u._id,
+                                label: `${u.loNo || ''} - ${u.firstName} ${u.lastName}`.trim(),
+                                loNo: u.loNo || 0
+                            }))
+                            .sort((a, b) => a.loNo - b.loNo);
+                        setNavLoList(los);
+                        
+                        // Set selected LO if we have one in the URL
+                        if (router.query.id) {
+                            const currentLO = los.find(lo => lo.value === router.query.id);
+                            if (currentLO) {
+                                setSelectedNavLO(currentLO);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching navigation LO list:', error);
+                }
+            }
+        };
+        
+        fetchNavLOs();
+    }, [effectiveFilter, router.query.parentId, router.query.id, currentUser?.designatedBranchId, branchList]);
     
     // Determine filter level based on user role
     useEffect(() => {
@@ -163,6 +320,16 @@ export default function DenominationPage() {
         }
     }, [currentUser?.role, currentDate, dateFilter]);
     
+    // Sync selectedLO with router query when at group level (for branch managers)
+    useEffect(() => {
+        if (currentUser?.role?.rep === 3 && router.query.filter === 'group' && router.query.id && loList.length > 0) {
+            const currentLO = loList.find(lo => lo.value === router.query.id);
+            if (currentLO && (!selectedLO || selectedLO.value !== currentLO.value)) {
+                setSelectedLO(currentLO);
+            }
+        }
+    }, [router.query.filter, router.query.id, loList, currentUser?.role?.rep]);
+    
     // Fetch LO list for branch managers
     const fetchLOList = async () => {
         try {
@@ -179,14 +346,19 @@ export default function DenominationPage() {
                     .filter(u => u.role.rep === 4)
                     .map(u => ({
                         value: u._id,
-                        label: `${u.firstName} ${u.lastName}`
+                        label: `LO${u.loNo || ''} - ${u.firstName} ${u.lastName}`.trim(),
+                        loNo: u.loNo || 0
                     }))
-                    .sort((a, b) => {
-                        const loNoA = response.users.find(u => u._id === a.value)?.loNo || 0;
-                        const loNoB = response.users.find(u => u._id === b.value)?.loNo || 0;
-                        return loNoA - loNoB;
-                    });
+                    .sort((a, b) => a.loNo - b.loNo);
                 setLoList(los);
+                
+                // If we're at group level with a router.query.id, set the selected LO
+                if (router.query.filter === 'group' && router.query.id) {
+                    const currentLO = los.find(lo => lo.value === router.query.id);
+                    if (currentLO) {
+                        setSelectedLO(currentLO);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error fetching LO list:', error);
@@ -279,41 +451,40 @@ export default function DenominationPage() {
     
     // Fetch initial data from cash collections API
     const fetchInitialData = async () => {
-        const effectiveFilter = router.query.filter || filter;
+        const currentEffectiveFilter = router.query.filter || filter;
 
         setLoading(true);
         try {
             const params = new URLSearchParams({
                 date: dateFilter,
-                filter: effectiveFilter,
+                filter: currentEffectiveFilter,
                 userId: currentUser._id
             });
             
             if (router.query.id && router.query.filter) {
                 if (router.query.filter === 'lo') {
+                    // At LO level - viewing LOs for a branch
                     params.append('branchId', router.query.id);
                 } else if (router.query.filter === 'group') {
+                    // At GROUP level - viewing groups for an LO
                     params.append('loId', router.query.id);
-                    
-                    if (router.query.parentId) {
-                        params.append('branchId', router.query.parentId);
-                    }
+                    // Don't add branchId - loId is more specific
                 }
             } else {
-                if (effectiveFilter === 'branch') {
+                if (currentEffectiveFilter === 'branch') {
                     if (selectedBranch) {
                         params.append('branchId', selectedBranch.value);
                     } else if (currentUser?.designatedBranchId && currentUser.designatedBranchId !== '') {
                         params.append('branchId', currentUser.designatedBranchId);
                     }
-                } else if (effectiveFilter === 'lo') {
+                } else if (currentEffectiveFilter === 'lo') {
                     if (currentUser.designatedBranchId) {
                         params.append('branchId', currentUser.designatedBranchId);
                     }
                     if (selectedLO) {
                         params.append('loId', selectedLO.value);
                     }
-                } else if (effectiveFilter === 'group') {
+                } else if (currentEffectiveFilter === 'group') {
                     if (currentUser._id) {
                         params.append('loId', currentUser._id);
                     }
@@ -324,6 +495,7 @@ export default function DenominationPage() {
             }
             
             const url = getApiBaseUrl() + 'transactions/denomination/get-initial-data?' + params.toString();
+            console.log('Fetching initial data:', url);
             
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -353,7 +525,7 @@ export default function DenominationPage() {
                 date: dateFilter
             });
             
-            const effectiveFilter = router.query.filter || filter;
+            const currentEffectiveFilter = router.query.filter || filter;
             
             let shouldAddBranchFilter = false;
             let shouldAddLoFilter = false;
@@ -364,16 +536,14 @@ export default function DenominationPage() {
             
             if (router.query.id && router.query.filter) {
                 if (router.query.filter === 'lo') {
+                    // At LO level viewing groups for a branch - filter by branch
                     branchIdToUse = router.query.id;
                     shouldAddBranchFilter = true;
                 } else if (router.query.filter === 'group') {
+                    // At GROUP level viewing groups for an LO - filter by LO only (no need for branch)
                     loIdToUse = router.query.id;
                     shouldAddLoFilter = true;
-                    
-                    if (router.query.parentId) {
-                        branchIdToUse = router.query.parentId;
-                        shouldAddBranchFilter = true;
-                    }
+                    // Don't add branch filter - LO filter is more specific
                 }
             } 
             else {
@@ -408,21 +578,23 @@ export default function DenominationPage() {
                 }
             }
             
-            if (shouldAddBranchFilter && branchIdToUse) {
-                params.append('branchId', branchIdToUse);
-            }
-            if (shouldAddLoFilter && loIdToUse) {
-                params.append('loId', loIdToUse);
-            }
+            // Only add the most specific filter needed
+            // Priority: groupId > loId > branchId
             if (shouldAddGroupFilter && groupIdToUse) {
                 params.append('groupId', groupIdToUse);
+            } else if (shouldAddLoFilter && loIdToUse) {
+                params.append('loId', loIdToUse);
+            } else if (shouldAddBranchFilter && branchIdToUse) {
+                params.append('branchId', branchIdToUse);
             }
             
             const url = getApiBaseUrl() + 'transactions/denomination/get-denomination?' + params.toString();
+            console.log('Fetching denomination data:', url);
             
             const response = await fetchWrapper.get(url);
             
             if (response.success) {
+                console.log('Denomination data fetched:', response.data?.length, 'records');
                 setDenominationData(response.data || []);
             }
         } catch (error) {
@@ -441,7 +613,7 @@ export default function DenominationPage() {
                     (d.branch_id === item.entityId || d.lo_id === item.entityId || d.group_id === item.entityId)
                 );
 
-                // NEW: Calculate aggregated morning remittances for branch/LO level
+                // Calculate aggregated morning remittances for branch/LO level
                 let totalMorningRemittance = 0;
                 let totalAfternoonRemittance = 0;
                 if (effectiveFilter !== 'group') {
@@ -455,7 +627,7 @@ export default function DenominationPage() {
                     });
                 }
                 
-                // NEW: Determine current remittance values
+                // Determine current remittance values
                 const currentMorningRemittance = totalMorningRemittance != 0 
                     ? totalMorningRemittance 
                     : morningRemittanceChanges[item.entityId] !== undefined 
@@ -500,13 +672,18 @@ export default function DenominationPage() {
                     collectionChanged: collectionChanged,
                     approval_date: savedData?.approval_date,
                     history: savedData?.history || [],
-                    bccVsRemittances: bccVsRemittances
+                    bccVsRemittances: bccVsRemittances,
+                    // NEW: Include remarks
+                    remarks: remarksChanges[item.entityId] !== undefined 
+                        ? remarksChanges[item.entityId] 
+                        : (savedData?.remarks || ''),
+                    savedRemarks: savedData?.remarks || ''
                 };
             });
     };
 
     
-    // NEW: Handle morning remittance change
+    // Handle morning remittance change
     const handleMorningRemittanceChange = (entityId, value) => {
         let cleanedValue = value.replace(/[^0-9.-]/g, '');
         
@@ -516,7 +693,7 @@ export default function DenominationPage() {
         }));
     };
 
-    // NEW: Handle afternoon remittance change
+    // Handle afternoon remittance change
     const handleAfternoonRemittanceChange = (entityId, value) => {
         let cleanedValue = value.replace(/[^0-9.-]/g, '');
         
@@ -526,7 +703,15 @@ export default function DenominationPage() {
         }));
     };
 
-    // NEW: Handle morning remittance validation on blur
+    // NEW: Handle remarks change
+    const handleRemarksChange = (entityId, value) => {
+        setRemarksChanges(prev => ({
+            ...prev,
+            [entityId]: value
+        }));
+    };
+
+    // Handle morning remittance validation on blur
     const handleMorningRemittanceBlur = (entityId) => {
         const item = initialData.find(i => i.entityId === entityId);
         if (!item) return;
@@ -574,8 +759,8 @@ export default function DenominationPage() {
         }
     };
 
-    // NEW: Handle afternoon remittance validation on blur
-    const handleAfternoonRemittanceBlur = (item) => {
+    // Handle afternoon remittance validation on blur
+    const handleAfternoonRemittanceBlur = (item, currentBccVsRemittances) => {
         if (!item) return;
         const entityId = item.entityId;
 
@@ -592,6 +777,8 @@ export default function DenominationPage() {
         
         const totalRemittance = morningValue + currentValue;
         const expectedTotal = item.totalNetCollection || 0;
+
+        console.log('BCC vs Remittances on Afternoon Blur:', currentBccVsRemittances);
         
         // Only validate and auto-adjust if the value seems complete
         const isCompleteValue = rawValue.length > 0 && !rawValue.endsWith('.');
@@ -608,6 +795,8 @@ export default function DenominationPage() {
             }
         } else {
             // For positive/zero collections, don't allow negative remittances
+            // it should allow less than zero if bccVsRemittances is negative
+            // also it should allow the cashier to adjust the afternoon remittance if bccVsRemittances is not zero even it's approved
             if (currentValue < 0) {
                 toast.warning('Afternoon remittance cannot be negative when net collection is positive');
                 setAfternoonRemittanceChanges(prev => ({
@@ -621,7 +810,7 @@ export default function DenominationPage() {
         }
     };
     
-    // NEW: Calculate BCC vs Remittances (morning + afternoon)
+    // Calculate BCC vs Remittances (morning + afternoon)
     const calculateBccVsRemittances = (totalNetCollection, morningRemittance, afternoonRemittance) => {
         const netCollection = parseFloat(totalNetCollection) || 0;
         const morning = parseFloat(morningRemittance) || 0;
@@ -637,18 +826,18 @@ export default function DenominationPage() {
     
     // Handle row click for navigation
     const handleRowClick = (item) => {
-        const effectiveFilter = router.query.filter || filter;
+        const currentEffectiveFilter = router.query.filter || filter;
         
         let nextFilter = '';
         let updatedQuery = {
             date: dateFilter
         };
         
-        if (effectiveFilter === 'branch') {
+        if (currentEffectiveFilter === 'branch') {
             nextFilter = 'lo';
             updatedQuery.id = item.entityId;
             updatedQuery.filter = nextFilter;
-        } else if (effectiveFilter === 'lo') {
+        } else if (currentEffectiveFilter === 'lo') {
             nextFilter = 'group';
             updatedQuery.id = item.entityId;
             updatedQuery.filter = nextFilter;
@@ -658,7 +847,7 @@ export default function DenominationPage() {
             } else if (currentUser.designatedBranchId) {
                 updatedQuery.parentId = currentUser.designatedBranchId;
             }
-        } else if (effectiveFilter === 'group') {
+        } else if (currentEffectiveFilter === 'group') {
             return;
         }
         
@@ -670,31 +859,102 @@ export default function DenominationPage() {
         setViewingNestedContent(true);
     };
     
-    // Handle back navigation
+    // NEW: Handle back navigation - improved version similar to ModernBranchCashCollections
     const handleBackNavigation = () => {
-        if (!shouldShowBackButton()) {
-            return;
+        // From group level, go back to LO level
+        if (effectiveFilter === 'group') {
+            // For branch managers (rep 3), go back to their LO list without id param
+            if (currentUser?.role?.rep === 3) {
+                router.push({
+                    pathname: router.pathname,
+                    query: { 
+                        date: dateFilter
+                    }
+                }, undefined, { shallow: true });
+                setSelectedLO(null);
+                return;
+            }
+            
+            // For other users with parentId, navigate back to LO level
+            if (router.query.parentId) {
+                router.push({
+                    pathname: router.pathname,
+                    query: { 
+                        date: dateFilter, 
+                        filter: 'lo',
+                        id: router.query.parentId,
+                    }
+                }, undefined, { shallow: true });
+                setSelectedNavLO(null);
+                return;
+            }
         }
-
-        if (filter === 'group' && router.query.parentId) {
-            router.push({
-                pathname: router.pathname,
-                query: { 
-                    date: dateFilter, 
-                    filter: 'lo',
-                    id: router.query.parentId,
-                }
-            }, undefined, { shallow: true }); 
-        } else if (filter === 'lo' && router.query.parentId) {
-            if (currentUser?.role?.rep !== 3) {
+        
+        // From LO level, go back to branch level (only for admin users)
+        if (effectiveFilter === 'lo' && router.query.id) {
+            // Check if user is admin/CEO level
+            if (currentUser?.role?.rep <= 2) {
                 router.push({
                     pathname: router.pathname,
                     query: { 
                         date: dateFilter, 
                         filter: 'branch'
                     }
-                }, undefined, { shallow: true }); 
+                }, undefined, { shallow: true });
+                setSelectedNavBranch(null);
+            } else {
+                // For branch managers, just clear the navigation
+                router.push({
+                    pathname: router.pathname,
+                    query: { 
+                        date: dateFilter
+                    }
+                }, undefined, { shallow: true });
             }
+            return;
+        }
+        
+        // Default: go to base view
+        router.push({
+            pathname: router.pathname,
+            query: { 
+                date: dateFilter
+            }
+        }, undefined, { shallow: true });
+    };
+
+    // NEW: Handle navigation branch filter change
+    const handleNavBranchChange = (selected) => {
+        setSelectedNavBranch(selected);
+        setSelectedNavLO(null); // Reset LO selection
+        
+        if (selected) {
+            router.push({
+                pathname: router.pathname,
+                query: { 
+                    date: dateFilter, 
+                    filter: 'lo',
+                    id: selected.value,
+                }
+            }, undefined, { shallow: true });
+        }
+    };
+
+    // NEW: Handle navigation LO filter change
+    const handleNavLOChange = (selected) => {
+        setSelectedNavLO(selected);
+        
+        if (selected) {
+            const parentId = router.query.parentId || currentUser?.designatedBranchId;
+            router.push({
+                pathname: router.pathname,
+                query: { 
+                    date: dateFilter, 
+                    filter: 'group',
+                    id: selected.value,
+                    parentId: parentId,
+                }
+            }, undefined, { shallow: true });
         }
     };
     
@@ -703,18 +963,28 @@ export default function DenominationPage() {
         fetchInitialData();
     };
 
-    // NEW: Check if item has changes in either morning or afternoon remittance
+    // UPDATED: Check if item has changes in morning, afternoon remittance, or remarks
     const isItemDirty = (item) => {
         const hasMorningChange = morningRemittanceChanges.hasOwnProperty(item.entityId) &&
-            morningRemittanceChanges[item.entityId] !== item.savedMorningRemittance;
+            parseFloat(morningRemittanceChanges[item.entityId]) !== parseFloat(item.savedMorningRemittance || 0);
         
         const hasAfternoonChange = afternoonRemittanceChanges.hasOwnProperty(item.entityId) &&
-            afternoonRemittanceChanges[item.entityId] !== item.savedAfternoonRemittance;
+            parseFloat(afternoonRemittanceChanges[item.entityId]) !== parseFloat(item.savedAfternoonRemittance || 0);
         
-        return hasMorningChange || hasAfternoonChange;
+        const hasRemarksChange = remarksChanges.hasOwnProperty(item.entityId) &&
+            remarksChanges[item.entityId] !== item.savedRemarks;
+        
+        return hasMorningChange || hasAfternoonChange || hasRemarksChange;
     };
 
-    // NEW: Get count of dirty items
+    // NEW: Check if item is a Venus correction (over-remittance that needs fixing)
+    const isVenusCorrection = (item) => {
+        return item.status === 'approved' && 
+            item.bccVsRemittances < 0 && 
+            (item.savedAfternoonRemittance === 0 || item.savedAfternoonRemittance === null);
+    };
+
+    // Get count of dirty items
     const getDirtyItemsCount = () => {
         const mergedData = getMergedData();
         return mergedData.filter(item => {
@@ -733,9 +1003,9 @@ export default function DenominationPage() {
         }).length;
     };
     
-    // NEW: Updated submit handler to include both remittances
+    // UPDATED: Submit handler to include remarks
     const handleSubmit = async () => {
-        if (!canEdit) {
+        if (!canEdit && currentUser.role.rep !== 1) {
             toast.error('You do not have permission to submit');
             return;
         }
@@ -771,7 +1041,11 @@ export default function DenominationPage() {
                     morningRemittance: item.currentMorningRemittance || 0,
                     afternoonRemittance: item.currentAfternoonRemittance || 0,
                     amountSitDown: item.amountSitDown || 0,
-                    noSitDown: item.noSitDown || 0
+                    noSitDown: item.noSitDown || 0,
+                    remarks: item.remarks || '',
+                    // NEW: Flag for Venus correction (over-remittance fix)
+                    isCorrection: isVenusCorrection(item) && morningRemittanceChanges.hasOwnProperty(item.entityId),
+                    previousMorningRemittance: item.savedMorningRemittance || 0
                 }));
             
             if (itemsToSave.length === 0) {
@@ -806,7 +1080,7 @@ export default function DenominationPage() {
                 }
             }
             
-            if (missingRemittances.length > 0) {
+            if (missingRemittances.length > 0 && currentUser.role.rep !== 1) {
                 toast.error('Cannot submit: All groups with collections must have remittances entered', {
                     autoClose: 8000
                 });
@@ -832,7 +1106,8 @@ export default function DenominationPage() {
                 {
                     items: itemsToSave,
                     date: dateFilter,
-                    isSubmission: true
+                    isSubmission: true,
+                    isAdminAdjustment: currentUser.role.rep === 1  // NEW: Flag for admin adjustments
                 }
             );
             
@@ -856,9 +1131,11 @@ export default function DenominationPage() {
                 }
 
                 if (success.length > 0 || reopened.length > 0) {
-                    toast.success(response.message || `${itemsToSave.length} denomination record(s) submitted successfully`);
+                    const actionType = currentUser.role.rep === 1 ? 'Admin adjustment' : 'Denomination record(s)';
+                    toast.success(response.message || `${itemsToSave.length} ${actionType} submitted successfully`);
                     setMorningRemittanceChanges({});
                     setAfternoonRemittanceChanges({});
+                    setRemarksChanges({});  // NEW: Clear remarks changes
                     await fetchInitialData();
                 }
             } else {
@@ -914,6 +1191,7 @@ export default function DenominationPage() {
                     if (summary && (summary.successful > 0 || summary.reopened > 0)) {
                         setMorningRemittanceChanges({});
                         setAfternoonRemittanceChanges({});
+                        setRemarksChanges({});  // NEW: Clear remarks changes
                         await fetchInitialData();
                     }
                 }
@@ -1017,7 +1295,7 @@ export default function DenominationPage() {
     
     // Load data when dependencies change
     useEffect(() => {
-        const effectiveFilter = router.query.filter || filter;
+        const currentEffectiveFilter = router.query.filter || filter;
         
         if (!currentUser || !currentUser.role) {
             setLoading(false);
@@ -1030,16 +1308,16 @@ export default function DenominationPage() {
             canFetch = true;
         } else {
             if (currentUser.role.rep <= 2) {
-                if (effectiveFilter === 'branch') {
+                if (currentEffectiveFilter === 'branch') {
                     canFetch = true;
                 }
             } else if (currentUser.role.rep === 3) {
                 if (currentUser.role.shortCode === 'cashier' && 
                     (!currentUser.designatedBranchId || currentUser.designatedBranchId === '')) {
-                    if (effectiveFilter === 'branch') {
+                    if (currentEffectiveFilter === 'branch') {
                         canFetch = true;
                     }
-                } else if (currentUser.designatedBranchId && effectiveFilter === 'lo') {
+                } else if (currentUser.designatedBranchId && currentEffectiveFilter === 'lo') {
                     canFetch = true;
                 }
             } else if (currentUser.role.rep === 4) {
@@ -1062,14 +1340,12 @@ export default function DenominationPage() {
     
     const mergedData = getMergedData();
 
-    const effectiveFilter = router.query.filter || filter;
-
     const showStatusColumn = effectiveFilter === 'group';
     const showActionsColumn = effectiveFilter === 'group';
     const userCanApproveReject = (currentUser.role.rep === 3 || currentUser.role.rep === 4) && 
                                 currentUser.role.shortCode !== 'cashier';
 
-    // Admin edit permissions - simpler and more permissive
+    // UPDATED: Admin edit permissions - allow editing regardless of BCC balance, date, or status
     const canAdminEdit = (item) => {
         // Only for role.rep = 1 (admin/CEO level)
         if (currentUser.role.rep !== 1) return false;
@@ -1077,16 +1353,13 @@ export default function DenominationPage() {
         // Only at group level
         if (effectiveFilter !== 'group') return false;
         
-        // Only when BCC vs Remittances is not balanced
-        if (item.bccVsRemittances === 0) return false;
-        
-        // Can edit regardless of date, status, or existing values
+        // Admin can edit regardless of date, status, BCC balance, or existing values
         return true;
     };
 
     // UPDATED: Check if morning remittance should show input
     const shouldShowMorningRemittanceInput = (item) => {
-        // Admin can always edit when BCC is unbalanced
+        // Admin can always edit at group level
         if (canAdminEdit(item)) {
             return true;
         }
@@ -1102,15 +1375,23 @@ export default function DenominationPage() {
         // Check if user is currently editing this field (has unsaved changes)
         const isCurrentlyEditing = morningRemittanceChanges.hasOwnProperty(item.entityId);
         
-        // If approved and BCC is balanced, don't show input
+        // NEW: Venus scenario - Allow editing morning remittance if:
+        // - BCC vs Remittances is negative (over-remitted)
+        // - No afternoon remittance has been entered yet
+        // - Status is approved (needs correction)
         if (item.status === 'approved') {
             const currentMorning = morningRemittanceChanges[item.entityId] !== undefined 
-                ? morningRemittanceChanges[item.entityId]
+                ? parseFloat(morningRemittanceChanges[item.entityId]) || 0
                 : item.savedMorningRemittance || 0;
             const currentAfternoon = afternoonRemittanceChanges[item.entityId] !== undefined
-                ? afternoonRemittanceChanges[item.entityId]
+                ? parseFloat(afternoonRemittanceChanges[item.entityId]) || 0
                 : item.savedAfternoonRemittance || 0;
             const bccVsRemittances = calculateBccVsRemittances(item.totalNetCollection, currentMorning, currentAfternoon);
+            
+            // If BCC is negative and no afternoon remittance, allow morning correction
+            if (bccVsRemittances < 0 && currentAfternoon === 0) {
+                return true;
+            }
             
             if (bccVsRemittances === 0 && !isCurrentlyEditing) return false;
         }
@@ -1133,8 +1414,24 @@ export default function DenominationPage() {
         // Admin is never disabled when they can edit
         if (canAdminEdit(item)) return false;
         
-        // CRITICAL FIX: Don't disable if status is rejected (allow editing)
+        // Don't disable if status is rejected (allow editing)
         if (item.status === 'rejected') return false;
+        
+        // NEW: Venus scenario - Don't disable if BCC is negative and no afternoon remittance
+        if (item.status === 'approved') {
+            const currentMorning = morningRemittanceChanges[item.entityId] !== undefined 
+                ? parseFloat(morningRemittanceChanges[item.entityId]) || 0
+                : item.savedMorningRemittance || 0;
+            const currentAfternoon = afternoonRemittanceChanges[item.entityId] !== undefined
+                ? parseFloat(afternoonRemittanceChanges[item.entityId]) || 0
+                : item.savedAfternoonRemittance || 0;
+            const bccVsRemittances = calculateBccVsRemittances(item.totalNetCollection, currentMorning, currentAfternoon);
+            
+            // If BCC is negative and no afternoon remittance, allow morning correction
+            if (bccVsRemittances < 0 && currentAfternoon === 0) {
+                return false;
+            }
+        }
         
         // Disable if there's already saved morning remittance data
         return item.savedMorningRemittance && item.savedMorningRemittance !== 0;
@@ -1142,7 +1439,7 @@ export default function DenominationPage() {
 
     // UPDATED: Check if afternoon remittance should show input
     const shouldShowAfternoonRemittanceInput = (item) => {
-        // Admin can always edit when BCC is unbalanced
+        // Admin can always edit at group level
         if (canAdminEdit(item)) {
             return true;
         }
@@ -1155,18 +1452,22 @@ export default function DenominationPage() {
         // Check if user is currently editing this field
         const isCurrentlyEditingAfternoon = afternoonRemittanceChanges.hasOwnProperty(item.entityId);
         
+        // Don't allow if morning was saved but rejected and afternoon is 0
         if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance === 0 && item.status === 'rejected') {
             return false;
         }
 
+        // Allow if both are saved and rejected
         if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance > 0 && item.status === 'rejected') {
             return true;
         }
 
-        // Show if there's a saved morning remittance, status is approved, and BCC needs balancing
-        // OR if user is currently editing
-        return item.savedMorningRemittance > 0 && 
-            (item.status === 'approved' && (item.bccVsRemittances > 0 || isCurrentlyEditingAfternoon));
+        // UPDATED: Allow editing if there's saved morning remittance AND 
+        // (status is approved with unbalanced BCC OR currently editing OR status is pending/draft with unbalanced BCC)
+        return item.savedMorningRemittance > 0 && (
+            (item.status === 'approved' && (item.bccVsRemittances !== 0 || isCurrentlyEditingAfternoon)) ||
+            ((item.status === 'pending' || item.status === 'draft') && item.bccVsRemittances !== 0)
+        );
     };
 
     // UPDATED: Check if afternoon remittance input should be disabled
@@ -1174,10 +1475,12 @@ export default function DenominationPage() {
         // Admin is never disabled when they can edit
         if (canAdminEdit(item)) return false;
         
+        // Don't allow if morning was saved but rejected and afternoon is 0
         if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance === 0 && item.status === 'rejected') {
             return true;
         }
 
+        // Allow if both are saved and rejected
         if (item.savedMorningRemittance > 0 && item.savedAfternoonRemittance > 0 && item.status === 'rejected') {
             return false;
         }
@@ -1186,15 +1489,27 @@ export default function DenominationPage() {
     };
     
     const getFilterLabel = () => {
-        if (filter === 'branch') return 'Branch';
-        if (filter === 'lo') return 'Loan Officer';
-        if (filter === 'group') return 'Group';
+        if (effectiveFilter === 'branch') return 'Branch';
+        if (effectiveFilter === 'lo') return 'Loan Officer';
+        if (effectiveFilter === 'group') return 'Group';
         return '';
     };
+
+    // Get back button text
+    const getBackButtonText = () => {
+        if (effectiveFilter === 'group') {
+            return 'Back to Loan Officers';
+        } else if (effectiveFilter === 'lo') {
+            return 'Back to Branches';
+        }
+        return 'Back';
+    };
     
+    // UPDATED: Clear all changes including remarks
     useEffect(() => {
         setMorningRemittanceChanges({});
         setAfternoonRemittanceChanges({});
+        setRemarksChanges({});  // NEW: Clear remarks
     }, [dateFilter, selectedBranch, selectedLO, selectedGroup]);
 
     const calculateGrandTotal = (data) => {
@@ -1219,11 +1534,30 @@ export default function DenominationPage() {
                     <p className="mt-1 text-sm text-gray-500">
                         {moment(dateFilter).format('dddd, MMMM DD, YYYY')}
                     </p>
+                    
+                    {/* NEW: Back Navigation - similar to ModernBranchCashCollections */}
+                    {shouldShowBackButton() && (
+                        <div className="mt-3 flex items-center">
+                            <button
+                                onClick={handleBackNavigation}
+                                className="text-sm font-medium text-indigo-600 hover:text-indigo-900 flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-indigo-50 transition-colors"
+                            >
+                                <ChevronUp size={16} />
+                                {getBackButtonText()}
+                            </button>
+                            
+                            {parentEntityName && (
+                                <span className="ml-3 text-sm text-gray-700">
+                                    Viewing: <span className="font-medium">{parentEntityName}</span>
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 
                 {/* Filters Section */}
-                <div className="flex items-center justify-between p-3 sm:p-4 bg-white border-b border-gray-200 gap-4">
-                    <div className="flex items-center gap-4 flex-1">
+                <div className="flex flex-wrap items-center justify-between p-3 sm:p-4 bg-white border-b border-gray-200 gap-3 sm:gap-4">
+                    <div className="flex flex-wrap items-center gap-3 flex-1">
                         {/* Date Filter */}
                         <div className="relative">
                             <input
@@ -1236,7 +1570,8 @@ export default function DenominationPage() {
                             <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                         </div>
                         
-                        {!router.query.id && filter === 'branch' && currentUser.role.rep <= 2 && (
+                        {/* Original Branch filter for admin users at branch level */}
+                        {!router.query.id && effectiveFilter === 'branch' && currentUser.role.rep <= 2 && (
                             <div className="w-64">
                                 <Select
                                     value={selectedBranch}
@@ -1255,21 +1590,97 @@ export default function DenominationPage() {
                             </div>
                         )}
                         
-                        {!router.query.id && filter === 'lo' && currentUser.role.rep === 3 && (
-                            <div className="w-64">
+                        {/* NEW: Navigation Branch filter when viewing LOs */}
+                        {effectiveFilter === 'lo' && currentUser.role.rep <= 2 && navBranchList.length > 0 && (
+                            <div className="w-72">
                                 <Select
-                                    value={selectedLO}
-                                    onChange={setSelectedLO}
-                                    options={loList}
-                                    placeholder="Filter by LO (Optional)"
-                                    isClearable
+                                    value={selectedNavBranch}
+                                    onChange={handleNavBranchChange}
+                                    options={navBranchList}
+                                    placeholder="Select Branch to view LOs"
+                                    isClearable={false}
                                     isDisabled={loading}
                                     className="text-sm"
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            borderColor: '#6366f1',
+                                            borderWidth: '2px',
+                                            '&:hover': {
+                                                borderColor: '#4f46e5'
+                                            }
+                                        })
+                                    }}
                                 />
                             </div>
                         )}
                         
-                        {!router.query.id && filter === 'group' && currentUser.role.rep === 4 && (
+                        {/* NEW: Navigation LO filter when viewing groups - for admin users only */}
+                        {effectiveFilter === 'group' && currentUser.role.rep <= 2 && navLoList.length > 0 && (
+                            <div className="w-72">
+                                <Select
+                                    value={selectedNavLO}
+                                    onChange={handleNavLOChange}
+                                    options={navLoList}
+                                    placeholder="Select LO to view Groups"
+                                    isClearable={false}
+                                    isDisabled={loading}
+                                    className="text-sm"
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            borderColor: '#10b981',
+                                            borderWidth: '2px',
+                                            '&:hover': {
+                                                borderColor: '#059669'
+                                            }
+                                        })
+                                    }}
+                                />
+                            </div>
+                        )}
+                        
+                        {/* LO filter for branch managers - only show when viewing groups */}
+                        {effectiveFilter === 'group' && currentUser.role.rep === 3 && (
+                            <div className="w-64">
+                                <Select
+                                    value={selectedLO}
+                                    onChange={(selected) => {
+                                        setSelectedLO(selected);
+                                        // When LO is selected, update URL to show that LO's groups
+                                        if (selected) {
+                                            router.push({
+                                                pathname: router.pathname,
+                                                query: { 
+                                                    date: dateFilter, 
+                                                    filter: 'group',
+                                                    id: selected.value,
+                                                    parentId: currentUser.designatedBranchId,
+                                                }
+                                            }, undefined, { shallow: true });
+                                        }
+                                    }}
+                                    options={loList}
+                                    placeholder="Select Loan Officer"
+                                    isClearable={false}
+                                    isDisabled={loading}
+                                    className="text-sm"
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            borderColor: '#10b981',
+                                            borderWidth: '2px',
+                                            '&:hover': {
+                                                borderColor: '#059669'
+                                            }
+                                        })
+                                    }}
+                                />
+                            </div>
+                        )}
+                        
+                        {/* Original Group filter for loan officers */}
+                        {!router.query.id && effectiveFilter === 'group' && currentUser.role.rep === 4 && (
                             <div className="w-64">
                                 <Select
                                     value={selectedGroup}
@@ -1321,7 +1732,7 @@ export default function DenominationPage() {
                 </div>
 
                 {/* Admin Balance Adjustment Info */}
-                {currentUser.role.rep === 1 && effectiveFilter === 'group' && mergedData.some(item => item.bccVsRemittances !== 0) && (
+                {currentUser.role.rep === 1 && effectiveFilter === 'group' && (
                     <div className="mx-4 mt-4 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
                         <div className="flex items-start">
                             <svg className="h-5 w-5 text-purple-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1332,8 +1743,9 @@ export default function DenominationPage() {
                                     Admin Balance Adjustment Mode
                                 </h3>
                                 <p className="text-sm text-purple-700 mt-1">
-                                    You can edit remittances for groups with unbalanced BCC (BCC vs Remittances ≠ 0).
-                                    Fields marked with ⚖️ are available for admin adjustment.
+                                    As admin, you can edit all denomination fields (morning remittance, afternoon remittance, and remarks) 
+                                    for any group, regardless of date, status, or BCC balance. 
+                                    Fields marked with ⚖️ indicate admin edit capability.
                                 </p>
                             </div>
                         </div>
@@ -1354,6 +1766,22 @@ export default function DenominationPage() {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* NEW: Over-remittance correction banner - compact version */}
+                {(canEdit && effectiveFilter == 'group' && currentUser.role.rep > 1) && mergedData.some(item => 
+                    item.status === 'approved' && 
+                    item.bccVsRemittances < 0 && 
+                    (item.savedAfternoonRemittance === 0 || item.savedAfternoonRemittance === null)
+                ) && (
+                    <div className="mx-4 mt-4 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-3">
+                        <svg className="h-5 w-5 text-orange-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-orange-800">
+                            <strong>Over-remittance detected:</strong> Update morning (🔧) or add afternoon remittance to correct. Status will reset to pending.
+                        </span>
                     </div>
                 )}
                 
@@ -1399,6 +1827,12 @@ export default function DenominationPage() {
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 BCC vs Remittances
                                             </th>
+                                            {/* NEW: Remarks column */}
+                                            {showStatusColumn && (
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                                                    Remarks
+                                                </th>
+                                            )}
                                             {showStatusColumn && (
                                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Status
@@ -1414,11 +1848,15 @@ export default function DenominationPage() {
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {mergedData.length === 0 ? (
                                             <tr>
-                                                <td colSpan={showStatusColumn && showActionsColumn ? "10" : showStatusColumn || showActionsColumn ? "9" : "8"} className="px-6 py-12 text-center">
+                                                <td colSpan={showStatusColumn && showActionsColumn ? "11" : showStatusColumn || showActionsColumn ? "10" : "8"} className="px-6 py-12 text-center">
                                                     <div className="text-gray-500">
                                                         <p className="text-lg font-medium">No data available</p>
                                                         <p className="text-sm mt-1">
-                                                            No data found for the selected date
+                                                            {effectiveFilter === 'lo' && !router.query.id 
+                                                                ? 'Please select a branch to view loan officers'
+                                                                : effectiveFilter === 'group' && !router.query.id
+                                                                ? 'Please select a loan officer to view groups'
+                                                                : 'No data found for the selected date'}
                                                         </p>
                                                     </div>
                                                 </td>
@@ -1485,36 +1923,51 @@ export default function DenominationPage() {
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                                                                 {shouldShowMorningRemittanceInput(item) ? (
                                                                     <div className="flex items-center justify-end gap-2">
-                                                                        <input
-                                                                            type="text"
-                                                                            inputMode="decimal"
-                                                                            value={item.currentMorningRemittance === '' ? '' : item.currentMorningRemittance}
-                                                                            onFocus={(e) => {
-                                                                                // Check if the current value is '0' (or 0) before clearing it
-                                                                                if (e.target.value === '0' || e.target.value === 0) {
-                                                                                    e.target.value = ''; // Clear the actual displayed value
-                                                                                }
-                                                                            }}
-                                                                            onChange={(e) => handleMorningRemittanceChange(item.entityId, e.target.value)}
-                                                                            onBlur={() => handleMorningRemittanceBlur(item.entityId)}
-                                                                            disabled={isMorningRemittanceDisabled(item)}
-                                                                            className={`w-36 px-3 py-1.5 border rounded-md text-right ${
-                                                                                canAdminEdit(item)
-                                                                                    ? 'border-2 border-purple-400 bg-purple-50 focus:ring-purple-500 focus:border-purple-600'
-                                                                                    : isMorningRemittanceDisabled(item) 
-                                                                                    ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
-                                                                                    : item.status === 'rejected'
-                                                                                    ? 'border-red-300 bg-red-50 focus:ring-indigo-500 focus:border-indigo-500'
-                                                                                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                                                                            }`}
-                                                                            placeholder={canAdminEdit(item) ? "Admin Edit" : ""}
-                                                                        />
-                                                                        {canAdminEdit(item) && (
-                                                                            <span className="text-xs text-purple-600" title="Admin balance adjustment">⚖️</span>
-                                                                        )}
-                                                                        {isMorningRemittanceDisabled(item) && !canAdminEdit(item) && (
-                                                                            <span className="text-xs text-green-600" title="Already saved">🔒</span>
-                                                                        )}
+                                                                        {/* Check if this is a Venus correction scenario */}
+                                                                        {(() => {
+                                                                            const isVenusCorrection = item.status === 'approved' && 
+                                                                                item.bccVsRemittances < 0 && 
+                                                                                (item.savedAfternoonRemittance === 0 || item.savedAfternoonRemittance === null);
+                                                                            
+                                                                            return (
+                                                                                <>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        inputMode="decimal"
+                                                                                        value={item.currentMorningRemittance === '' ? '' : item.currentMorningRemittance}
+                                                                                        onFocus={(e) => {
+                                                                                            if (e.target.value === '0' || e.target.value === 0) {
+                                                                                                e.target.value = '';
+                                                                                            }
+                                                                                        }}
+                                                                                        onChange={(e) => handleMorningRemittanceChange(item.entityId, e.target.value)}
+                                                                                        onBlur={() => handleMorningRemittanceBlur(item.entityId)}
+                                                                                        disabled={isMorningRemittanceDisabled(item)}
+                                                                                        className={`w-36 px-3 py-1.5 border rounded-md text-right ${
+                                                                                            canAdminEdit(item)
+                                                                                                ? 'border-2 border-purple-400 bg-purple-50 focus:ring-purple-500 focus:border-purple-600'
+                                                                                                : isVenusCorrection
+                                                                                                ? 'border-2 border-orange-400 bg-orange-50 focus:ring-orange-500 focus:border-orange-600'
+                                                                                                : isMorningRemittanceDisabled(item) 
+                                                                                                ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                                                                                                : item.status === 'rejected'
+                                                                                                ? 'border-red-300 bg-red-50 focus:ring-indigo-500 focus:border-indigo-500'
+                                                                                                : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                                                                                        }`}
+                                                                                        placeholder={canAdminEdit(item) ? "Admin Edit" : isVenusCorrection ? "Correct" : ""}
+                                                                                    />
+                                                                                    {canAdminEdit(item) && (
+                                                                                        <span className="text-xs text-purple-600" title="Admin balance adjustment">⚖️</span>
+                                                                                    )}
+                                                                                    {isVenusCorrection && !canAdminEdit(item) && (
+                                                                                        <span className="text-xs text-orange-600" title="Correction needed - Over-remitted">🔧</span>
+                                                                                    )}
+                                                                                    {isMorningRemittanceDisabled(item) && !canAdminEdit(item) && !isVenusCorrection && (
+                                                                                        <span className="text-xs text-green-600" title="Already saved">🔒</span>
+                                                                                    )}
+                                                                                </>
+                                                                            );
+                                                                        })()}
                                                                     </div>
                                                                 ) : (
                                                                     <div className="flex items-center justify-end gap-2">
@@ -1539,13 +1992,12 @@ export default function DenominationPage() {
                                                                             inputMode="decimal"
                                                                             value={item.currentAfternoonRemittance === '' ? '' : item.currentAfternoonRemittance}
                                                                             onFocus={(e) => {
-                                                                                // Check if the current value is '0' (or 0) before clearing it
                                                                                 if (e.target.value === '0' || e.target.value === 0) {
-                                                                                    e.target.value = ''; // Clear the actual displayed value
+                                                                                    e.target.value = '';
                                                                                 }
                                                                             }}
                                                                             onChange={(e) => handleAfternoonRemittanceChange(item.entityId, e.target.value)}
-                                                                            onBlur={() => handleAfternoonRemittanceBlur(item)}
+                                                                            onBlur={() => handleAfternoonRemittanceBlur(item, item.bccVsRemittances)}
                                                                             disabled={isAfternoonRemittanceDisabled(item)}
                                                                             className={`w-36 px-3 py-1.5 border rounded-md text-right ${
                                                                                 canAdminEdit(item)
@@ -1581,6 +2033,54 @@ export default function DenominationPage() {
                                                                     )}
                                                                 </div>
                                                             </td>
+                                                            {/* NEW: Remarks cell - click to open modal */}
+                                                            {showStatusColumn && (
+                                                                <td className="px-6 py-4 text-sm min-w-[200px]">
+                                                                    {(canEdit && effectiveFilter === 'group') || canAdminEdit(item) ? (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleOpenRemarksModal(item);
+                                                                            }}
+                                                                            className={`w-full text-left px-3 py-2 border rounded-md transition-colors ${
+                                                                                remarksChanges.hasOwnProperty(item.entityId) && remarksChanges[item.entityId] !== item.savedRemarks
+                                                                                    ? 'bg-yellow-50 border-yellow-400 hover:bg-yellow-100 ring-2 ring-yellow-300'
+                                                                                    : item.remarks 
+                                                                                    ? 'bg-blue-50 border-blue-300 hover:bg-blue-100' 
+                                                                                    : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
+                                                                            } ${
+                                                                                canAdminEdit(item) 
+                                                                                    ? 'border-2 border-purple-400 bg-purple-50 hover:bg-purple-100' 
+                                                                                    : ''
+                                                                            }`}
+                                                                            title={item.remarks ? item.remarks : "Click to add remarks"}
+                                                                        >
+                                                                            <div className="flex items-center justify-between gap-2">
+                                                                                <span className={`truncate max-w-[140px] ${item.remarks ? 'text-gray-800' : 'text-gray-400 italic'}`}>
+                                                                                    {item.remarks || 'Add remarks...'}
+                                                                                </span>
+                                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                                    {remarksChanges.hasOwnProperty(item.entityId) && remarksChanges[item.entityId] !== item.savedRemarks && (
+                                                                                        <span className="flex h-2 w-2 relative" title="Unsaved changes">
+                                                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                                                                                        </span>
+                                                                                    )}
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                                    </svg>
+                                                                                </div>
+                                                                            </div>
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="text-gray-700" title={item.remarks || ''}>
+                                                                            {item.remarks ? (
+                                                                                <span className="truncate block max-w-[180px]">{item.remarks}</span>
+                                                                            ) : '-'}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            )}
                                                             {showStatusColumn && (
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-center uppercase">
                                                                     <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
@@ -1696,6 +2196,11 @@ export default function DenominationPage() {
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-700 text-right">
                                                                 {formatPrice(grandTotalBccVsRemittances)}
                                                             </td>
+                                                            {showStatusColumn && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                                    <span className="text-red-700">-</span>
+                                                                </td>
+                                                            )}
                                                             {showStatusColumn && (
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                                                     <span className="text-red-700">-</span>
@@ -1870,6 +2375,7 @@ export default function DenominationPage() {
                                             const isApproved = entry.action === 'approved';
                                             const isRejected = entry.action === 'rejected';
                                             const isSave = entry.action === 'saved';
+                                            const isAdminAdjustment = entry.action === 'admin_adjustment';
                                             
                                             let bgColor = 'bg-gray-50 border-gray-200';
                                             let badgeColor = 'bg-gray-100 text-gray-800';
@@ -1886,6 +2392,9 @@ export default function DenominationPage() {
                                             } else if (isSave) {
                                                 bgColor = 'bg-blue-50 border-blue-200';
                                                 badgeColor = 'bg-blue-100 text-blue-800';
+                                            } else if (isAdminAdjustment) {
+                                                bgColor = 'bg-purple-50 border-purple-200';
+                                                badgeColor = 'bg-purple-100 text-purple-800';
                                             }
                                             
                                             return (
@@ -1900,6 +2409,7 @@ export default function DenominationPage() {
                                                                 isApproved ? 'Approved' :
                                                                 isRejected ? 'Rejected' :
                                                                 isSave ? 'Saved' :
+                                                                isAdminAdjustment ? 'Admin Adjustment' :
                                                                 entry.action}
                                                             </span>
                                                             {entry.previous_status && (
@@ -1919,9 +2429,19 @@ export default function DenominationPage() {
                                                         </span>
                                                     </div>
                                                     
-                                                    {(entry.reason || entry.rejection_reason) && (
-                                                        <div className="text-sm text-gray-700 mb-3 italic bg-white bg-opacity-50 p-2 rounded">
-                                                            "{entry.reason || entry.rejection_reason}"
+                                                    {/* NEW: Display remarks and rejection reason */}
+                                                    {(entry.reason || entry.rejection_reason || entry.remarks) && (
+                                                        <div className="text-sm text-gray-700 mb-3">
+                                                            {(entry.reason || entry.rejection_reason) && (
+                                                                <div className="italic bg-white bg-opacity-50 p-2 rounded mb-2">
+                                                                    <span className="font-semibold">Reason:</span> "{entry.reason || entry.rejection_reason}"
+                                                                </div>
+                                                            )}
+                                                            {entry.remarks && (
+                                                                <div className="bg-white bg-opacity-50 p-2 rounded">
+                                                                    <span className="font-semibold">Remarks:</span> {entry.remarks}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                     
@@ -2014,6 +2534,99 @@ export default function DenominationPage() {
                                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* NEW: Remarks Modal */}
+            {showRemarksModal && remarksModalItem && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">Edit Remarks</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Group: <span className="font-medium">{remarksModalItem.entityName}</span>
+                            </p>
+                        </div>
+                        
+                        <div className="px-6 py-4">
+                            <div className="mb-4">
+                                <div className="grid grid-cols-2 gap-3 text-sm p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <span className="text-gray-600 text-xs">Net Collection:</span>
+                                        <div className="font-medium">{formatPrice(remarksModalItem.totalNetCollection)}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 text-xs">BCC vs Remittances:</span>
+                                        <div className={`font-semibold ${
+                                            remarksModalItem.bccVsRemittances < 0 ? 'text-red-600' : 
+                                            remarksModalItem.bccVsRemittances > 0 ? 'text-orange-600' : 
+                                            'text-green-600'
+                                        }`}>
+                                            {formatPrice(remarksModalItem.bccVsRemittances)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 text-xs">Morning:</span>
+                                        <div className="font-medium">{formatPrice(remarksModalItem.currentMorningRemittance)}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 text-xs">Afternoon:</span>
+                                        <div className="font-medium">{formatPrice(remarksModalItem.currentAfternoonRemittance)}</div>
+                                    </div>
+                                </div>
+                                
+                                {/* Dynamic helper message based on BCC status */}
+                                {remarksModalItem.bccVsRemittances !== 0 && (
+                                    <div className={`mt-3 p-2 rounded text-xs ${
+                                        remarksModalItem.bccVsRemittances < 0 
+                                            ? 'bg-red-50 text-red-700 border border-red-200' 
+                                            : 'bg-orange-50 text-orange-700 border border-orange-200'
+                                    }`}>
+                                        {remarksModalItem.bccVsRemittances < 0 ? (
+                                            <>
+                                                <strong>Over-remitted:</strong> You can correct the morning remittance amount or add an afternoon remittance adjustment.
+                                            </>
+                                        ) : (
+                                            <>
+                                                <strong>Under-remitted:</strong> Please add an afternoon remittance to balance the collection.
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <label htmlFor="remarks-textarea" className="block text-sm font-medium text-gray-700 mb-2">
+                                Remarks / Notes
+                            </label>
+                            <textarea
+                                id="remarks-textarea"
+                                value={remarksModalValue}
+                                onChange={(e) => setRemarksModalValue(e.target.value)}
+                                placeholder="Enter any remarks or notes about this denomination entry..."
+                                rows={4}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
+                                autoFocus
+                            />
+                            <p className="mt-2 text-xs text-gray-500">
+                                Note any discrepancies, adjustments, or important information.
+                            </p>
+                        </div>
+                        
+                        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-lg">
+                            <button
+                                onClick={handleCloseRemarksModal}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveRemarks}
+                                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm"
+                            >
+                                Save Remarks
                             </button>
                         </div>
                     </div>

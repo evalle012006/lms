@@ -94,7 +94,9 @@ async function approveDenomination(req, res) {
                 action: 'approved',
                 approval_user_id: user._id,
                 approval_user_name: `${user.firstName} ${user.lastName}`,
-                approval_date_time: currentDateTime
+                approval_date_time: currentDateTime,
+                // NEW: Preserve remarks in approval history
+                remarks: lastEntry.remarks || existingRecord.remarks || ''
             };
         }
         
@@ -227,9 +229,12 @@ async function rejectDenomination(req, res) {
             // Capture the state being rejected
             active_clients: existingRecord.active_clients,
             total_net_collection: existingRecord.total_net_collection,
-            total_remittance: existingRecord.total_remittance,
+            morning_remittance: existingRecord.morning_remittance,  // NEW: Include morning remittance
+            afternoon_remittance: existingRecord.afternoon_remittance,  // NEW: Include afternoon remittance
             amount_sit_down: existingRecord.amount_sit_down,
+            no_sit_down: existingRecord.no_sit_down,  // NEW: Include no_sit_down
             bcc_vs_remittances: existingRecord.bcc_vs_remittances,
+            remarks: existingRecord.remarks || '',  // NEW: Include current remarks
             previous_status: existingRecord.status
         };
         

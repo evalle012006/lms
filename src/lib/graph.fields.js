@@ -514,6 +514,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   afternoon_remittance
   bcc_vs_remittances
   status
+  remarks
   rejection_reason
   history
   approval_date
