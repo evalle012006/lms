@@ -286,6 +286,7 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.loanDailyLimit && errors.loanDailyLimit}
+                                                onWheel={(e) => e.target.blur()}
                                                 required
                                             />
                                             
@@ -296,6 +297,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter weekly limit amount"
                                                 icon={BanknotesIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.loanWeeklyLimit && errors.loanWeeklyLimit}
@@ -321,6 +323,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter service charge rate percentage"
                                                 icon={ReceiptPercentIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.serviceChargeRate && errors.serviceChargeRate}
@@ -334,6 +337,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter MCBU rate percentage"
                                                 icon={CalculatorIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.mcbuRate && errors.mcbuRate}
@@ -347,6 +351,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter LRF rate percentage"
                                                 icon={DocumentCurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.lrfRate && errors.lrfRate}
@@ -409,6 +414,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter minimum daily MCBU collection"
                                                 icon={CurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minDailyMcbuCollection && errors.minDailyMcbuCollection}
@@ -422,6 +428,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter minimum weekly MCBU collection"
                                                 icon={BanknotesIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
@@ -435,6 +442,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter minimum CSF collection"
                                                 icon={TrophyIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minCsfCollection && errors.minCsfCollection}
@@ -448,6 +456,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter MCBU amount for new members"
                                                 icon={CurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.mcbuCsfMCBUForNM && errors.mcbuCsfMCBUForNM}
@@ -461,6 +470,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter minimum balance required"
                                                 icon={BanknotesIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.mcbuCsfMinimumBalance && errors.mcbuCsfMinimumBalance}
@@ -488,6 +498,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter admission fee"
                                                 icon={CurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.admissionFee && errors.admissionFee}
@@ -501,6 +512,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter CBHB fee"
                                                 icon={DocumentCurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.cbhbFee && errors.cbhbFee}
@@ -514,6 +526,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter passbook fee"
                                                 icon={CurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.otherPassbookFee && errors.otherPassbookFee}
@@ -527,6 +540,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter picture fee"
                                                 icon={CurrencyDollarIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.otherPictureFee && errors.otherPictureFee}
@@ -540,6 +554,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="Enter hospitalization fee"
                                                 icon={HeartIcon}
                                                 type="number"
+                                                onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.addHospitalization && errors.addHospitalization}

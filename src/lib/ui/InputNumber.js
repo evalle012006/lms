@@ -40,6 +40,7 @@ const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, on
                         value={value}
                         autoComplete="off"
                         type="number"
+                        onWheel={(e) => e.target.blur()}
                         className={`
                             p-1 pl-0 text-gray-500 font-medium border-none focus:ring-0 text-sm
                             ${errors && 'text-red-400'}

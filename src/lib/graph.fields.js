@@ -536,3 +536,97 @@ export const BRANCH_APPROVAL_FIELDS = `
   dateAdded
   dateModified
 `;
+
+// Account Types Field (Main Categories)
+export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
+    _id
+    type_name
+    type_code
+    description
+    display_order
+    is_active
+    date_added
+    inserted_date
+    inserted_by
+    modified_date
+    modified_by
+    inserted_by_user {
+        _id
+        firstName
+        lastName
+    }
+    modified_by_user {
+        _id
+        firstName
+        lastName
+    }
+`;
+
+// Account Names Field (with relationship to Account Type)
+export const MANAGEMENT_ACCOUNT_FIELD = `
+    _id
+    account_type_id
+    account_name
+    description
+    is_active
+    date_added
+    inserted_date
+    inserted_by
+    modified_date
+    modified_by
+    account_type {
+        _id
+        type_name
+        type_code
+    }
+    inserted_by_user {
+        _id
+        firstName
+        lastName
+    }
+    modified_by_user {
+        _id
+        firstName
+        lastName
+    }
+`;
+
+// Transaction Field (remains mostly the same, but references account_id)
+export const MANAGEMENT_TRANSACTION_FIELD = `
+    _id
+    transaction_type
+    branch_id
+    account_id
+    amount
+    date_added
+    inserted_date
+    inserted_by
+    modified_date
+    modified_by
+    remarks
+    branch {
+        _id
+        name
+        code
+    }
+    account {
+        _id
+        account_name
+        account_type_id
+        account_type {
+            _id
+            type_name
+            type_code
+        }
+    }
+    inserted_by_user {
+        _id
+        firstName
+        lastName
+    }
+    modified_by_user {
+        _id
+        firstName
+        lastName
+    }
+`;

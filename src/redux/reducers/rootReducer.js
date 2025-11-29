@@ -18,6 +18,7 @@ import region from './regionReducer';
 import division from './divisionReducer';
 import mcbuWithdrawal from './mcbuWithdrawalReducer';
 import fundTransfer from './fundTransferReducer';
+import managementTransaction from './managementTransactionReducer';
 import { RESET_STATE } from '../actions/resetActions';
 
 const appReducer = combineReducers({
@@ -39,6 +40,7 @@ const appReducer = combineReducers({
     transactionsSettings: transactionsSettings,
     systemSettings: systemSettings,
     mcbuWithdrawal: mcbuWithdrawal,
+    managementTransaction: managementTransaction,
     global: global
 });
 

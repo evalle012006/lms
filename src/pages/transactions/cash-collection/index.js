@@ -1962,7 +1962,7 @@ const ModernBranchCashCollections = () => {
                               if (currentUser.role.rep >= 3 && row.activeClients > 0 && (row.groupStatus == 'pending' || row.groupStatus == null)) {
                                 bgRowColor = 'bg-blue-100';
                               } else if (currentUser.role.rep < 3 && currentFilter != 'group' && row.activeClients > 0 && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
-                                bgRowColor = 'bg-blue-100';
+                                bgRowColor = 'bg-yellow-100';
                               }
                               
                               if (row.isDraft && currentFilter === 'group') {

@@ -552,6 +552,19 @@ const MenuItems = [
                 roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
+                label: "Management Transactions",
+                url: "/management-transactions",
+                icon: {
+                    active: (props) => <Banknote {...props} />,
+                    notActive: (props) => <Banknote {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                // roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+                roles: ["admin"]
+            },
+            {
                 label: "Fund Transfer",
                 url: "/transactions/fund-transfer", 
                 icon: {
@@ -657,6 +670,18 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Users {...props} />,
                     notActive: (props) => <Users {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "Manage Account Types",
+                url: "/settings/management-account-types",
+                icon: {
+                    active: (props) => <Edit {...props} />,
+                    notActive: (props) => <Edit {...props} />,
                 },
                 active: false,
                 hasSub: false,
