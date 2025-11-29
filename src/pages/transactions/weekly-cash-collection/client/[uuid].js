@@ -2434,8 +2434,7 @@ const CashCollectionDetailsPage = () => {
                             } else if (remarks.value === "past due") {
                                 temp.pastDue = temp.pastDue !== '-' ? temp.pastDue + temp.activeLoan : temp.activeLoan;
                                 temp.pastDueStr = formatPricePhp(temp.pastDue);
-                                temp.mispayment = true;
-                                temp.mispaymentStr = 'Yes';
+                                temp.mispayment = false;
                                 temp.error = false;
                                 temp.excused = true;
                                 temp.mcbuError = false;
