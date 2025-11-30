@@ -2105,6 +2105,10 @@ const ModernBranchCashCollections = () => {
                                 bgRowColor = 'bg-orange-100';
                               }
 
+                              if (isWeekend || isHoliday) {
+                                bgRowColor = '';
+                              }
+
                               return (
                                 <tr 
                                   key={row._id || index} 
