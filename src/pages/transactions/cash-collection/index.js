@@ -12,6 +12,7 @@ import Layout from '@/components/Layout';
 import { buildModernBranchCashCollectionsSourceQuery, getDefaultViewMode, shouldIncludeViewMode } from '@/lib/utils';
 import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
+import CashCollectionsExcelExport from '@/components/transactions/CashCollectionsExcelExport';
 
 const ModernBranchCashCollections = () => {
   const dispatch = useDispatch();
@@ -55,6 +56,146 @@ const ModernBranchCashCollections = () => {
 
   const [cohData, setCohData] = useState();
   const [cohAmount, setCohAmount] = useState(0);
+
+  const [branchFilterList, setBranchFilterList] = useState([]);
+  const [loFilterList, setLoFilterList] = useState([]);
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState('');
+  const [selectedLoFilter, setSelectedLoFilter] = useState('');
+
+  const fetchBranchListForFilter = async () => {
+    try {
+      const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
+      if (response.success) {
+        let branches = [];
+        
+        response.branches && response.branches.filter(branch => branch.code !== 'B000').forEach(branch => {
+          // Apply role-based filtering
+          let shouldInclude = true;
+          
+          if (currentUser.role.shortCode === 'deputy_director') {
+            shouldInclude = branch.divisionId === currentUser.divisionId;
+          } else if (currentUser.role.shortCode === 'regional_manager') {
+            shouldInclude = branch.regionId === currentUser.regionId;
+          } else if (currentUser.role.shortCode === 'area_admin') {
+            shouldInclude = branch.areaId === currentUser.areaId;
+          }
+          
+          if (shouldInclude) {
+            branches.push({
+              _id: branch._id,
+              code: branch.code,
+              name: branch.code ? `${branch.code} - ${branch.name}` : branch.name,
+            });
+          }
+        });
+        
+        // Sort branches by code
+        branches.sort((a, b) => {
+          if (a.code && b.code) {
+            return a.code.localeCompare(b.code);
+          }
+          return 0;
+        });
+        
+        setBranchFilterList(branches);
+      } else {
+        toast.error('Error retrieving branches list.');
+      }
+    } catch (error) {
+      console.error('Error fetching branch list:', error);
+      toast.error('Error retrieving branches list.');
+    }
+  };
+
+  const fetchLoListForFilter = async (branchId) => {
+    try {
+      if (!branchId) {
+        console.error('Branch ID not found');
+        return;
+      }
+      
+      const url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchId: branchId });
+      const response = await fetchWrapper.get(url);
+      
+      if (response.success) {
+        let userList = [];
+        
+        response.users && response.users.forEach(u => {
+          const name = `${u.firstName} ${u.lastName}`;
+          userList.push({
+            _id: u._id,
+            name: name,
+            label: name,
+            loNo: u.loNo,
+          });
+        });
+        
+        // Sort by loNo
+        userList.sort((a, b) => { return a.loNo - b.loNo; });
+        
+        setLoFilterList(userList);
+      } else {
+        toast.error('Error retrieving loan officer list.');
+      }
+    } catch (error) {
+      console.error('Error fetching LO list:', error);
+      toast.error('Error retrieving loan officer list.');
+    }
+  };
+
+  const handleBranchFilterChange = (e) => {
+    const branchId = e.target.value;
+    setSelectedBranchFilter(branchId);
+    
+    if (branchId) {
+      const query = {
+        id: branchId,
+        branchId: branchId,
+        filter: 'lo',
+      };
+      
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = viewMode;
+      }
+      
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
+      }
+      
+      router.push({
+        pathname: router.pathname,
+        query
+      }, undefined, { shallow: true });
+    }
+  };
+
+  const handleLoFilterChange = (e) => {
+    const loId = e.target.value;
+    setSelectedLoFilter(loId);
+    
+    if (loId) {
+      const query = {
+        id: loId,
+        loId: loId,
+        filter: 'group',
+        parentId: router.query.parentId || router.query.branchId || router.query.id,
+        branchId: router.query.parentId || router.query.branchId || router.query.id,
+      };
+      
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = viewMode;
+      }
+      
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
+      }
+      
+      router.push({
+        pathname: router.pathname,
+        query
+      }, undefined, { shallow: true });
+    }
+  };
 
   const fetchBranchApprovalStatus = async (branchIds, date) => {
     try {
@@ -829,16 +970,15 @@ const ModernBranchCashCollections = () => {
   }, [cohData]);
 
   useEffect(() => {
-    // Only set viewMode from router if user role allows it
-    if (router.query.viewMode && shouldIncludeViewMode(currentUser)) {
-      setViewMode(router.query.viewMode);
+    if (shouldIncludeViewMode(currentUser)) {
+      if (router.query.viewMode) {
+        setViewMode(router.query.viewMode);
+      }
     }
     
-     // Set date from URL parameter if it exists, otherwise use currentDate
     if (router.query.date) {
       setDateFilter(router.query.date);
     } else if (currentDate && dateFilter !== currentDate) {
-      // If no date in URL but we have currentDate from Redux, use it
       setDateFilter(currentDate);
     }
     
@@ -852,12 +992,24 @@ const ModernBranchCashCollections = () => {
       setParentViewMode(router.query.parentViewMode);
     }
     
-    // Update filter state based on router query
     if (router.query.filter) {
       setCurrentFilter(router.query.filter);
       setCurrentLevel(router.query.filter);
     }
-  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter, router.query.date, currentUser]);
+    
+    // Set selected filters based on router query
+    if (router.query.branchId) {
+      setSelectedBranchFilter(router.query.branchId);
+    } else {
+      setSelectedBranchFilter('');
+    }
+    
+    if (router.query.loId) {
+      setSelectedLoFilter(router.query.loId);
+    } else {
+      setSelectedLoFilter('');
+    }
+  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter, router.query.date, router.query.branchId, router.query.loId, currentUser]);
 
   useEffect(() => {
     setLoading(true);
@@ -871,79 +1023,22 @@ const ModernBranchCashCollections = () => {
     }, 1000);
     return () => clearTimeout(mounted);
   }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
-  // Pre-save collections for weekly groups
+  
+  useEffect(() => {
+    if (currentFilter === 'lo') {
+      fetchBranchListForFilter();
+    }
+  }, [currentFilter, currentUser.role.rep]);
 
-  // should allow also for BM that has weekly groups under them
-  // and also in closing of LO should check if there's cashCollection for weekly groups
-  // add loGroup filter if available
-  // useEffect(() => {
-  //   const shouldPreSave = () => {
-  //     // Must be viewing groups
-  //     if (currentFilter !== 'group' && router.query.filter !== 'group') {
-  //       return false;
-  //     }
-
-  //     // Must have required conditions
-  //     if (isHoliday || isWeekend || !currentDate || !router.query.id) {
-  //       return false;
-  //     }
-
-  //     // Must have data loaded
-  //     if (!data || data.length === 0) {
-  //       return false;
-  //     }
-
-  //     // Check if any groups have weekly occurrence
-  //     const hasWeeklyGroups = data.some(item => 
-  //       !item.totalData && item.occurence === 'weekly'
-  //     );
-
-  //     console.log('Pre-save check:', {
-  //       currentFilter,
-  //       routerFilter: router.query.filter,
-  //       isHoliday,
-  //       isWeekend,
-  //       currentDate,
-  //       currentDayName: moment().format('dddd').toLowerCase(),
-  //       loId: router.query.id,
-  //       dataLength: data.length,
-  //       hasWeeklyGroups,
-  //       weeklyGroupsData: data.filter(item => !item.totalData && item.occurence === 'weekly').map(item => ({
-  //         name: item.name,
-  //         occurence: item.occurence,
-  //         groupDay: item.groupDay,
-  //         targetLoanCollection: item.targetLoanCollection
-  //       }))
-  //     });
-
-  //     return hasWeeklyGroups;
-  //   };
-
-  //   if (shouldPreSave()) {
-  //     const preSaveCollections = async () => {
-  //       const requestData = {
-  //         loId: router.query.id, // This is the loan officer ID when viewing groups
-  //         currentDate: currentDate,
-  //         currentUser: currentUser._id
-  //       };
-
-  //       console.log('Triggering pre-save collections with data:', requestData);
-
-  //       try {
-  //         const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', requestData);
-  //         console.log('Pre-save collections completed for weekly groups:', response);
-  //       } catch (error) {
-  //         console.error('Error in pre-save collections:', error);
-  //       }
-  //     };
-
-  //     const timer = setTimeout(() => {
-  //       preSaveCollections();
-  //     }, 1500); // Slightly longer delay to ensure data is loaded
-
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [currentFilter, router.query.filter, isHoliday, isWeekend, currentDate, router.query.id, data, currentUser]);
+  useEffect(() => {
+    if (currentFilter === 'group') {
+      // At group level, branch ID is stored in parentId
+      const branchId = router.query.parentId || router.query.branchId;
+      if (branchId) {
+        fetchLoListForFilter(branchId);
+      }
+    }
+  }, [currentFilter, currentUser.role.rep, router.query.id, router.query.parentId, router.query.branchId]);
 
   useEffect(() => {
     const shouldPreSave = () => {
@@ -1329,23 +1424,27 @@ const ModernBranchCashCollections = () => {
           break;
         case 'group':
           updatedQuery.loId = selected._id;
-          // For role.rep = 3 (branch manager), the parentId should be the branch ID
+          // Determine the branch ID to use as parentId
+          let branchIdForGroup;
+          
           if (currentUser.role.rep === 3) {
             if (currentUser.role.shortCode === 'area_admin') {
-              // For area admins, parentId should be the branch ID from the selected branch
-              updatedQuery.parentId = selected._id;
+              // For area admins navigating from branch to LO to group
+              branchIdForGroup = router.query.branchId || router.query.id;
             } else {
-              // For branch managers, parentId should be their designated branch
-              updatedQuery.parentId = currentUser.designatedBranchId;
+              // For branch managers, use their designated branch
+              branchIdForGroup = currentUser.designatedBranchId;
             }
           } else {
-            // For other roles, preserve the existing logic
-            updatedQuery.parentId = router.query.id; // branch ID
-            // Preserve deeper hierarchy if exists
-            if (router.query.parentId) {
-              updatedQuery.branchId = router.query.id;
-            }
+            // For other roles, the current router.query.id at LO level IS the branch ID
+            branchIdForGroup = router.query.branchId || router.query.id;
           }
+          
+          // ALWAYS set parentId to ensure it's available for the LO filter dropdown
+          updatedQuery.parentId = branchIdForGroup;
+          
+          // Also set branchId explicitly for clarity
+          updatedQuery.branchId = branchIdForGroup;
           break;
       }
       
@@ -1829,40 +1928,77 @@ const ModernBranchCashCollections = () => {
                 </div>
                 
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  {/* Branch filter - show when filter = 'lo' and user role.rep < 3 */}
+                  {currentFilter === 'lo' && (
                     <div className="relative">
-                        <input
-                        type="text"
-                        placeholder={getSearchPlaceholder()}
-                        value={searchTerm}
-                        onChange={handleSearch}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-64"
-                        />
-                        <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedBranchFilter}
+                        onChange={handleBranchFilterChange}
+                        className="pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]"
+                      >
+                        {branchFilterList.map(branch => (
+                          <option key={branch._id} value={branch._id}>
+                            {branch.code} - {branch.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    
-                    <button 
-                        onClick={() => setShowColumnSelector(!showColumnSelector)}
-                        className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md"
-                        title="Show/Hide Columns"
-                    >
-                        {showColumnSelector ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                    
-                    <button 
-                        onClick={() => fetchCashCollectionsData(dateFilter)} 
-                        className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md"
-                        title="Refresh Data"
-                    >
-                        <RefreshCw size={20} />
-                    </button>
-                    
-                    <button 
-                        className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md"
-                        title="Export as CSV"
-                    >
-                        <Download size={20} />
-                    </button>
-                </div>
+                  )}
+                  
+                  {/* LO filter - show when filter = 'group' and user role.rep < 4 */}
+                  {currentFilter === 'group' && (
+                    <div className="relative">
+                      <select
+                        value={selectedLoFilter}
+                        onChange={handleLoFilterChange}
+                        className="pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]"
+                      >
+                        {loFilterList.map(lo => (
+                          <option key={lo._id} value={lo._id}>
+                            {lo.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  <div className="relative">
+                      <input
+                      type="text"
+                      placeholder={getSearchPlaceholder()}
+                      value={searchTerm}
+                      onChange={handleSearch}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-64"
+                      />
+                      <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  </div>
+                  
+                  <button 
+                      onClick={() => setShowColumnSelector(!showColumnSelector)}
+                      className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md"
+                      title="Show/Hide Columns"
+                  >
+                      {showColumnSelector ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                  
+                  <button 
+                      onClick={() => fetchCashCollectionsData(dateFilter)} 
+                      className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md"
+                      title="Refresh Data"
+                  >
+                      <RefreshCw size={20} />
+                  </button>
+                  
+                  <CashCollectionsExcelExport
+                    data={data}
+                    grandTotalRow={grandTotalRow}
+                    visibleColumnDefs={visibleColumnDefs}
+                    currentFilter={currentFilter}
+                    currentUser={currentUser}
+                    dateFilter={dateFilter}
+                    sortedData={sortedData}
+                  />
+              </div>
             </div>
 
             {showColumnSelector && (
