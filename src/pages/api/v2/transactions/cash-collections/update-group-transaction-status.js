@@ -100,6 +100,7 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
         const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
         const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
         const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
+        // console.log(hasPendingDenominations[0]?.cashCollections);
         const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
         const validNoDenominationTransactions = cashCollectionCounts.filter(cc => {
             const currentCc = cc.cashCollections[0];
@@ -138,8 +139,8 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
             finalValidNoDenominationTransactions = [];
         }
 
-        console.log('finalNoDenominationTransactions:', finalNoDenominationTransactions[0]?.cashCollections);
-        console.log('finalValidNoDenominationTransactions:', finalValidNoDenominationTransactions[0]?.cashCollections);
+        // console.log('finalNoDenominationTransactions:', finalNoDenominationTransactions[0]?.cashCollections);
+        // console.log('finalValidNoDenominationTransactions:', finalValidNoDenominationTransactions[0]?.cashCollections);
         
         const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
