@@ -198,6 +198,17 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
             );
         }
 
+        // NEW: When reopening LO transactions, also set branch approval back to 'open'
+        if (mode === 'open' && branchId) {
+            try {
+                await handleBranchApproval(branchId, currentDate, 'open', userId, userName);
+                console.log(`Branch approval status set to 'open' for branch ${branchId}`);
+            } catch (error) {
+                console.error('Error updating branch approval status:', error);
+                // Don't fail the whole operation, just log the error
+            }
+        }
+
         if (result.data.collections.affected_rows === 0) {
             response = { error: true, message: "No transactions found for this Loan Officer." };
         } else {

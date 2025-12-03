@@ -288,7 +288,7 @@ const ModernBranchCashCollections = () => {
   // Action handlers for open/close transactions
   const handleOpen = async (row) => {
     // Determine if we're operating on a branch or loan officer
-    const isBranchLevel = viewMode === 'branch';
+    const isBranchLevel = currentFilter === 'branch';  // Changed from viewMode === 'branch'
     
     // For branch level, check if there are any transactions
     if (isBranchLevel && row.approvalStatus === 'open') {
@@ -313,6 +313,17 @@ const ModernBranchCashCollections = () => {
       return;
     }
 
+    // For non-branch level (LO level), show confirmation dialog
+    if (!isBranchLevel) {
+      const confirmed = window.confirm(
+        'Warning: Unlocking this Loan Officer\'s transactions will also set the Branch approval status back to "Open".\n\nThis means the branch will need to be re-approved after all LO transactions are closed again.\n\nDo you want to proceed?'
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setLoading(true);
     
     let data = { 
@@ -328,6 +339,10 @@ const ModernBranchCashCollections = () => {
       data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
     } else {
       data.loId = row._id;
+      // Include branchId for updating branch approval status when reopening LO
+      data.branchId = router.query.branchId || router.query.id || currentUser.designatedBranchId;
+      data.userId = currentUser._id;
+      data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
     }
 
     try {
@@ -2095,10 +2110,25 @@ const ModernBranchCashCollections = () => {
                           {sortedData.length > 0 ? (
                             sortedData.map((row, index) => {
                               let bgRowColor = '';
-                              if (currentUser.role.rep >= 3 && row.activeClients > 0 && (row.groupStatus == 'pending' || row.groupStatus == null)) {
-                                bgRowColor = 'bg-blue-100';
-                              } else if (currentUser.role.rep < 3 && currentFilter != 'group' && row.activeClients > 0 && (row.approvalStatus == 'open' || row.groupStatus == 'pending' || row.groupStatus == null)) {
-                                bgRowColor = 'bg-yellow-100';
+                              
+                              if (currentUser.role.rep >= 3) {
+                                // For role.rep >= 3: blue by default when activeClients > 0 and groupStatus is not closed
+                                if (row.activeClients > 0 && row.groupStatus !== 'closed') {
+                                  bgRowColor = 'bg-blue-100';
+                                }
+                                // If groupStatus is closed, no background color
+                              } else {
+                                // For role.rep < 3
+                                if (row.activeClients > 0) {
+                                  if (row.groupStatus !== 'closed') {
+                                    // groupStatus is not closed and approvalStatus is open → blue
+                                    bgRowColor = 'bg-blue-100';
+                                  } else if (row.groupStatus === 'closed' && row.approvalStatus === 'open') {
+                                    // groupStatus is closed and approvalStatus is open → yellow
+                                    bgRowColor = 'bg-yellow-100';
+                                  }
+                                  // Otherwise blank
+                                }
                               }
                               
                               if (row.isDraft && currentFilter === 'group') {
