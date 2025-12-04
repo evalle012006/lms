@@ -314,15 +314,15 @@ const ModernBranchCashCollections = () => {
     }
 
     // For non-branch level (LO level), show confirmation dialog
-    if (!isBranchLevel) {
-      const confirmed = window.confirm(
-        'Warning: Unlocking this Loan Officer\'s transactions will also set the Branch approval status back to "Open".\n\nThis means the branch will need to be re-approved after all LO transactions are closed again.\n\nDo you want to proceed?'
-      );
+    // if (!isBranchLevel) {
+    //   const confirmed = window.confirm(
+    //     'Warning: Unlocking this Loan Officer\'s transactions will also set the Branch approval status back to "Open".\n\nThis means the branch will need to be re-approved after all LO transactions are closed again.\n\nDo you want to proceed?'
+    //   );
       
-      if (!confirmed) {
-        return;
-      }
-    }
+    //   if (!confirmed) {
+    //     return;
+    //   }
+    // }
 
     setLoading(true);
     
