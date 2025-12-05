@@ -1089,20 +1089,30 @@ const ModernBranchCashCollections = () => {
   }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
   
   useEffect(() => {
-    if (currentFilter === 'lo') {
+    // Only fetch branch list for users with role.rep < 3
+    if (currentFilter === 'lo' && currentUser.role.rep < 3) {
       fetchBranchListForFilter();
     }
   }, [currentFilter, currentUser.role.rep]);
 
   useEffect(() => {
-    if (currentFilter === 'group') {
-      // At group level, branch ID is stored in parentId
-      const branchId = router.query.parentId || router.query.branchId;
+    // Only fetch LO list for users with role.rep < 4
+    if (currentFilter === 'group' && currentUser.role.rep < 4) {
+      let branchId;
+      
+      if (currentUser.role.rep === 3) {
+        // For branch managers (role.rep === 3), use their designated branch
+        branchId = currentUser.designatedBranchId;
+      } else {
+        // For higher-level users (role.rep < 3), use router query params
+        branchId = router.query.parentId || router.query.branchId;
+      }
+      
       if (branchId) {
         fetchLoListForFilter(branchId);
       }
     }
-  }, [currentFilter, currentUser.role.rep, router.query.id, router.query.parentId, router.query.branchId]);
+  }, [currentFilter, currentUser.role.rep, currentUser.designatedBranchId, router.query.id, router.query.parentId, router.query.branchId]);
 
   useEffect(() => {
     const shouldPreSave = () => {
@@ -1993,7 +2003,7 @@ const ModernBranchCashCollections = () => {
                 
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   {/* Branch filter - show when filter = 'lo' and user role.rep < 3 */}
-                  {currentFilter === 'lo' && (
+                  {currentFilter === 'lo' && currentUser.role.rep < 3 && (
                     <div className="relative">
                       <select
                         value={selectedBranchFilter}
@@ -2010,7 +2020,7 @@ const ModernBranchCashCollections = () => {
                   )}
                   
                   {/* LO filter - show when filter = 'group' and user role.rep < 4 */}
-                  {currentFilter === 'group' && (
+                  {currentFilter === 'group' && currentUser.role.rep < 4 && (
                     <div className="relative">
                       <select
                         value={selectedLoFilter}
