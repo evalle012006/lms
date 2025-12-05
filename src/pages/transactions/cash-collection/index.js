@@ -14,6 +14,9 @@ import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
 import CashCollectionsExcelExport from '@/components/transactions/CashCollectionsExcelExport';
 
+// Row background colors - Tailwind safelist (do not remove):
+// bg-yellow-100 bg-blue-100 bg-orange-100
+
 const ModernBranchCashCollections = () => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -62,6 +65,48 @@ const ModernBranchCashCollections = () => {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('');
   const [selectedLoFilter, setSelectedLoFilter] = useState('');
 
+  // Helper function to determine row background color
+  const getRowBgColor = (row) => {
+    // Mapping object with complete class strings for Tailwind purge
+    const bgColorMap = {
+      draft: 'bg-orange-100',
+      yellow: 'bg-yellow-100',
+      blue: 'bg-blue-100',
+      none: '',
+    };
+
+    // No coloring on weekends or holidays
+    if (isWeekend || isHoliday) {
+      return bgColorMap.none;
+    }
+
+    // Draft rows at group level
+    if (row.isDraft && currentFilter === 'group') {
+      return bgColorMap.draft;
+    }
+
+    // Role-based coloring logic
+    if (currentUser.role.rep >= 3) {
+      // For role.rep >= 3: blue when activeClients > 0 and groupStatus is not closed
+      if (row.activeClients > 0 && row.groupStatus !== 'closed') {
+        return bgColorMap.blue;
+      }
+    } else {
+      // For role.rep < 3
+      if (row.activeClients > 0) {
+        if (row.groupStatus !== 'closed') {
+          // groupStatus is not closed → blue
+          return bgColorMap.blue;
+        } else if (row.groupStatus === 'closed' && row.approvalStatus === 'open') {
+          // groupStatus is closed and approvalStatus is open → yellow
+          return bgColorMap.yellow;
+        }
+      }
+    }
+
+    return bgColorMap.none;
+  };
+  
   const fetchBranchListForFilter = async () => {
     try {
       const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
@@ -303,7 +348,7 @@ const ModernBranchCashCollections = () => {
     }
     
     // For LO level, check if there are active clients
-    if (!isBranchLevel && row.activeClients === 0) {
+    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0) {
       toast.error('No transaction detected for this Loan Officer!');
       return;
     }
@@ -325,10 +370,12 @@ const ModernBranchCashCollections = () => {
     // }
 
     setLoading(true);
+
+    const dateFor = dateFilter !== currentDate ? dateFilter : currentDate;
     
     let data = { 
       mode: 'open', 
-      currentDate: currentDate, 
+      currentDate: dateFor, 
       transactionType: row.transactionType 
     };
 
@@ -394,7 +441,7 @@ const ModernBranchCashCollections = () => {
     }
     
     // For LO level, check if there are active clients
-    if (!isBranchLevel && row.activeClients === 0) {
+    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0) {
       toast.error('No transaction detected for this Loan Officer!');
       return;
     }
@@ -406,9 +453,11 @@ const ModernBranchCashCollections = () => {
 
     setLoading(true);
 
+    const dateFor = dateFilter !== currentDate ? dateFilter : currentDate;
+
     let data = { 
       mode: 'close', 
-      currentDate: currentDate, 
+      currentDate: dateFor, 
       currentTime: currentTime, 
       transactionType: row.transactionType 
     };
@@ -2109,35 +2158,7 @@ const ModernBranchCashCollections = () => {
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {sortedData.length > 0 ? (
                             sortedData.map((row, index) => {
-                              let bgRowColor = '';
-                              
-                              if (currentUser.role.rep >= 3) {
-                                // For role.rep >= 3: blue by default when activeClients > 0 and groupStatus is not closed
-                                if (row.activeClients > 0 && row.groupStatus !== 'closed') {
-                                  bgRowColor = 'bg-blue-100';
-                                }
-                                // If groupStatus is closed, no background color
-                              } else {
-                                // For role.rep < 3
-                                if (row.activeClients > 0) {
-                                  if (row.groupStatus !== 'closed') {
-                                    // groupStatus is not closed and approvalStatus is open → blue
-                                    bgRowColor = 'bg-blue-100';
-                                  } else if (row.groupStatus === 'closed' && row.approvalStatus === 'open') {
-                                    // groupStatus is closed and approvalStatus is open → yellow
-                                    bgRowColor = 'bg-yellow-100';
-                                  }
-                                  // Otherwise blank
-                                }
-                              }
-                              
-                              if (row.isDraft && currentFilter === 'group') {
-                                bgRowColor = 'bg-orange-100';
-                              }
-
-                              if (isWeekend || isHoliday) {
-                                bgRowColor = '';
-                              }
+                              const bgRowColor = getRowBgColor(row);
 
                               return (
                                 <tr 

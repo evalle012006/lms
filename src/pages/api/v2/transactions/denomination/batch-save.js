@@ -250,10 +250,37 @@ async function batchSaveDenomination(req, res) {
                 const afternoonRemittance = (data.afternoonRemittance && data.afternoonRemittance > 0) ? parseFloat(data.afternoonRemittance) : data.afternoonRemittance < 0 ? data.afternoonRemittance : 0;
                 const totalRemittance = morningRemittance + afternoonRemittance;
                 const activeClients = parseInt(data.activeClients) || 0;
-                const amountSitDown = parseFloat(data.amountSitDown) || 0;
-                const noSitDown = parseInt(data.noSitDown) || 0;
                 const bccVsRemittances = totalNetCollection - totalRemittance;
                 const remarks = data.remarks || '';
+                
+                // Get existing record from our pre-fetched map
+                const existingRecord = existingRecordsMap.get(data.entityId);
+                
+                // ==========================================
+                // FIX: PRESERVE SIT DOWN VALUES
+                // Once saved, no_sit_down and amount_sit_down should NEVER be overridden
+                // Use existing saved values if available, otherwise use incoming data
+                // ==========================================
+                let amountSitDown;
+                let noSitDown;
+                
+                if (existingRecord) {
+                    // ALWAYS use the existing saved values - never override
+                    amountSitDown = existingRecord.amount_sit_down !== undefined && existingRecord.amount_sit_down !== null
+                        ? parseFloat(existingRecord.amount_sit_down)
+                        : (parseFloat(data.amountSitDown) || 0);
+                    noSitDown = existingRecord.no_sit_down !== undefined && existingRecord.no_sit_down !== null
+                        ? parseInt(existingRecord.no_sit_down)
+                        : (parseInt(data.noSitDown) || 0);
+                    
+                    console.log(`Preserving sit down values for ${data.entityName}: noSitDown=${noSitDown}, amountSitDown=${amountSitDown} (from existing record)`);
+                } else {
+                    // New record - use incoming data
+                    amountSitDown = parseFloat(data.amountSitDown) || 0;
+                    noSitDown = parseInt(data.noSitDown) || 0;
+                    
+                    console.log(`New record sit down values for ${data.entityName}: noSitDown=${noSitDown}, amountSitDown=${amountSitDown}`);
+                }
                 
                 // Validate total remittance doesn't exceed collection (skip for admin adjustments)
                 if (!isAdminAdjustment && totalRemittance > totalNetCollection) {
@@ -288,7 +315,7 @@ async function batchSaveDenomination(req, res) {
                 const loId = group.loanOfficerId;
                 const branchId = group.branchId;
                 
-                // Prepare history entry
+                // Prepare history entry - use preserved sit down values
                 const historyEntry = {
                     date_time: currentDateTime,
                     user_id: user._id,
@@ -305,9 +332,6 @@ async function batchSaveDenomination(req, res) {
                     ...(isAdminAdjustment && { note: 'Admin balance adjustment' })
                 };
                 
-                // Get existing record from our pre-fetched map
-                const existingRecord = existingRecordsMap.get(groupId);
-                
                 // Process update or insert
                 if (existingRecord) {
                     // UPDATE EXISTING RECORD
@@ -315,6 +339,7 @@ async function batchSaveDenomination(req, res) {
                     if (isAdmin && isAdminAdjustment) {
                         console.log('Admin adjustment - updating record:', existingRecord._id);
                         
+                        // NOTE: Even for admin adjustments, we preserve sit down values
                         addToMutationList(alias => updateQl(DENOMINATION_TYPE(alias), {
                             where: { _id: { _eq: existingRecord._id } },
                             set: {
@@ -322,6 +347,7 @@ async function batchSaveDenomination(req, res) {
                                 afternoon_remittance: afternoonRemittance,
                                 bcc_vs_remittances: bccVsRemittances,
                                 remarks: remarks,
+                                // DO NOT update no_sit_down and amount_sit_down - preserve original values
                                 modified_date: currentDateTime,
                                 modified_by: user._id
                             },
@@ -357,8 +383,7 @@ async function batchSaveDenomination(req, res) {
                                     total_net_collection: totalNetCollection,
                                     morning_remittance: morningRemittance,
                                     afternoon_remittance: afternoonRemittance,
-                                    no_sit_down: noSitDown,
-                                    amount_sit_down: amountSitDown,
+                                    // DO NOT update no_sit_down and amount_sit_down - preserve original values
                                     bcc_vs_remittances: bccVsRemittances,
                                     remarks: remarks,
                                     status: 'pending',
@@ -389,8 +414,7 @@ async function batchSaveDenomination(req, res) {
                                 set: {
                                     morning_remittance: morningRemittance,
                                     afternoon_remittance: afternoonRemittance,
-                                    no_sit_down: noSitDown,
-                                    amount_sit_down: amountSitDown,
+                                    // DO NOT update no_sit_down and amount_sit_down - preserve original values
                                     bcc_vs_remittances: bccVsRemittances,
                                     remarks: remarks,
                                     modified_date: currentDateTime,
@@ -416,8 +440,7 @@ async function batchSaveDenomination(req, res) {
                                 total_net_collection: totalNetCollection,
                                 morning_remittance: morningRemittance,
                                 afternoon_remittance: afternoonRemittance,
-                                no_sit_down: noSitDown,
-                                amount_sit_down: amountSitDown,
+                                // DO NOT update no_sit_down and amount_sit_down - preserve original values
                                 bcc_vs_remittances: bccVsRemittances,
                                 remarks: remarks,
                                 status: 'pending',
@@ -449,8 +472,7 @@ async function batchSaveDenomination(req, res) {
                                 total_net_collection: totalNetCollection,
                                 morning_remittance: morningRemittance,
                                 afternoon_remittance: afternoonRemittance,
-                                no_sit_down: noSitDown,
-                                amount_sit_down: amountSitDown,
+                                // DO NOT update no_sit_down and amount_sit_down - preserve original values
                                 bcc_vs_remittances: bccVsRemittances,
                                 remarks: remarks,
                                 status: 'pending',
@@ -516,8 +538,8 @@ async function batchSaveDenomination(req, res) {
                                 'total_net_collection',
                                 'morning_remittance',
                                 'afternoon_remittance',
-                                'no_sit_down',
-                                'amount_sit_down',
+                                // NOTE: Intentionally NOT including no_sit_down and amount_sit_down
+                                // to preserve the original values on conflict
                                 'bcc_vs_remittances',
                                 'remarks',
                                 'status',
