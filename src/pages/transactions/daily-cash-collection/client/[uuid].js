@@ -3234,6 +3234,9 @@ const CashCollectionDetailsPage = () => {
                     if (calculatedInterest > 0) {
                         temp.mcbuInterest = calculatedInterest;
                         temp.mcbuInterestStr = formatPricePhp(calculatedInterest);
+
+                        const currentMcbu = parseFloat(temp.mcbu) || 0;
+                        temp.mcbu = currentMcbu + calculatedInterest;
                         
                         // Add lacking amount to mcbuCol to round up to nearest 10
                         // e.g., if mcbuInterest = 34, lacking = 6, so mcbuCol += 6 to make total 40
@@ -3243,10 +3246,10 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                             
                             // Also update mcbu total
-                            const currentMcbu = parseFloat(temp.mcbu) || 0;
-                            temp.mcbu = currentMcbu + lackingAmount;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.mcbu = temp.mcbu + lackingAmount;
                         }
+
+                        temp.mcbuStr = formatPricePhp(temp.mcbu);
                     } else if (!temp.mcbuInterest) {
                         temp.mcbuInterest = 0;
                         temp.mcbuInterestStr = '-';
