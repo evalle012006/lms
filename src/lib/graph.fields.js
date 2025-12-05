@@ -233,6 +233,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   mcbuCsfMCBUForNM
   mcbuCsfMinimumBalance
   addHospitalization
+  mcbuInterestRate
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

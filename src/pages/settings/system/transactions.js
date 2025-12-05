@@ -127,6 +127,7 @@ const TransactionsSettingsPage = (props) => {
         serviceChargeRate: transactionState.serviceChargeRate || '',
         mcbuRate: transactionState.mcbuRate || '',
         lrfRate: transactionState.lrfRate || '',
+        mcbuInterestRate: transactionState.mcbuInterestRate || '',  // ADD THIS
         
         // MCBU/CSF Settings
         minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
@@ -156,6 +157,7 @@ const TransactionsSettingsPage = (props) => {
         serviceChargeRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('Service charge rate is required'),
         mcbuRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('MCBU rate is required'),
         lrfRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('LRF rate is required'),
+        mcbuInterestRate: yup.number().min(0, 'Cannot be negative').required('MCBU Interest Rate is required'),  // ADD THIS
         
         // MCBU/CSF Settings
         minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
@@ -355,6 +357,21 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.lrfRate && errors.lrfRate}
+                                                required
+                                            />
+
+                                            <ModernInput
+                                                name="mcbuInterestRate"
+                                                value={values.mcbuInterestRate}
+                                                label="MCBU Interest Rate (Decimal)"
+                                                placeholder="e.g., 0.00083"
+                                                icon={CalculatorIcon}
+                                                type="number"
+                                                step="0.00001"  // Allow 5 decimal places
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.mcbuInterestRate && errors.mcbuInterestRate}
                                                 required
                                             />
                                         </div>

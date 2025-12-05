@@ -92,8 +92,10 @@ const CashCollectionDetailsPage = () => {
     const [mcbuBreakdownData, setMcbuBreakdownData] = useState({
         breakdown: [],
         totalInterest: 0,
-        year: moment(currentDate).year(),
-        clientName: ''
+        year: new Date().getFullYear(),
+        clientName: '',
+        offsetDate: null,
+        lackingAmount: 0
     });
 
     const handleShowMcbuBreakdown = (selected) => {
@@ -102,7 +104,9 @@ const CashCollectionDetailsPage = () => {
                 breakdown: selected.mcbuInterestBreakdown,
                 totalInterest: selected.mcbuInterest || 0,
                 year: selected.mcbuInterestYear || new Date().getFullYear(),
-                clientName: selected.fullName || ''
+                clientName: selected.fullName || '',
+                offsetDate: selected.mcbuInterestOffsetDate || null,
+                lackingAmount: selected.mcbuInterestLacking || 0
             });
             setShowMcbuBreakdownModal(true);
         } else {
@@ -3189,9 +3193,10 @@ const CashCollectionDetailsPage = () => {
             setMcbuInterestLoading(true);
             
             // Call the API to calculate MCBU interest
-            const result = await mcbuInterestService.calculateInterest(selected.clientId);
+            const result = await mcbuInterestService.calculateInterest(selected.clientId, transactionSettings.mcbuInterestRate);
             
             const calculatedInterest = result.success ? (result.mcbuInterest || 0) : 0;
+            const lackingAmount = result.success ? (result.mcbuInterestLacking || 0) : 0;
 
             // Store breakdown data for modal (even if interest is 0)
             if (result.success) {
@@ -3199,7 +3204,8 @@ const CashCollectionDetailsPage = () => {
                     breakdown: result.monthlyBreakdown || [],
                     totalInterest: calculatedInterest,
                     year: result.year,
-                    clientName: selected.fullName || ''
+                    clientName: selected.fullName || '',
+                    offsetDate: result.offsetDate || null
                 });
             }
 
@@ -3215,14 +3221,29 @@ const CashCollectionDetailsPage = () => {
                     if (calculatedInterest > 0) {
                         temp.mcbuInterest = calculatedInterest;
                         temp.mcbuInterestStr = formatPricePhp(calculatedInterest);
+                        
+                        // Add lacking amount to mcbuCol to round up to nearest 10
+                        // e.g., if mcbuInterest = 34, lacking = 6, so mcbuCol += 6 to make total 40
+                        if (lackingAmount > 0) {
+                            const currentMcbuCol = parseFloat(temp.mcbuCol) || 0;
+                            temp.mcbuCol = currentMcbuCol + lackingAmount;
+                            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                            
+                            // Also update mcbu total
+                            const currentMcbu = parseFloat(temp.mcbu) || 0;
+                            temp.mcbu = currentMcbu + lackingAmount;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        }
                     } else if (!temp.mcbuInterest) {
                         temp.mcbuInterest = 0;
                         temp.mcbuInterestStr = '-';
                     }
                     
-                    // Store the breakdown for reference
+                    // Store the breakdown and lacking for reference
                     temp.mcbuInterestBreakdown = result.monthlyBreakdown || [];
                     temp.mcbuInterestYear = result.year;
+                    temp.mcbuInterestLacking = lackingAmount;
+                    temp.mcbuInterestOffsetDate = result.offsetDate || null;
                     temp._dirty = true;
                 }
 
@@ -3243,10 +3264,14 @@ const CashCollectionDetailsPage = () => {
             setAllowMcbuInterest(true);
 
             if (calculatedInterest > 0) {
-                toast.success(
-                    `MCBU Interest auto-calculated: ${formatPricePhp(calculatedInterest)} ` +
-                    `(${result.totalMonths} month${result.totalMonths > 1 ? 's' : ''})`
-                );
+                let successMsg = `MCBU Interest: ${formatPricePhp(calculatedInterest)} (${result.totalMonths} month${result.totalMonths > 1 ? 's' : ''})`;
+                if (lackingAmount > 0) {
+                    successMsg += ` | Added ${formatPricePhp(lackingAmount)} to MCBU Collection`;
+                }
+                if (result.offsetDate) {
+                    successMsg += ` | Calculated from after offset on ${result.offsetDate}`;
+                }
+                toast.success(successMsg);
             } else {
                 toast.info('No MCBU Interest calculated. You can enter a value manually.');
             }
@@ -3833,6 +3858,7 @@ const CashCollectionDetailsPage = () => {
                                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                                 focus:ring-main focus:border-main block p-2.5" 
                                                                     style={{ width: '100px' }}
+                                                                    disabled={true}
                                                                 />
                                                                 {cc.mcbuInterestBreakdown && cc.mcbuInterestBreakdown.length > 0 && (
                                                                     <button
@@ -3963,6 +3989,9 @@ const CashCollectionDetailsPage = () => {
                         totalInterest={mcbuBreakdownData.totalInterest}
                         year={mcbuBreakdownData.year}
                         clientName={mcbuBreakdownData.clientName}
+                        offsetDate={mcbuBreakdownData.offsetDate}
+                        lackingAmount={mcbuBreakdownData.lackingAmount}
+                        mcbuInterestRate={transactionSettings.mcbuInterestRate}
                     />
                 </div>
             )}

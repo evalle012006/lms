@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from '@/lib/ui/Modal';
 import { formatPricePhp } from '@/lib/utils';
-import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { Info, AlertTriangle } from 'lucide-react';
 
 /**
  * MCBU Interest Breakdown Modal
@@ -14,6 +14,8 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
  * @param {number} totalInterest - Total calculated interest
  * @param {number} year - The year for which interest was calculated
  * @param {string} clientName - Optional client name to display
+ * @param {string} offsetDate - Optional offset date if client had offset transaction
+ * @param {number} lackingAmount - Amount added to mcbuCol to round up to nearest 10
  */
 const McbuInterestBreakdownModal = ({ 
     show, 
@@ -21,7 +23,10 @@ const McbuInterestBreakdownModal = ({
     breakdown = [], 
     totalInterest = 0, 
     year,
-    clientName = ''
+    clientName = '',
+    offsetDate = null,
+    lackingAmount = 0,
+    mcbuInterestRate = 0.0083
 }) => {
     return (
         <Modal 
@@ -37,14 +42,28 @@ const McbuInterestBreakdownModal = ({
                     </div>
                 )}
 
+                {/* Offset Warning */}
+                {offsetDate && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 flex items-start">
+                        <AlertTriangle className="w-5 h-5 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-yellow-700">
+                            <p className="font-medium">Offset Transaction Detected</p>
+                            <p>Client had an offset on <strong>{offsetDate}</strong>. Interest is calculated from records after this date only.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-start">
-                    <InformationCircleIcon className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <Info className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-blue-700">
                         <p className="font-medium">Calculation Formula:</p>
-                        <p>Monthly Interest = (MCBU - MCBU Withdrawal) × 0.83%</p>
+                        <p>Monthly Interest = (MCBU - MCBU Withdrawal) × {mcbuInterestRate || 0.0083}</p>
                         <p className="mt-1 text-xs text-blue-600">
                             Based on the first transaction of each month where MCBU ≥ ₱500
+                        </p>
+                        <p className="mt-1 text-xs text-blue-600">
+                            Final interest is rounded to whole number
                         </p>
                     </div>
                 </div>
@@ -103,12 +122,22 @@ const McbuInterestBreakdownModal = ({
                                 <tfoot className="bg-gray-100">
                                     <tr>
                                         <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
-                                            Total MCBU Interest:
+                                            Total MCBU Interest (Rounded):
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-green-700 text-right">
                                             {formatPricePhp(totalInterest)}
                                         </td>
                                     </tr>
+                                    {lackingAmount > 0 && (
+                                        <tr className="bg-blue-50">
+                                            <td colSpan={5} className="px-4 py-3 text-sm font-medium text-blue-700 text-right">
+                                                Added to MCBU Collection (to round to nearest 10):
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-blue-700 text-right">
+                                                +{formatPricePhp(lackingAmount)}
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tfoot>
                             </table>
                         </div>

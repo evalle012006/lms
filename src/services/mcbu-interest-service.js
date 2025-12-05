@@ -22,13 +22,13 @@ export const mcbuInterestService = {
  * console.log(result.mcbuInterest); // Total interest amount
  * console.log(result.monthlyBreakdown); // Array of monthly calculations
  */
-async function calculateInterest(clientId) {
+async function calculateInterest(clientId, mcbuInterestRate) {
     if (!clientId) {
         throw new Error('clientId is required');
     }
 
     const url = `${getApiBaseUrl()}/transactions/cash-collections/calculate-mcbu-interest`;
-    const params = new URLSearchParams({ clientId });
+    const params = new URLSearchParams({ clientId: clientId, mcbuInterestRate: mcbuInterestRate });
     
     try {
         const response = await fetchWrapper.get(`${url}?${params}`);
@@ -50,7 +50,7 @@ async function calculateInterest(clientId) {
  * const result = await mcbuInterestService.calculateInterestForYear('client-123', 2024);
  * console.log(result.mcbuInterest); // Total interest amount for 2024
  */
-async function calculateInterestForYear(clientId, year) {
+async function calculateInterestForYear(clientId, year, mcbuInterestRate) {
     if (!clientId) {
         throw new Error('clientId is required');
     }
@@ -60,7 +60,7 @@ async function calculateInterestForYear(clientId, year) {
     }
 
     const url = `${getApiBaseUrl()}/transactions/cash-collections/calculate-mcbu-interest`;
-    const params = new URLSearchParams({ clientId, year: year.toString() });
+    const params = new URLSearchParams({ clientId, year: year.toString(), mcbuInterestRate: mcbuInterestRate });
     
     try {
         const response = await fetchWrapper.get(`${url}?${params}`);
