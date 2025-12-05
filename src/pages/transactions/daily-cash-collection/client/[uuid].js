@@ -12,6 +12,7 @@ import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, safeNumber, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { Info } from 'lucide-react';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
@@ -28,6 +29,8 @@ import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
 import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer';
 import WarningIconWithTooltip from '@/lib/ui/icons/warning-icon';
+import mcbuInterestService from '@/services/mcbu-interest-service';
+import McbuInterestBreakdownModal from '@/components/transactions/McbuInterestBreakdownModal';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -84,6 +87,29 @@ const CashCollectionDetailsPage = () => {
 
     const [showMcbuWithdrawalDrawer, setShowMcbuWithdrawalDrawer] = useState(false);
     const [hasGroupLeader, setHasGroupLeader] = useState(false);
+
+    const [mcbuInterestLoading, setMcbuInterestLoading] = useState(false);
+    const [showMcbuBreakdownModal, setShowMcbuBreakdownModal] = useState(false);
+    const [mcbuBreakdownData, setMcbuBreakdownData] = useState({
+        breakdown: [],
+        totalInterest: 0,
+        year: moment(currentDate).year(),
+        clientName: ''
+    });
+
+    const handleShowMcbuBreakdown = (selected) => {
+        if (selected.mcbuInterestBreakdown && selected.mcbuInterestBreakdown.length > 0) {
+            setMcbuBreakdownData({
+                breakdown: selected.mcbuInterestBreakdown,
+                totalInterest: selected.mcbuInterest || 0,
+                year: selected.mcbuInterestYear || new Date().getFullYear(),
+                clientName: selected.fullName || ''
+            });
+            setShowMcbuBreakdownModal(true);
+        } else {
+            toast.info('No breakdown data available. Calculate MCBU Interest first.');
+        }
+    };
 
     const handleCloseMcbuWithdrawalDrawer = () => {
         setShowMcbuWithdrawalDrawer(false);
@@ -3141,29 +3167,130 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const handleMCBUInterest = (selected, index) => {
-        if (parseFloat(selected.mcbu) > 1000) {
+    // const handleMCBUInterest = (selected, index) => {
+    //     if (parseFloat(selected.mcbu) > 1000) {
+    //         const list = data.map((cc, idx) => {
+    //             let temp = JSON.parse(JSON.stringify(cc));
+
+    //             if (selected.slotNo === cc.slotNo) {
+    //                 temp.mcbuInterestFlag = !temp.mcbuInterestFlag;
+
+    //                 if (temp.mcbuInterestFlag) {
+    //                     setAllowMcbuInterest(true);
+    //                 } else {
+    //                     setAllowMcbuInterest(false);
+    //                 }
+    //             }
+
+    //             return temp;
+    //         });
+
+    //         dispatch(setCashCollectionGroup(list));
+    //     } else {
+    //         toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
+    //     }
+    // }
+
+    const handleMCBUInterest = async (selected, index) => {
+        // Validate minimum MCBU requirement
+        if (parseFloat(selected.mcbu) <= 1000) {
+            toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
+            return;
+        }
+
+        try {
+            setMcbuInterestLoading(true);
+            
+            // Call the API to calculate MCBU interest
+            const result = await mcbuInterestService.calculateInterest(selected.clientId);
+            
+            const calculatedInterest = result.success ? (result.mcbuInterest || 0) : 0;
+
+            // Store breakdown data for modal (even if interest is 0)
+            if (result.success) {
+                setMcbuBreakdownData({
+                    breakdown: result.monthlyBreakdown || [],
+                    totalInterest: calculatedInterest,
+                    year: result.year,
+                    clientName: selected.fullName || ''
+                });
+            }
+
+            // Update the data - show the field for editing with pre-populated value
             const list = data.map((cc, idx) => {
                 let temp = JSON.parse(JSON.stringify(cc));
 
                 if (selected.slotNo === cc.slotNo) {
-                    temp.mcbuInterestFlag = !temp.mcbuInterestFlag;
-
-                    if (temp.mcbuInterestFlag) {
-                        setAllowMcbuInterest(true);
-                    } else {
-                        setAllowMcbuInterest(false);
+                    temp.mcbuInterestFlag = true;
+                    
+                    // Only set the calculated value if it's greater than 0
+                    // Otherwise, keep existing value or set to 0 for manual entry
+                    if (calculatedInterest > 0) {
+                        temp.mcbuInterest = calculatedInterest;
+                        temp.mcbuInterestStr = formatPricePhp(calculatedInterest);
+                    } else if (!temp.mcbuInterest) {
+                        temp.mcbuInterest = 0;
+                        temp.mcbuInterestStr = '-';
                     }
+                    
+                    // Store the breakdown for reference
+                    temp.mcbuInterestBreakdown = result.monthlyBreakdown || [];
+                    temp.mcbuInterestYear = result.year;
+                    temp._dirty = true;
+                }
+
+                return temp;
+            });
+
+            // Update totals
+            const totalsIdx = list.findIndex(item => item.status === 'totals');
+            if (totalsIdx !== -1) {
+                const totalsObj = calculateTotals(list);
+                list[totalsIdx] = totalsObj;
+            }
+
+            list.sort((a, b) => a.slotNo - b.slotNo);
+            dispatch(setCashCollectionGroup(list));
+
+            setEditMode(true);
+            setAllowMcbuInterest(true);
+
+            if (calculatedInterest > 0) {
+                toast.success(
+                    `MCBU Interest auto-calculated: ${formatPricePhp(calculatedInterest)} ` +
+                    `(${result.totalMonths} month${result.totalMonths > 1 ? 's' : ''})`
+                );
+            } else {
+                toast.info('No MCBU Interest calculated. You can enter a value manually.');
+            }
+
+        } catch (error) {
+            console.error('Error calculating MCBU Interest:', error);
+            
+            // Even if the API fails, still show the input field for manual entry
+            const list = data.map((cc, idx) => {
+                let temp = JSON.parse(JSON.stringify(cc));
+
+                if (selected.slotNo === cc.slotNo) {
+                    temp.mcbuInterestFlag = true;
+                    if (!temp.mcbuInterest) {
+                        temp.mcbuInterest = 0;
+                    }
+                    temp._dirty = true;
                 }
 
                 return temp;
             });
 
             dispatch(setCashCollectionGroup(list));
-        } else {
-            toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
+            setEditMode(true);
+            setAllowMcbuInterest(true);
+            
+            toast.warning('Could not auto-calculate MCBU Interest. Please enter manually.');
+        } finally {
+            setMcbuInterestLoading(false);
         }
-    }
+    };
 
     const handleMarkLate = (selected) => {
         if (selected?.status == 'active') {
@@ -3440,10 +3567,21 @@ const CashCollectionDetailsPage = () => {
             //     hidden: true
             // },
             {
-                label: 'Calculate MCBU Interest',
-                action: handleMCBUInterest,
-                icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
-                hidden: true
+                label: mcbuInterestLoading ? 'Calculating...' : 'Calculate MCBU Interest',
+                action: (selected, index) => {
+                    setSelectedSlot(selected); // Track which row is loading
+                    handleMCBUInterest(selected, index);
+                },
+                icon: mcbuInterestLoading ? (
+                    <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                ) : (
+                    <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />
+                ),
+                hidden: true,
+                disabled: mcbuInterestLoading
             },
         ]);
     }, [data]);
@@ -3633,16 +3771,47 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 {currentMonth === 11 && (
                                                     <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
-                                                        { cc.mcbuInterestFlag ? (
-                                                            <React.Fragment>
-                                                                <input type="number" name={`${cc.clientId}-mcbuInterest`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuInterest')}
-                                                                    onClick={(e) => e.stopPropagation()} value={cc.mcbuInterest ? cc.mcbuInterest : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                        {mcbuInterestLoading && cc.slotNo === selectedSlot?.slotNo ? (
+                                                            <div className="flex items-center justify-end">
+                                                                <svg className="animate-spin h-5 w-5 text-main" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                <span className="ml-2 text-sm text-gray-500">Calculating...</span>
+                                                            </div>
+                                                        ) : cc.mcbuInterestFlag ? (
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <input 
+                                                                    type="number" 
+                                                                    name={`${cc.clientId}-mcbuInterest`} 
+                                                                    min={0} 
+                                                                    step={10} 
+                                                                    onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuInterest')}
+                                                                    onClick={(e) => e.stopPropagation()} 
+                                                                    value={cc.mcbuInterest ? cc.mcbuInterest : 0} 
+                                                                    tabIndex={index + 1} 
+                                                                    onWheel={(e) => e.target.blur()}
                                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                                focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
-                                                            </React.Fragment>
+                                                                                focus:ring-main focus:border-main block p-2.5" 
+                                                                    style={{ width: '100px' }}
+                                                                />
+                                                                {cc.mcbuInterestBreakdown && cc.mcbuInterestBreakdown.length > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleShowMcbuBreakdown(cc);
+                                                                        }}
+                                                                        className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                                                        title="View Breakdown"
+                                                                    >
+                                                                        <Info className="w-5 h-5" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         ) : (
-                                                            <React.Fragment>{ cc.mcbuInterestStr }</React.Fragment>
-                                                        ) }
+                                                            <React.Fragment>{cc.mcbuInterestStr}</React.Fragment>
+                                                        )}
                                                     </td>
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
@@ -3779,6 +3948,14 @@ const CashCollectionDetailsPage = () => {
                             <ButtonSolid label="Submit" type="button" className="p-2" onClick={handleNewRemarks} />
                         </div>
                     </Dialog>
+                    <McbuInterestBreakdownModal
+                        show={showMcbuBreakdownModal}
+                        onClose={() => setShowMcbuBreakdownModal(false)}
+                        breakdown={mcbuBreakdownData.breakdown}
+                        totalInterest={mcbuBreakdownData.totalInterest}
+                        year={mcbuBreakdownData.year}
+                        clientName={mcbuBreakdownData.clientName}
+                    />
                 </div>
             )}
         </Layout>

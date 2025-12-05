@@ -27,7 +27,10 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
-                if (option.label == 'Calculate MCBU Interest' && (!dataOptions?.filter && !dataOptions?.editMode && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft)) {
+                // FIXED: Changed from !dataOptions?.editMode to !data.mcbuInterestFlag
+                // This ensures the action is hidden only for the specific row that has been calculated,
+                // not for all rows when editMode becomes true
+                if (option.label == 'Calculate MCBU Interest' && (!dataOptions?.filter && !data.mcbuInterestFlag && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft)) {
                     tempOption.hidden = false;
                 }
 
