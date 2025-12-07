@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import moment from 'moment';
 
 export const getEndDate = (date, days) => {
@@ -42,8 +43,17 @@ export const getDaysOfMonth = (year, month) => {
     return arrDays;
 };
 
-export const getCurrentDate = (timezone = 'Asia/Manila') => {
+export const getCurrentDateV1 = (timezone = 'Asia/Manila') => {
     return new Date().toLocaleDateString({}, { timeZone: timezone });
+};
+
+export const getCurrentDate = (timezone = 'Asia/Manila') => {
+    // Create a DateTime object representing the *current* moment (in UTC),
+    // and immediately shift it to the 'Asia/Manila' timezone.
+    const nowInManila = DateTime.now().setZone(timezone);
+
+    // Now, format the date as a simple YYYY-MM-DD string.
+    return nowInManila.toISODate(); // Example output: "2025-12-05"
 };
 
 export const getLastWeekdayOfTheMonth = (year, month, holidayList = []) => {
