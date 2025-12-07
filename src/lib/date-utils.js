@@ -43,11 +43,11 @@ export const getDaysOfMonth = (year, month) => {
     return arrDays;
 };
 
-export const getCurrentDateV1 = (timezone = 'Asia/Manila') => {
+export const getCurrentDate = (timezone = 'Asia/Manila') => {
     return new Date().toLocaleDateString({}, { timeZone: timezone });
 };
 
-export const getCurrentDate = (timezone = 'Asia/Manila') => {
+export const getCurrentDateV2 = (timezone = 'Asia/Manila') => {
     // Create a DateTime object representing the *current* moment (in UTC),
     // and immediately shift it to the 'Asia/Manila' timezone.
     const nowInManila = DateTime.now().setZone(timezone);
