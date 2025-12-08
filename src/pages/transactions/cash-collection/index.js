@@ -880,6 +880,7 @@ const ModernBranchCashCollections = () => {
             excessPrevious: item.prev_excess ? `₱${Number(item.prev_excess).toLocaleString()}` : '-',
             
             mcbu: item.mcbu ? `₱${Number(item.mcbu).toLocaleString()}` : '-',
+            mcbuInterest: item.mcbuInterest ? `₱${Number(item.mcbuInterest).toLocaleString()}` : '-',
             mcbuPrevious: item.mcbu ? `₱${Number(item.prev_mcbu).toLocaleString()}` : '-',
             actualLoanCollectionCurrent: item.actualLoanCollection ? 
             `₱${Number(item.actualLoanCollection).toLocaleString()}` : '-',
@@ -1784,6 +1785,7 @@ const ModernBranchCashCollections = () => {
     actualLoanCollection: true,
     mcbuCollection: true,
     mcbu: true,
+    mcbuInterest: true,
     noPersonRelease: true,
     currentReleaseAmountStr: true,
     mcbuWithdrawal: true,
@@ -1841,6 +1843,7 @@ const ModernBranchCashCollections = () => {
     { key: 'csfWithdrawal', label: 'CSF Withdrawals', width: 'w-40', },
     { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', },
     { key: 'mcbuReturn', label: 'MCBU/CSF Return Amount', width: 'w-32', },
+    { key: 'mcbuInterest', label: 'MCBU Interest', width: 'w-40', },
     { key: 'csfReturnAmtStr', label: 'CSF Return Amount', width: 'w-32', },
     { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', },
     { key: 'fullPaymentAmount', label: 'Full Payment Amount', width: 'w-40', },
