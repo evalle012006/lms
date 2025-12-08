@@ -1568,7 +1568,7 @@ const CashCollectionDetailsPage = () => {
                             && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
                             errorMsg.add('Error occured. Invalid MCBU Collection.');
                         }
-                    } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0) {
+                    } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
                         errorMsg.add('Error occured. MCBU collection should be divisible by 10.');
                     }
                 }
