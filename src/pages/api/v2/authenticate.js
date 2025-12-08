@@ -16,9 +16,6 @@ export default apiHandler({
     get: logout
 });
 
-let response = {};
-let statusCode = 200;
-
 // Cache for settings to avoid frequent database calls
 let settingsCache = {
     data: null,
@@ -104,6 +101,9 @@ async function getSettings() {
 }
 
 async function authenticate(req, res) {
+    let statusCode = 200;
+    let response = {};
+
     const { username, password } = req.body;
     
     try {
@@ -123,12 +123,12 @@ async function authenticate(req, res) {
                 message: 'Email or Password is incorrect'
             };
             logger.debug({page: 'login', message: 'User not found'});
-            return sendResponse(res);
+            return sendResponse(res, response, statusCode);
         }
 
         if (user && !user.password) {
             response = { success: false, error: 'NO_PASS', user: user._id };
-            return sendResponse(res);
+            return sendResponse(res, response, statusCode);
         }
 
         // Get settings (cached or fresh)
@@ -201,10 +201,12 @@ async function authenticate(req, res) {
         statusCode = 500;
     }
 
-    sendResponse(res);
+    sendResponse(res, response, statusCode);
 }
 
 async function logout(req, res) {
+    let statusCode = 200;
+    let response = {};
     const { user } = req.query;
 
     try {
@@ -227,10 +229,10 @@ async function logout(req, res) {
         statusCode = 500;
     }
 
-    sendResponse(res);
+    sendResponse(res, response, statusCode);
 }
 
-function sendResponse(res) {
+function sendResponse(res, response, statusCode) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
