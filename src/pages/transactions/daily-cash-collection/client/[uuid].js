@@ -704,7 +704,6 @@ const CashCollectionDetailsPage = () => {
                             mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
-                            hasMcbuInterest: cc.mcbuInterest > 0 ? true : false,
                             mcbuInterest: 0,
                             mcbuInterestStr: '-',
                             // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
@@ -917,6 +916,8 @@ const CashCollectionDetailsPage = () => {
                         collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
                     }
                 }
+
+                collection.hasMcbuInterest = safeNumber(cc.mcbuInterest) > 0 ? true : false;
 
                 collection.selected = false;
                 cashCollection.push(collection);   
@@ -1232,6 +1233,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
+                        hasMcbuInterest: safeNumber(prevLoan.mcbuInterest) > 0 ? true : false,
                         remarks: prevLoan ? prevLoan?.history?.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
@@ -1351,7 +1353,7 @@ const CashCollectionDetailsPage = () => {
                 console.log('Reverted Collection found: ', haveReverted)
                 setRevertMode(true);
             }
-            cashCollection.sort((a, b) => a.slotNo - b.slotNo);
+
             dispatch(setCashCollectionGroup(cashCollection));
             // RESET
             setTimeout(() => {
@@ -3199,6 +3201,11 @@ const CashCollectionDetailsPage = () => {
         // Validate minimum MCBU requirement
         if (parseFloat(selected.mcbu) < 500) {
             toast.error('Client has not reached the minimum of 500 MCBU to accumulate interest.');
+            return;
+        }
+
+        if (selected.hasMcbuInterest) {
+            toast.info('MCBU Interest has already been applied for this client.');
             return;
         }
 

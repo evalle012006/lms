@@ -932,6 +932,8 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
+                collection.hasMcbuInterest = safeNumber(cc.mcbuInterest) > 0 ? true : false;
+
                 collection.selected = false;
                 cashCollection.push(collection);
             });
@@ -1238,6 +1240,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan?.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
+                        hasMcbuInterest: safeNumber(prevLoan.mcbuInterest) > 0 ? true : false,
                         targetCollectionStr: '-',
                         excessStr: '-',
                         paymentCollectionStr: '-',
@@ -1299,7 +1302,6 @@ const CashCollectionDetailsPage = () => {
                 let updateOtherIncome = safeNumber(cc.otherIncome);
                 let csfIn = safeNumber(cc.csfIn);
 
-                console.log('CC: ', cc);
                 if (!hasGroupLeader && cc.status === 'active' && (!cc.remarks || (cc.remarks && !LOR_NO_CSF_IN_REMARKS.includes(cc.remarks.value)))) {
                     csfIn = cc.csfIn > 0 ? cc.csfIn : transactionSettings.minCsfCollection;
                 }
@@ -3186,6 +3188,11 @@ const CashCollectionDetailsPage = () => {
         // Validate minimum MCBU requirement
         if (parseFloat(selected.mcbu) <= 500) {
             toast.error('Client has not reached the minimum of 500 MCBU to accumulate interest.');
+            return;
+        }
+
+        if (selected.hasMcbuInterest) {
+            toast.info('MCBU Interest has already been applied for this client.');
             return;
         }
 
