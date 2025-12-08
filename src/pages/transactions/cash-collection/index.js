@@ -880,7 +880,7 @@ const ModernBranchCashCollections = () => {
             excessPrevious: item.prev_excess ? `₱${Number(item.prev_excess).toLocaleString()}` : '-',
             
             mcbu: item.mcbu ? `₱${Number(item.mcbu).toLocaleString()}` : '-',
-            mcbuInterest: item.mcbuInterest ? `₱${Number(item.mcbuInterest).toLocaleString()}` : '-',
+            mcbuInterest: item.mcbuInterest > 0 ? `₱${Number(item.mcbuInterest).toLocaleString()}` : '-',
             mcbuPrevious: item.mcbu ? `₱${Number(item.prev_mcbu).toLocaleString()}` : '-',
             actualLoanCollectionCurrent: item.actualLoanCollection ? 
             `₱${Number(item.actualLoanCollection).toLocaleString()}` : '-',
