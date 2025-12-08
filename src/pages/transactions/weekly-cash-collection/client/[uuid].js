@@ -3184,8 +3184,8 @@ const CashCollectionDetailsPage = () => {
 
     const handleMCBUInterest = async (selected, index) => {
         // Validate minimum MCBU requirement
-        if (parseFloat(selected.mcbu) <= 1000) {
-            toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
+        if (parseFloat(selected.mcbu) <= 500) {
+            toast.error('Client has not reached the minimum of 500 MCBU to accumulate interest.');
             return;
         }
 
