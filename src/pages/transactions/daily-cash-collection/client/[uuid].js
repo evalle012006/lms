@@ -1233,7 +1233,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                        hasMcbuInterest: safeNumber(prevLoan.mcbuInterest) > 0 ? true : false,
+                        hasMcbuInterest: (prevLoan && safeNumber(prevLoan?.mcbuInterest) > 0) ? true : false,
                         remarks: prevLoan ? prevLoan?.history?.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
