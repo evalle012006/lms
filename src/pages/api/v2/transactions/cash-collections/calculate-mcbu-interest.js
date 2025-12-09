@@ -256,7 +256,7 @@ async function getFirstInstancePerMonth(clientId, year, offsetDate = null) {
         const records = [];
         for (let month = 1; month <= 12; month++) {
             const record = res.data?.[`month_${month}`]?.[0];
-            records.push(record);
+            records.push({ ...record, month });
         }
         
         return records;
@@ -270,7 +270,7 @@ async function getFirstInstancePerMonth(clientId, year, offsetDate = null) {
     });
 
     // Filter out null results and return valid records
-    return results.filter(record => record !== null);
+    return results.filter(record => !!record);
 }
 
 /**
