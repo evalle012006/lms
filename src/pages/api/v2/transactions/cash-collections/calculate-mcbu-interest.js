@@ -211,6 +211,7 @@ async function getFirstInstancePerMonth(clientId, year, offsetDate = null) {
 
     // Determine the start date - either after offset or beginning of year
     const afterOffsetDate = offsetDate ? new Date(offsetDate) : null;
+    const clientQueries = [];
 
     for (let month = 1; month <= 12; month++) {
         const monthStartDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -237,8 +238,7 @@ async function getFirstInstancePerMonth(clientId, year, offsetDate = null) {
             }
         }
 
-        const promise = graph.query(
-            queryQl(CASH_COLLECTION_TYPE(`month_${month}`), {
+        clientQueries.push(queryQl(CASH_COLLECTION_TYPE(`month_${month}`), {
                 where: {
                     clientId: { _eq: clientId },
                     mcbu: { _gte: 500 },
@@ -249,27 +249,25 @@ async function getFirstInstancePerMonth(clientId, year, offsetDate = null) {
                 },
                 order_by: [{ dateAdded: 'asc' }],
                 limit: 1
-            })
-        ).then(res => {
-            const record = res.data?.[`month_${month}`]?.[0];
-            if (record) {
-                return { ...record, month };
-            }
-            return null;
-        }).catch(err => {
-            logger.error({
-                page: 'Calculate MCBU Interest',
-                message: `Error querying month ${month}`,
-                error: err.message
-            });
-            return null;
-        });
-
-        monthPromises.push(promise);
+        }));
     }
 
-    // Execute all queries in parallel
-    const results = await Promise.all(monthPromises);
+    const results = await graph.query( ... clientQueries  ).then(res => {
+        const records = [];
+        for (let month = 1; month <= 12; month++) {
+            const record = res.data?.[`month_${month}`]?.[0];
+            records.push(record);
+        }
+        
+        return records;
+    }).catch(err => {
+        logger.error({
+            page: 'Calculate MCBU Interest',
+            message: `Error querying month ${month}`,
+            error: err.message
+        });
+        return [];
+    });
 
     // Filter out null results and return valid records
     return results.filter(record => record !== null);
