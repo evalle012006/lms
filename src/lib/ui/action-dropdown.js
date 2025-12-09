@@ -8,6 +8,8 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
     
     useEffect(() => {
         const last5DaysOfTheMonth = dataOptions?.last5DaysOfTheMonth || [];
+        const mcbuInterestLoading = dataOptions?.mcbuInterestLoading || false;  // Get loading state
+        
         const temp = options.map(option => {
             let tempOption = { ...option };
             if (origin == 'cash-collection' && data) {
@@ -16,9 +18,6 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
-                // if (option.label == 'MCBU Refund' && (!dataOptions?.filter && data.status == 'completed' && !data?.draft)) {
-                //     tempOption.hidden = false;
-                // }
                 if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && (!dataOptions?.filter && (data.status == 'tomorrow' || (data.occurence == 'weekly' && (data.status == 'active' || data.status == 'completed')) || (client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate))) && !data?.draft)) {
                     tempOption.hidden = false;
                 }
@@ -27,11 +26,12 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
-                // FIXED: Changed from !dataOptions?.editMode to !data.mcbuInterestFlag
-                // This ensures the action is hidden only for the specific row that has been calculated,
-                // not for all rows when editMode becomes true
-                if (option.label == 'Calculate MCBU Interest' && (!dataOptions?.filter && !data.mcbuInterestFlag && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft && !data.hasMcbuInterest)) {
+                // Handle both "Calculate MCBU Interest" and "Calculating..." labels
+                if ((option.label == 'Calculate MCBU Interest' || option.label == 'Calculating...') && 
+                    (!dataOptions?.filter && !data.mcbuInterestFlag && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft && !data.hasMcbuInterest)) {
                     tempOption.hidden = false;
+                    // Set disabled state based on loading
+                    tempOption.disabled = mcbuInterestLoading;
                 }
 
                 if (option.label == 'Offset' && (!dataOptions?.filter && data.status == 'active' && !data.draft)) {
@@ -72,7 +72,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
         });
 
         setUpdatedOptions(temp);
-    }, [options]);
+    }, [options, dataOptions]);  // Added dataOptions to dependencies
 
     return (
         <div className="relative inline-flex items-center justify-center">
@@ -104,19 +104,31 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                             {updatedOptions.every(option => option.hidden) ? <span className="p-6">No Action</span> : (
                                 <React.Fragment>
                                     {updatedOptions.map((option, index) => {
+                                        // Determine if disabled - handle both boolean and function
+                                        const isDisabled = typeof option?.disabled === 'function' 
+                                            ? option.disabled() 
+                                            : !!option?.disabled;
+                                        
                                         return (
                                             <div key={index} className="w-full">
                                                 {!option.hidden && (
                                                     <button
                                                         key={option.label}
-                                                        className="flex text-gray-700 block w-full text-left p-2 text-sm hover:bg-gray-100 hover:text-gray-900"
+                                                        className={`flex text-gray-700 block w-full text-left p-2 text-sm 
+                                                            ${isDisabled 
+                                                                ? 'opacity-50 cursor-not-allowed bg-gray-100' 
+                                                                : 'hover:bg-gray-100 hover:text-gray-900 cursor-pointer'
+                                                            }`}
                                                         role="menuitem"
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
-                                                            setIsOpen(false);
-                                                            option.action(data, index, option?.flag);
+                                                            if (!isDisabled) {
+                                                                setIsOpen(false);
+                                                                option.action(data, index, option?.flag);
+                                                            }
                                                         }}
+                                                        disabled={isDisabled}
                                                     >
                                                         <div className="flex flex-row justify-start px-2">
                                                             {option?.icon && option.icon}

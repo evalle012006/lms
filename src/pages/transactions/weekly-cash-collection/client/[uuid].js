@@ -3938,7 +3938,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && !currentBranch.lockTransaction && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentDate: currentDate, currentMonth: currentMonth, last5DaysOfTheMonth: last5DaysOfTheMonth }} />}
+                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentDate: currentDate, currentMonth: currentMonth, last5DaysOfTheMonth: last5DaysOfTheMonth, mcbuInterestLoading: mcbuInterestLoading }} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
