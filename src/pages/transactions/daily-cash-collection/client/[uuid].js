@@ -31,6 +31,7 @@ import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdr
 import WarningIconWithTooltip from '@/lib/ui/icons/warning-icon';
 import mcbuInterestService from '@/services/mcbu-interest-service';
 import McbuInterestBreakdownModal from '@/components/transactions/McbuInterestBreakdownModal';
+import CashCollectionDetailsExcelExport from '@/components/transactions/CashCollectionDetailsExcelExport';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -3638,12 +3639,37 @@ const CashCollectionDetailsPage = () => {
                 // </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch?.lockTransaction) ? false : editMode : false}
-                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
-                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
-                        groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} handleShowWarningDialog={handleShowWarningDialog} loading={loading} branchLock={currentBranch?.lockTransaction}
-                        allowMcbuInterest={allowMcbuInterest} />}
+                    {data && <DetailsHeader 
+                        page={'transaction'} 
+                        showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch?.lockTransaction) ? false : editMode : false}
+                        handleSaveUpdate={handleSaveUpdate} 
+                        data={allData} 
+                        setData={setFilteredData} 
+                        allowMcbuWithdrawal={allowMcbuWithdrawal} 
+                        hasDraft={hasDraft}
+                        dateFilter={dateFilter} 
+                        setDateFilter={setDateFilter} 
+                        handleDateFilter={handleDateFilter} 
+                        currentGroup={uuid} 
+                        revertMode={revertMode}
+                        groupFilter={groupFilter} 
+                        handleGroupFilter={handleGroupFilter} 
+                        groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
+                        changeRemarks={changeRemarks} 
+                        handleShowWarningDialog={handleShowWarningDialog} 
+                        loading={loading} 
+                        branchLock={currentBranch?.lockTransaction}
+                        allowMcbuInterest={allowMcbuInterest}
+                        exportComponent={
+                            <CashCollectionDetailsExcelExport
+                                data={groupClients}
+                                groupInfo={currentGroup}
+                                dateFilter={dateFilter}
+                                occurence="daily"
+                                currentUser={currentUser}
+                            />
+                        }
+                    />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
