@@ -352,14 +352,14 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
 
         loan.history = collection.history;
 
-        if (collection.loanBalance <= 0) {
+        if (collection.loanBalance <= 0 || collection?.remarks?.value == 'offset-matured-pd') {
             loan.status = collection.status;
             if (collection.status === 'tomorrow') {
                 loan.status = 'active';
             }
             
             loan.activeLoan = 0;
-            if (!loan.fullPaymentDate) {
+            if (!loan.fullPaymentDate) {    
                 loan.fullPaymentDate = collection.fullPaymentDate;
             }
             
