@@ -375,6 +375,8 @@ const CashCollectionDetailsPage = () => {
                         csfReturnAmtStr: csfReturnAmt > 0 ? formatPricePhp(csfReturnAmt) : '-',
                         csfIn: csfIn,
                         csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
+                        maturedPD: cc.maturedPD,
+                        maturedPDPrevTransaction: cc.maturedPD,
                     }
 
                     if (cc?.transferred && loanBalance > 0) {
@@ -457,6 +459,8 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: cc.csfWithdrawal > 0 ? formatPricePhp(cc.csfWithdrawal) : '-',
                             csfReturnAmt: cc.csfReturnAmt,
                             csfReturnAmtStr: cc.csfReturnAmt > 0 ? formatPricePhp(cc.csfReturnAmt) : '-',
+                            maturedPD: cc.maturedPD,
+                            maturedPDPrevTransaction: cc.maturedPD,
                         }
     
                         setEditMode(false);
@@ -617,6 +621,8 @@ const CashCollectionDetailsPage = () => {
                             otherPassbookCollection: otherPassbookCollection,
                             otherPictureCollection: otherPictureCollection,
                             otherIncome: otherIncome,
+                            maturedPD: cc.maturedPD,
+                            maturedPDPrevTransaction: cc.maturedPD,
                         }
 
                         if (loanBalance > 0 && !cc?.maturedPD) {
@@ -742,6 +748,7 @@ const CashCollectionDetailsPage = () => {
                             guarantorLastName: cc.guarantorLastName,
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
+                            maturedPDPrevTransaction: cc.maturedPD,
                             advance: cc.advance ? cc.advance : false,
                             csf: safeNumber(cc.csf),
                             csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
@@ -1259,6 +1266,8 @@ const CashCollectionDetailsPage = () => {
                         csfWithdrawalStr: '-',
                         csfReturnAmt: 0,
                         csfReturnAmtStr: '-',
+                        maturedPD: loan.maturedPD,
+                        maturedPDPrevTransaction: loan.maturedPD,
                     };
 
                     const current = loan.current.length > 0 ? loan.current[0] : null;
@@ -1529,7 +1538,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                     if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
-                        && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') ) {
+                        && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') && cc.remarks.value !== 'offset-matured-pd' ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) || parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) && cc.loanBalance !== 0) {
@@ -1542,7 +1551,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
                 }
 
-                if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset'))) {
+                if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset')) && !cc?.maturedPDPrevTransaction) {
                     errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
                 }
 
@@ -1719,7 +1728,7 @@ const CashCollectionDetailsPage = () => {
                             temp.fullPaymentDate = currentDate;
                         }
     
-                        if (temp.status === 'completed' || (temp.maturedPD && temp.remarks?.value == 'offset-matured-pd')) {
+                        if (temp.status === 'completed' || ((temp.maturedPD || temp.maturedPDPrevTransaction) && temp.remarks?.value == 'offset-matured-pd')) {
                             temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : currentDate;
                             if (temp.previousDraft) {
                                 temp.fullPaymentDate = temp.dateAdded;
@@ -2285,7 +2294,7 @@ const CashCollectionDetailsPage = () => {
                             toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
                         } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
-                        } else if (temp.loanBalance > 0 && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
+                        } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (!mcbuErrorData) {
                             // always reset these fields
@@ -2343,7 +2352,7 @@ const CashCollectionDetailsPage = () => {
                             // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                             // by tomorrow only reloaner and offsets...
                             if (remarks.value && remarks.value?.startsWith('offset')) {
-                                if (parseFloat(temp.loanBalance) !== 0 && !temp?.maturedPD && temp.mcbu < temp.loanBalance) {
+                                if (parseFloat(temp.loanBalance) !== 0 && !temp?.maturedPD && temp.mcbu < temp.loanBalance && (temp.remarks && temp.remarks?.value != "matured-past due")) {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
@@ -2372,8 +2381,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuColStr = '-';
                                         temp.csfCollection = 0;
                                         temp.csfCollectionStr = '-';
-                                        
-                                        if (temp?.maturedPD) {
+
+                                        if (temp?.maturedPD || temp?.maturedPDPrevTransaction) {
                                             temp.paymentCollection = temp.loanBalance;
                                             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
                                             temp.prevData.paymentCollection = temp.loanBalance;

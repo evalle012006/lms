@@ -28,7 +28,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
 
                 // Handle both "Calculate MCBU Interest" and "Calculating..." labels
                 if ((option.label == 'Calculate MCBU Interest' || option.label == 'Calculating...') && 
-                    (!dataOptions?.filter && !data.mcbuInterestFlag && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft && !data.hasMcbuInterest)) {
+                    (!dataOptions?.filter && !data.mcbuInterestFlag && data.status !== 'closed' && dataOptions?.currentMonth === 11 && !data?.draft && !data.hasMcbuInterest && data?._id)) {
                     tempOption.hidden = false;
                     // Set disabled state based on loading
                     tempOption.disabled = mcbuInterestLoading;
