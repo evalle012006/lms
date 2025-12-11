@@ -76,6 +76,10 @@ async function save(req, res) {
                     collection.mispayment = false;
                 }
 
+                if (collection.remarks && (collection.remarks.value === 'offset-matured-pd' || collection.remarks?.value == 'matured-past due')) {
+                    collection.maturedPD = true;
+                }
+
                 if (!collection.transferId) {
                     collection.transfer = false;
                     collection.transferred = false;
