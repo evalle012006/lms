@@ -278,7 +278,7 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (current.status == 'tomorrow' || current.status == 'pending') {
-                            noOfPayments = 60;
+                            noOfPayments = 24;
                         }
                     } else {
                         mispayment = cc.mispayment;
@@ -311,7 +311,7 @@ const CashCollectionDetailsPage = () => {
                             }
 
                             if (cc.status == 'tomorrow' || cc.status == 'pending') {
-                                noOfPayments = 60;
+                                noOfPayments = 24;
                             }
 
                             if (cc.status == "tomorrow") {
@@ -932,8 +932,8 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (collection.status === 'completed') {
-                    collection.noOfPayments = 60;
-                    collection.noOfPaymentStr = '60 / 60';
+                    collection.noOfPayments = 24;
+                    collection.noOfPaymentStr = '24 / 24';
                     if (collection.fullPaymentDate == currentDate) {
                         collection.fullPayment = collection?.loanRelease;
                         collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
@@ -2330,9 +2330,9 @@ const CashCollectionDetailsPage = () => {
                         } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
-                        } else if (temp.loanBalance > 0 && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
-                            toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
+                            toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
+                        } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
                             toast.error("Error occured. Invalid remarks. Slot No " + temp.slotNo + " has MCBU withdrawal transaction. Should only choose a reloaner remarks.");
                         } else if (!mcbuErrorData) {
                             // always reset these fields
@@ -2430,8 +2430,8 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
                                             temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
-                                            temp.noOfPayments = 60;
-                                            temp.noOfPaymentStr = `60 / ${temp.loanTerms}`;
+                                            temp.noOfPayments = 24;
+                                            temp.noOfPaymentStr = `24 / ${temp.loanTerms}`;
                                             temp.noMispayment = 0;
                                             temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
