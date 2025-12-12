@@ -18,17 +18,17 @@ export default apiHandler({
 });
 
 async function processGroupTransactionStatus(req, res) {
-    const { loId, branchId, mode, currentDate, currentTime, transactionType, userId, userName } = req.body;
+    const { loId, branchId, mode, currentDate, currentTime, transactionType, userId, userName, isAdmin } = req.body;
 
     // Determine if this is a branch-level or LO-level operation
     const isBranchLevel = !!branchId && !loId;
 
     if (isBranchLevel) {
         // BRANCH-LEVEL APPROVAL
-        await processBranchApproval(branchId, currentDate, mode, userId, userName);
+        await processBranchApproval(branchId, currentDate, mode, userId, userName, isAdmin);
     } else if (loId) {
         // LO-LEVEL APPROVAL (existing logic)
-        await processLOApproval(loId, currentDate, currentTime, mode, transactionType);
+        await processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin);
     } else {
         response = { error: true, message: "Either Branch ID or Loan Officer ID is required." };
         statusCode = 400;
@@ -39,10 +39,11 @@ async function processGroupTransactionStatus(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function processBranchApproval(branchId, dateFor, mode, userId, userName) {
+async function processBranchApproval(branchId, dateFor, mode, userId, userName, isAdmin = false) {
     try {
         // Before closing, verify all LO transactions for this branch are closed
-        if (mode === 'close') {
+        // Allow admins to bypass this check
+        if (mode === 'close' && !isAdmin) {
             const unclosedTransactions = await checkBranchTransactionStatus(branchId, dateFor);
             
             if (unclosedTransactions.length > 0) {
@@ -59,9 +60,10 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName) 
         
         if (approvalResult.success) {
             const actionText = mode === 'close' ? 'locked and approved' : 'unlocked';
+            const adminNote = isAdmin ? ' (Admin override)' : '';
             response = { 
                 success: true, 
-                message: `Branch has been ${actionText} successfully.` 
+                message: `Branch has been ${actionText} successfully.${adminNote}` 
             };
             statusCode = 200;
         } else {
@@ -75,76 +77,73 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName) 
     }
 }
 
-async function processLOApproval(loId, currentDate, currentTime, mode, transactionType) {
+async function processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin = false) {
     const dayName = moment(currentDate).format('dddd').toLowerCase();
     const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
 
     if (cashCollectionCounts) {
-        const noCollections = cashCollectionCounts.filter(cc => { 
-            if (cc.cashCollections.length === 0) {
-                return cc;
+        // Only run these validations if NOT admin
+        if (!isAdmin && mode === 'close') {
+            const noCollections = cashCollectionCounts.filter(cc => { 
+                if (cc.cashCollections.length === 0) {
+                    return cc;
+                }
+            });
+            const hasDrafts = cashCollectionCounts.filter(cc => { 
+                if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasDrafts > 0) {
+                    return cc;
+                }
+            });
+
+            const hasClosingTime = cashCollectionCounts.filter(cc => { 
+                if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasClosingTime.length > 0) {
+                    return cc;
+                }
+            });
+
+            const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
+            const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
+            const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
+            const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
+            const validNoDenominationTransactions = cashCollectionCounts.filter(cc => {
+                const currentCc = cc.cashCollections[0];
+                const totalNetCollection = currentCc ? currentCc.totalNetCollection : 0;
+                const tda = currentCc ? currentCc.tda : 0;
+                const goodExcused = currentCc ? currentCc.goodExcused : 0;
+                const pastDue = currentCc ? currentCc.pastDue : 0;
+                const maturedPd = currentCc ? currentCc.maturedPd : 0;
+                const mispayments = currentCc ? currentCc.mispayments + tda + goodExcused + maturedPd + pastDue : 0;
+                if (cc.denom === 0 && cc.cashCollections.length > 0 
+                    && currentCc.count > 0
+                    && mispayments > 0
+                    && currentCc.count !== mispayments
+                    && totalNetCollection > 0) {
+                    return cc;
+                }
+            });
+
+            // 1. Get a Set of IDs from the complex filter (validNoDenominationTransactions)
+            //    Set lookups are highly efficient (O(1)).
+            const validIds = new Set(validNoDenominationTransactions.map(cc => cc._id));
+
+            // 2. Check if any item from the simple filter exists in the complex filter's ID set.
+            const hasIntersection = noDenominationTransactions.some(cc => validIds.has(cc._id));
+
+            let finalNoDenominationTransactions;
+            let finalValidNoDenominationTransactions;
+
+            if (hasIntersection) {
+                // If there is at least one common item, keep both lists as they are
+                finalNoDenominationTransactions = noDenominationTransactions;
+                finalValidNoDenominationTransactions = validNoDenominationTransactions;
+            } else {
+                // If there is NO common item, empty both lists
+                finalNoDenominationTransactions = [];
+                finalValidNoDenominationTransactions = [];
             }
-        });
-        const hasDrafts = cashCollectionCounts.filter(cc => { 
-            if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasDrafts > 0) {
-                return cc;
-            }
-        });
+            
+            const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
 
-        const hasClosingTime = cashCollectionCounts.filter(cc => { 
-            if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasClosingTime.length > 0) {
-                return cc;
-            }
-        });
-
-        const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
-        const hasPendingFundTransfers = cashCollectionCounts.filter(cc => cc.ft_count > 0);
-        const hasPendingDenominations = cashCollectionCounts.filter(cc => cc.denom_count > 0);
-        // console.log(hasPendingDenominations[0]?.cashCollections);
-        const noDenominationTransactions = cashCollectionCounts.filter(cc => cc.denom === 0); 
-        const validNoDenominationTransactions = cashCollectionCounts.filter(cc => {
-            const currentCc = cc.cashCollections[0];
-            const totalNetCollection = currentCc ? currentCc.totalNetCollection : 0;
-            const tda = currentCc ? currentCc.tda : 0;
-            const goodExcused = currentCc ? currentCc.goodExcused : 0;
-            const pastDue = currentCc ? currentCc.pastDue : 0;
-            const maturedPd = currentCc ? currentCc.maturedPd : 0;
-            const mispayments = currentCc ? currentCc.mispayments + tda + goodExcused + maturedPd + pastDue : 0;
-            if (cc.denom === 0 && cc.cashCollections.length > 0 
-                && currentCc.count > 0
-                && mispayments > 0
-                && currentCc.count !== mispayments
-                && totalNetCollection > 0) {
-                return cc;
-            }
-        });
-
-        // 1. Get a Set of IDs from the complex filter (validNoDenominationTransactions)
-        //    Set lookups are highly efficient (O(1)).
-        const validIds = new Set(validNoDenominationTransactions.map(cc => cc._id));
-
-        // 2. Check if any item from the simple filter exists in the complex filter's ID set.
-        const hasIntersection = noDenominationTransactions.some(cc => validIds.has(cc._id));
-
-        let finalNoDenominationTransactions;
-        let finalValidNoDenominationTransactions;
-
-        if (hasIntersection) {
-            // If there is at least one common item, keep both lists as they are
-            finalNoDenominationTransactions = noDenominationTransactions;
-            finalValidNoDenominationTransactions = validNoDenominationTransactions;
-        } else {
-            // If there is NO common item, empty both lists
-            finalNoDenominationTransactions = [];
-            finalValidNoDenominationTransactions = [];
-        }
-
-        // console.log('finalNoDenominationTransactions:', finalNoDenominationTransactions[0]?.cashCollections);
-        // console.log('finalValidNoDenominationTransactions:', finalValidNoDenominationTransactions[0]?.cashCollections);
-        
-        const hasPendingLoans = cashCollectionCounts.filter(cc => cc.pending_count > 0);
-
-        if (mode === 'close') {
             if (noCollections.length > 0) {
                 response = { error: true, message: "Some groups have no current transactions for the selected Loan Officer." };
                 return;
@@ -168,6 +167,13 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
                 return;
             }
         }
+
+        // Get hasClosingTime for the update logic
+        const hasClosingTime = cashCollectionCounts.filter(cc => { 
+            if (cc.cashCollections.length > 0 && cc.cashCollections[0].hasClosingTime.length > 0) {
+                return cc;
+            }
+        });
 
         let result;
         if (mode === 'close' && hasClosingTime.length === 0) {
@@ -198,21 +204,14 @@ async function processLOApproval(loId, currentDate, currentTime, mode, transacti
             );
         }
 
-        // NEW: When reopening LO transactions, also set branch approval back to 'open'
-        // if (mode === 'open' && branchId) {
-        //     try {
-        //         await handleBranchApproval(branchId, currentDate, 'open', userId, userName);
-        //         console.log(`Branch approval status set to 'open' for branch ${branchId}`);
-        //     } catch (error) {
-        //         console.error('Error updating branch approval status:', error);
-        //         // Don't fail the whole operation, just log the error
-        //     }
-        // }
-
         if (result.data.collections.affected_rows === 0) {
             response = { error: true, message: "No transactions found for this Loan Officer." };
         } else {
-            response = { success: true };
+            const adminNote = isAdmin ? ' (Admin override)' : '';
+            response = { 
+                success: true,
+                message: `Transactions updated successfully.${adminNote}`
+            };
         }
     } else {
         response = { error: true, message: "Error checking Loan Officer transactions." };

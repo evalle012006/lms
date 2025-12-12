@@ -333,41 +333,34 @@ const ModernBranchCashCollections = () => {
   // Action handlers for open/close transactions
   const handleOpen = async (row) => {
     // Determine if we're operating on a branch or loan officer
-    const isBranchLevel = currentFilter === 'branch';  // Changed from viewMode === 'branch'
+    const isBranchLevel = currentFilter === 'branch';
+    const isAdmin = currentUser.role.rep === 1;
     
     // For branch level, check if there are any transactions
-    if (isBranchLevel && row.approvalStatus === 'open') {
+    if (isBranchLevel && row.approvalStatus === 'open' && !isAdmin) {
       toast.info('Branch is already unlocked.');
       return;
     }
 
     // For Branch level, check if there are any LO transactions added
-    if (isBranchLevel && row.groupStatus === null) {
+    // Allow admins to bypass this check
+    if (isBranchLevel && row.groupStatus === null && !isAdmin) {
       toast.error('Cannot lock branch transactions when no Loan Officer transactions added for the day!');
       return;
     }
     
     // For LO level, check if there are active clients
-    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0) {
+    // Allow admins to bypass this check
+    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0 && !isAdmin) {
       toast.error('No transaction detected for this Loan Officer!');
       return;
     }
     
-    if (!isBranchLevel && row.hasOwnProperty("allNew")) {
+    // Allow admins to bypass the "allNew" check
+    if (!isBranchLevel && row.hasOwnProperty("allNew") && !isAdmin) {
       toast.error("All transactions are current releases no need to change the group's status.");
       return;
     }
-
-    // For non-branch level (LO level), show confirmation dialog
-    // if (!isBranchLevel) {
-    //   const confirmed = window.confirm(
-    //     'Warning: Unlocking this Loan Officer\'s transactions will also set the Branch approval status back to "Open".\n\nThis means the branch will need to be re-approved after all LO transactions are closed again.\n\nDo you want to proceed?'
-    //   );
-      
-    //   if (!confirmed) {
-    //     return;
-    //   }
-    // }
 
     setLoading(true);
 
@@ -376,7 +369,8 @@ const ModernBranchCashCollections = () => {
     let data = { 
       mode: 'open', 
       currentDate: dateFor, 
-      transactionType: row.transactionType 
+      transactionType: row.transactionType,
+      isAdmin: isAdmin // Add flag to identify admin override
     };
 
     // Add the appropriate ID based on the level
@@ -418,35 +412,41 @@ const ModernBranchCashCollections = () => {
 
   const handleClose = async (row) => {
     // Determine if we're operating on a branch or loan officer
-    const isBranchLevel = viewMode === 'branch';
+    const isBranchLevel = currentFilter === 'branch';  // FIXED: Changed from viewMode === 'branch'
+    const isAdmin = currentUser.role.rep === 1;
 
-    console.log(viewMode)
+    console.log('currentFilter:', currentFilter, 'isBranchLevel:', isBranchLevel);
     
     // For branch level, check if already closed
-    // if (isBranchLevel && row.approvalStatus === 'closed') {
+    // Removed this check to allow admins to re-lock branches
+    // if (isBranchLevel && row.approvalStatus === 'closed' && !isAdmin) {
     //   toast.info('Branch is already locked and approved.');
     //   return;
     // }
 
     // For Branch level, check if there are any LO transactions added
-    if (isBranchLevel && row.groupStatus === null) {
+    // Allow admins to bypass this check
+    if (isBranchLevel && row.groupStatus === null && !isAdmin) {
       toast.error('Cannot lock branch transactions when no Loan Officer transactions added for the day!');
       return;
     }
 
     // For LO level, check if all LO transactions are already closed
-    if (!isBranchLevel && row.groupStatus === 'closed') {
+    // Allow admins to bypass this check
+    if (!isBranchLevel && row.groupStatus === 'closed' && !isAdmin) {
       toast.info('All transactions are already closed!')
       return;
     }
     
     // For LO level, check if there are active clients
-    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0) {
+    // Allow admins to bypass this check
+    if (!isBranchLevel && row.activeClients === 0 && row.actualLoanCollection === 0 && !isAdmin) {
       toast.error('No transaction detected for this Loan Officer!');
       return;
     }
     
-    if (!isBranchLevel && row.hasOwnProperty("allNew")) {
+    // Allow admins to bypass the "allNew" check
+    if (!isBranchLevel && row.hasOwnProperty("allNew") && !isAdmin) {
       toast.error("All transactions are current releases no need to change the group's status.");
       return;
     }
@@ -459,7 +459,8 @@ const ModernBranchCashCollections = () => {
       mode: 'close', 
       currentDate: dateFor, 
       currentTime: currentTime, 
-      transactionType: row.transactionType 
+      transactionType: row.transactionType,
+      isAdmin: isAdmin
     };
 
     // Add the appropriate ID based on the level
@@ -468,8 +469,14 @@ const ModernBranchCashCollections = () => {
       data.userId = currentUser._id;
       data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
     } else {
+      // For LO level, add loId AND branchId
       data.loId = row._id;
+      data.branchId = router.query.branchId || router.query.id || currentUser.designatedBranchId;
+      data.userId = currentUser._id;
+      data.userName = `${currentUser.firstName} ${currentUser.lastName}`;
     }
+
+    console.log('API request data:', data);
 
     try {
       const response = await fetchWrapper.post(
@@ -1867,14 +1874,19 @@ const ModernBranchCashCollections = () => {
       // Show actions column when:
       // 1. currentFilter is 'lo' AND user has rep === 3 (Branch Manager viewing LOs)
       // 2. currentFilter is 'branch' AND user is area_admin or regional_manager
+      // 3. User is admin (rep === 1) - can see actions for both lo and branch levels
       if (col.key === 'actions') {
+        const isAdmin = currentUser.role.rep === 1;
         const isLoLevel = currentFilter === 'lo' && currentUser.role.rep === 3;
         const isBranchLevel = currentFilter === 'branch' && 
           currentUser.role.rep === 2 && 
           (currentUser.role.shortCode === 'area_admin' || 
           currentUser.role.shortCode === 'regional_manager');
         
-        return (isLoLevel || isBranchLevel) && visibleColumns[col.key];
+        // Admin can see actions for both lo and branch levels
+        const adminCanSee = isAdmin && (currentFilter === 'lo' || currentFilter === 'branch');
+        
+        return (isLoLevel || isBranchLevel || adminCanSee) && visibleColumns[col.key];
       }
       
       return visibleColumns[col.key];
