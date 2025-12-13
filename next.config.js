@@ -1,4 +1,7 @@
 module.exports = {
+    experimental: {
+        instrumentationHook: true,
+    },
     reactStrictMode: false,
     serverRuntimeConfig: {
         secret: 'A39518F3263ABF7687DC89697A21A'

@@ -10,6 +10,7 @@ import {
   USER_FIELDS,
 } from "@/lib/graph.fields";
 import { createGraphType, queryQl } from "@/lib/graph/graph.util";
+import { getSystemDate } from "./date-utils";
 
 const graph = new GraphProvider();
 
@@ -90,4 +91,33 @@ export async function findDivisions(filter, fields = DIVISION_FIELDS) {
 export async function findRegions(filter, fields = REGION_FIELDS) {
   return (await graph.query(queryQl(createGraphType('regions', fields)(), { where: filter })))
     .data?.regions ?? [];
+}
+
+export async function loadSettingsSystemDate() {
+  const system_date = new Date();
+
+  console.log('process.env.NEXT_PUBLIC_STAGING', process.env.NEXT_PUBLIC_STAGING);
+  if(process.env.NEXT_PUBLIC_STAGING === 'true') {
+    const dt = await graph.query(queryQl(createGraphType('settings', `system_date `)(), {
+      where: { _id: { _is_null: false } },
+      limit: 1
+    }))
+    .then(res => {
+      console.log(res);
+      return res;
+    })
+    .then(response => response.data?.settings?.[0]?.system_date ?? null );
+
+    console.log('system_date: ', dt);
+
+    if(dt == null) {
+      return system_date;
+    }
+
+    process.env.SYSTEM_DATE = dt;
+    
+    return getSystemDate();
+  }
+  
+  return system_date;
 }

@@ -43,8 +43,25 @@ export const getDaysOfMonth = (year, month) => {
     return arrDays;
 };
 
+export function getSystemDate() {
+    const systemDate = new Date();
+   if(process.env.NEXT_PUBLIC_STAGING !== 'true' && process.env.SYSTEM_DATE) {
+        const dt = process.env.SYSTEM_DATE;
+        const date = new Date(`${dt}T00:00:00Z`);
+        date.setHours(
+            systemDate.getHours(),
+            systemDate.getMinutes(),
+            systemDate.getSeconds(),
+            systemDate.getMilliseconds()
+        );
+        return date;
+    }
+
+    return systemDate;
+}
+
 export const getCurrentDate = (timezone = 'Asia/Manila') => {
-    return new Date().toLocaleDateString({}, { timeZone: timezone });
+    return getSystemDate().toLocaleDateString({}, { timeZone: timezone });
 };
 
 export const getCurrentDateV2 = (timezone = 'Asia/Manila') => {
@@ -102,7 +119,7 @@ export const getQuarters = () => {
 export const getWeeks = (year) => {
     const weeks = [];
   const startDate = new Date(year, 0, 1); // January 1st of the given year
-  const endDate = new Date(); // December 31st of the given year
+  const endDate = getSystemDate(); // December 31st of the given year
 
   let currentDate = startDate;
   let currentWeek = 1;
@@ -141,7 +158,7 @@ export const getWeeks = (year) => {
 }
 
 export const getMonths = (year) => {
-    const current_date = moment(new Date());
+    const current_date = moment(getSystemDate());
     const current_year = +current_date.year();
     const current_month = current_date.month() + 1;
 
@@ -164,7 +181,7 @@ export const getMonths = (year) => {
 
 export const getYears = () => {
 
-    const current_year = new Date().getFullYear();
+    const current_year = getSystemDate().getFullYear();
     let base_year = 2023;
     const years = [];
 
@@ -211,7 +228,7 @@ export const calculateAge = (dob) => {
 
 export const getPrevousWorkday = () => {
     // Based on the current day, handle accordingly
-    const today = moment().day();
+    const today = moment(getSystemDate()).day();
     switch(today) {
         // If it is Monday (1),Saturday(6), or Sunday (0), Get the previous Friday (5)
         // and ensure we are on the previous week
