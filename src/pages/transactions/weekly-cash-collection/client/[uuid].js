@@ -2436,6 +2436,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
+                                            temp.loanBalance = 0;
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
