@@ -1,4 +1,4 @@
-import { getSettingsSystemDate } from '@/lib/graph.functions';
+import { loadSettingsSystemDate } from '@/lib/graph.functions';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 
@@ -7,7 +7,7 @@ export default apiHandler({
 });
 
 async function getSystemCurrentDate(req, res) {
-    const dt = await getSettingsSystemDate();
+    const dt = await loadSettingsSystemDate();
 
     let statusCode = 200;
     let response = {};
