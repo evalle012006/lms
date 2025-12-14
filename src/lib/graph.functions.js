@@ -97,7 +97,7 @@ export async function loadSettingsSystemDate() {
   const system_date = new Date();
 
   console.log('process.env.NEXT_PUBLIC_STAGING', process.env.NEXT_PUBLIC_STAGING);
-  if(process.env.NEXT_PUBLIC_STAGING === 'true') {
+  if(!!process.env.NEXT_PUBLIC_STAGING) {
     const dt = await graph.query(queryQl(createGraphType('settings', `system_date `)(), {
       where: { _id: { _is_null: false } },
       limit: 1

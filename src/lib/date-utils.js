@@ -45,7 +45,7 @@ export const getDaysOfMonth = (year, month) => {
 
 export function getSystemDate() {
     const systemDate = new Date();
-   if(process.env.NEXT_PUBLIC_STAGING !== 'true' && process.env.SYSTEM_DATE) {
+   if(!!process.env.NEXT_PUBLIC_STAGING && !!process.env.SYSTEM_DATE) {
         const dt = process.env.SYSTEM_DATE;
         const date = new Date(`${dt}T00:00:00Z`);
         date.setHours(
