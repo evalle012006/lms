@@ -1,3 +1,4 @@
+import { getSettingsSystemDate } from '@/lib/graph.functions';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 
@@ -6,13 +7,20 @@ export default apiHandler({
 });
 
 async function getSystemCurrentDate(req, res) {
-    const currentDate = new Date().toLocaleDateString({}, { timeZone: 'Asia/Manila' });
-    const currentTime = new Date().toLocaleTimeString({}, { timeZone: 'Asia/Manila' });
-    const response = {
+    const dt = await getSettingsSystemDate();
+
+    let statusCode = 200;
+    let response = {};
+    let currentDate = dt.toLocaleDateString({}, { timeZone: 'Asia/Manila' });
+    let currentTime = dt.toLocaleTimeString({}, { timeZone: 'Asia/Manila' });
+
+    response = {
         success: true,
         currentDate: moment(currentDate).format('YYYY-MM-DD'),
         currentTime: currentTime
     }
 
-    res.send(response);
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
 }
