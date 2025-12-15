@@ -229,7 +229,19 @@ const createSafeHoliday = (holiday, index) => {
   try {
     const currentYear = moment().year();
     const holidayDate = holiday.date || '';
-    const tempDate = holidayDate ? `${currentYear}-${holidayDate}` : '';
+    
+    // Handle both "MM-DD" and "YYYY-MM-DD" formats
+    let tempDate = '';
+    if (holidayDate) {
+      // Check if date includes a year (YYYY-MM-DD format)
+      if (holidayDate.length > 5 && holidayDate.includes('-')) {
+        // Already has year, use as-is
+        tempDate = holidayDate;
+      } else {
+        // Only has MM-DD, prepend current year
+        tempDate = `${currentYear}-${holidayDate}`;
+      }
+    }
     
     return Object.freeze({
       _id: holiday._id || `holiday-${index}-${Date.now()}`,
@@ -307,36 +319,38 @@ const HolidaysSettingsPage = (props) => {
     };
 
     const handleSaveHoliday = async (values) => {
-        setLoading(true);
-        try {
-            let apiURL, payload;
-            
-            if (mode === 'add') {
-                apiURL = `${getApiBaseUrl()}settings/holidays/save`;
-                payload = values;
-            } else {
-                apiURL = `${getApiBaseUrl()}settings/holidays`;
-                payload = { ...values, _id: selectedHoliday._id };
-            }
+      setLoading(true);
+      try {
+          let apiURL, payload;
+          
+          // Convert date from YYYY-MM-DD to MM-DD format
+          const dateFormatted = values.date ? moment(values.date).format('MM-DD') : '';
+          
+          if (mode === 'add') {
+              apiURL = `${getApiBaseUrl()}settings/holidays/save`;
+              payload = { ...values, date: dateFormatted };
+          } else {
+              apiURL = `${getApiBaseUrl()}settings/holidays`;
+              payload = { ...values, date: dateFormatted, _id: selectedHoliday._id };
+          }
 
-            const response = await fetchWrapper.post(apiURL, payload);
+          const response = await fetchWrapper.post(apiURL, payload);
 
-            if (response.success) {
-                toast.success(`Holiday ${mode === 'add' ? 'added' : 'updated'} successfully!`);
-                setShowModal(false);
-                setSaved(true);
-                setTimeout(() => setSaved(false), 3000);
-                // Refresh the list without loading state
-                await refreshHolidayList();
-            } else if (response.error) {
-                toast.error(response.message);
-            }
-        } catch (error) {
-            toast.error(`Failed to ${mode} holiday`);
-        } finally {
-            setLoading(false);
-        }
-    };
+          if (response.success) {
+              toast.success(`Holiday ${mode === 'add' ? 'added' : 'updated'} successfully!`);
+              setShowModal(false);
+              setSaved(true);
+              setTimeout(() => setSaved(false), 3000);
+              await refreshHolidayList();
+          } else if (response.error) {
+              toast.error(response.message);
+          }
+      } catch (error) {
+          toast.error(`Failed to ${mode} holiday`);
+      } finally {
+          setLoading(false);
+      }
+  };
 
     const handleConfirmDelete = async () => {
         setLoading(true);
