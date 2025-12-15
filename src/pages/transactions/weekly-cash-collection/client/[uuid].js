@@ -475,7 +475,7 @@ const CashCollectionDetailsPage = () => {
                             maturedPD: cc.maturedPD,
                             maturedPDPrevTransaction: cc.maturedPD,
                         }
-    
+
                         setEditMode(false);
                     } else if (cc.status === "closed") {
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
@@ -636,7 +636,7 @@ const CashCollectionDetailsPage = () => {
                         if (loanBalance > 0) {
                             collection.transferred = true;
                         }
-    
+                        setEditMode(false);
                     } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
@@ -3684,6 +3684,7 @@ const CashCollectionDetailsPage = () => {
                 // </div>
             ) : (
                 <div className="overflow-x-auto">
+                    {console.log("Edit mode: ", editMode)}
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch.lockTransaction) ? false : editMode : false}  hasDraft={hasDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
