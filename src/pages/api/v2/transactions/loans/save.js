@@ -6,6 +6,7 @@ import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.
 import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
+import moment from 'moment';
 
 const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)
@@ -139,6 +140,10 @@ async function save(req, res) {
 
             finalData.prevLoanId = oldLoanId;
 
+            if (finalData.startDate == null || finalData.startDate === '') {
+                finalData.startDate = moment(finalData.dateOfRelease).add(1, 'days').format('YYYY-MM-DD');
+            }
+
             if (mode == 'advance' || mode == 'active') {
                 finalData.advanceTransaction = true;
             }
@@ -173,7 +178,7 @@ async function save(req, res) {
             );
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
-            console.log(hasExistingCC)
+            // console.log(hasExistingCC)
             if (hasExistingCC) {
                 await savePendingLoans(user_id, [finalData], loanId);
             }
