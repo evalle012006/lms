@@ -1024,11 +1024,15 @@ const CashCollectionDetailsPage = () => {
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
+                            cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
                         } else if (loan?.current?.length > 0 && loan?.current[0] != null) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].mcbuInterest = loan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = loan.current[0].mcbuInterest > 0 ? formatPricePhp(loan.current[0].mcbuInterest) : '-';
                             cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
                             cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
                             cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
@@ -1107,11 +1111,15 @@ const CashCollectionDetailsPage = () => {
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
+                            cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
                         } else if (loan?.current?.length > 0 && loan?.current[0] != null) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].mcbuInterest = loan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = loan.current[0].mcbuInterest > 0 ? formatPricePhp(loan.current[0].mcbuInterest) : '-';
                             cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
                             cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
                             cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
@@ -2400,6 +2408,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
+                                            temp.loanBalance = 0;
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';

@@ -475,7 +475,7 @@ const CashCollectionDetailsPage = () => {
                             maturedPD: cc.maturedPD,
                             maturedPDPrevTransaction: cc.maturedPD,
                         }
-    
+
                         setEditMode(false);
                     } else if (cc.status === "closed") {
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
@@ -636,7 +636,7 @@ const CashCollectionDetailsPage = () => {
                         if (loanBalance > 0) {
                             collection.transferred = true;
                         }
-    
+                        setEditMode(false);
                     } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
@@ -1035,11 +1035,15 @@ const CashCollectionDetailsPage = () => {
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
+                            cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
                         } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].mcbuInterest = loan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = loan.current[0].mcbuInterest > 0 ? formatPricePhp(loan.current[0].mcbuInterest) : '-';
                             cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
                             cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
                             cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
@@ -1119,11 +1123,15 @@ const CashCollectionDetailsPage = () => {
                         if (currentLoan.current.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
+                            cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
                         } else if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].mcbuInterest = loan.current[0].mcbuInterest;
+                            cashCollection[index].mcbuInterestStr = loan.current[0].mcbuInterest > 0 ? formatPricePhp(loan.current[0].mcbuInterest) : '-';
                             cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
                             cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
                             cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
@@ -2436,6 +2444,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
+                                            temp.loanBalance = 0;
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
@@ -3683,6 +3692,7 @@ const CashCollectionDetailsPage = () => {
                 // </div>
             ) : (
                 <div className="overflow-x-auto">
+                    {console.log("Edit mode: ", editMode)}
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch.lockTransaction) ? false : editMode : false}  hasDraft={hasDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
