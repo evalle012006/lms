@@ -582,6 +582,11 @@ const LoanApplicationPage = () => {
                                 } else {
                                     transactionClosed = true;
                                 }
+
+                                const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false;
+                                if (staging) {
+                                    allowApproved = true;
+                                }
                             } else if (loan.pendings.length > 0) {
                                 allowApproved = false;
                                 
