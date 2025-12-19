@@ -5,6 +5,7 @@ import { DENOMINATION_FIELDS, GROUP_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
 import { generateUUID } from '@/lib/utils';
+import { getSystemDate } from '@/lib/date-utils';
 
 export default apiHandler({
     post: batchSaveDenomination
@@ -37,8 +38,8 @@ async function batchSaveDenomination(req, res) {
     }
     
     try {
-        const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
-        const currentDate = date || moment().format('YYYY-MM-DD');
+        const currentDateTime = moment(getSystemDate()).utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
+        const currentDate = date || moment(getSystemDate()).format('YYYY-MM-DD');
         
         // ==========================================
         // FIX: DEDUPLICATE ITEMS BY ENTITY ID
