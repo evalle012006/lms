@@ -4,6 +4,7 @@ import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { DENOMINATION_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
+import { getSystemDate } from '@/lib/date-utils';
 
 export default apiHandler({
     get: getDenomination
@@ -16,7 +17,7 @@ async function getDenomination(req, res) {
     const user = await findUserById(req.auth.sub);
     const { date, branchId, loId, groupId } = req.query;
     
-    const currentDate = date || moment().format('YYYY-MM-DD');
+    const currentDate = date || moment(getSystemDate()).format('YYYY-MM-DD');
     
     try {
         // Build where clause - MUST start with date

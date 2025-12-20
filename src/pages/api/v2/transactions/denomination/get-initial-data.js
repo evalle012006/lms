@@ -2,6 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
 import { getLocalhost } from '@/lib/constants';
+import { getSystemDate } from '@/lib/date-utils';
 
 export default apiHandler({
     get: getInitialData
@@ -16,7 +17,7 @@ async function getInitialData(req, res) {
         const { date, branchId, loId, groupId, filter, userId } = req.query;
         const user = await findUserById(req.auth.sub || userId);
 
-        const currentDate = date || moment().format('YYYY-MM-DD');
+        const currentDate = date || moment(getSystemDate()).format('YYYY-MM-DD');
         
         // console.log('=== GET INITIAL DATA ===');
         // console.log('User:', user.firstName, user.lastName, '- Role:', user.role.shortCode);

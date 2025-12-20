@@ -5,6 +5,7 @@ import { DENOMINATION_FIELDS, GROUP_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
 import { generateUUID } from '@/lib/utils';
+import { getSystemDate } from '@/lib/date-utils';
 
 export default apiHandler({
     post: saveDenomination
@@ -27,8 +28,8 @@ async function saveDenomination(req, res) {
     }
     
     try {
-        const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
-        const currentDate = moment().format('YYYY-MM-DD');
+        const currentDateTime = moment(getSystemDate()).utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
+        const currentDate = moment(getSystemDate()).format('YYYY-MM-DD');
         
         // Validate required fields
         if (!data.entityId || !data.entityType) {

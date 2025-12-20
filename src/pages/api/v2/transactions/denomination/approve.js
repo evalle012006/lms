@@ -4,6 +4,7 @@ import { createGraphType, updateQl, queryQl } from '@/lib/graph/graph.util';
 import { DENOMINATION_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
+import { getSystemDate } from '@/lib/date-utils';
 
 export default apiHandler({
     post: approveDenomination,
@@ -51,7 +52,7 @@ async function approveDenomination(req, res) {
     }
     
     try {
-        const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
+        const currentDateTime = moment(getSystemDate()).utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
         
         // First, fetch the existing denomination to get history
         const existingQuery = await graph.query(
@@ -185,7 +186,7 @@ async function rejectDenomination(req, res) {
     }
     
     try {
-        const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
+        const currentDateTime = moment(getSystemDate()).utcOffset(8).format('YYYY-MM-DD HH:mm:ss');
         
         // First, fetch the existing denomination to get history
         const existingQuery = await graph.query(
