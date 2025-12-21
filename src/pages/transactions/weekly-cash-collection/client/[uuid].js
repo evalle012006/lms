@@ -32,6 +32,9 @@ import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdr
 import mcbuInterestService from '@/services/mcbu-interest-service';
 import McbuInterestBreakdownModal from '@/components/transactions/McbuInterestBreakdownModal';
 import CashCollectionDetailsExcelExport from '@/components/transactions/CashCollectionDetailsExcelExport';
+import CashCollectionBulkUploadModal from '@/components/transactions/cash-collection/CashCollectionBulkUploadModal';
+import useCashCollectionBulkUpload from '@/hooks/useCashCollectionBulkUpload';
+import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -97,6 +100,21 @@ const CashCollectionDetailsPage = () => {
         clientName: '',
         offsetDate: null,
         lackingAmount: 0
+    });
+
+    // Bulk upload hook
+    const {
+        showBulkUploadModal,
+        isBulkUploadAvailable,
+        openBulkUploadModal,
+        closeBulkUploadModal,
+        handleUploadComplete
+    } = useCashCollectionBulkUpload({
+        groupData: groupClients, // from Redux: useSelector(state => state.cashCollection.group)
+        mode: 'weekly', // or 'weekly' for weekly page
+        currentDate: currentDate,
+        dayName: currentGroup?.day, // Group's day name
+        transactionSettings: transactionSettings
     });
 
     const handleShowMcbuBreakdown = (selected) => {
@@ -3707,6 +3725,8 @@ const CashCollectionDetailsPage = () => {
                                                 currentUser={currentUser}
                                             />
                                         }
+                        showBulkUpload={isBulkUploadAvailable}
+                        onBulkUploadClick={openBulkUploadModal}
                         />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
@@ -4022,6 +4042,21 @@ const CashCollectionDetailsPage = () => {
                             <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
                         </div>
                     </Dialog>
+                    <CashCollectionBulkUploadModal
+                        show={showBulkUploadModal}
+                        onClose={closeBulkUploadModal}
+                        groupData={groupClients}
+                        groupId={currentGroup?._id}
+                        groupName={currentGroup?.name}
+                        currentDate={currentDate}
+                        mode="weekly"
+                        onUploadComplete={handleUploadComplete}
+                        branchId={currentBranch?._id}
+                        loId={currentUser.role.rep === 4 ? currentUser._id : currentGroup?.loanOfficerId}  // Fixed
+                        divisionId={currentBranch?.divisionId}
+                        regionId={currentBranch?.regionId}
+                        areaId={currentBranch?.areaId}
+                    />
                     <McbuInterestBreakdownModal
                         show={showMcbuBreakdownModal}
                         onClose={() => setShowMcbuBreakdownModal(false)}

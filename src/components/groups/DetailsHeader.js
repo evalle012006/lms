@@ -4,6 +4,7 @@ import { shouldIncludeViewMode, UppercaseFirstLetter } from "@/lib/utils";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
@@ -17,7 +18,7 @@ import { toast } from "react-toastify";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
-                            handleShowWarningDialog, loading, allowMcbuInterest, branchLock = false, exportComponent }) => {
+                            handleShowWarningDialog, loading, allowMcbuInterest, branchLock = false, exportComponent, showBulkUpload = false, onBulkUploadClick, }) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -273,6 +274,16 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                     </div>
 
                     <div className="flex items-center space-x-4">
+                        {showBulkUpload && (
+                            <button
+                                onClick={onBulkUploadClick}
+                                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 ml-2"
+                                title="Bulk Upload Data"
+                            >
+                                <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
+                                Bulk Upload
+                            </button>
+                        )}
                         {exportComponent && (
                             <div className="flex-shrink-0">
                                 {exportComponent}
