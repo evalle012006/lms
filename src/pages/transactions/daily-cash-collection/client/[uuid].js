@@ -40,6 +40,9 @@ import {
     ERROR_CODES 
 } from '@/lib/transaction-utils';
 import SaveProgressModal, { useSaveProgress } from '@/lib/ui/SaveProgressModal';
+import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseModal';
+import EditMcbuCsfWithdrawalModal from '@/components/transactions/EditMcbuCsfWithdrawalModal';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -111,6 +114,113 @@ const CashCollectionDetailsPage = () => {
 
     const [pageStale, setPageStale] = useState(false);
     const saveProgress = useSaveProgress();
+
+    // Regional Manager Edit States
+    const [showEditLoanModal, setShowEditLoanModal] = useState(false);
+    const [showEditWithdrawalModal, setShowEditWithdrawalModal] = useState(false);
+    const [editLoanCashCollection, setEditLoanCashCollection] = useState(null);
+    const [editWithdrawalData, setEditWithdrawalData] = useState(null);
+    const [editWithdrawalType, setEditWithdrawalType] = useState('mcbu');
+
+    /**
+     * Check if current user is regional manager or higher
+     * Regional Manager: role.shortCode = 'regional_manager', role.rep = 2
+     * Note: Admin has role.rep = 1, but for this feature we're checking shortCode
+     */
+    const isRegionalManagerOrHigher = () => {
+        const role = currentUser?.role;
+        if (!role) return false;
+        
+        return role.shortCode === 'regional_manager' || 
+            role.shortCode === 'admin' ||
+            role.shortCode === 'deputy_director';
+    };
+
+    /**
+     * Check if current release amount is editable
+     * Conditions:
+     * - User is regional manager or higher
+     * - Loan has reloaner remarks
+     * - Has a current release amount (new loan pending)
+     * - Status is tomorrow, pending, or active with tomorrow release
+     */
+    const canEditCurrentRelease = (cc) => {
+        if (!isRegionalManagerOrHigher()) return false;
+        if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
+        
+        // Check if it's a reloaner with active/tomorrow status
+        const isReloaner = cc.remarks?.value?.startsWith('reloaner');
+        const hasPendingRelease = cc.currentReleaseAmount > 0;
+        const isActiveOrTomorrow = cc.status === 'tomorrow' || 
+                                (cc.status === 'active' && cc.loanFor === 'tomorrow');
+        
+        return isReloaner && hasPendingRelease && isActiveOrTomorrow;
+    };
+
+    /**
+     * Check if withdrawal is editable
+     * Conditions:
+     * - User is regional manager or higher
+     * - Has MCBU or CSF withdrawal record
+     * - For CSF: must be group leader
+     */
+    const canEditWithdrawal = (cc, type = 'mcbu') => {
+        if (!isRegionalManagerOrHigher()) return false;
+        if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
+        
+        if (type === 'mcbu') {
+            return cc.hasMcbuWithdrawal && cc.mcbuWithdrawal > 0 && !cc.mcbuWithdrawalIsPending;
+        } else if (type === 'csf') {
+            return cc.hasCsfWithdrawal && cc.csfWithdrawal > 0 && !cc.csfWithdrawalIsPending &&
+                (cc.groupLeader || cc.client?.groupLeader);
+        }
+        
+        return false;
+    };
+
+    /**
+     * Handler for editing current release (principal loan)
+     * @param {object} cc - Cash collection record
+     */
+    const handleEditCurrentRelease = (cc) => {
+        setEditLoanCashCollection(cc);
+        setShowEditLoanModal(true);
+    };
+
+    /**
+     * Handler for editing withdrawal amounts
+     * @param {object} cc - Cash collection record
+     * @param {object} loan - The loan object
+     * @param {string} type - 'mcbu' or 'csf'
+     */
+    const handleEditWithdrawal = (cc, type) => {
+        setEditWithdrawalData({
+            cashCollection: cc,
+            mcbuWithdrawalRecord: cc.mcbuWithdrawalList?.[0] || null
+        });
+        setEditWithdrawalType(type);
+        setShowEditWithdrawalModal(true);
+    };
+
+    /**
+     * Handler for closing edit loan modal
+     */
+    const handleEditLoanModalClose = () => {
+        setShowEditLoanModal(false);
+        setEditLoanCashCollection(null);
+        getCashCollections();
+    };
+
+    /**
+     * Handler for closing edit withdrawal modal  
+     */
+    const handleEditWithdrawalModalClose = () => {
+        setShowEditWithdrawalModal(false);
+        setEditWithdrawalData(null);
+        setEditWithdrawalType(null);
+        // Refresh data after modal closes
+        getCashCollections();
+    };
 
     useEffect(() => {
         // Check for any interrupted transactions from previous sessions
@@ -3931,7 +4041,24 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.csfStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.amountReleaseStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.loanBalanceStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <span>{ cc.currentReleaseAmountStr }</span>
+                                                        {canEditCurrentRelease(cc) && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEditCurrentRelease(cc);
+                                                                }}
+                                                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                                                title="Edit Current Release (Regional Manager)"
+                                                            >
+                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>{/** after submitting please update the no of payments **/}
                                                 {/* <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.mcbuColStr }
@@ -4007,14 +4134,44 @@ const CashCollectionDetailsPage = () => {
                                                 { !hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
-                                                    { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
-                                                        <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
-                                                    ) : cc.mcbuWithdrawalStr}
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
+                                                            <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
+                                                        ) : cc.mcbuWithdrawalStr}
+                                                        {canEditWithdrawal(cc, 'mcbu') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEditWithdrawal(cc, 'mcbu');
+                                                                }}
+                                                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                                                title="Edit MCBU Withdrawal (Regional Manager)"
+                                                            >
+                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
-                                                    { (cc.hasCsfWithdrawal && cc.csfWithdrawalIsPending) ? (
-                                                        <WarningIconWithTooltip amount={cc.csfWithdrawalStr} message="CSF Withdrawal is pending." />
-                                                    ) : cc.csfWithdrawalStr}
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        { (cc.hasCsfWithdrawal && cc.csfWithdrawalIsPending) ? (
+                                                            <WarningIconWithTooltip amount={cc.csfWithdrawalStr} message="CSF Withdrawal is pending." />
+                                                        ) : cc.csfWithdrawalStr}
+                                                        {canEditWithdrawal(cc, 'csf') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEditWithdrawal(cc, 'csf');
+                                                                }}
+                                                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                                                title="Edit CSF Withdrawal (Regional Manager)"
+                                                            >
+                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 {currentMonth === 11 && (
                                                     <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
@@ -4208,8 +4365,32 @@ const CashCollectionDetailsPage = () => {
                         mcbuInterestRate={transactionSettings.mcbuInterestRate}
                     />
 
-                    {/* Save Progress Modal */}
                     <SaveProgressModal {...saveProgress.modalProps} />
+
+                    {/* Edit Principal Loan Modal */}
+                    {showEditLoanModal && editLoanCashCollection && (
+                        <EditAmountReleaseModal
+                            show={showEditLoanModal}
+                            onClose={handleEditLoanModalClose}
+                            onSuccess={handleEditLoanModalClose}
+                            cashCollection={editLoanCashCollection}
+                            currentUser={currentUser}
+                        />
+                    )}
+                    
+                    {/* Edit Withdrawal Modal */}
+                    {showEditWithdrawalModal && editWithdrawalData && (
+                        <EditMcbuCsfWithdrawalModal
+                            show={showEditWithdrawalModal}
+                            onClose={handleEditWithdrawalModalClose}
+                            onSuccess={handleEditWithdrawalModalClose}
+                            cashCollection={editWithdrawalData.cashCollection}
+                            loan={editWithdrawalData.loan}
+                            mcbuWithdrawalRecord={editWithdrawalData.mcbuWithdrawalRecord}
+                            currentUser={currentUser}
+                            withdrawalType={editWithdrawalType}
+                        />
+                    )}
                 </div>
             )}
         </Layout>
