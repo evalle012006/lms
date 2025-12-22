@@ -32,8 +32,17 @@ import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdr
 import mcbuInterestService from '@/services/mcbu-interest-service';
 import McbuInterestBreakdownModal from '@/components/transactions/McbuInterestBreakdownModal';
 import CashCollectionDetailsExcelExport from '@/components/transactions/CashCollectionDetailsExcelExport';
+import { 
+    saveCashCollectionWithRetry, 
+    dateWatcher, 
+    transactionStateManager,
+    isNearMidnight,
+    ERROR_CODES 
+} from '@/lib/transaction-utils';
+import SaveProgressModal, { useSaveProgress } from '@/lib/ui/SaveProgressModal';
 
 const CashCollectionDetailsPage = () => {
+    const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
@@ -98,6 +107,35 @@ const CashCollectionDetailsPage = () => {
         offsetDate: null,
         lackingAmount: 0
     });
+
+    const [pageStale, setPageStale] = useState(false);
+    const saveProgress = useSaveProgress();
+    
+    useEffect(() => {
+        // Check for any interrupted transactions from previous sessions
+        const interrupted = transactionStateManager.checkForInterruptedTransactions();
+        if (interrupted.length > 0) {
+            toast.warning(
+                'Previous transaction may not have completed. Please verify your data.',
+                { autoClose: 8000 }
+            );
+        }
+        
+        // Start watching for date changes
+        dateWatcher.start(({ initialDate, currentDate }) => {
+            console.warn('Date changed from', initialDate, 'to', currentDate);
+            setPageStale(true);
+            toast.warning(
+                'The date has changed. Please refresh the page before submitting new transactions.',
+                { autoClose: false }
+            );
+        });
+        
+        // Cleanup on unmount
+        return () => {
+            dateWatcher.stop();
+        };
+    }, []);
 
     const handleShowMcbuBreakdown = (selected) => {
         if (selected.mcbuInterestBreakdown && selected.mcbuInterestBreakdown.length > 0) {
@@ -1646,7 +1684,27 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleSaveUpdate = async (draft) => {
-        setLoading(true);
+        if (!isV2TransactionApiEnabled) {
+            setLoading(true);
+        }
+
+        // Check if page is stale (date changed)
+        if (isV2TransactionApiEnabled && pageStale) {
+            setLoading(false);
+            toast.error('The date has changed since you loaded this page. Please refresh before saving.');
+            return;
+        }
+        
+        // Warn if near midnight
+        if (isV2TransactionApiEnabled && isNearMidnight()) {
+            const proceed = window.confirm(
+                'Warning: It is almost midnight. Submitting now may cause issues. Do you want to continue?'
+            );
+            if (!proceed) {
+                setLoading(false);
+                return;
+            }
+        }
         
         let save = false;
 
@@ -1855,9 +1913,100 @@ const CashCollectionDetailsPage = () => {
                         };
                     }
             
-                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/save', cashCollection);
-                    if (response.success) {
-                        reloadAfterSave();
+                    if (isV2TransactionApiEnabled) {
+                        // Start tracking this transaction
+                        const groupId = dataArr[0]?.groupId;
+                        const transactionId = transactionStateManager.startTransaction(groupId, cashCollection);
+                        
+                        // Show the progress modal with steps variant
+                        saveProgress.showProgress({
+                            variant: 'steps',
+                            title: 'Saving Transaction',
+                            message: 'Processing payment collections...',
+                            currentStep: 1,
+                            steps: [
+                                'Validating Data',
+                                'Processing Collections',
+                                'Updating Loans',
+                                'Finalizing'
+                            ]
+                        });
+                        
+                        try {
+                            // Use the new robust save function
+                            const response = await saveCashCollectionWithRetry(cashCollection, {
+                                maxRetries: 3,
+                                onRetry: (attempt, error) => {
+                                    saveProgress.setRetry(attempt);
+                                    saveProgress.updateProgress({
+                                        subMessage: `Retrying... (attempt ${attempt}/3)`
+                                    });
+                                    console.warn(`Save retry ${attempt}:`, error.message);
+                                },
+                                onDateMismatch: (error) => {
+                                    setPageStale(true);
+                                    saveProgress.setError('Date mismatch detected. Please refresh the page.');
+                                },
+                                onProgress: ({ step, message }) => {
+                                    // Map step names to step numbers
+                                    const stepMap = {
+                                        'validating': 1,
+                                        'processing': 2,
+                                        'updating': 3,
+                                        'finalizing': 4
+                                    };
+                                    
+                                    saveProgress.updateProgress({
+                                        currentStep: stepMap[step] || 2,
+                                        message: message
+                                    });
+                                }
+                            });
+                            
+                            // Mark transaction as complete
+                            transactionStateManager.completeTransaction(transactionId);
+                            
+                            // Show success state
+                            saveProgress.setSuccess('Payment collection saved successfully!');
+                            
+                            // Success - show summary if available
+                            if (response.summary) {
+                                console.log('Transaction summary:', response.summary);
+                            }
+                            
+                            // Reload after showing success
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                            
+                        } catch (error) {
+                            // Mark transaction as failed
+                            transactionStateManager.failTransaction(transactionId, error);
+                            
+                            setLoading(false);
+                            
+                            // Handle specific error types
+                            if (error.code === ERROR_CODES.DATE_MISMATCH) {
+                                setPageStale(true);
+                                saveProgress.setError('The date has changed. Please refresh the page and try again.');
+                            } else if (error.code === ERROR_CODES.NETWORK_ERROR) {
+                                saveProgress.setError('Network error. Please check your connection and try again.');
+                            } else {
+                                saveProgress.setError(`Failed to save: ${error.message}`);
+                            }
+                            
+                            // Hide the error modal after 5 seconds
+                            setTimeout(() => {
+                                saveProgress.hideProgress();
+                            }, 5000);
+                            
+                            console.error('Save failed:', error);
+                        }
+                    } else {
+                        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/save', cashCollection);
+                        if (response.success) {
+                            reloadAfterSave();
+                        }
                     }
                 } else {
                     toast.warning('No active data to be saved.');
@@ -1869,7 +2018,7 @@ const CashCollectionDetailsPage = () => {
 
     const reloadAfterSave = () => {
         setLoading(false);
-        toast.success('Payment collection successfully submitted. Reloading page please wait.');
+        saveProgress.setSuccess('Payment collection successfully submitted. Reloading page please wait.');
         setTimeout(async () => {
             window.location.reload();
         }, 2000);
@@ -3686,10 +3835,28 @@ const CashCollectionDetailsPage = () => {
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>
+            {(isV2TransactionApiEnabled && pageStale) && (
+                <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+                    <div className="flex items-center">
+                        <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <p className="font-bold">Page Outdated</p>
+                            <p className="text-sm">The date has changed. Please refresh the page before submitting.</p>
+                        </div>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="ml-auto bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
+                        >
+                            Refresh Now
+                        </button>
+                    </div>
+                </div>
+            )}
             {loading ? (
-                // <div className="absolute top-1/2 left-1/2">
-                    <Spinner />
-                // </div>
+                <Spinner />
             ) : (
                 <div className="overflow-x-auto">
                     {console.log("Edit mode: ", editMode)}
@@ -4033,6 +4200,8 @@ const CashCollectionDetailsPage = () => {
                         lackingAmount={mcbuBreakdownData.lackingAmount}
                         mcbuInterestRate={transactionSettings.mcbuInterestRate}
                     />
+                    {/* Save Progress Modal */}
+                    <SaveProgressModal {...saveProgress.modalProps} />
                 </div>
             )}
         </Layout>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown, Lock, Unlock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown, Lock, Unlock, Wrench, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -64,6 +64,129 @@ const ModernBranchCashCollections = () => {
   const [loFilterList, setLoFilterList] = useState([]);
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('');
   const [selectedLoFilter, setSelectedLoFilter] = useState('');
+
+  const [repairLoading, setRepairLoading] = useState({});
+  const [repairStatus, setRepairStatus] = useState({}); // Track repair status per group
+  const [showRepairDialog, setShowRepairDialog] = useState(false);
+  const [selectedRepairGroup, setSelectedRepairGroup] = useState(null);
+  const [repairResult, setRepairResult] = useState(null);
+
+  /**
+   * Check if a group has discrepancies that need repair
+   */
+  const checkGroupNeedsRepair = async (groupId) => {
+      try {
+          const response = await fetchWrapper.post(
+              getApiBaseUrl() + 'transactions/cash-collections/verify',
+              {
+                  groupId: groupId,
+                  dateAdded: dateFilter,
+                  repair: false
+              }
+          );
+          
+          if (response.success) {
+              return {
+                  needsRepair: response.data.discrepancyCount > 0,
+                  discrepancyCount: response.data.discrepancyCount,
+                  discrepancies: response.data.discrepancies
+              };
+          }
+          return { needsRepair: false, discrepancyCount: 0 };
+      } catch (error) {
+          console.error('Error checking repair status:', error);
+          return { needsRepair: false, discrepancyCount: 0, error: error.message };
+      }
+  };
+
+  /**
+   * Handle repair button click - opens confirmation dialog
+   */
+  const handleRepairClick = async (row) => {
+      setRepairLoading(prev => ({ ...prev, [row._id]: true }));
+      
+      try {
+          // First check if repair is needed
+          const checkResult = await checkGroupNeedsRepair(row._id);
+          
+          if (!checkResult.needsRepair) {
+              toast.info('No discrepancies found. Transaction is already synced.');
+              setRepairStatus(prev => ({ ...prev, [row._id]: 'ok' }));
+              return;
+          }
+          
+          // Show confirmation dialog with discrepancy details
+          setSelectedRepairGroup({
+              ...row,
+              discrepancies: checkResult.discrepancies,
+              discrepancyCount: checkResult.discrepancyCount
+          });
+          setShowRepairDialog(true);
+          
+      } catch (error) {
+          toast.error('Failed to check repair status: ' + error.message);
+      } finally {
+          setRepairLoading(prev => ({ ...prev, [row._id]: false }));
+      }
+  };
+
+  /**
+   * Execute the repair
+   */
+  const executeRepair = async () => {
+      if (!selectedRepairGroup) return;
+      
+      setRepairLoading(prev => ({ ...prev, [selectedRepairGroup._id]: true }));
+      
+      try {
+          const response = await fetchWrapper.post(
+              getApiBaseUrl() + 'transactions/cash-collections/verify',
+              {
+                  groupId: selectedRepairGroup._id,
+                  dateAdded: dateFilter,
+                  repair: true
+              }
+          );
+          
+          if (response.success) {
+              const { repairResults } = response.data;
+              
+              if (repairResults && repairResults.repaired.length > 0) {
+                  toast.success(`Successfully repaired ${repairResults.repaired.length} loan(s)`);
+                  setRepairStatus(prev => ({ ...prev, [selectedRepairGroup._id]: 'repaired' }));
+                  setRepairResult(repairResults);
+                  
+                  // Refresh data after repair
+                  setTimeout(() => {
+                      fetchCashCollectionsData(dateFilter);
+                  }, 1500);
+              } else if (repairResults && repairResults.failed.length > 0) {
+                  toast.warning(`Repair completed with ${repairResults.failed.length} failure(s)`);
+                  setRepairResult(repairResults);
+              } else {
+                  toast.info('No repairs were needed');
+                  setRepairStatus(prev => ({ ...prev, [selectedRepairGroup._id]: 'ok' }));
+              }
+          } else {
+              toast.error('Repair failed: ' + response.message);
+          }
+      } catch (error) {
+          toast.error('Failed to repair: ' + error.message);
+      } finally {
+          setRepairLoading(prev => ({ ...prev, [selectedRepairGroup._id]: false }));
+          setShowRepairDialog(false);
+          setSelectedRepairGroup(null);
+      }
+  };
+
+  /**
+   * Cancel repair dialog
+   */
+  const cancelRepair = () => {
+      setShowRepairDialog(false);
+      setSelectedRepairGroup(null);
+      setRepairResult(null);
+  };
 
   // Helper function to determine row background color
   const getRowBgColor = (row) => {
@@ -1883,8 +2006,9 @@ const ModernBranchCashCollections = () => {
           (currentUser.role.shortCode === 'area_admin' || 
           currentUser.role.shortCode === 'regional_manager');
         
-        // Admin can see actions for both lo and branch levels
+        // Admin can see actions for group, lo and branch levels
         const adminCanSee = isAdmin && (currentFilter === 'lo' || currentFilter === 'branch');
+        // const adminCanSee = isAdmin && (currentFilter === 'group' || currentFilter === 'lo' || currentFilter === 'branch');
         
         return (isLoLevel || isBranchLevel || adminCanSee) && visibleColumns[col.key];
       }
@@ -2222,36 +2346,80 @@ const ModernBranchCashCollections = () => {
                                         </div>
                                       ) : column.key === 'actions' ? (
                                         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleOpen(row);
-                                            }}
-                                            className={`p-1 rounded ${
-                                              (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
-                                                ? 'text-gray-400 cursor-not-allowed' 
-                                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                                            }`}
-                                            title={currentFilter === 'branch' ? "Unlock Branch" : "Open Transaction"}
-                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'open') || loading}
-                                          >
-                                            <Unlock size={16} />
-                                          </button>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleClose(row);
-                                            }}
-                                            className={`p-1 rounded ${
-                                              (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
-                                                ? 'text-gray-400 cursor-not-allowed'
-                                                : 'text-red-600 hover:text-red-900 hover:bg-red-50'
-                                            }`}
-                                            title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
-                                            disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
-                                          >
-                                            <Lock size={16} />
-                                          </button>
+                                          {(currentFilter === 'lo' || currentFilter === 'branch') && (
+                                            <>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleOpen(row);
+                                                }}
+                                                className={`p-1 rounded ${
+                                                  (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
+                                                    ? 'text-gray-400 cursor-not-allowed' 
+                                                    : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                                }`}
+                                                title={currentFilter === 'branch' ? "Unlock Branch" : "Open Transaction"}
+                                                disabled={(currentFilter === 'branch' && row.approvalStatus === 'open') || loading}
+                                              >
+                                                <Unlock size={16} />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleClose(row);
+                                                }}
+                                                className={`p-1 rounded ${
+                                                  (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
+                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                    : 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                                }`}
+                                                title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
+                                                disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
+                                              >
+                                                <Lock size={16} />
+                                              </button>
+                                            </>
+                                          )}
+                                          
+                                          {/* NEW: Repair button for group level */}
+                                          {currentFilter === 'group' && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRepairClick(row);
+                                              }}
+                                              className={`p-1 rounded flex items-center gap-1 ${
+                                                repairLoading[row._id]
+                                                  ? 'text-gray-400 cursor-wait'
+                                                  : repairStatus[row._id] === 'ok'
+                                                  ? 'text-green-600 cursor-default'
+                                                  : repairStatus[row._id] === 'repaired'
+                                                  ? 'text-blue-600 cursor-default'
+                                                  : 'text-orange-600 hover:text-orange-900 hover:bg-orange-50'
+                                              }`}
+                                              title={
+                                                repairStatus[row._id] === 'ok' 
+                                                  ? "No repairs needed" 
+                                                  : repairStatus[row._id] === 'repaired'
+                                                  ? "Repair completed"
+                                                  : "Check & Repair Transaction"
+                                              }
+                                              disabled={repairLoading[row._id] || repairStatus[row._id] === 'ok'}
+                                            >
+                                              {repairLoading[row._id] ? (
+                                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                              ) : repairStatus[row._id] === 'ok' ? (
+                                                <CheckCircle size={16} />
+                                              ) : repairStatus[row._id] === 'repaired' ? (
+                                                <CheckCircle size={16} />
+                                              ) : (
+                                                <Wrench size={16} />
+                                              )}
+                                            </button>
+                                          )}
                                         </div>
                                       ) : column.key === 'transactionType' ? (
                                         <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
@@ -2372,6 +2540,86 @@ const ModernBranchCashCollections = () => {
                 )}
                 </div>
             </div>
+            {/* Repair Confirmation Dialog */}
+            {showRepairDialog && selectedRepairGroup && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="text-orange-500" size={24} />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Repair Transaction
+                      </h3>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 overflow-y-auto max-h-[50vh]">
+                    <p className="text-gray-700 mb-4">
+                      Found <span className="font-bold text-orange-600">{selectedRepairGroup.discrepancyCount}</span> discrepancy(ies) 
+                      in group <span className="font-bold">{selectedRepairGroup.name}</span>.
+                    </p>
+                    
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Discrepancies Found:</h4>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {selectedRepairGroup.discrepancies?.map((disc, idx) => (
+                          <div key={idx} className="text-sm bg-white p-2 rounded border border-gray-200">
+                            <div className="flex justify-between">
+                              <span className="font-medium">{disc.clientName || `Slot ${disc.slotNo}`}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                disc.type === 'LOAN_NOT_UPDATED' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {disc.type === 'LOAN_NOT_UPDATED' ? 'Not Updated' : 'Not Found'}
+                              </span>
+                            </div>
+                            {disc.type === 'LOAN_NOT_UPDATED' && (
+                              <div className="mt-1 text-gray-500 text-xs">
+                                Expected update: {disc.expected}, Actual: {disc.actual || 'N/A'}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600">
+                      This will update the loans table to match the cash collections data. 
+                      Do you want to proceed with the repair?
+                    </p>
+                  </div>
+                  
+                  <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                    <button
+                      onClick={cancelRepair}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                      disabled={repairLoading[selectedRepairGroup._id]}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={executeRepair}
+                      className="px-4 py-2 text-white bg-orange-600 hover:bg-orange-700 rounded-md flex items-center gap-2"
+                      disabled={repairLoading[selectedRepairGroup._id]}
+                    >
+                      {repairLoading[selectedRepairGroup._id] ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Repairing...
+                        </>
+                      ) : (
+                        <>
+                          <Wrench size={16} />
+                          Repair Now
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
     </Layout>
   );
 };
