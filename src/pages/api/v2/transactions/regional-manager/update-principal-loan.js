@@ -43,7 +43,8 @@ async function updatePrincipalLoan(req, res) {
         reason,
         clientId,
         groupId,
-        branchId
+        branchId,
+        lrfRate
     } = req.body;
 
     // Get user from auth
@@ -169,6 +170,12 @@ async function updatePrincipalLoan(req, res) {
         }
 
         // ========================================================================
+        // Calculate new LRF Collection
+        // ========================================================================
+        const newLrfCollection = principalLoan * (lrfRate || 0.01); // Use lrfRate from settings
+        const originalLrfCollection = existingLoan.lrfCollection || 0;
+
+        // ========================================================================
         // Create audit log entry and editHistory entry
         // ========================================================================
         const editHistoryEntry = {
@@ -193,6 +200,10 @@ async function updatePrincipalLoan(req, res) {
                 loanBalance: {
                     from: existingLoan.loanBalance,
                     to: loanBalance
+                },
+                lrfCollection: {
+                    from: originalLrfCollection,
+                    to: newLrfCollection
                 }
             }
         };
@@ -224,9 +235,10 @@ async function updatePrincipalLoan(req, res) {
             activeLoan: activeLoan,
             loanBalance: loanBalance,
             targetCollection: targetCollection || activeLoan,
+            lrfCollection: newLrfCollection,
             dateModified: currentDateTime,
             modifiedBy: userId,
-            editHistory: updatedEditHistory  // ← NEW: Update editHistory
+            editHistory: updatedEditHistory
         };
 
         mutations.push(
@@ -243,6 +255,7 @@ async function updatePrincipalLoan(req, res) {
                     where: { _id: { _eq: cashCollectionId } },
                     set: {
                         currentReleaseAmount: amountRelease,
+                        lrfCollection: newLrfCollection,
                         dateModified: currentDateTime,
                         modifiedBy: userId
                     }
@@ -260,6 +273,7 @@ async function updatePrincipalLoan(req, res) {
                 set: {
                     currentReleaseAmount: amountRelease,
                     targetCollection: activeLoan,
+                    lrfCollection: newLrfCollection,
                     dateModified: currentDateTime,
                     modifiedBy: userId
                 }
@@ -307,8 +321,9 @@ async function updatePrincipalLoan(req, res) {
                 amountRelease,
                 activeLoan,
                 loanBalance,
+                lrfCollection: newLrfCollection,
                 updatedAt: currentDateTime,
-                editHistory: updatedEditHistory  // Return the updated history
+                editHistory: updatedEditHistory
             }
         });
 

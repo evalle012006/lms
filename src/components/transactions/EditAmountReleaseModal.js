@@ -36,6 +36,7 @@ const EditAmountReleaseModal = ({
 
     // Get service charge rate from settings (default to 1.2 if not available)
     const serviceChargeRate = safeNumber(transactionSettings?.serviceChargeRate) || 1.2;
+    const lrfRate = safeNumber(transactionSettings?.lrfRate) || 0.01;
 
     // Extract values from cashCollection (cc)
     // For reloaners, cc.currentReleaseAmount is the new loan's amountRelease
@@ -51,6 +52,8 @@ const EditAmountReleaseModal = ({
         ? Math.round(currentReleaseAmount / serviceChargeRate) 
         : 0;
 
+    const originalLrfCollection = safeNumber(cashCollection?.lrfCollection) || Math.round(derivedPrincipalLoan * lrfRate);
+
     // State for form
     const [principalLoan, setPrincipalLoan] = useState(derivedPrincipalLoan);
     const [loading, setLoading] = useState(false);
@@ -59,6 +62,7 @@ const EditAmountReleaseModal = ({
     const calculatedAmountRelease = Math.round(principalLoan * serviceChargeRate);
     const calculatedActiveLoan = Math.round(calculatedAmountRelease / loanTerms);
     const calculatedLoanBalance = calculatedAmountRelease;
+    const calculatedLrfCollection = Math.round(principalLoan * lrfRate);
 
     // Reset form when modal opens or derivedPrincipalLoan changes
     useEffect(() => {
@@ -109,6 +113,7 @@ const EditAmountReleaseModal = ({
                 targetCollection: calculatedActiveLoan,
                 serviceChargeRate: serviceChargeRate,
                 loanTerms: loanTerms,
+                lrfRate: lrfRate,
                 modifiedBy: currentUser._id,
                 modifiedDate: currentDate,
                 modifiedByRole: currentUser.role?.shortCode,
@@ -216,6 +221,11 @@ const EditAmountReleaseModal = ({
                                     <span className="text-gray-600">Service Charge Rate:</span>
                                     <span className="ml-2 font-medium">{(serviceChargeRate * 100).toFixed(0)}%</span>
                                 </div>
+                                {/* ADD THIS */}
+                                <div>
+                                    <span className="text-gray-600">LRF Collection:</span>
+                                    <span className="ml-2 font-medium">{formatPricePhp(originalLrfCollection)}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -263,9 +273,16 @@ const EditAmountReleaseModal = ({
                                         <span className="text-gray-600">{occurence === 'weekly' ? 'Weekly' : 'Daily'} Payment:</span>
                                         <span className="ml-2 font-medium">{formatPricePhp(calculatedActiveLoan)}</span>
                                     </div>
+                                    <div>
+                                        <span className="text-gray-600">LRF Collection:</span>
+                                        <span className="ml-2 font-medium">{formatPricePhp(calculatedLrfCollection)}</span>
+                                    </div>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2">
                                     Formula: {formatPricePhp(principalLoan)} × {(serviceChargeRate * 100).toFixed(0)}% = {formatPricePhp(calculatedAmountRelease)}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    LRF: {formatPricePhp(principalLoan)} × {(lrfRate * 100).toFixed(0)}% = {formatPricePhp(calculatedLrfCollection)}
                                 </p>
                             </div>
                         )}
@@ -294,6 +311,13 @@ const EditAmountReleaseModal = ({
                                         <span>
                                             <span className="text-red-500 line-through mr-2">{formatPricePhp(Math.round(currentReleaseAmount / loanTerms))}</span>
                                             <span className="text-green-600 font-medium">{formatPricePhp(calculatedActiveLoan)}</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">LRF Collection:</span>
+                                        <span>
+                                            <span className="text-red-500 line-through mr-2">{formatPricePhp(originalLrfCollection)}</span>
+                                            <span className="text-green-600 font-medium">{formatPricePhp(calculatedLrfCollection)}</span>
                                         </span>
                                     </div>
                                 </div>
