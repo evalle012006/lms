@@ -37,7 +37,12 @@ import {
     dateWatcher, 
     transactionStateManager,
     isNearMidnight,
-    ERROR_CODES 
+    ERROR_CODES,
+    canEditCurrentRelease, 
+    canEditWithdrawal, 
+    getEditStatus,
+    isRegionalManagerOrHigher,
+    getEditDisabledReason 
 } from '@/lib/transaction-utils';
 import SaveProgressModal, { useSaveProgress } from '@/lib/ui/SaveProgressModal';
 import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseModal';
@@ -123,62 +128,6 @@ const CashCollectionDetailsPage = () => {
     const [editLoanCashCollection, setEditLoanCashCollection] = useState(null);
     const [editWithdrawalData, setEditWithdrawalData] = useState(null);
     const [editWithdrawalType, setEditWithdrawalType] = useState('mcbu');
-
-    /**
-     * Check if current user is regional manager or higher
-     * Regional Manager: role.shortCode = 'regional_manager', role.rep = 2
-     * Note: Admin has role.rep = 1, but for this feature we're checking shortCode
-     */
-    const isRegionalManagerOrHigher = () => {
-        const role = currentUser?.role;
-        if (!role) return false;
-        
-        return role.shortCode === 'regional_manager' || 
-            role.shortCode === 'admin' ||
-            role.shortCode === 'deputy_director';
-    };
-
-    /**
-     * Check if current release amount is editable
-     * Conditions:
-     * - User is regional manager or higher
-     * - Loan has reloaner remarks
-     * - Has a current release amount (new loan pending)
-     * - Status is tomorrow, pending, or active with tomorrow release
-     */
-    const canEditCurrentRelease = (cc) => {
-        if (!isRegionalManagerOrHigher()) return false;
-        if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
-        
-        // Check if it's a reloaner with active/tomorrow status
-        const isReloaner = cc.remarks?.value?.startsWith('reloaner');
-        const hasPendingRelease = cc.currentReleaseAmount > 0;
-        const isActiveOrTomorrow = cc.status === 'tomorrow' || 
-                                (cc.status === 'active' && cc.loanFor === 'tomorrow');
-        
-        return isReloaner && hasPendingRelease && isActiveOrTomorrow;
-    };
-
-    /**
-     * Check if withdrawal is editable
-     * Conditions:
-     * - User is regional manager or higher
-     * - Has MCBU or CSF withdrawal record
-     * - For CSF: must be group leader
-     */
-    const canEditWithdrawal = (cc, type = 'mcbu') => {
-        if (!isRegionalManagerOrHigher()) return false;
-        if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
-        
-        if (type === 'mcbu') {
-            return cc.hasMcbuWithdrawal && cc.mcbuWithdrawal > 0 && !cc.mcbuWithdrawalIsPending;
-        } else if (type === 'csf') {
-            return cc.hasCsfWithdrawal && cc.csfWithdrawal > 0 && !cc.csfWithdrawalIsPending &&
-                (cc.groupLeader || cc.client?.groupLeader);
-        }
-        
-        return false;
-    };
 
     /**
      * Handler for editing current release (principal loan)
@@ -528,6 +477,7 @@ const CashCollectionDetailsPage = () => {
                         csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
                         maturedPD: cc.maturedPD,
                         maturedPDPrevTransaction: cc.maturedPD,
+                        editHistory: cc.editHistory ? cc.editHistory : [],
                     }
 
                     if (cc?.transferred && loanBalance > 0) {
@@ -612,6 +562,7 @@ const CashCollectionDetailsPage = () => {
                             csfReturnAmtStr: cc.csfReturnAmt > 0 ? formatPricePhp(cc.csfReturnAmt) : '-',
                             maturedPD: cc.maturedPD,
                             maturedPDPrevTransaction: cc.maturedPD,
+                            editHistory: cc.editHistory ? cc.editHistory : [],
                         }
     
                         setEditMode(false);
@@ -774,6 +725,7 @@ const CashCollectionDetailsPage = () => {
                             otherIncome: otherIncome,
                             maturedPD: cc.maturedPD,
                             maturedPDPrevTransaction: cc.maturedPD,
+                            editHistory: cc.editHistory ? cc.editHistory : [],
                         }
 
                         if (loanBalance > 0 && !cc?.maturedPD) {
@@ -909,7 +861,8 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: '-',
                             csfReturnAmt: 0,
                             csfReturnAmtStr: '-',
-                            _dirty: true
+                            _dirty: true,
+                            editHistory: cc.editHistory ? cc.editHistory : [],
                         }
 
                         delete cc._id;
@@ -1169,6 +1122,7 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
                             csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
                             csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
+                            editHistory: loan.editHistory ? loan.editHistory : [],
                         };
 
                         if (currentLoan?.current?.length > 0) {
@@ -1257,6 +1211,7 @@ const CashCollectionDetailsPage = () => {
                             csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
                             csfIn: safeNumber(currentLoan.csfIn),
                             csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
+                            editHistory: loan.editHistory ? loan.editHistory : [],
                         };
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
@@ -1351,6 +1306,7 @@ const CashCollectionDetailsPage = () => {
                             csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
                             csfIn: safeNumber(currentLoan.csfIn),
                             csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
+                            editHistory: loan.editHistory ? loan.editHistory : [],
                         };
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
@@ -1427,6 +1383,7 @@ const CashCollectionDetailsPage = () => {
                         csfReturnAmtStr: '-',
                         maturedPD: loan.maturedPD,
                         maturedPDPrevTransaction: loan.maturedPD,
+                        editHistory: loan.editHistory ? loan.editHistory : [],
                     };
 
                     const current = loan.current.length > 0 ? loan.current[0] : null;
@@ -4046,7 +4003,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <span>{ cc.currentReleaseAmountStr }</span>
-                                                        {canEditCurrentRelease(cc) && (
+                                                        {canEditCurrentRelease(cc, currentUser) && (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
@@ -4140,7 +4097,7 @@ const CashCollectionDetailsPage = () => {
                                                         { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
                                                             <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
                                                         ) : cc.mcbuWithdrawalStr}
-                                                        {canEditWithdrawal(cc, 'mcbu') && (
+                                                        {canEditWithdrawal(cc, currentUser, 'mcbu') && (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
@@ -4160,7 +4117,7 @@ const CashCollectionDetailsPage = () => {
                                                         { (cc.hasCsfWithdrawal && cc.csfWithdrawalIsPending) ? (
                                                             <WarningIconWithTooltip amount={cc.csfWithdrawalStr} message="CSF Withdrawal is pending." />
                                                         ) : cc.csfWithdrawalStr}
-                                                        {canEditWithdrawal(cc, 'csf') && (
+                                                        {canEditWithdrawal(cc, currentUser, 'csf') && (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {

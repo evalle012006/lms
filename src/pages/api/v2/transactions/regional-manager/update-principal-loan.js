@@ -21,7 +21,8 @@ export default apiHandler({
  * This updates:
  * 1. The loan record (principalLoan, amountRelease, activeLoan, loanBalance, targetCollection)
  * 2. The cash collection record (currentReleaseAmount if applicable)
- * 3. Logs the change using the application logger
+ * 3. Appends to editHistory for "edit once" tracking
+ * 4. Logs the change using the application logger
  */
 async function updatePrincipalLoan(req, res) {
     const {
@@ -101,7 +102,7 @@ async function updatePrincipalLoan(req, res) {
         const currentDate = getCurrentDate();
         const currentDateTime = moment().toISOString();
 
-        // First, verify the loan exists and get current data
+        // First, verify the loan exists and get current data (including editHistory)
         const existingLoanResult = await graph.query(
             queryQl(loansType('existing_loan'), {
                 where: { _id: { _eq: loanId } },
@@ -124,17 +125,58 @@ async function updatePrincipalLoan(req, res) {
             });
         }
 
-        // Create audit log entry (stored in logger, not in DB table)
-        const auditInfo = {
+        // ========================================================================
+        // NEW: Check if already edited once by regional manager or higher
+        // ========================================================================
+        const currentEditHistory = existingLoan.editHistory || [];
+        
+        // Count how many times this has been edited by regional managers
+        const regionalManagerEdits = currentEditHistory.filter(entry => {
+            const isManagerOrHigher = 
+                entry.modifiedByRole === 'regional_manager' ||
+                entry.modifiedByRole === 'admin' ||
+                entry.modifiedByRole === 'deputy_director';
+            
+            return entry.action === 'PRINCIPAL_LOAN_UPDATE' && isManagerOrHigher;
+        });
+
+        // If already edited once, block the second edit
+        if (regionalManagerEdits.length >= 1) {
+            const lastEdit = regionalManagerEdits[regionalManagerEdits.length - 1];
+            
+            logger.warn({
+                page: 'update-principal-loan',
+                action: 'EDIT_ONCE_VIOLATION',
+                user_id: userId,
+                loanId,
+                message: 'This loan has already been edited once by a regional manager',
+                previousEdit: {
+                    timestamp: lastEdit.timestamp,
+                    modifiedBy: lastEdit.modifiedBy,
+                    modifiedByRole: lastEdit.modifiedByRole
+                }
+            });
+
+            return res.status(403).json({
+                success: false,
+                message: 'This loan has already been edited once by a regional manager. Further edits are not allowed.',
+                previousEdit: {
+                    timestamp: lastEdit.timestamp,
+                    modifiedBy: lastEdit.modifiedBy,
+                    modifiedByRole: lastEdit.modifiedByRole
+                }
+            });
+        }
+
+        // ========================================================================
+        // Create audit log entry and editHistory entry
+        // ========================================================================
+        const editHistoryEntry = {
             action: 'PRINCIPAL_LOAN_UPDATE',
             timestamp: currentDateTime,
             modifiedBy: userId,
-            modifiedByRole: modifiedByRole,
+            modifiedByRole: modifiedByRole || 'regional_manager',
             reason: reason || 'Regional Manager Edit',
-            loanId,
-            clientId,
-            groupId,
-            branchId,
             changes: {
                 principalLoan: {
                     from: originalPrincipalLoan || existingLoan.principalLoan,
@@ -155,18 +197,27 @@ async function updatePrincipalLoan(req, res) {
             }
         };
 
-        // Log audit info
+        // Append to editHistory array
+        const updatedEditHistory = [...currentEditHistory, editHistoryEntry];
+
+        // Log audit info (for application logs)
         logger.info({
             page: 'update-principal-loan',
             action: 'AUDIT_TRAIL',
             user_id: userId,
-            ...auditInfo
+            loanId,
+            clientId,
+            groupId,
+            branchId,
+            ...editHistoryEntry
         });
 
+        // ========================================================================
         // Build mutations array
+        // ========================================================================
         const mutations = [];
 
-        // 1. Update the loan record
+        // 1. Update the loan record (including editHistory)
         const loanUpdateData = {
             principalLoan: principalLoan,
             amountRelease: amountRelease,
@@ -174,7 +225,8 @@ async function updatePrincipalLoan(req, res) {
             loanBalance: loanBalance,
             targetCollection: targetCollection || activeLoan,
             dateModified: currentDateTime,
-            modifiedBy: userId
+            modifiedBy: userId,
+            editHistory: updatedEditHistory  // ← NEW: Update editHistory
         };
 
         mutations.push(
@@ -242,7 +294,8 @@ async function updatePrincipalLoan(req, res) {
             clientId,
             groupId,
             branchId,
-            changes: auditInfo.changes
+            editCount: updatedEditHistory.length,
+            changes: editHistoryEntry.changes
         });
 
         return res.status(200).json({
@@ -254,7 +307,8 @@ async function updatePrincipalLoan(req, res) {
                 amountRelease,
                 activeLoan,
                 loanBalance,
-                updatedAt: currentDateTime
+                updatedAt: currentDateTime,
+                editHistory: updatedEditHistory  // Return the updated history
             }
         });
 

@@ -172,6 +172,7 @@ export const LOAN_FIELDS = `
   addHospitalization
   preApproved
   preApprovedDate
+  editHistory
   `;
 
 export const GROUP_FIELDS = `
@@ -468,6 +469,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   inserted_by
   modified_date
   modified_by
+  editHistory
   `;
 
   export const FUND_TRANSFER_FIELDS = `

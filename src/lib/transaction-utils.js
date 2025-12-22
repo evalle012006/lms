@@ -463,72 +463,262 @@ class DateWatcher {
 
 export const dateWatcher = new DateWatcher();
 
-// ============================================
-// USAGE EXAMPLE (for reference)
-// ============================================
 
-/*
-// In your component:
-
-import { 
-    saveCashCollectionWithRetry, 
-    dateWatcher, 
-    transactionStateManager,
-    TransactionError,
-    ERROR_CODES
-} from '@/lib/transaction-utils';
-
-// On component mount:
-useEffect(() => {
-    // Check for interrupted transactions
-    const interrupted = transactionStateManager.checkForInterruptedTransactions();
-    if (interrupted.length > 0) {
-        // Show warning to user
-        toast.warning('Some transactions may not have completed. Please verify your data.');
+/**
+ * Check if a regional manager has already edited this record
+ * 
+ * @param {Array} editHistory - The editHistory JSONB array from the record
+ * @param {string} actionType - The type of action to check for (e.g., 'PRINCIPAL_LOAN_UPDATE')
+ * @returns {boolean} - True if already edited by regional manager
+ */
+export const hasRegionalManagerEdit = (editHistory, actionType) => {
+    if (!editHistory || !Array.isArray(editHistory)) {
+        return false;
     }
     
-    // Start date watcher
-    dateWatcher.start(({ initialDate, currentDate }) => {
-        toast.warning('The date has changed. Please refresh the page before submitting transactions.');
-        setPageStale(true);
+    // Count how many times this action has been performed by regional managers or higher
+    const editCount = editHistory.filter(entry => {
+        const isManagerOrHigher = entry.modifiedByRole === 'regional_manager' || 
+                                  entry.modifiedByRole === 'admin' ||
+                                  entry.modifiedByRole === 'deputy_director';
+        
+        return entry.action === actionType && isManagerOrHigher;
+    }).length;
+    
+    // Return true if already edited once or more
+    return editCount >= 1;
+};
+
+/**
+ * Check if current user is regional manager or higher
+ * 
+ * @param {object} currentUser - Current user object from Redux store
+ * @returns {boolean}
+ */
+export const isRegionalManagerOrHigher = (currentUser) => {
+    if (!currentUser?.role) return false;
+    
+    return currentUser.role.shortCode === 'regional_manager' ||
+           currentUser.role.shortCode === 'admin' ||
+           currentUser.role.shortCode === 'deputy_director' ||
+           currentUser.role.rep <= 2;
+};
+
+/**
+ * Check if current release amount is editable
+ * NOW WITH EDIT-ONCE RESTRICTION
+ * 
+ * Conditions:
+ * - User is regional manager or higher
+ * - Loan has reloaner remarks
+ * - Has a current release amount (new loan pending)
+ * - Status is tomorrow, pending, or active with tomorrow release
+ * - NOT already edited by regional manager (NEW)
+ * 
+ * @param {object} cc - Cash collection record
+ * @param {object} currentUser - Current user from Redux
+ * @returns {boolean}
+ */
+export const canEditCurrentRelease = (cc, currentUser) => {
+    if (!isRegionalManagerOrHigher(currentUser)) return false;
+    if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
+    
+    // Must have reloaner remarks
+    const isReloaner = cc.remarks?.value?.startsWith('reloaner');
+    
+    // Must have pending release amount
+    const hasPendingRelease = cc.currentReleaseAmount > 0;
+    
+    // Status must be tomorrow, pending, or active with tomorrow release
+    const validStatus = ['tomorrow', 'pending'].includes(cc.status) || 
+                       (cc.status === 'active' && cc.loanFor === 'tomorrow');
+    
+    // NEW: Check if already edited by counting edits in editHistory
+    // Check both cc.loan.editHistory and cc.editHistory for flexibility
+    const editHistory = cc.loan?.editHistory || cc.editHistory || [];
+    const hasBeenEdited = hasRegionalManagerEdit(editHistory, 'PRINCIPAL_LOAN_UPDATE');
+    
+    return isReloaner && hasPendingRelease && validStatus && !hasBeenEdited;
+};
+
+/**
+ * Check if withdrawal can be edited
+ * NOW WITH EDIT-ONCE RESTRICTION
+ * 
+ * Conditions:
+ * - User is regional manager or higher
+ * - Has MCBU or CSF withdrawal record
+ * - For CSF: must be group leader
+ * - NOT already edited by regional manager (NEW)
+ * 
+ * @param {object} cc - Cash collection record
+ * @param {object} currentUser - Current user from Redux
+ * @param {string} type - 'mcbu' or 'csf'
+ * @returns {boolean}
+ */
+export const canEditWithdrawal = (cc, currentUser, type = 'mcbu') => {
+    if (!isRegionalManagerOrHigher(currentUser)) return false;
+    if (!cc || cc.status === 'totals' || cc.status === 'open') return false;
+    
+    // Get the latest withdrawal record from mcbuWithdrawalList
+    const withdrawalRecord = cc.mcbuWithdrawalList && cc.mcbuWithdrawalList.length > 0
+        ? cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1]
+        : null;
+    
+    if (!withdrawalRecord) return false;
+    
+    if (type === 'mcbu') {
+        const hasMcbuWithdrawal = cc.hasMcbuWithdrawal && cc.mcbuWithdrawal > 0;
+        
+        // NEW: Check if MCBU withdrawal has been edited
+        // Since MCBU and CSF are in the same table, check the withdrawal record's editHistory
+        const editHistory = withdrawalRecord.editHistory || [];
+        const hasBeenEdited = hasRegionalManagerEdit(editHistory, 'MCBU_WITHDRAWAL_UPDATE');
+        
+        return hasMcbuWithdrawal && !hasBeenEdited;
+    }
+    
+    if (type === 'csf') {
+        const isGroupLeader = cc.groupLeader || cc.client?.groupLeader;
+        const hasCsfWithdrawal = cc.hasCsfWithdrawal && cc.csfWithdrawal > 0;
+        
+        // NEW: Check if CSF withdrawal has been edited
+        // Since MCBU and CSF are in the same table, check the withdrawal record's editHistory
+        const editHistory = withdrawalRecord.editHistory || [];
+        const hasBeenEdited = hasRegionalManagerEdit(editHistory, 'CSF_WITHDRAWAL_UPDATE');
+        
+        return hasCsfWithdrawal && isGroupLeader && !hasBeenEdited;
+    }
+    
+    return false;
+};
+
+/**
+ * Get edit status for display (optional - for visual indicators)
+ * 
+ * @param {object} cc - Cash collection record
+ * @param {string} editType - 'loan', 'mcbu', or 'csf'
+ * @returns {object} - { isEdited: boolean, editedBy: string, editedAt: string, changes: object }
+ */
+export const getEditStatus = (cc, editType) => {
+    let editHistory = [];
+    let actionType = '';
+    
+    switch (editType) {
+        case 'loan':
+            editHistory = cc.loan?.editHistory || cc.editHistory || [];
+            actionType = 'PRINCIPAL_LOAN_UPDATE';
+            break;
+        case 'mcbu':
+        case 'csf':
+            // Get the latest withdrawal record
+            const withdrawalRecord = cc.mcbuWithdrawalList && cc.mcbuWithdrawalList.length > 0
+                ? cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1]
+                : null;
+            
+            if (withdrawalRecord) {
+                editHistory = withdrawalRecord.editHistory || [];
+            }
+            
+            actionType = editType === 'mcbu' ? 'MCBU_WITHDRAWAL_UPDATE' : 'CSF_WITHDRAWAL_UPDATE';
+            break;
+        default:
+            return { isEdited: false };
+    }
+    
+    // Find the most recent edit by regional manager or higher
+    const edits = editHistory.filter(entry => {
+        const isManagerOrHigher = entry.modifiedByRole === 'regional_manager' || 
+                                  entry.modifiedByRole === 'admin' ||
+                                  entry.modifiedByRole === 'deputy_director';
+        return entry.action === actionType && isManagerOrHigher;
     });
     
-    return () => {
-        dateWatcher.stop();
-    };
-}, []);
-
-// On submit:
-const handleSubmit = async () => {
-    const transactionId = transactionStateManager.startTransaction(groupId, data);
+    if (edits.length === 0) {
+        return { isEdited: false };
+    }
     
-    try {
-        const result = await saveCashCollectionWithRetry(data, {
-            onRetry: (attempt, error) => {
-                toast.info(`Retrying save (attempt ${attempt})...`);
-            },
-            onDateMismatch: (error) => {
-                toast.error('Date mismatch detected. Please refresh the page.');
-            },
-            onProgress: ({ step, message }) => {
-                setProgress({ step, message });
-            }
-        });
-        
-        transactionStateManager.completeTransaction(transactionId);
-        toast.success('Transaction saved successfully!');
-        
-    } catch (error) {
-        transactionStateManager.failTransaction(transactionId, error);
-        
-        if (error.code === ERROR_CODES.DATE_MISMATCH) {
-            // Offer to refresh
-            if (confirm('The date has changed. Refresh the page?')) {
-                window.location.reload();
-            }
-        } else {
-            toast.error(`Save failed: ${error.message}`);
+    // Get the most recent edit
+    const latestEdit = edits.sort((a, b) => 
+        new Date(b.timestamp) - new Date(a.timestamp)
+    )[0];
+    
+    return {
+        isEdited: true,
+        editedBy: latestEdit.modifiedByRole,
+        editedAt: latestEdit.timestamp,
+        changes: latestEdit.changes
+    };
+};
+
+/**
+ * Format edit timestamp for display
+ * 
+ * @param {string} timestamp - ISO timestamp string
+ * @returns {string} - Formatted date string
+ */
+export const formatEditTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+/**
+ * Get a user-friendly message for why edit is disabled
+ * 
+ * @param {object} cc - Cash collection record
+ * @param {object} currentUser - Current user
+ * @param {string} editType - 'loan', 'mcbu', or 'csf'
+ * @returns {string} - User-friendly message
+ */
+export const getEditDisabledReason = (cc, currentUser, editType) => {
+    if (!isRegionalManagerOrHigher(currentUser)) {
+        return 'Only Regional Managers and above can edit this field';
+    }
+    
+    const editStatus = getEditStatus(cc, editType);
+    
+    if (editStatus.isEdited) {
+        const formattedDate = formatEditTimestamp(editStatus.editedAt);
+        return `Already edited once by ${editStatus.editedBy} on ${formattedDate}`;
+    }
+    
+    // Check other conditions based on edit type
+    if (editType === 'loan') {
+        if (!cc.remarks?.value?.startsWith('reloaner')) {
+            return 'Only reloaner records can be edited';
+        }
+        if (cc.currentReleaseAmount <= 0) {
+            return 'No pending release amount to edit';
+        }
+        const validStatus = ['tomorrow', 'pending'].includes(cc.status) || 
+                           (cc.status === 'active' && cc.loanFor === 'tomorrow');
+        if (!validStatus) {
+            return 'Invalid status for editing';
         }
     }
+    
+    if (editType === 'mcbu') {
+        if (!cc.hasMcbuWithdrawal || cc.mcbuWithdrawal <= 0) {
+            return 'No MCBU withdrawal to edit';
+        }
+    }
+    
+    if (editType === 'csf') {
+        if (!cc.hasCsfWithdrawal || cc.csfWithdrawal <= 0) {
+            return 'No CSF withdrawal to edit';
+        }
+        if (!(cc.groupLeader || cc.client?.groupLeader)) {
+            return 'Only group leaders can have CSF withdrawals edited';
+        }
+    }
+    
+    return 'Edit not allowed';
 };
-*/

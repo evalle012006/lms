@@ -22,8 +22,10 @@ export default apiHandler({
  * 
  * Updates:
  * 1. loans table: mcbu, mcbuWithdrawal, csf, csfWithdrawal, modifiedBy, modifiedDateTime
- * 2. mcbu_withdrawals table: mcbu_withdrawal_amount, csf_withdrawal_amount, modified_by, modified_date
+ * 2. mcbu_withdrawals table: mcbu_withdrawal_amount, csf_withdrawal_amount, modified_by, modified_date, editHistory
  * 3. cashCollections table: mcbu, mcbuWithdrawal, csf, csfWithdrawal, modifiedBy, modifiedDateTime
+ * 
+ * NEW: Enforces "edit once" restriction via editHistory tracking
  */
 async function updateWithdrawalAmount(req, res) {
     const user_id = req?.auth?.sub;
@@ -64,6 +66,17 @@ async function updateWithdrawalAmount(req, res) {
             return res.status(400).json({
                 success: false,
                 message: 'Missing required fields: loanId, clientId, and modifiedBy are required'
+            });
+        }
+
+        // Validate that at least one withdrawal amount is being updated
+        const isUpdatingMcbu = mcbuWithdrawalAmount !== undefined && mcbuWithdrawalAmount !== null;
+        const isUpdatingCsf = csfWithdrawalAmount !== undefined && csfWithdrawalAmount !== null;
+
+        if (!isUpdatingMcbu && !isUpdatingCsf) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one withdrawal amount (MCBU or CSF) must be provided'
             });
         }
 
@@ -124,21 +137,184 @@ async function updateWithdrawalAmount(req, res) {
             });
         }
 
-        // Build mutation list
-        const mutationList = [];
+        // ========================================================================
+        // NEW: Get withdrawal record and check editHistory for edit-once restriction
+        // ========================================================================
         const withdrawalId = mcbuWithdrawalId || csfWithdrawalId;
+        
+        if (!withdrawalId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Withdrawal ID is required'
+            });
+        }
+
+        // Fetch the withdrawal record to get its editHistory
+        const withdrawalResult = await graph.query(
+            queryQl(mcbuWithdrawalsType('existing_withdrawal'), {
+                where: { _id: { _eq: withdrawalId } }
+            })
+        );
+
+        const existingWithdrawal = withdrawalResult.data?.existing_withdrawal?.[0];
+
+        if (!existingWithdrawal) {
+            return res.status(404).json({
+                success: false,
+                message: 'Withdrawal record not found'
+            });
+        }
+
+        // Get current editHistory
+        const currentEditHistory = existingWithdrawal.editHistory || [];
+
+        // ========================================================================
+        // Check if MCBU has been edited (if we're updating MCBU)
+        // ========================================================================
+        if (isUpdatingMcbu) {
+            const mcbuEdits = currentEditHistory.filter(entry => {
+                const isManagerOrHigher = 
+                    entry.modifiedByRole === 'regional_manager' ||
+                    entry.modifiedByRole === 'admin' ||
+                    entry.modifiedByRole === 'deputy_director';
+                
+                return entry.action === 'MCBU_WITHDRAWAL_UPDATE' && isManagerOrHigher;
+            });
+
+            if (mcbuEdits.length >= 1) {
+                const lastEdit = mcbuEdits[mcbuEdits.length - 1];
+                
+                logger.warn({
+                    user_id,
+                    page: 'Regional Manager Edit Withdrawal',
+                    action: 'EDIT_ONCE_VIOLATION',
+                    type: 'MCBU',
+                    withdrawalId,
+                    message: 'MCBU withdrawal has already been edited once',
+                    previousEdit: lastEdit
+                });
+
+                return res.status(403).json({
+                    success: false,
+                    message: 'This MCBU withdrawal has already been edited once by a regional manager. Further edits are not allowed.',
+                    previousEdit: {
+                        timestamp: lastEdit.timestamp,
+                        modifiedBy: lastEdit.modifiedBy,
+                        modifiedByRole: lastEdit.modifiedByRole,
+                        type: 'MCBU'
+                    }
+                });
+            }
+        }
+
+        // ========================================================================
+        // Check if CSF has been edited (if we're updating CSF)
+        // ========================================================================
+        if (isUpdatingCsf) {
+            const csfEdits = currentEditHistory.filter(entry => {
+                const isManagerOrHigher = 
+                    entry.modifiedByRole === 'regional_manager' ||
+                    entry.modifiedByRole === 'admin' ||
+                    entry.modifiedByRole === 'deputy_director';
+                
+                return entry.action === 'CSF_WITHDRAWAL_UPDATE' && isManagerOrHigher;
+            });
+
+            if (csfEdits.length >= 1) {
+                const lastEdit = csfEdits[csfEdits.length - 1];
+                
+                logger.warn({
+                    user_id,
+                    page: 'Regional Manager Edit Withdrawal',
+                    action: 'EDIT_ONCE_VIOLATION',
+                    type: 'CSF',
+                    withdrawalId,
+                    message: 'CSF withdrawal has already been edited once',
+                    previousEdit: lastEdit
+                });
+
+                return res.status(403).json({
+                    success: false,
+                    message: 'This CSF withdrawal has already been edited once by a regional manager. Further edits are not allowed.',
+                    previousEdit: {
+                        timestamp: lastEdit.timestamp,
+                        modifiedBy: lastEdit.modifiedBy,
+                        modifiedByRole: lastEdit.modifiedByRole,
+                        type: 'CSF'
+                    }
+                });
+            }
+        }
+
+        // ========================================================================
+        // NEW: Create editHistory entries for this update
+        // ========================================================================
         const currentDateTime = new Date().toISOString();
+        const newEditHistoryEntries = [];
+
+        // Create MCBU edit entry if updating MCBU
+        if (isUpdatingMcbu) {
+            newEditHistoryEntries.push({
+                action: 'MCBU_WITHDRAWAL_UPDATE',
+                timestamp: currentDateTime,
+                modifiedBy: modifiedBy,
+                modifiedByRole: userRoleShortCode,
+                reason: reason || 'Regional Manager MCBU Withdrawal Edit',
+                changes: {
+                    mcbuWithdrawal: {
+                        from: originalMcbuWithdrawal ?? existingWithdrawal.mcbu_withdrawal_amount,
+                        to: mcbuWithdrawalAmount
+                    },
+                    mcbuBalance: {
+                        from: currentLoan.mcbu,
+                        to: newMcbuBalance
+                    }
+                }
+            });
+        }
+
+        // Create CSF edit entry if updating CSF
+        if (isUpdatingCsf) {
+            newEditHistoryEntries.push({
+                action: 'CSF_WITHDRAWAL_UPDATE',
+                timestamp: currentDateTime,
+                modifiedBy: modifiedBy,
+                modifiedByRole: userRoleShortCode,
+                reason: reason || 'Regional Manager CSF Withdrawal Edit',
+                changes: {
+                    csfWithdrawal: {
+                        from: originalCsfWithdrawal ?? existingWithdrawal.csf_withdrawal_amount,
+                        to: csfWithdrawalAmount
+                    },
+                    csfBalance: {
+                        from: currentLoan.csf,
+                        to: newCsfBalance
+                    }
+                }
+            });
+        }
+
+        // Append new entries to existing editHistory
+        const updatedEditHistory = [...currentEditHistory, ...newEditHistoryEntries];
+
+        // ========================================================================
+        // Build mutation list
+        // ========================================================================
+        const mutationList = [];
 
         // 1. Update the loan record - using exact field names from LOAN_FIELDS
         // Fields: mcbu, mcbuWithdrawal, csf, csfWithdrawal, modifiedBy, modifiedDateTime
         const loanUpdateData = {
-            mcbu: newMcbuBalance,
-            mcbuWithdrawal: mcbuWithdrawalAmount,
             modifiedBy: modifiedBy,
             modifiedDateTime: currentDateTime
         };
 
-        if (isGroupLeader) {
+        if (isUpdatingMcbu) {
+            loanUpdateData.mcbu = newMcbuBalance;
+            loanUpdateData.mcbuWithdrawal = mcbuWithdrawalAmount;
+        }
+
+        if (isUpdatingCsf && isGroupLeader) {
             loanUpdateData.csf = newCsfBalance;
             loanUpdateData.csfWithdrawal = csfWithdrawalAmount;
         }
@@ -151,37 +327,42 @@ async function updateWithdrawalAmount(req, res) {
         );
 
         // 2. Update the mcbu_withdrawals record - using exact field names from MCBU_WITHDRAWAL_FIELDS
-        // Fields: mcbu_withdrawal_amount, csf_withdrawal_amount, modified_by, modified_date
-        if (withdrawalId) {
-            const withdrawalUpdateData = {
-                mcbu_withdrawal_amount: mcbuWithdrawalAmount,
-                modified_by: modifiedBy,
-                modified_date: currentDateTime
-            };
+        // Fields: mcbu_withdrawal_amount, csf_withdrawal_amount, modified_by, modified_date, editHistory
+        const withdrawalUpdateData = {
+            modified_by: modifiedBy,
+            modified_date: currentDateTime,
+            editHistory: updatedEditHistory  // ← NEW: Include editHistory
+        };
 
-            if (isGroupLeader) {
-                withdrawalUpdateData.csf_withdrawal_amount = csfWithdrawalAmount;
-            }
-
-            mutationList.push(
-                updateQl(mcbuWithdrawalsType('update_withdrawal'), {
-                    set: filterGraphFields(MCBU_WITHDRAWAL_FIELDS, withdrawalUpdateData),
-                    where: { _id: { _eq: withdrawalId } }
-                })
-            );
+        if (isUpdatingMcbu) {
+            withdrawalUpdateData.mcbu_withdrawal_amount = mcbuWithdrawalAmount;
         }
+
+        if (isUpdatingCsf && isGroupLeader) {
+            withdrawalUpdateData.csf_withdrawal_amount = csfWithdrawalAmount;
+        }
+
+        mutationList.push(
+            updateQl(mcbuWithdrawalsType('update_withdrawal'), {
+                set: filterGraphFields(MCBU_WITHDRAWAL_FIELDS, withdrawalUpdateData),
+                where: { _id: { _eq: withdrawalId } }
+            })
+        );
 
         // 3. Update the cash collection record - using exact field names from CASH_COLLECTIONS_FIELDS
         // Fields: mcbu, mcbuWithdrawal, csf, csfWithdrawal, modifiedBy, modifiedDateTime
         if (cashCollectionId) {
             const ccUpdateData = {
-                mcbu: newMcbuBalance,
-                mcbuWithdrawal: mcbuWithdrawalAmount,
                 modifiedBy: modifiedBy,
                 modifiedDateTime: currentDateTime
             };
 
-            if (isGroupLeader) {
+            if (isUpdatingMcbu) {
+                ccUpdateData.mcbu = newMcbuBalance;
+                ccUpdateData.mcbuWithdrawal = mcbuWithdrawalAmount;
+            }
+
+            if (isUpdatingCsf && isGroupLeader) {
                 ccUpdateData.csf = newCsfBalance;
                 ccUpdateData.csfWithdrawal = csfWithdrawalAmount;
             }
@@ -203,9 +384,13 @@ async function updateWithdrawalAmount(req, res) {
             clientId,
             cashCollectionId,
             withdrawalId,
+            editTypes: {
+                mcbu: isUpdatingMcbu,
+                csf: isUpdatingCsf
+            },
             previousValues: {
-                mcbuWithdrawal: originalMcbuWithdrawal,
-                csfWithdrawal: originalCsfWithdrawal,
+                mcbuWithdrawal: originalMcbuWithdrawal ?? existingWithdrawal.mcbu_withdrawal_amount,
+                csfWithdrawal: originalCsfWithdrawal ?? existingWithdrawal.csf_withdrawal_amount,
                 mcbu: currentLoan.mcbu,
                 csf: currentLoan.csf
             },
@@ -221,7 +406,8 @@ async function updateWithdrawalAmount(req, res) {
             reason,
             isGroupLeader,
             groupId,
-            branchId
+            branchId,
+            editHistoryLength: updatedEditHistory.length
         });
 
         // Execute all mutations
@@ -247,7 +433,8 @@ async function updateWithdrawalAmount(req, res) {
             message: 'Withdrawal amounts updated successfully',
             loanId,
             newMcbuWithdrawal: mcbuWithdrawalAmount,
-            newCsfWithdrawal: csfWithdrawalAmount
+            newCsfWithdrawal: csfWithdrawalAmount,
+            editCount: updatedEditHistory.length
         });
 
         return res.status(200).json({
@@ -258,7 +445,8 @@ async function updateWithdrawalAmount(req, res) {
                 newMcbuWithdrawal: mcbuWithdrawalAmount,
                 newCsfWithdrawal: csfWithdrawalAmount,
                 newMcbuBalance: newMcbuBalance,
-                newCsfBalance: newCsfBalance
+                newCsfBalance: newCsfBalance,
+                editHistory: updatedEditHistory
             }
         });
 

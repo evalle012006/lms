@@ -28,7 +28,7 @@ const NotificationBell = () => {
     const notificationState = useSelector(state => {
         // Debug: log state keys once
         if (!hasFetchedInitial.current) {
-            console.log('NotificationBell - Redux state keys:', Object.keys(state));
+            // console.log('NotificationBell - Redux state keys:', Object.keys(state));
         }
         return state.notification || state.notifications || {
             notifications: [],
