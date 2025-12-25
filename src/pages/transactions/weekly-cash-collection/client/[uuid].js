@@ -32,9 +32,7 @@ import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdr
 import mcbuInterestService from '@/services/mcbu-interest-service';
 import McbuInterestBreakdownModal from '@/components/transactions/McbuInterestBreakdownModal';
 import CashCollectionDetailsExcelExport from '@/components/transactions/CashCollectionDetailsExcelExport';
-import CashCollectionBulkUploadModal from '@/components/transactions/cash-collection/CashCollectionBulkUploadModal';
-import useCashCollectionBulkUpload from '@/hooks/useCashCollectionBulkUpload';
-import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import CashCollectionBulkUpload from '@/components/transactions/CashCollectionBulkUpload';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -102,20 +100,95 @@ const CashCollectionDetailsPage = () => {
         lackingAmount: 0
     });
 
-    // Bulk upload hook
-    const {
-        showBulkUploadModal,
-        isBulkUploadAvailable,
-        openBulkUploadModal,
-        closeBulkUploadModal,
-        handleUploadComplete
-    } = useCashCollectionBulkUpload({
-        groupData: groupClients, // from Redux: useSelector(state => state.cashCollection.group)
-        mode: 'weekly', // or 'weekly' for weekly page
-        currentDate: currentDate,
-        dayName: currentGroup?.day, // Group's day name
-        transactionSettings: transactionSettings
-    });
+    /**
+     * Add this handler to your CashCollectionDetailsPage component
+     * 
+     * This uses handlePaymentCollectionChange which contains all your business logic
+     * for calculations (mispayment, advance days, loan balance, etc.)
+     */
+    const handleBulkUploadComplete = (uploadedData) => {
+        console.log('Bulk upload data received:', uploadedData);
+        
+        // Process each uploaded record sequentially
+        // Using setTimeout to stagger calls and avoid race conditions
+        uploadedData.forEach((client, idx) => {
+            if (!client._hasChanges) return;
+            
+            // Find the index in the current data array
+            const dataIndex = data.findIndex(d => d.clientId === client.clientId);
+            if (dataIndex === -1) return;
+            
+            const cc = data[dataIndex];
+            
+            // Calculate delay - stagger each client's updates
+            const baseDelay = idx * 200; // 200ms between each client
+            
+            // 1. Trigger paymentCollection (Actual Collection)
+            if (client.paymentCollection > 0) {
+                setTimeout(() => {
+                    handlePaymentCollectionChange(
+                        { target: { value: client.paymentCollection } },
+                        dataIndex,
+                        'amount'
+                    );
+                }, baseDelay);
+            }
+            
+            // 2. Trigger mcbuCol (MCBU Collection) - has onBlur validation
+            if (client.mcbuCol > 0) {
+                setTimeout(() => {
+                    handlePaymentCollectionChange(
+                        { target: { value: client.mcbuCol } },
+                        dataIndex,
+                        'mcbuCol'
+                    );
+                    // Also trigger validation
+                    setTimeout(() => {
+                        handlePaymentValidation(
+                            { target: { value: client.mcbuCol } },
+                            cc,
+                            dataIndex,
+                            'mcbuCol'
+                        );
+                    }, 50);
+                }, baseDelay + 50);
+            }
+            
+            // 3. Trigger csfCollection (CSF Collection) - has onBlur validation
+            if (client.csfCollection > 0) {
+                setTimeout(() => {
+                    handlePaymentCollectionChange(
+                        { target: { value: client.csfCollection } },
+                        dataIndex,
+                        'csfCol'
+                    );
+                    // Also trigger validation
+                    setTimeout(() => {
+                        handlePaymentValidation(
+                            { target: { value: client.csfCollection } },
+                            cc,
+                            dataIndex,
+                            'csfCol'
+                        );
+                    }, 50);
+                }, baseDelay + 100);
+            }
+            
+            // 4. Trigger remarks (Select component - pass the object directly)
+            if (client.remarks?.value) {
+                setTimeout(() => {
+                    handlePaymentCollectionChange(
+                        client.remarks,  // { label: 'Double Payment', value: 'double payment' }
+                        dataIndex,
+                        'remarks'
+                    );
+                }, baseDelay + 150);
+            }
+        });
+        
+        const changedCount = uploadedData.filter(u => u._hasChanges).length;
+        toast.success(`Processing ${changedCount} records from bulk upload...`);
+    };
 
     const handleShowMcbuBreakdown = (selected) => {
         if (selected.mcbuInterestBreakdown && selected.mcbuInterestBreakdown.length > 0) {
@@ -3717,16 +3790,31 @@ const CashCollectionDetailsPage = () => {
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
                         changeRemarks={changeRemarks} allowMcbuInterest={allowMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} branchLock={currentBranch.lockTransaction} 
                         exportComponent={
-                                            <CashCollectionDetailsExcelExport
-                                                data={groupClients}
-                                                groupInfo={currentGroup}
-                                                dateFilter={dateFilter}
-                                                occurence="daily"
-                                                currentUser={currentUser}
-                                            />
-                                        }
-                        showBulkUpload={isBulkUploadAvailable}
-                        onBulkUploadClick={openBulkUploadModal}
+                            <CashCollectionDetailsExcelExport
+                                data={groupClients}
+                                groupInfo={currentGroup}
+                                dateFilter={dateFilter}
+                                occurence="daily"
+                                currentUser={currentUser}
+                            />
+                        }
+                        bulkUploadComponent={
+                            <CashCollectionBulkUpload
+                                groupData={groupClients}
+                                groupId={currentGroup?._id}
+                                groupName={currentGroup?.name}
+                                currentDate={currentDate}
+                                mode="weekly"
+                                onUploadComplete={handleBulkUploadComplete}
+                                branchId={currentBranch?._id}
+                                loId={currentUser.role.rep === 4 ? currentUser._id : currentGroup?.loanOfficerId}
+                                divisionId={currentBranch?.divisionId}
+                                regionId={currentBranch?.regionId}
+                                areaId={currentBranch?.areaId}
+                                hasGroupLeader={hasGroupLeader}
+                                disabled={isWeekend || isHoliday || currentBranch?.lockTransaction || !editMode}
+                            />
+                        }
                         />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
@@ -4042,21 +4130,6 @@ const CashCollectionDetailsPage = () => {
                             <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
                         </div>
                     </Dialog>
-                    <CashCollectionBulkUploadModal
-                        show={showBulkUploadModal}
-                        onClose={closeBulkUploadModal}
-                        groupData={groupClients}
-                        groupId={currentGroup?._id}
-                        groupName={currentGroup?.name}
-                        currentDate={currentDate}
-                        mode="weekly"
-                        onUploadComplete={handleUploadComplete}
-                        branchId={currentBranch?._id}
-                        loId={currentUser.role.rep === 4 ? currentUser._id : currentGroup?.loanOfficerId}  // Fixed
-                        divisionId={currentBranch?.divisionId}
-                        regionId={currentBranch?.regionId}
-                        areaId={currentBranch?.areaId}
-                    />
                     <McbuInterestBreakdownModal
                         show={showMcbuBreakdownModal}
                         onClose={() => setShowMcbuBreakdownModal(false)}
