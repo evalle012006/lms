@@ -28,7 +28,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen
 } from 'lucide-react';
-import { AlertTriangle, Edit } from 'lucide-react';
+import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -328,6 +328,18 @@ const MenuItems = [
                 roles: ["cashier", "loan_officer"]
             },
             {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet",
+                icon: {
+                    active: (props) => <FileSpreadsheet {...props} />,
+                    notActive: (props) => <FileSpreadsheet {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["loan_officer"]
+            },
+            {
               label: "Denomination",
               url: '/transactions/denomination',
               icon: {
@@ -414,6 +426,18 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: ["cashier", "loan_officer"]
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet",
+                icon: {
+                    active: (props) => <FileSpreadsheet {...props} />,
+                    notActive: (props) => <FileSpreadsheet {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["loan_officer"]
             },
             {
               label: "Denomination",
@@ -514,6 +538,18 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: ["branch_manager"]
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet",
+                icon: {
+                    active: (props) => <FileSpreadsheet {...props} />,
+                    notActive: (props) => <FileSpreadsheet {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
               label: "Denomination",
