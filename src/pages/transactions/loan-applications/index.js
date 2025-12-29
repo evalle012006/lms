@@ -34,6 +34,7 @@ import ForeCastApplication from "@/components/transactions/loan-application/Fore
 import { useExcelExport } from '@/hooks/useExcelExport';
 import ExcelExportModal from "@/components/modals/ExcelExportModal";
 import LAFModal from "@/components/transactions/loan-application/LAFModal";
+import DuplicateVouchModal from "@/components/clients/DuplicateVouchModal";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -120,6 +121,11 @@ const LoanApplicationPage = () => {
 
     const [showExportModal, setShowExportModal] = useState(false);
     const { exportLoansToExcel, isExporting } = useExcelExport();
+
+    const [showDuplicateVouchModal, setShowDuplicateVouchModal] = useState(false);
+    const [duplicateVouchMessage, setDuplicateVouchMessage] = useState('');
+    const [selectedDuplicateLoans, setSelectedDuplicateLoans] = useState([]);
+    const [isApprovingDuplicates, setIsApprovingDuplicates] = useState(false);
 
     const [showLAFModal, setShowLAFModal] = useState(false);
     const [selectedLoanForLAF, setSelectedLoanForLAF] = useState(null);
@@ -1150,6 +1156,7 @@ const LoanApplicationPage = () => {
     const handleMultiApprove = async (origin, unapprove) => {
         let selectedLoanList;
         let validation = [];
+        
         if (origin == 'ldf') {
             if (selectedTab == 'duplicate') {
                 selectedLoanList = duplicateList && duplicateList.filter(loan => loan.selected === true);
@@ -1186,128 +1193,140 @@ const LoanApplicationPage = () => {
             });
             toast.error(errorMsg, { autoClose: 5000 });
         } else if (selectedLoanList.length > 0) {
-            const coMakerList = [];
-            let errorMsg = '';
-            selectedLoanList = selectedLoanList.map(loan => {
-                let temp = {...loan};
-
-                const client = loan?.client;
-                const group = loan.group;
-                const lo = loan.loanOfficer;
-
-                if (!client?.firstName || !client?.lastName || client?.firstName == 'null' || client?.lastName == 'null') {
-                    errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`;
-                }
-                if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
-                    errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
-                }
-                if (!client.profile || !client.profile.trim()) {
-                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
-                }
-
-                delete temp.group;
-                delete temp.client;
-                delete temp.branch;
-                delete temp.principalLoanStr;
-                delete temp.activeLoanStr;
-                delete temp.loanBalanceStr;
-                delete temp.mcbuStr;
-                delete temp.selected;
-
-                if (origin == 'ldf') {
-                    temp.ldfApproved = !unapprove;
-                    temp.ldfApprovedDate = unapprove ? '' : currentDate;
-                    temp.origin = 'ldf';
-
-                    if (origin == 'duplicate') {
-                        temp.duplicate = false;
-                    }
-                } else {
-                    temp.groupLeader = client.groupLeader ? client.groupLeader : false;
-                    temp.status = 'active';
-                    temp.preApproved = true;
-                    temp.preApprovedDate = currentDate;
-                    temp.mispayment = 0;
-                    
-                    temp.currentDate = currentDate;
-
-                    if (temp.coMaker) {
-                        coMakerList.push({ coMaker: temp.coMaker, slotNo: temp.slotNo });
-                    }
-                    temp.origin = 'application';
-                }
-
-                return temp;
-            });
-
-            // let pendingCoMaker = [];
-            // const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
-            // if (coMakerStatus.length > 0) {
-            //     pendingCoMaker = coMakerStatus.filter(cm => cm.status !== 'active' );
-            // }
-
-            // if (pendingCoMaker.length > 0 ) {
-            //     let msg = 'Selected slot number co-maker have no approved loan: ';
-            //     pendingCoMaker.map((p, i) => {
-            //         if (i !== pendingCoMaker.length - 1) {
-            //             msg += p.slotNo + ', ';
-            //         } else {
-            //             msg += p.slotNo;
-            //         }
-            //     });
-
-            //     toast.error(msg);
-            // } else {
-                if (errorMsg.length > 0) {
-                    errorMsg += "\n\nPlease update each missing info by clicking the row.";
-                    toast.error(errorMsg, { autoClose: 10000 });
-                } else {
-                    const params = { loanData: selectedLoanList, origin: origin, user: currentUser };
-                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', params);
-
-                    if (response.success) {
-                        setLoading(false);
-                        if (response.withError) {
-                            let errors = '';
-                            if (selectedLoanList.length > response.errorMsg.length) {
-                                // errors = '<span>Some selected loan list have errors:<br/><br/></span>'; 
-                            }
-                            response.errorMsg.map((err, index) => {
-                                /*
-                                if (response.errorMsg.length - 1 == index) {
-                                   
-                                } else {
-                                    errors += `<span>${ err }<br/><br/></span>`
-                                }
-                                    */
-
-                                errors +=  err + '\n';
-                            });
-
-                            toast.error(errors);
-                            setTimeout(() => {
-                                getListLoan();
-                                window.location.reload();
-                            }, 1000);
-                        } else {
-                            if (origin == 'ldf') {
-                                toast.success('Selected loans successfully updated');
-                            } else {
-                                toast.success('Selected loans successfully approved.');
-                            }
-    
-                            setTimeout(() => {
-                                getListLoan();
-                                window.location.reload();
-                            }, 1000);
-                        }
-                    }
-                }
-            // }
+            // NEW: If approving duplicate loans, show the vouch modal first
+            if (origin === 'duplicate') {
+                setSelectedDuplicateLoans(selectedLoanList);
+                setShowDuplicateVouchModal(true);
+                return; // Exit here - the actual approval will happen after vouch message is entered
+            }
+            
+            // Continue with existing approval logic for non-duplicate origins
+            await processBatchApproval(selectedLoanList, origin, unapprove);
         } else {
             toast.error('No loan selected!');
         }
-    }
+    };
+
+    const processBatchApproval = async (selectedLoanList, origin, unapprove, vouchMessage = null) => {
+        const coMakerList = [];
+        let errorMsg = '';
+        
+        selectedLoanList = selectedLoanList.map(loan => {
+            let temp = {...loan};
+
+            const client = loan?.client;
+            const group = loan.group;
+            const lo = loan.loanOfficer;
+
+            if (!client?.firstName || !client?.lastName || client?.firstName == 'null' || client?.lastName == 'null') {
+                errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`;
+            }
+            if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
+                errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
+            }
+            if (!client.profile || !client.profile.trim()) {
+                errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
+            }
+
+            delete temp.group;
+            delete temp.client;
+            delete temp.branch;
+            delete temp.principalLoanStr;
+            delete temp.activeLoanStr;
+            delete temp.loanBalanceStr;
+            delete temp.mcbuStr;
+            delete temp.selected;
+
+            if (origin == 'ldf') {
+                temp.ldfApproved = !unapprove;
+                temp.ldfApprovedDate = unapprove ? '' : currentDate;
+                temp.origin = 'ldf';
+            } else if (origin === 'duplicate') {
+                // NEW: Handle duplicate approval with vouch data
+                temp.ldfApproved = true;
+                temp.ldfApprovedDate = currentDate;
+                temp.origin = 'duplicate';
+                temp.duplicate = false;
+                
+                // Add vouch information to be saved on the client
+                temp.duplicateVouchData = {
+                    vouchMessage: vouchMessage,
+                    vouchedBy: currentUser._id,
+                    vouchedByName: `${currentUser.firstName} ${currentUser.lastName}`,
+                    vouchedDate: currentDate
+                };
+            } else {
+                temp.groupLeader = client.groupLeader ? client.groupLeader : false;
+                temp.status = 'active';
+                temp.preApproved = true;
+                temp.preApprovedDate = currentDate;
+                temp.mispayment = 0;
+                
+                temp.currentDate = currentDate;
+
+                if (temp.coMaker) {
+                    coMakerList.push({ coMaker: temp.coMaker, slotNo: temp.slotNo });
+                }
+                temp.origin = 'application';
+            }
+
+            return temp;
+        });
+
+        if (errorMsg.length > 0) {
+            errorMsg += "\n\nPlease update each missing info by clicking the row.";
+            toast.error(errorMsg, { autoClose: 10000 });
+        } else {
+            const params = { loanData: selectedLoanList, origin: origin, user: currentUser };
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', params);
+
+            if (response.success) {
+                setLoading(false);
+                if (response.withError) {
+                    let errors = '';
+                    response.errorMsg.map((err, index) => {
+                        errors +=  err + '\n';
+                    });
+
+                    toast.error(errors);
+                    setTimeout(() => {
+                        getListLoan();
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    if (origin == 'ldf') {
+                        toast.success('Selected loans successfully updated');
+                    } else if (origin === 'duplicate') {
+                        toast.success('Duplicate clients approved successfully. Vouch message saved.');
+                    } else {
+                        toast.success('Selected loans successfully approved.');
+                    }
+
+                    setTimeout(() => {
+                        getListLoan();
+                        window.location.reload();
+                    }, 1000);
+                }
+            }
+        }
+    };
+
+    const handleDuplicateVouchConfirm = async (vouchMessage) => {
+        setIsApprovingDuplicates(true);
+        setDuplicateVouchMessage(vouchMessage);
+        
+        try {
+            await processBatchApproval(selectedDuplicateLoans, 'duplicate', false, vouchMessage);
+        } catch (error) {
+            console.error('Error approving duplicate loans:', error);
+            toast.error('Error approving duplicate loans: ' + error.message);
+        } finally {
+            setIsApprovingDuplicates(false);
+            setShowDuplicateVouchModal(false);
+            setSelectedDuplicateLoans([]);
+            setDuplicateVouchMessage('');
+        }
+    };
 
     // const actionButtons = currentUser?.role?.rep < 4 ? [
     //     <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
@@ -1782,7 +1801,7 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     LDF Approved Applications
                                 </TabSelector>
-                                {currentUser?.role?.rep < 2 && (
+                                {(currentUser?.role?.rep < 3 && (['deputy_director', 'regional_manager', 'admin'].includes(currentUser.role.shortCode))) && (
                                     <TabSelector
                                         isActive={selectedTab === "duplicate"}
                                         onClick={() => handleSelectTab("duplicate")}>
@@ -2147,6 +2166,17 @@ const LoanApplicationPage = () => {
                 isOpen={showLAFModal}
                 onClose={handleCloseLAF}
                 loanData={selectedLoanForLAF}
+            />
+
+            <DuplicateVouchModal
+                show={showDuplicateVouchModal}
+                onClose={() => {
+                    setShowDuplicateVouchModal(false);
+                    setSelectedDuplicateLoans([]);
+                }}
+                onConfirm={handleDuplicateVouchConfirm}
+                selectedCount={selectedDuplicateLoans.length}
+                isLoading={isApprovingDuplicates}
             />
         </Layout>
     );

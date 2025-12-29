@@ -92,6 +92,51 @@ async function processData(req, res) {
         errorMsg: errorMsg,
       };
     }
+  } else if (origin === "duplicate") {
+    const promise = await new Promise(async (resolve) => {
+      const response = await Promise.all(
+        loanData.map(async (loan) => {
+          const loanId = loan._id;
+          const duplicateVouchData = loan.duplicateVouchData;
+          
+          logger.debug({ 
+            page: `Approving Duplicate Client Loan: ${loanId}`,
+            vouchData: duplicateVouchData 
+          });
+          
+          delete loan._id;
+          delete loan.loanOfficer;
+          delete loan.groupCashCollections;
+          delete loan.loanReleaseStr;
+          delete loan.allowApproved;
+
+          // Update the loan record
+          await updateLoan(loanId, { 
+            ...loan,
+            ldfApproved: true,
+            ldfApprovedDate: loan.ldfApprovedDate || null,
+          }, addToMutationList);
+
+          // Update the client record with vouch information
+          await updateClientWithVouchData(loan.clientId, duplicateVouchData, addToMutationList);
+
+          return { success: true, loanId };
+        })
+      );
+      resolve(response);
+    });
+
+    if (mutationList.length && errorMsg.length === 0) {
+      await graph.mutation(...mutationList);
+    }
+
+    if (promise) {
+      response = {
+        success: true,
+        withError: errorMsg.length > 0,
+        errorMsg: errorMsg,
+      };
+    }
   } else {
     const result = await Promise.all(
       loanData.map(async (l) => {
@@ -235,32 +280,41 @@ async function updateGroup(group, addToMutationList) {
 async function updateClient(loan, addToMutationList) {
   let [client] = await findClients({ _id: { _eq: loan?.clientId ?? null } });
 
-  if (!!client) {
-
-    client.dateModified = moment(getCurrentDate()).format('YYYY-MM-DD');
-
-    if (client.status === "offset") {
-      client.status = "active";
-      client.groupName = loan?.groupName;
-      client.groupId = loan.groupId;
-      client.branchId = loan.branchId;
-      client.loId = loan.loId;
-      client.oldGroupId = null;
-      client.oldLoId = null;
-      
-    }
-
-    const clientId = client._id;
-    client.status = "active";
-    delete client._id;
-
-    addToMutationList(alias => updateQl(clientType(alias), {
-      where: { _id: { _eq: clientId } },
-      set: filterGraphFields(CLIENT_FIELDS, { ...client }),
-    }));
+  if (!client) {
+    return;
   }
 
-  return { success: true, client };
+  // Build the update object
+  const updateData = {
+    status: 'active',
+    groupName: loan?.groupName ?? client.groupName,
+    groupId: loan.groupId ?? client.groupId,
+    branchId: loan.branchId ?? client.branchId,
+    loId: loan.loId ?? client.loId,
+  };
+
+  // Handle offset status
+  if (client.status === 'offset') {
+    updateData.oldGroupId = null;
+    updateData.oldLoId = null;
+  }
+
+  // NEW: Handle duplicate vouch data
+  if (loan.duplicateVouchData) {
+    updateData.duplicate = false;
+    updateData.duplicateVouchMessage = loan.duplicateVouchData.vouchMessage;
+    updateData.duplicateVouchedBy = loan.duplicateVouchData.vouchedBy;
+    updateData.duplicateVouchedByName = loan.duplicateVouchData.vouchedByName;
+    updateData.duplicateVouchedDate = loan.duplicateVouchData.vouchedDate;
+  } else if (client.duplicate) {
+    // If duplicate flag exists but no vouch data, just clear the flag
+    updateData.duplicate = false;
+  }
+
+  addToMutationList(alias => updateQl(clientType(alias), {
+    set: filterGraphFields(CLIENT_FIELDS, updateData),
+    where: { _id: { _eq: client._id } },
+  }));
 }
 
 async function getCoMakerInfo(coMaker, groupId) {
@@ -391,3 +445,29 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
     addToMutationList(alias => insertQl(cashCollectionType(alias), { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] }));
   }
 }
+
+async function updateClientWithVouchData(clientId, vouchData, addToMutationList) {
+  if (!clientId || !vouchData) {
+    return;
+  }
+
+  const updateData = {
+    duplicate: false,
+    duplicateVouchMessage: vouchData.vouchMessage,
+    duplicateVouchedBy: vouchData.vouchedBy,
+    duplicateVouchedByName: vouchData.vouchedByName,
+    duplicateVouchedDate: vouchData.vouchedDate,
+  };
+
+  logger.debug({
+    page: `Updating client vouch data: ${clientId}`,
+    data: updateData
+  });
+
+  addToMutationList(alias => updateQl(clientType(alias), {
+    set: filterGraphFields(CLIENT_FIELDS, updateData),
+    where: { _id: { _eq: clientId } },
+  }));
+}
+
+

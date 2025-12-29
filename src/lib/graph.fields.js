@@ -66,12 +66,16 @@ export const CLIENT_FIELDS = `
   addressStreetNo
   addressZipCode
   ciName,
-  groupLeader,
-  duplicate,
-  similarityScore,
-  archived,
-  archivedBy,
-  archivedDate,
+  groupLeader
+  duplicate
+  similarityScore
+  archived
+  archivedBy
+  archivedDate
+  duplicateVouchMessage
+  duplicateVouchedBy
+  duplicateVouchedByName
+  duplicateVouchedDate
   `;
 
 export const LOAN_FIELDS = `
