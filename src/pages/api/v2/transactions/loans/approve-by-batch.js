@@ -22,6 +22,8 @@ import {
 import { generateUUID } from "@/lib/utils";
 import moment from "moment";
 import { getCurrentDate, getEndDate } from "@/lib/date-utils";
+import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-service';
+import { findUserById, findBranches } from '@/lib/graph.functions';
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -33,8 +35,57 @@ export default apiHandler({
   post: processData,
 });
 
-async function processData(req, res) {
+/**
+ * Create notification for loan approval
+ * @param {Object} loan - Loan data
+ * @param {string} loanId - Loan ID
+ * @param {string} user_id - User ID who approved the loan
+ */
+async function createLoanApprovalNotification(loan, loanId, user_id) {
+    try {
+        const user = await findUserById(user_id);
+        const branches = await findBranches({ _id: { _eq: loan.branchId } });
+        const branch = branches?.[0];
 
+        if (branch) {
+            const isReloan = loan.loanCycle > 1;
+            
+            await notifyLoanCreated({
+                clientName: loan.fullName,
+                clientId: loan.clientId,
+                loanId: loanId,
+                amount: loan.principalLoan || loan.amountRelease,
+                groupId: loan.groupId,
+                groupName: loan.groupName,
+                branchId: loan.branchId,
+                areaId: branch.areaId,
+                regionId: branch.regionId,
+                divisionId: branch.divisionId,
+                loId: loan.loId,
+                createdBy: user?._id || user_id,
+                createdByName: user ? `${user.firstName} ${user.lastName}` : 'System',
+                isReloan: isReloan,
+                loanCycle: loan.loanCycle
+            });
+
+            logger.debug({
+                page: 'Loan Approval',
+                message: `Notification created for ${isReloan ? 'reloan' : 'new loan'}`,
+                loanId: loanId,
+                clientId: loan.clientId
+            });
+        }
+    } catch (error) {
+        logger.error({
+            page: 'Loan Approval',
+            message: 'Failed to create loan notification',
+            error: error.message,
+            loanId: loanId
+        });
+    }
+}
+
+async function processData(req, res) {
   const mutationList = [];
   const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
 
@@ -93,6 +144,7 @@ async function processData(req, res) {
       };
     }
   } else {
+    const isNotificationEnabledFlag = await isNotificationEnabled();
     const result = await Promise.all(
       loanData.map(async (l) => {
         let loan = { ...l };
@@ -166,6 +218,9 @@ async function processData(req, res) {
               loan._id = loanId;
               
               await saveCashCollection(loan, groupData, currentDate, addToMutationList);
+              if (isNotificationEnabledFlag) {
+                await createLoanApprovalNotification(loan, loanId, req?.auth?.sub);
+              }
             } else if (loan.status === "pending" && loan.preApproved) {
               logger.debug({
                 page: `Loan: ${loan._id}`,

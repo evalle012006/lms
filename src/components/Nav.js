@@ -4,6 +4,7 @@ import {
     LayoutDashboard, 
     Store,
     Banknote,
+    Bell,
     Building,
     Building2,
     BarChart3,
@@ -689,6 +690,18 @@ const MenuItems = [
         ]
     },
     {
+        label: "Notifications",
+        url: "/notifications",
+        icon: {
+            active: (props) => <Bell {...props} />,
+            notActive: (props) => <Bell {...props} />,
+        },
+        active: false,
+        hasSub: false,
+        hidden: false,
+        roles: []
+    },
+    {
         label: "Settings",
         url: "#settings",
         icon: {
@@ -789,7 +802,12 @@ const setStoredCollapseState = (isCollapsed) => {
 };
 
 // Role-based visibility helper
-const isItemVisibleForRole = (item, userShortCode, userRoot, userTransactionType, parentRoles = null) => {
+const isItemVisibleForRole = (item, userShortCode, userRoot, userTransactionType, isNotificationEnabled, parentRoles = null) => {
+  // If notifications are disabled, hide notification-related items
+  if (!isNotificationEnabled && item.label === 'Notifications') {
+    return false;
+  }
+  
   // Root users can see everything except items specifically excluded
   if (userRoot) {
     // Hide daily/weekly transactions for root users, they use BM transactions
@@ -1048,6 +1066,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
   const [state, localDispatch] = useReducer(reducer, initialState);
   const { activePath, isCollapsed, openSubmenus, collapsedDropdown } = state;
   const userState = useSelector(state => state.user.data);
+  const systemSettings = useSelector(state => state.systemSettings?.data);
 
   const getActivePath = useCallback(() => {
     const path = router.asPath.replace("#", "");
@@ -1077,7 +1096,8 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     const userShortCode = userState?.role?.shortCode;
     const userRoot = userState?.root || false;
     const userTransactionType = userState?.transactionType;
-
+    const isNotificationEnabled = systemSettings?.enableNotifications !== false;
+    console.log('Notification setting:', isNotificationEnabled);
     // console.log('🔍 Nav Debug - User info:', {
     //   userShortCode,
     //   userRoot,
@@ -1086,7 +1106,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
 
     // First, filter items based on visibility
     const visibleItems = MenuItems.filter(item => {
-      const isVisible = isItemVisibleForRole(item, userShortCode, userRoot, userTransactionType);
+      const isVisible = isItemVisibleForRole(item, userShortCode, userRoot, userTransactionType, isNotificationEnabled);
       // console.log(`🔍 Nav Debug - Item "${item.label}" visibility:`, {
       //   isVisible,
       //   itemRoles: item.roles,

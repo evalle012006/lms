@@ -6,6 +6,8 @@ import { apiHandler } from '@/services/api-handler';
 import formidable from "formidable";
 import fs from "fs";
 import moment from 'moment';
+import { notifyGroupLeaderUpdated, notifyClientDelinquent, isNotificationEnabled } from '@/lib/notification-service';
+import { findBranches, findGroups } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
@@ -59,6 +61,12 @@ async function updateClient(req, res) {
                     }
                 })
             ).then(res => res.data.clients);
+
+            const isNotificationEnabledFlag = await isNotificationEnabled();
+            // Save previous values for comparison
+            const existingClient = clientData?.[0];
+            const previousGroupLeader = existingClient?.groupLeader || false;
+            const previousDelinquent = existingClient?.delinquent || false;
         
             let file = fields.profile;
 
@@ -127,6 +135,69 @@ async function updateClient(req, res) {
                     }
                 })
             );
+
+            if (isNotificationEnabledFlag) {
+                // Check for group leader change and create notification
+                const newGroupLeader = fields.groupLeader || false;
+                if (previousGroupLeader !== newGroupLeader) {
+                    try {
+                        const branches = await findBranches({ _id: { _eq: fields.branchId || existingClient?.branchId } });
+                        const groups = await findGroups({ _id: { _eq: fields.groupId || existingClient?.groupId } });
+                        const branch = branches?.[0];
+                        const group = groups?.[0];
+
+                        if (branch) {
+                            await notifyGroupLeaderUpdated({
+                                clientName: existingClient?.fullName || `${fields.firstName} ${fields.lastName}`,
+                                clientId: fields._id || existingClient?._id,
+                                groupId: fields.groupId || existingClient?.groupId,
+                                groupName: group?.name || fields.groupName || existingClient?.groupName,
+                                branchId: fields.branchId || existingClient?.branchId,
+                                areaId: branch.areaId,
+                                regionId: branch.regionId,
+                                divisionId: branch.divisionId,
+                                loId: fields.loId || existingClient?.loId,
+                                createdBy: req?.auth?.sub,
+                                createdByName: 'System',
+                                isGroupLeader: newGroupLeader
+                            });
+                            
+                            console.log(`Group leader notification created: ${existingClient?.fullName} - ${newGroupLeader ? 'assigned' : 'removed'}`);
+                        }
+                    } catch (notifError) {
+                        console.error('Failed to create group leader notification:', notifError.message);
+                    }
+                }
+
+                // Check for delinquent status change and create notification
+                const newDelinquent = fields.delinquent || false;
+                if (previousDelinquent !== newDelinquent) {
+                    try {
+                        const branches = await findBranches({ _id: { _eq: fields.branchId || existingClient?.branchId } });
+                        const branch = branches?.[0];
+
+                        if (branch) {
+                            await notifyClientDelinquent({
+                                clientName: existingClient?.fullName || `${fields.firstName} ${fields.lastName}`,
+                                clientId: fields._id || existingClient?._id,
+                                groupId: fields.groupId || existingClient?.groupId,
+                                branchId: fields.branchId || existingClient?.branchId,
+                                areaId: branch.areaId,
+                                regionId: branch.regionId,
+                                divisionId: branch.divisionId,
+                                loId: fields.loId || existingClient?.loId,
+                                createdBy: req?.auth?.sub,
+                                createdByName: 'System',
+                                isDelinquent: newDelinquent
+                            });
+                            
+                            console.log(`Delinquent notification created: ${existingClient?.fullName} - ${newDelinquent ? 'marked' : 'unmarked'}`);
+                        }
+                    } catch (notifError) {
+                        console.error('Failed to create delinquent notification:', notifError.message);
+                    }
+                }
+            }
 
             resolve({ success: true, client: clientData });
         });

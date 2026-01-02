@@ -18,7 +18,9 @@ import {
   ExclamationTriangleIcon,
   ShieldCheckIcon,
   EyeIcon,
-  EyeSlashIcon
+  EyeSlashIcon,
+  BellIcon,
+  CogIcon,
 } from '@heroicons/react/24/outline';
 
 const ModernInput = ({ 
@@ -82,6 +84,140 @@ const ModernInput = ({
   );
 };
 
+const FeatureEnablementCard = ({ values, setFieldValue }) => (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        {/* Card Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-700 px-6 py-4">
+            <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-white mr-3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                <h2 className="text-xl font-semibold text-white">Feature Enablement</h2>
+            </div>
+            <p className="text-purple-100 text-sm mt-1">Enable or disable system features</p>
+        </div>
+        
+        {/* Card Content */}
+        <div className="p-6 space-y-6">
+            {/* Notification System Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-indigo-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-indigo-600">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Notification System
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Enable real-time notifications for important events like new clients, 
+                                loan approvals, withdrawals, and more.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setFieldValue('enableNotifications', !values.enableNotifications)}
+                        className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                            values.enableNotifications ? 'bg-indigo-600' : 'bg-gray-200'
+                        }`}
+                    >
+                        <span
+                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                values.enableNotifications ? 'translate-x-7' : 'translate-x-0'
+                            }`}
+                        />
+                    </button>
+                </div>
+                
+                {/* What gets notified */}
+                {values.enableNotifications && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm font-medium text-gray-700 mb-2">When enabled, users will be notified about:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                New prospect clients
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Loan approvals/rejections
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                MCBU/CSF withdrawals
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Denomination submissions
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Client transfers
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                                <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Fund transfers
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {!values.enableNotifications && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-start space-x-2 text-amber-600 bg-amber-50 p-3 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5 flex-shrink-0 mt-0.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                            </svg>
+                            <div className="text-sm">
+                                <p className="font-medium">Notifications are disabled</p>
+                                <p className="text-amber-500">Users will not receive any in-app notifications. The notification bell and menu will be hidden.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            {/* Placeholder for future features */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 opacity-60">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-gray-200 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-gray-400">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-400">
+                                More Features Coming Soon
+                            </label>
+                            <p className="text-sm text-gray-400 mt-1">
+                                Additional feature toggles will be added here in future updates.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 const ProfileSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
     // Use the correct Redux state path from the screenshot: systemSettings.data
@@ -99,7 +235,8 @@ const ProfileSettingsPage = (props) => {
         branchName: state.branchName || '',
         branchAddress: state.branchAddress || '',
         branchPhoneNumber: state.branchPhoneNumber || '',
-        superPwd: state.superPwd || ''
+        superPwd: state.superPwd || '',
+        enableNotifications: state.enableNotifications ?? false,
     }
 
     const validationSchema = yup.object().shape({
@@ -344,6 +481,10 @@ const ProfileSettingsPage = (props) => {
                                             />
                                         </div>
                                     </div>
+                                </div>
+
+                                <div className="mt-8">
+                                    <FeatureEnablementCard values={values} setFieldValue={setFieldValue} />
                                 </div>
 
                                 {/* Action Buttons */}

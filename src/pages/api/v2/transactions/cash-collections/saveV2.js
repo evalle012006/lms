@@ -5,6 +5,7 @@
  * 1. Date validation (prevents midnight crossover issues)
  * 2. Retry mechanism (handles intermittent failures)
  * 3. Better error logging
+ * 4. Notifications for offset transactions
  * 
  * The core save logic remains unchanged from the original save.js
  */
@@ -16,7 +17,8 @@ import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
-import { findGroups } from '@/lib/graph.functions';
+import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
+import { notifyLoanOffset } from '@/lib/notification-service';
 import moment from 'moment-timezone';
 
 // ============================================
@@ -111,6 +113,7 @@ async function saveWithProtection(req, res) {
         // Step 2: Execute save with retry
         let lastError = null;
         let attempt = 0;
+        let offsetCollections = []; // Track offsets for notifications
 
         while (attempt < MAX_RETRIES) {
             attempt++;
@@ -122,8 +125,8 @@ async function saveWithProtection(req, res) {
                     message: `Save attempt ${attempt}/${MAX_RETRIES}`
                 });
 
-                // Call the actual save logic
-                await executeSave(req, user_id, transactionId);
+                // Call the actual save logic - returns offsetCollections
+                offsetCollections = await executeSave(req, user_id, transactionId);
 
                 // Success!
                 logger.info({
@@ -131,14 +134,11 @@ async function saveWithProtection(req, res) {
                     transactionId,
                     page: 'Cash Collection SaveV2',
                     message: 'Save completed successfully',
-                    attempts: attempt
+                    attempts: attempt,
+                    offsetCount: offsetCollections.length
                 });
 
-                return res.status(200).json({
-                    success: true,
-                    transactionId,
-                    attempts: attempt
-                });
+                break; // Exit retry loop on success
 
             } catch (error) {
                 lastError = error;
@@ -156,8 +156,62 @@ async function saveWithProtection(req, res) {
             }
         }
 
-        // All retries exhausted
-        throw lastError;
+        // If all retries failed, throw the last error
+        if (lastError && attempt >= MAX_RETRIES) {
+            throw lastError;
+        }
+
+        // Create notifications for offset transactions (after successful save)
+        // Note: notifyLoanOffset already checks if notifications are enabled internally
+        if (offsetCollections.length > 0) {
+            for (const offset of offsetCollections) {
+                try {
+                    const user = await findUserById(user_id);
+                    const branches = await findBranches({ _id: { _eq: offset.branchId } });
+                    const branch = branches?.[0];
+
+                    if (branch) {
+                        await notifyLoanOffset({
+                            clientName: offset.fullName,
+                            clientId: offset.clientId,
+                            loanId: offset.loanId,
+                            previousBalance: offset.previousBalance,
+                            groupId: offset.groupId,
+                            branchId: offset.branchId,
+                            areaId: branch.areaId,
+                            regionId: branch.regionId,
+                            divisionId: branch.divisionId,
+                            loId: offset.loId,
+                            createdBy: user?._id || user_id,
+                            createdByName: user ? `${user.firstName} ${user.lastName}` : 'System'
+                        });
+                    }
+                } catch (notifError) {
+                    // Don't fail the transaction if notification fails
+                    logger.error({
+                        user_id,
+                        transactionId,
+                        page: 'Cash Collection SaveV2',
+                        message: 'Failed to create offset notification',
+                        error: notifError.message,
+                        clientId: offset.clientId
+                    });
+                }
+            }
+            
+            logger.debug({
+                user_id,
+                transactionId,
+                page: 'Cash Collection SaveV2',
+                message: `Processed ${offsetCollections.length} offset notifications`
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            transactionId,
+            attempts: attempt
+        });
 
     } catch (error) {
         logger.error({
@@ -186,6 +240,7 @@ async function saveWithProtection(req, res) {
 
 // ============================================
 // ORIGINAL SAVE LOGIC (unchanged from save.js)
+// Returns: Array of offset collections for notification
 // ============================================
 
 async function executeSave(req, user_id, transactionId) {
@@ -196,6 +251,7 @@ async function executeSave(req, user_id, transactionId) {
     const overallTotalNetCollection = data.overallTotalNetCollection || 0;
 
     const mutationQl = [];
+    const offsetCollections = []; // Track offsets for notifications
 
     if (data.collection.length > 0) {
         let existCC = [];
@@ -236,6 +292,18 @@ async function executeSave(req, user_id, transactionId) {
 
                 if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
+                    // Track offset for notification
+                    if (collection?.remarks?.value?.startsWith('offset')) {
+                        offsetCollections.push({
+                            clientId: collection.clientId,
+                            loanId: collection.loanId,
+                            groupId: collection.groupId,
+                            branchId: collection.branchId,
+                            loId: collection.loId,
+                            fullName: loan?.fullName || collection.fullName,
+                            previousBalance: collection.prevData?.loanBalance || loan?.loanBalance || 0
+                        });
+                    }
                 }
 
                 let activeLoan = collection?.activeLoan;
@@ -305,6 +373,9 @@ async function executeSave(req, user_id, transactionId) {
             }
         }
     }
+
+    // Return offset collections for notification processing
+    return offsetCollections;
 }
 
 // ============================================

@@ -9,6 +9,7 @@ import {
   PencilSquareIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/solid';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const Avatar = ({ name, src, className }) => {
   if (src) {
@@ -86,68 +87,59 @@ const HeaderComponent = () => {
         {pageTitle}
       </div>
       
-      <div className="relative" ref={dropdownRef}>
-        <div 
-          className="flex items-center cursor-pointer"
-          onClick={toggleDropdown}
-        >
-          <div className="flex flex-col items-end mr-3">
-            <p className="text-xs text-gray-500">{userState?.email}</p>
-            <div className="flex items-center">
-              {/* <p className="text-sm font-medium text-gray-900 mr-2">{fullName}</p> */}
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
-                {userState?.role?.label || 'User'}
-              </span>
-            </div>
-          </div>
-          
-          <Avatar 
-            name={fullName}
-            src={userState?.profile} 
-          />
-          <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
-        </div>
-        
-        {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-50">
-            {/* User info for mobile view */}
-            <div className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200 md:hidden">
-              <p className="font-medium text-gray-900">{fullName}</p>
-              {/* <p className="text-xs text-gray-500 mt-1">{userState?.email}</p>
-              <div className="mt-1">
+      <div className="flex items-center gap-4">
+        {/* Notification Bell - NEW */}
+        <NotificationBell />
+
+        {/* User Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <div 
+            className="flex items-center cursor-pointer"
+            onClick={toggleDropdown}
+          >
+            <div className="flex flex-col items-end mr-3">
+              <p className="text-xs text-gray-500">{userState?.email}</p>
+              <div className="flex items-center">
                 <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
                   {userState?.role?.label || 'User'}
                 </span>
-              </div> */}
+              </div>
             </div>
             
-            {/* <button 
-              onClick={navigateToProfile}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <PencilSquareIcon className="w-4 h-4 mr-2" />
-              Edit Profile
-            </button> */}
-            
-            {(userState?.role?.rep === 1 || userState?.root) && (
+            <Avatar 
+              name={fullName}
+              src={userState?.profile} 
+            />
+            <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
+          </div>
+          
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-50">
+              {/* User info for mobile view */}
+              <div className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200 md:hidden">
+                <p className="font-medium text-gray-900">{fullName}</p>
+              </div>
+              
+              {(userState?.role?.rep === 1 || userState?.root) && (
+                <button 
+                  onClick={navigateToSettings}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Cog6ToothIcon className="w-4 h-4 mr-2" />
+                  System Settings
+                </button>
+              )}
+              
               <button 
-                onClick={navigateToSettings}
+                onClick={handleLogout}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
-                <Cog6ToothIcon className="w-4 h-4 mr-2" />
-                System Settings
+                <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+                Logout
               </button>
-            )}
-            
-            <button 
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
-              Logout
-            </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

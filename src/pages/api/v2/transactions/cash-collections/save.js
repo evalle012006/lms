@@ -5,7 +5,8 @@ import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
-import { findGroups } from '@/lib/graph.functions';
+import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
+import { isNotificationEnabled, notifyLoanOffset } from '@/lib/notification-service';
 
 const graph = new GraphProvider();
 const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
@@ -18,6 +19,52 @@ export default apiHandler({
     post: save
 });
 
+/**
+ * Create notification for loan offset
+ * @param {Object} collection - Cash collection data
+ * @param {Object} loan - Loan data (if available)
+ * @param {string} user_id - User ID who processed the offset
+ */
+async function createOffsetNotification(collection, loan, user_id) {
+    try {
+        const user = await findUserById(user_id);
+        const branches = await findBranches({ _id: { _eq: collection.branchId } });
+        const branch = branches?.[0];
+
+        if (branch) {
+            await notifyLoanOffset({
+                clientName: loan?.fullName || collection.fullName,
+                clientId: collection.clientId,
+                loanId: collection.loanId,
+                previousBalance: collection.prevData?.loanBalance || loan?.loanBalance || 0,
+                groupId: collection.groupId,
+                branchId: collection.branchId,
+                areaId: branch.areaId,
+                regionId: branch.regionId,
+                divisionId: branch.divisionId,
+                loId: collection.loId,
+                createdBy: user?._id || user_id,
+                createdByName: user ? `${user.firstName} ${user.lastName}` : 'System'
+            });
+
+            logger.debug({
+                user_id,
+                page: 'Cash Collection Save',
+                message: 'Notification created for loan offset',
+                loanId: collection.loanId,
+                clientId: collection.clientId
+            });
+        }
+    } catch (error) {
+        logger.error({
+            user_id,
+            page: 'Cash Collection Save',
+            message: 'Failed to create offset notification',
+            error: error.message
+        });
+    }
+}
+
 async function save(req, res) {
     const user_id = req?.auth?.sub;
     let response = {};
@@ -27,6 +74,7 @@ async function save(req, res) {
     const currentTime = data.currentTime;
     data.collection = JSON.parse(data.collection);
     const overallTotalNetCollection = data.overallTotalNetCollection || 0;
+    const isNotificationEnabledFlag = await isNotificationEnabled();
 
     const mutationQl = [];
 
@@ -110,6 +158,12 @@ async function save(req, res) {
 
                 if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
+                    if (isNotificationEnabledFlag && collection?.remarks?.value?.startsWith('offset')) {
+                        // Use IIFE to handle async notification without blocking
+                        (async () => {
+                            await createOffsetNotification(collection, loan, user_id);
+                        })();
+                    }
                 }
 
                 let activeLoan = collection?.activeLoan;
