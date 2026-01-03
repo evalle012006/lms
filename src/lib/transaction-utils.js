@@ -18,6 +18,7 @@
 import moment from 'moment-timezone';
 import { fetchWrapper } from './fetch-wrapper';
 import { getApiBaseUrl } from './constants';
+import { getSystemDate } from './date-utils';
 
 // Always use Asia/Manila timezone for Philippine operations
 const TIMEZONE = 'Asia/Manila';
@@ -84,7 +85,7 @@ export async function getServerDate() {
  * Uses Asia/Manila timezone for consistency
  */
 export function validateClientDate(transactionDate) {
-    const clientDate = moment().tz(TIMEZONE).format('YYYY-MM-DD');
+    const clientDate = moment(getSystemDate()).tz(TIMEZONE).format('YYYY-MM-DD');
     const txDate = moment.tz(transactionDate, TIMEZONE).format('YYYY-MM-DD');
     
     if (clientDate !== txDate) {

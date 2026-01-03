@@ -20,6 +20,7 @@ import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { notifyLoanOffset } from '@/lib/notification-service';
 import moment from 'moment-timezone';
+import { getSystemDate } from '@/lib/date-utils';
 
 // ============================================
 // CONFIGURATION
@@ -52,7 +53,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Validate that transaction date matches server date (Manila timezone)
  */
 function validateDate(requestDate) {
-    const serverDate = moment().tz(TIMEZONE).format('YYYY-MM-DD');
+    const serverDate = moment(getSystemDate()).tz(TIMEZONE).format('YYYY-MM-DD');
     const clientDate = moment(requestDate).format('YYYY-MM-DD');
     
     if (serverDate !== clientDate) {
