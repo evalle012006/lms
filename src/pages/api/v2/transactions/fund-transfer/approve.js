@@ -4,6 +4,8 @@ import { findUserById } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
 import { apiHandler } from "@/services/api-handler";
+import { isNotificationEnabled, notifyFundTransferApproved, notifyFundTransferRejected } from '@/lib/notification-service';
+import { findBranches } from '@/lib/graph.functions';
 
 export default apiHandler({
     post: approveFundTransfer,
@@ -16,6 +18,7 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
 
 async function approveFundTransfer(req, res) {
     try {
+        const isNotificationEnabledFlag = await isNotificationEnabled();
         // Handle user authentication - use currentUserId if req.auth.sub is null
         const userId = req.auth?.sub || req.body.currentUserId;
         if (!userId) {
@@ -224,7 +227,84 @@ async function approveFundTransfer(req, res) {
 
         const actionText = status === 'approved' ? 'approved' : 'rejected';
         
-        console.log('DEBUG - Successfully updated transfer');
+        if (isNotificationEnabledFlag) {
+            // Create notification for fund transfer approval/rejection
+            try {
+                // Only create notification for FINAL approval/rejection (when main status changes)
+                if (updateSet.status === 'approved' || updateSet.status === 'rejected') {
+                    const giverBranches = await findBranches({ _id: { _eq: data.giverBranchId } });
+                    const receiverBranches = await findBranches({ _id: { _eq: data.receiverBranchId } });
+                    const giverBranch = giverBranches?.[0];
+                    const receiverBranch = receiverBranches?.[0];
+
+                    if (updateSet.status === 'approved') {
+                        // Notify both giver and receiver branches about approval
+                        await notifyFundTransferApproved({
+                            amount: data.amount,
+                            giverBranch: giverBranch?.name || 'Giver Branch',
+                            receiverBranch: receiverBranch?.name || 'Receiver Branch',
+                            branchId: data.giverBranchId,
+                            areaId: giverBranch?.areaId,
+                            regionId: giverBranch?.regionId,
+                            divisionId: giverBranch?.divisionId,
+                            createdBy: user._id,
+                            createdByName: `${user.firstName} ${user.lastName}`
+                        });
+                        
+                        // Also notify receiver branch
+                        await notifyFundTransferApproved({
+                            amount: data.amount,
+                            giverBranch: giverBranch?.name || 'Giver Branch',
+                            receiverBranch: receiverBranch?.name || 'Receiver Branch',
+                            branchId: data.receiverBranchId,
+                            areaId: receiverBranch?.areaId,
+                            regionId: receiverBranch?.regionId,
+                            divisionId: receiverBranch?.divisionId,
+                            createdBy: user._id,
+                            createdByName: `${user.firstName} ${user.lastName}`
+                        });
+                        
+                        console.log('Notifications created for fund transfer approval');
+                    } else if (updateSet.status === 'rejected') {
+                        // Determine rejection reason
+                        const reason = rejectReason || updateSet.giverRejectReason || updateSet.receiverRejectReason || 'Not specified';
+                        
+                        // Notify both branches about rejection
+                        await notifyFundTransferRejected({
+                            amount: data.amount,
+                            giverBranch: giverBranch?.name || 'Giver Branch',
+                            receiverBranch: receiverBranch?.name || 'Receiver Branch',
+                            branchId: data.giverBranchId,
+                            areaId: giverBranch?.areaId,
+                            regionId: giverBranch?.regionId,
+                            divisionId: giverBranch?.divisionId,
+                            createdBy: user._id,
+                            createdByName: `${user.firstName} ${user.lastName}`,
+                            rejectReason: reason
+                        });
+                        
+                        // Also notify receiver branch
+                        await notifyFundTransferRejected({
+                            amount: data.amount,
+                            giverBranch: giverBranch?.name || 'Giver Branch',
+                            receiverBranch: receiverBranch?.name || 'Receiver Branch',
+                            branchId: data.receiverBranchId,
+                            areaId: receiverBranch?.areaId,
+                            regionId: receiverBranch?.regionId,
+                            divisionId: receiverBranch?.divisionId,
+                            createdBy: user._id,
+                            createdByName: `${user.firstName} ${user.lastName}`,
+                            rejectReason: reason
+                        });
+                        
+                        console.log('Notifications created for fund transfer rejection');
+                    }
+                }
+            } catch (notifError) {
+                console.error('Failed to create fund transfer notification:', notifError.message);
+            }
+        }
+
         res.send({
             success: true,
             message: `Fund transfer ${actionText} successfully.`,

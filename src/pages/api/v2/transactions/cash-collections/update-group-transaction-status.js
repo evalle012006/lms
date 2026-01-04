@@ -4,6 +4,8 @@ import { createGraphType, queryQl, updateQl, insertQl } from '@/lib/graph/graph.
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
 import moment from 'moment';
+import { notifyTransactionClosed, notifyBranchTransactionApproved, isNotificationEnabled } from '@/lib/notification-service';
+import { findBranches, findUserById } from '@/lib/graph.functions';
 
 let response = {};
 let statusCode = 200;
@@ -22,13 +24,14 @@ async function processGroupTransactionStatus(req, res) {
 
     // Determine if this is a branch-level or LO-level operation
     const isBranchLevel = !!branchId && !loId;
+    const isNotificationEnabledFlag = await isNotificationEnabled();
 
     if (isBranchLevel) {
         // BRANCH-LEVEL APPROVAL
-        await processBranchApproval(branchId, currentDate, mode, userId, userName, isAdmin);
+        await processBranchApproval(branchId, currentDate, mode, userId, userName, isAdmin, isNotificationEnabledFlag);
     } else if (loId) {
         // LO-LEVEL APPROVAL (existing logic)
-        await processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin);
+        await processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin, isNotificationEnabledFlag);
     } else {
         response = { error: true, message: "Either Branch ID or Loan Officer ID is required." };
         statusCode = 400;
@@ -39,7 +42,7 @@ async function processGroupTransactionStatus(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function processBranchApproval(branchId, dateFor, mode, userId, userName, isAdmin = false) {
+async function processBranchApproval(branchId, dateFor, mode, userId, userName, isAdmin = false, isNotificationEnabledFlag) {
     try {
         // Before closing, verify all LO transactions for this branch are closed
         // Allow admins to bypass this check
@@ -59,6 +62,29 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
         const approvalResult = await handleBranchApproval(branchId, dateFor, mode, userId, userName);
         
         if (approvalResult.success) {
+            // Create notification for branch approval
+            if (isNotificationEnabledFlag && mode === 'close') {
+                try {
+                    const branches = await findBranches({ _id: { _eq: branchId } });
+                    const branch = branches?.[0];
+                    
+                    if (branch) {
+                        await notifyBranchTransactionApproved({
+                            branchName: branch.name,
+                            branchId: branchId,
+                            date: dateFor,
+                            areaId: branch.areaId,
+                            regionId: branch.regionId,
+                            divisionId: branch.divisionId,
+                            createdBy: userId,
+                            createdByName: userName
+                        });
+                    }
+                } catch (notifError) {
+                    console.error('Failed to create branch approval notification:', notifError.message);
+                }
+            }
+
             const actionText = mode === 'close' ? 'locked and approved' : 'unlocked';
             const adminNote = isAdmin ? ' (Admin override)' : '';
             response = { 
@@ -77,7 +103,7 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
     }
 }
 
-async function processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin = false) {
+async function processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin = false, isNotificationEnabledFlag) {
     const dayName = moment(currentDate).format('dddd').toLowerCase();
     const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
 
@@ -207,6 +233,31 @@ async function processLOApproval(loId, branchId, currentDate, currentTime, mode,
         if (result.data.collections.affected_rows === 0) {
             response = { error: true, message: "No transactions found for this Loan Officer." };
         } else {
+            // Create notification for LO transaction close
+            if (isNotificationEnabledFlag && mode === 'close') {
+                try {
+                    const user = await findUserById(loId);
+                    const branches = await findBranches({ _id: { _eq: branchId } });
+                    const branch = branches?.[0];
+                    
+                    if (user && branch) {
+                        await notifyTransactionClosed({
+                            loName: `${user.firstName} ${user.lastName}`,
+                            loId: loId,
+                            date: currentDate,
+                            branchId: branchId,
+                            areaId: branch.areaId,
+                            regionId: branch.regionId,
+                            divisionId: branch.divisionId,
+                            createdBy: loId,
+                            createdByName: `${user.firstName} ${user.lastName}`
+                        });
+                    }
+                } catch (notifError) {
+                    console.error('Failed to create LO transaction close notification:', notifError.message);
+                }
+            }
+
             const adminNote = isAdmin ? ' (Admin override)' : '';
             response = { 
                 success: true,

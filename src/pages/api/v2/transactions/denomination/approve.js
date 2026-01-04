@@ -5,6 +5,8 @@ import { DENOMINATION_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
 import { getSystemDate } from '@/lib/date-utils';
+import { isNotificationEnabled, notifyDenominationApproved, notifyDenominationRejected } from '@/lib/notification-service';
+import { findBranches, findGroups } from '@/lib/graph.functions';
 
 export default apiHandler({
     post: approveDenomination,
@@ -24,6 +26,8 @@ async function approveDenomination(req, res) {
     
     const targetId = id || denominationId;
     const user_role = user.role.rep || userRole;
+
+    const isNotificationEnabledFlag = await isNotificationEnabled();
     
     // ==========================================
     // MODIFIED: Explicitly block cashiers from approving
@@ -124,6 +128,34 @@ async function approveDenomination(req, res) {
         
         console.log('✓ Approval successful');
         console.log('=== APPROVAL COMPLETE ===');
+
+        if (isNotificationEnabledFlag) {
+            // Create notification for denomination approval
+            try {
+                const branches = await findBranches({ _id: { _eq: existingRecord.branch_id } });
+                const groups = await findGroups({ _id: { _eq: existingRecord.group_id } });
+                const branch = branches?.[0];
+                const group = groups?.[0];
+
+                if (branch && group) {
+                    await notifyDenominationApproved({
+                        groupId: existingRecord.group_id,
+                        groupName: group.name,
+                        branchId: existingRecord.branch_id,
+                        areaId: branch.areaId,
+                        regionId: branch.regionId,
+                        divisionId: branch.divisionId,
+                        loId: existingRecord.lo_id,
+                        createdBy: user._id,
+                        createdByName: `${user.firstName} ${user.lastName}`
+                    });
+                    
+                    console.log('Notification created for denomination approval');
+                }
+            } catch (notifError) {
+                console.error('Failed to create denomination approval notification:', notifError.message);
+            }
+        }
         
         res.status(200).json({
             success: true,
@@ -263,6 +295,33 @@ async function rejectDenomination(req, res) {
         if (result.errors && result.errors.length > 0) {
             console.error('GraphQL errors:', result.errors);
             throw new Error(result.errors[0].message);
+        }
+
+        // Create notification for denomination rejection
+        try {
+            const branches = await findBranches({ _id: { _eq: existingRecord.branch_id } });
+            const groups = await findGroups({ _id: { _eq: existingRecord.group_id } });
+            const branch = branches?.[0];
+            const group = groups?.[0];
+
+            if (branch && group) {
+                await notifyDenominationRejected({
+                    groupId: existingRecord.group_id,
+                    groupName: group.name,
+                    branchId: existingRecord.branch_id,
+                    areaId: branch.areaId,
+                    regionId: branch.regionId,
+                    divisionId: branch.divisionId,
+                    loId: existingRecord.lo_id,
+                    createdBy: user._id,
+                    createdByName: `${user.firstName} ${user.lastName}`,
+                    rejectReason: rejectionReason.trim()
+                });
+                
+                console.log('Notification created for denomination rejection');
+            }
+        } catch (notifError) {
+            console.error('Failed to create denomination rejection notification:', notifError.message);
         }
         
         console.log('✓ Rejection successful');

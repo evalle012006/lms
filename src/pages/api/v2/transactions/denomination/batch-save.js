@@ -6,6 +6,8 @@ import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
 import { generateUUID } from '@/lib/utils';
 import { getSystemDate } from '@/lib/date-utils';
+import { isNotificationEnabled, notifyDenominationCreated } from '@/lib/notification-service';
+import { findBranches, findGroups } from '@/lib/graph.functions';
 
 export default apiHandler({
     post: batchSaveDenomination
@@ -21,6 +23,7 @@ async function batchSaveDenomination(req, res) {
 
     const isAdmin = user.role.rep === 1;
     const isCashier = user.role.shortCode === 'cashier';
+    const isNotificationEnabledFlag = await isNotificationEnabled();
     
     if (!isCashier && !isAdmin) {
         return res.status(403).json({
@@ -216,6 +219,8 @@ async function batchSaveDenomination(req, res) {
         
         const mutationList = [];
         const addToMutationList = addToList => mutationList.push(addToList(`mutation_${mutationList.length}`));
+
+        const denominationsToNotify = [];
         
         // Track which groups we're inserting to prevent duplicates within this batch
         const insertingGroups = new Set();
@@ -554,6 +559,18 @@ async function batchSaveDenomination(req, res) {
                         entityId: data.entityId,
                         entityName: data.entityName
                     });
+
+                    if (isNotificationEnabledFlag) {
+                        // Track for notification
+                        denominationsToNotify.push({
+                            groupId: groupId,
+                            groupName: data.entityName,
+                            totalNetCollection: totalNetCollection,
+                            branchId: branchId,
+                            loId: loId,
+                            isNew: true
+                        });
+                    }
                 }
             } catch (error) {
                 console.error(`Error preparing mutation for item ${i + 1}:`, error);
@@ -573,6 +590,38 @@ async function batchSaveDenomination(req, res) {
             await graph.mutation(...mutationList);
             
             console.log('✓ Batch mutations completed successfully');
+        }
+
+        // Create notifications for all denominations
+        if (denominationsToNotify.length > 0) {
+            console.log('\n=== CREATING NOTIFICATIONS ===');
+            console.log('Notifications to create:', denominationsToNotify.length);
+            
+            for (const denom of denominationsToNotify) {
+                try {
+                    const branches = await findBranches({ _id: { _eq: denom.branchId } });
+                    const branch = branches?.[0];
+
+                    if (branch) {
+                        await notifyDenominationCreated({
+                            groupId: denom.groupId,
+                            groupName: denom.groupName,
+                            totalCollection: denom.totalNetCollection,
+                            branchId: denom.branchId,
+                            areaId: branch.areaId,
+                            regionId: branch.regionId,
+                            divisionId: branch.divisionId,
+                            loId: denom.loId,
+                            createdBy: user._id,
+                            createdByName: `${user.firstName} ${user.lastName}`
+                        });
+                    }
+                } catch (notifError) {
+                    console.error(`Notification error for group ${denom.groupId}:`, notifError.message);
+                }
+            }
+            
+            console.log(`✓ Created ${denominationsToNotify.length} denomination notifications`);
         }
         
         console.log('\n=== BATCH SAVE COMPLETE ===');

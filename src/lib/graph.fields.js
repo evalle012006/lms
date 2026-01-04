@@ -212,6 +212,7 @@ export const SETTINGS_FIELDS = `
   companyName
   companyPhoneNumber
   superPwd
+  enableNotifications
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -631,4 +632,26 @@ export const MANAGEMENT_TRANSACTION_FIELD = `
         firstName
         lastName
     }
+`;
+
+export const NOTIFICATION_FIELDS = `
+  _id
+  type
+  title
+  message
+  data
+  division_id
+  region_id
+  area_id
+  branch_id
+  lo_id
+  client_id
+  loan_id
+  group_id
+  created_by
+  created_by_name
+  read_by
+  is_read
+  date_added
+  date_modified
 `;

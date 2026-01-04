@@ -5,6 +5,8 @@ import { MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS } from "@/lib/graph.fields";
 import { filterGraphFields } from '@/lib/graph.functions';
 import { generateUUID } from '@/lib/utils';
 import logger from '@/logger';
+import { isNotificationEnabled, notifyWithdrawal } from '@/lib/notification-service';
+import { findUserById, findBranches, findClients } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 
@@ -19,6 +21,97 @@ const loansType = createGraphType('loans', LOAN_FIELDS);
 export default apiHandler({
   post: save,
 });
+
+/**
+ * Create notification for MCBU or CSF withdrawal
+ * @param {Object} params - Withdrawal parameters
+ */
+async function createWithdrawalNotification({
+    client_id,
+    loan_id,
+    branch_id,
+    group_id,
+    lo_id,
+    division_id,
+    region_id,
+    area_id,
+    mcbuAmount,
+    csfAmount,
+    user_id
+}) {
+    try {
+        const user = await findUserById(user_id);
+        const branches = await findBranches({ _id: { _eq: branch_id } });
+        const clients = await findClients({ _id: { _eq: client_id } });
+        const branch = branches?.[0];
+        const client = clients?.[0];
+
+        if (branch && client) {
+            const clientName = client.fullName || `${client.firstName} ${client.lastName}`;
+            
+            // Notify for MCBU withdrawal if amount > 0
+            if (mcbuAmount > 0) {
+                await notifyWithdrawal({
+                    clientName,
+                    clientId: client_id,
+                    loanId: loan_id,
+                    amount: mcbuAmount,
+                    groupId: group_id,
+                    branchId: branch_id,
+                    areaId: branch.areaId || area_id,
+                    regionId: branch.regionId || region_id,
+                    divisionId: branch.divisionId || division_id,
+                    loId: lo_id,
+                    createdBy: user?._id || user_id,
+                    createdByName: user ? `${user.firstName} ${user.lastName}` : 'System',
+                    isCsf: false
+                });
+                
+                logger.debug({
+                    user_id,
+                    page: 'MCBU Withdrawal Save',
+                    message: 'Notification created for MCBU withdrawal',
+                    amount: mcbuAmount,
+                    clientId: client_id
+                });
+            }
+            
+            // Notify for CSF withdrawal if amount > 0
+            if (csfAmount > 0) {
+                await notifyWithdrawal({
+                    clientName,
+                    clientId: client_id,
+                    loanId: loan_id,
+                    amount: csfAmount,
+                    groupId: group_id,
+                    branchId: branch_id,
+                    areaId: branch.areaId || area_id,
+                    regionId: branch.regionId || region_id,
+                    divisionId: branch.divisionId || division_id,
+                    loId: lo_id,
+                    createdBy: user?._id || user_id,
+                    createdByName: user ? `${user.firstName} ${user.lastName}` : 'System',
+                    isCsf: true
+                });
+                
+                logger.debug({
+                    user_id,
+                    page: 'MCBU Withdrawal Save',
+                    message: 'Notification created for CSF withdrawal',
+                    amount: csfAmount,
+                    clientId: client_id
+                });
+            }
+        }
+    } catch (error) {
+        logger.error({
+            user_id,
+            page: 'MCBU Withdrawal Save',
+            message: 'Failed to create withdrawal notification',
+            error: error.message
+        });
+    }
+}
 
 async function save(req, res) {
   try {
@@ -52,6 +145,8 @@ async function save(req, res) {
     // Parse withdrawal amounts
     const mcbuAmount = parseFloat(mcbu_withdrawal_amount) || 0;
     const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
+
+    const isNotificationEnabledFlag = await isNotificationEnabled();
     
     // Updated validation: Allow MCBU to be 0 if group leader has CSF withdrawal > 0
     if (mcbuAmount <= 0 && (!group_leader || (group_leader && csfAmount <= 0))) {
@@ -186,6 +281,30 @@ async function save(req, res) {
     }
     
     const savedWithdrawal = result.data.mcbu_withdrawals.returning[0];
+    if (isNotificationEnabledFlag) {
+      try {
+          await createWithdrawalNotification({
+              client_id,
+              loan_id,
+              branch_id,
+              group_id,
+              lo_id,
+              division_id,
+              region_id,
+              area_id,
+              mcbuAmount,
+              csfAmount,
+              user_id
+          });
+      } catch (notifError) {
+          logger.error({
+              user_id,
+              page: 'MCBU Withdrawal Save',
+              message: 'Failed to create withdrawal notification',
+              error: notifError.message
+          });
+      }
+    }
     
     return res.status(200).json({
       success: true,
