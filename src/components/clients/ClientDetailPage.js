@@ -143,31 +143,52 @@ const ClientDetailPage = () => {
 
         setLoading(true);
         try {
+            // Step 1: Upload file to /api/upload (same as AddUpdateClientDrawer.js)
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('clientId', client._id);
+            formData.append('origin', 'clients');  // Changed from 'clientId'
+            formData.append('uuid', client._id);   // Changed from 'clientId' to 'uuid'
 
-            const response = await fetch(`${getApiBaseUrl()}clients/upload-profile`, {
+            const uploadResponse = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
             });
 
-            const result = await response.json();
+            if (!uploadResponse.ok) {
+                throw new Error('Upload failed');
+            }
+
+            const uploadResult = await uploadResponse.json();
             
-            if (result.success) {
-                const updatedClient = { ...client, profile: result.client?.profile ? result.client.profile : '' };
-                dispatch(setClient(updatedClient));
-                setImageSrc(updatedClient.profile || placeholder);
+            if (!uploadResult.fileUrl) {
+                throw new Error('No file URL returned');
+            }
+
+            // Step 2: Update client record with the new profile URL
+            const updatedClientData = { ...client, profile: uploadResult.fileUrl };
+            const updateResponse = await fetchWrapper.sendData(
+                getApiBaseUrl() + 'clients/', 
+                updatedClientData
+            );
+
+            if (updateResponse.success) {
+                // Update Redux state
+                dispatch(setClient({ ...client, profile: uploadResult.fileUrl }));
+                setImageSrc(uploadResult.fileUrl);
                 setImageError(false);
                 toast.success('Photo successfully updated.');
             } else {
-                toast.error(result.message || 'Failed to update client profile');
+                toast.error(updateResponse.message || 'Failed to update client profile');
             }
         } catch (error) {
             console.error('Error uploading file:', error);
             toast.error('Failed to upload file. Please try again.');
         } finally {
             setLoading(false);
+            // Reset file input to allow re-uploading same file
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 

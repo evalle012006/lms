@@ -46,16 +46,26 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export const checkFileSize = (size) => {
-    let msg;
-
-    const fileSize = Math.round((size / 1024));
+export const checkFileSize = (fileOrSize, maxMB) => {
+    const sizeInBytes = typeof fileOrSize === 'object' ? fileOrSize?.size : fileOrSize;
     
-    if (fileSize > 1028) {
-        msg = 'File too big, please select a file less than 1mb';
+    if (!sizeInBytes) {
+        return maxMB !== undefined ? true : undefined;
     }
-
-    return msg;
+    
+    // New usage: checkFileSize(file, 5) returns boolean
+    if (maxMB !== undefined) {
+        const maxBytes = maxMB * 1024 * 1024;
+        return sizeInBytes <= maxBytes;
+    }
+    
+    // Legacy usage: checkFileSize(size) returns error message or undefined
+    const maxBytesLegacy = 5 * 1024 * 1024;
+    if (sizeInBytes > maxBytesLegacy) {
+        return 'File too big, please select a file less than 5MB';
+    }
+    
+    return undefined;
 }
 
 export const formatPricePhp = (num) => {
