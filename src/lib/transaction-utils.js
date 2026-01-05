@@ -84,8 +84,9 @@ export async function getServerDate() {
  * Validate that the client date matches the transaction date
  * Uses Asia/Manila timezone for consistency
  */
-export function validateClientDate(transactionDate) {
-    const clientDate = moment(getSystemDate()).tz(TIMEZONE).format('YYYY-MM-DD');
+export async function validateClientDate(transactionDate) {
+    const clientDate = await getServerDate();
+    // const clientDate = moment(getServerDate()).tz(TIMEZONE).format('YYYY-MM-DD');
     const txDate = moment.tz(transactionDate, TIMEZONE).format('YYYY-MM-DD');
     
     if (clientDate !== txDate) {
@@ -187,7 +188,7 @@ export async function saveCashCollectionWithRetry(data, options = {}) {
     }
     
     // Validate client date
-    const dateValidation = validateClientDate(data.currentDate);
+    const dateValidation = await validateClientDate(data.currentDate);
     if (!dateValidation.valid) {
         const error = new TransactionError(
             dateValidation.reason,
