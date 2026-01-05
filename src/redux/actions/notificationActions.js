@@ -88,7 +88,7 @@ export const fetchNotifications = ({
         const { user } = getState();
         const currentUser = user?.data;
 
-        console.log('fetchNotifications: currentUser', currentUser);
+        // console.log('fetchNotifications: currentUser', currentUser);
 
         if (!currentUser) {
             console.log('fetchNotifications: No current user, aborting');
@@ -108,17 +108,17 @@ export const fetchNotifications = ({
             divisionId: currentUser.divisionId || ''
         });
 
-        console.log('fetchNotifications: Making API call with params', queryParams.toString());
+        // console.log('fetchNotifications: Making API call with params', queryParams.toString());
 
         const response = await fetchWrapper.get(`/api/v2/notifications/list?${queryParams}`);
 
         console.log('fetchNotifications: API Response', response);
 
         if (response.success) {
-            console.log('fetchNotifications: Success! Dispatching actions...');
-            console.log('  - notifications:', response.notifications);
-            console.log('  - unreadCount:', response.unreadCount);
-            console.log('  - total:', response.total);
+            // console.log('fetchNotifications: Success! Dispatching actions...');
+            // console.log('  - notifications:', response.notifications);
+            // console.log('  - unreadCount:', response.unreadCount);
+            // console.log('  - total:', response.total);
             
             if (append) {
                 dispatch(appendNotifications(response.notifications || []));
@@ -128,9 +128,9 @@ export const fetchNotifications = ({
             dispatch(setUnreadCount(response.unreadCount || 0));
             dispatch(setNotificationsTotal(response.total || 0));
             
-            console.log('fetchNotifications: Actions dispatched');
+            // console.log('fetchNotifications: Actions dispatched');
         } else {
-            console.log('fetchNotifications: API returned success=false', response.message);
+            // console.log('fetchNotifications: API returned success=false', response.message);
             dispatch(setNotificationsError(response.message || 'Failed to fetch notifications'));
         }
 
@@ -151,7 +151,7 @@ export const fetchUnreadCount = () => async (dispatch, getState) => {
         const currentUser = user?.data;
 
         if (!currentUser) {
-            console.log('fetchUnreadCount: No current user');
+            // console.log('fetchUnreadCount: No current user');
             return;
         }
 
@@ -167,11 +167,11 @@ export const fetchUnreadCount = () => async (dispatch, getState) => {
             divisionId: currentUser.divisionId || ''
         });
 
-        console.log('fetchUnreadCount: Making API call');
+        // console.log('fetchUnreadCount: Making API call');
 
         const response = await fetchWrapper.get(`/api/v2/notifications/list?${queryParams}`);
 
-        console.log('fetchUnreadCount: Response', response);
+        // console.log('fetchUnreadCount: Response', response);
 
         if (response.success) {
             dispatch(setUnreadCount(response.unreadCount || 0));

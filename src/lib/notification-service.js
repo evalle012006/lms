@@ -1,5 +1,5 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { filterGraphFields } from '@/lib/graph.functions';
 import moment from 'moment';
