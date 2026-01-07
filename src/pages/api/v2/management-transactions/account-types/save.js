@@ -43,7 +43,7 @@ async function save(req, res) {
             const result = await graph.mutation(
                 updateQl(managementAccountTypesType(), {
                     where: { _id: { _eq: typeId } },
-                    _set: updateData
+                    set: updateData
                 })
             );
 

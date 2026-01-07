@@ -37,7 +37,7 @@ async function deleteAccountType(req, res) {
         const result = await graph.mutation(
             updateQl(managementAccountTypesType(), {
                 where: { _id: { _eq: typeId } },
-                _set: updateData
+                set: updateData
             })
         );
 
