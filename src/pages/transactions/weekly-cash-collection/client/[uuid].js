@@ -43,6 +43,7 @@ import SaveProgressModal, { useSaveProgress } from '@/lib/ui/SaveProgressModal';
 import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseModal';
 import EditMcbuCsfWithdrawalModal from '@/components/transactions/EditMcbuCsfWithdrawalModal';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { useMemo } from 'react';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -72,6 +73,7 @@ const CashCollectionDetailsPage = () => {
     const currentMonth = moment(currentDate).month();
     const currentTime = useSelector(state => state.systemSettings.currentTime);
     const [dateFilter, setDateFilter] = useState(currentDate);
+    const dateFilterMonth = useMemo(() => moment(dateFilter).month(), [dateFilter])
     const [loan, setLoan] = useState();
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
@@ -4015,7 +4017,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Other Income Passbook/Picture</th>
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         <th className="p-2 text-center">CSF Withdrawal</th>
-                                        {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
+                                        {dateFilterMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU/CSF Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Total Net Collection</th>
@@ -4197,7 +4199,7 @@ const CashCollectionDetailsPage = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                {currentMonth === 11 && (
+                                                {dateFilterMonth === 11 && (
                                                     <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
                                                         {mcbuInterestLoading && cc.slotNo === selectedSlot?.slotNo ? (
                                                             <div className="flex items-center justify-end">
