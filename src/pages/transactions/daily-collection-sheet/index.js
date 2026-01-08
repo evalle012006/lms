@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { Download, Calendar, Building2, User, FileSpreadsheet } from 'lucide-react';
@@ -12,22 +12,68 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { formatPricePhp } from '@/lib/utils';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from '@/styles/select';
+import { setBranchList } from '@/redux/actions/branchActions';
 
 const DailyCollectionSheet = () => {
+    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const currentBranch = useSelector(state => state.branch.data);
+    const branchList = useSelector(state => state.branch.list);
 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState([]);
+    const [branchData, setBranchData] = useState([]); // For admin branch-level view
     const [totals, setTotals] = useState(null);
     const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
     const [selectedLo, setSelectedLo] = useState(null);
     const [loanOfficers, setLoanOfficers] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState(null);
 
+    // Check if current user is Admin (rep = 1)
+    const isAdmin = currentUser?.role?.rep === 1;
     // Check if current user is a Loan Officer (rep = 4)
     const isLoanOfficer = currentUser?.role?.rep === 4;
     // Check if current user is Branch Manager (rep = 3)
     const isBranchManager = currentUser?.role?.rep === 3;
+    // Check if admin is viewing all branches (no branch selected)
+    const isAdminAllBranches = isAdmin && !selectedBranch;
+
+    // Fetch branch list for admin
+    const getListBranch = useCallback(async () => {
+        if (!currentUser) return;
+        
+        try {
+            let url = getApiBaseUrl() + 'branches/list';
+
+            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+                url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+            }
+            
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push({
+                        ...branch
+                    });
+                });
+                
+                dispatch(setBranchList(branches));
+            } else {
+                toast.error('Error retrieving branches list.');
+            }
+        } catch (error) {
+            console.error('Error fetching branches:', error);
+            toast.error('Error fetching branches');
+        }
+    }, [currentUser, dispatch]);
+
+    // Fetch branch list on mount for admin
+    useEffect(() => {
+        if (isAdmin && (!branchList || branchList.length === 0)) {
+            getListBranch();
+        }
+    }, [isAdmin, branchList, getListBranch]);
 
     const modernSelectStyles = {
         ...borderStyles,
@@ -273,135 +319,235 @@ const DailyCollectionSheet = () => {
         }
     };
 
-    // Fetch loan officers for BM on mount
+    // Fetch loan officers for BM on mount or Admin when branch is selected
     useEffect(() => {
         if (isBranchManager && currentUser?.designatedBranchId) {
             fetchLoanOfficers(currentUser.designatedBranchId);
+        } else if (isAdmin && selectedBranch?._id) {
+            fetchLoanOfficers(selectedBranch._id);
+        } else if (!isAdmin && !isBranchManager && !isLoanOfficer && currentBranch?._id) {
+            // Other roles (rep = 2) use currentBranch
+            fetchLoanOfficers(currentBranch._id);
         }
-    }, [isBranchManager, currentUser?.designatedBranchId, fetchLoanOfficers]);
+    }, [isBranchManager, isAdmin, isLoanOfficer, currentUser?.designatedBranchId, selectedBranch?._id, currentBranch?._id, fetchLoanOfficers]);
 
-    // Auto-fetch data when component mounts or date/LO filter changes
+    // Auto-fetch data when component mounts or date/LO/branch filter changes
     useEffect(() => {
         const fetchData = async () => {
             if (!currentUser) return;
 
-            // Determine branch_id and lo_id based on role
-            let branchId = null;
-            let loId = null;
-
-            if (currentUser?.role?.rep === 4) {
-                // LO (rep = 4): query by lo_id
-                branchId = currentUser.designatedBranchId;
-                loId = currentUser._id;
-            } else if (currentUser?.role?.rep === 3) {
-                // BM (rep = 3): query by branch_id, optionally filter by selected LO
-                branchId = currentUser.designatedBranchId;
-                loId = selectedLo?._id || null;
-            } else {
-                // Higher roles: use currentBranch
-                branchId = currentBranch?._id;
-                loId = selectedLo?._id || null;
-            }
-
-            if (!branchId) {
-                setLoading(false);
-                return;
+            // For admin without selected branch, wait for branchList to load
+            if (isAdmin && !selectedBranch) {
+                if (!branchList || branchList.length === 0) {
+                    // branchList not loaded yet, will re-run when it's available
+                    setLoading(false);
+                    return;
+                }
             }
 
             setLoading(true);
+            
             try {
-                const params = new URLSearchParams({
-                    branch_id: branchId,
-                    selected_date: selectedDate
-                });
-
-                if (loId) {
-                    params.append('lo_id', loId);
-                }
-
-                const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_daily_collection_sheet?' + params.toString());
-                
-                if (response.data && Array.isArray(response.data)) {
-                    const processedData = response.data.map(item => {
-                        const d = item.data || item;
-                        return {
-                            loId: item.loId || item.lo_id,
-                            loName: item.loName || item.lo_name,
-                            groupId: item.groupId || item.group_id,
-                            groupName: item.groupName || item.group_name,
-                            mcbuTarget: parseFloat(d.mcbuTarget || d.mcbu_target) || 0,
-                            mcbuActual: parseFloat(d.mcbuActual || d.mcbu_actual) || 0,
-                            regularLoanTarget: parseFloat(d.regularLoanTarget || d.regular_loan_target) || 0,
-                            regularLoanAdvance: parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
-                            regularLoanActual: parseFloat(d.regularLoanActual || d.regular_loan_actual) || 0,
-                            otherLoanTarget: parseFloat(d.otherLoanTarget || d.other_loan_target) || 0,
-                            otherLoanAdvance: parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0,
-                            otherLoanActual: parseFloat(d.otherLoanActual || d.other_loan_actual) || 0,
-                            admissionNo: parseInt(d.admissionNo || d.admission_no) || 0,
-                            admissionAmount: parseFloat(d.admissionAmount || d.admission_amount) || 0,
-                            lrfCollection: parseFloat(d.lrfCollection || d.lrf_collection) || 0,
-                            cbhbNo: parseInt(d.cbhbNo || d.cbhb_no) || 0,
-                            cbhbAmount: parseFloat(d.cbhbAmount || d.cbhb_amount) || 0,
-                            addHospitalization: parseFloat(d.addHospitalization || d.add_hospitalization) || 0,
-                            otherIncome: parseFloat(d.otherIncome || d.other_income) || 0,
-                            totalCollection: parseFloat(d.totalCollection || d.total_collection) || 0,
-                            mcbuWithdrawal: parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0,
-                            mcbuReturnNo: parseInt(d.mcbuReturnNo || d.mcbu_return_no) || 0,
-                            mcbuReturnAmount: parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0,
-                            netCollection: parseFloat(d.netCollection || d.net_collection) || 0,
-                            renewalNo: parseInt(d.renewalNo || d.renewal_no) || 0,
-                            renewalAmount: parseFloat(d.renewalAmount || d.renewal_amount) || 0,
-                            offsetNo: parseInt(d.offsetNo || d.offset_no) || 0,
-                            offsetAmount: parseFloat(d.offsetAmount || d.offset_amount) || 0,
-                            fullPaymentClients: parseInt(d.fullPaymentClients || d.full_payment_clients) || 0,
-                            activeClients: parseInt(d.activeClients || d.active_clients) || 0,
-                            activeBorrowers: parseInt(d.activeBorrowers || d.active_borrowers) || 0,
-                            totalLoanBalance: parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0,
-                            mcbuBalance: parseFloat(d.mcbuBalance || d.mcbu_balance) || 0,
-                            pastDueNo: parseInt(d.pastDueNo || d.past_due_no) || 0,
-                            pastDueAmount: parseFloat(d.pastDueAmount || d.past_due_amount) || 0,
-                            mispayCount: parseInt(d.mispayCount || d.mispay_count) || 0,
-                            pendingClients: parseInt(d.pendingClients || d.pending_clients) || 0,
-                            transferClients: parseInt(d.transferClients || d.transfer_clients) || 0
-                        };
-                    });
-
-                    // Group data by loId and add group numbering
-                    const groupedByLo = {};
-                    processedData.forEach(item => {
-                        if (!groupedByLo[item.loId]) {
-                            groupedByLo[item.loId] = {
-                                loId: item.loId,
-                                loName: item.loName,
-                                groups: []
-                            };
+                // Admin viewing ALL branches - aggregate per branch
+                if (isAdmin && !selectedBranch && branchList && branchList.length > 0) {
+                    const branchResults = [];
+                    
+                    // Fetch data for each branch
+                    for (const branch of branchList) {
+                        const params = new URLSearchParams({
+                            branch_id: branch._id,
+                            selected_date: selectedDate
+                        });
+                        
+                        try {
+                            const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_daily_collection_sheet?' + params.toString());
+                            
+                            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                                // Aggregate all data for this branch
+                                const branchTotals = response.data.reduce((acc, item) => {
+                                    const d = item.data || item;
+                                    return {
+                                        mcbuTarget: (acc.mcbuTarget || 0) + (parseFloat(d.mcbuTarget || d.mcbu_target) || 0),
+                                        mcbuActual: (acc.mcbuActual || 0) + (parseFloat(d.mcbuActual || d.mcbu_actual) || 0),
+                                        regularLoanTarget: (acc.regularLoanTarget || 0) + (parseFloat(d.regularLoanTarget || d.regular_loan_target) || 0),
+                                        regularLoanAdvance: (acc.regularLoanAdvance || 0) + (parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0),
+                                        regularLoanActual: (acc.regularLoanActual || 0) + (parseFloat(d.regularLoanActual || d.regular_loan_actual) || 0),
+                                        otherLoanTarget: (acc.otherLoanTarget || 0) + (parseFloat(d.otherLoanTarget || d.other_loan_target) || 0),
+                                        otherLoanAdvance: (acc.otherLoanAdvance || 0) + (parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0),
+                                        otherLoanActual: (acc.otherLoanActual || 0) + (parseFloat(d.otherLoanActual || d.other_loan_actual) || 0),
+                                        admissionNo: (acc.admissionNo || 0) + (parseInt(d.admissionNo || d.admission_no) || 0),
+                                        admissionAmount: (acc.admissionAmount || 0) + (parseFloat(d.admissionAmount || d.admission_amount) || 0),
+                                        lrfCollection: (acc.lrfCollection || 0) + (parseFloat(d.lrfCollection || d.lrf_collection) || 0),
+                                        cbhbNo: (acc.cbhbNo || 0) + (parseInt(d.cbhbNo || d.cbhb_no) || 0),
+                                        cbhbAmount: (acc.cbhbAmount || 0) + (parseFloat(d.cbhbAmount || d.cbhb_amount) || 0),
+                                        addHospitalization: (acc.addHospitalization || 0) + (parseFloat(d.addHospitalization || d.add_hospitalization) || 0),
+                                        otherIncome: (acc.otherIncome || 0) + (parseFloat(d.otherIncome || d.other_income) || 0),
+                                        totalCollection: (acc.totalCollection || 0) + (parseFloat(d.totalCollection || d.total_collection) || 0),
+                                        mcbuWithdrawal: (acc.mcbuWithdrawal || 0) + (parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0),
+                                        mcbuReturnNo: (acc.mcbuReturnNo || 0) + (parseInt(d.mcbuReturnNo || d.mcbu_return_no) || 0),
+                                        mcbuReturnAmount: (acc.mcbuReturnAmount || 0) + (parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0),
+                                        netCollection: (acc.netCollection || 0) + (parseFloat(d.netCollection || d.net_collection) || 0),
+                                        renewalNo: (acc.renewalNo || 0) + (parseInt(d.renewalNo || d.renewal_no) || 0),
+                                        renewalAmount: (acc.renewalAmount || 0) + (parseFloat(d.renewalAmount || d.renewal_amount) || 0),
+                                        offsetNo: (acc.offsetNo || 0) + (parseInt(d.offsetNo || d.offset_no) || 0),
+                                        offsetAmount: (acc.offsetAmount || 0) + (parseFloat(d.offsetAmount || d.offset_amount) || 0),
+                                        fullPaymentClients: (acc.fullPaymentClients || 0) + (parseInt(d.fullPaymentClients || d.full_payment_clients) || 0),
+                                        activeClients: (acc.activeClients || 0) + (parseInt(d.activeClients || d.active_clients) || 0),
+                                        activeBorrowers: (acc.activeBorrowers || 0) + (parseInt(d.activeBorrowers || d.active_borrowers) || 0),
+                                        totalLoanBalance: (acc.totalLoanBalance || 0) + (parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0),
+                                        mcbuBalance: (acc.mcbuBalance || 0) + (parseFloat(d.mcbuBalance || d.mcbu_balance) || 0),
+                                        pastDueNo: (acc.pastDueNo || 0) + (parseInt(d.pastDueNo || d.past_due_no) || 0),
+                                        pastDueAmount: (acc.pastDueAmount || 0) + (parseFloat(d.pastDueAmount || d.past_due_amount) || 0),
+                                        mispayCount: (acc.mispayCount || 0) + (parseInt(d.mispayCount || d.mispay_count) || 0),
+                                        pendingClients: (acc.pendingClients || 0) + (parseInt(d.pendingClients || d.pending_clients) || 0),
+                                        transferClients: (acc.transferClients || 0) + (parseInt(d.transferClients || d.transfer_clients) || 0)
+                                    };
+                                }, {});
+                                
+                                branchResults.push({
+                                    branchId: branch._id,
+                                    branchCode: branch.code || branch.branchCode || '-',
+                                    branchName: branch.name,
+                                    ...branchTotals
+                                });
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching data for branch ${branch.name}:`, err);
                         }
-                        groupedByLo[item.loId].groups.push(item);
+                    }
+                    
+                    // Sort by branch code
+                    branchResults.sort((a, b) => (a.branchCode || '').localeCompare(b.branchCode || ''));
+                    
+                    setBranchData(branchResults);
+                    setData([]);
+                    setTotals(calculateTotals(branchResults));
+                } else {
+                    // Standard view (per LO/group) for other cases
+                    let branchId = null;
+                    let loId = null;
+
+                    if (currentUser?.role?.rep === 4) {
+                        // LO: use designatedBranchId
+                        branchId = currentUser.designatedBranchId;
+                        loId = currentUser._id;
+                    } else if (currentUser?.role?.rep === 3) {
+                        // BM: use designatedBranchId
+                        branchId = currentUser.designatedBranchId;
+                        loId = selectedLo?._id || null;
+                    } else if (currentUser?.role?.rep === 1 && selectedBranch) {
+                        // Admin with selected branch
+                        branchId = selectedBranch._id;
+                        loId = selectedLo?._id || null;
+                    } else {
+                        // Other roles (rep = 2): use currentBranch
+                        branchId = currentBranch?._id;
+                        loId = selectedLo?._id || null;
+                    }
+
+                    if (!branchId) {
+                        setLoading(false);
+                        setBranchData([]);
+                        setData([]);
+                        return;
+                    }
+
+                    const params = new URLSearchParams({
+                        branch_id: branchId,
+                        selected_date: selectedDate
                     });
 
-                    // Flatten with group numbers and row span info
-                    const flattenedData = [];
-                    Object.values(groupedByLo).forEach(lo => {
-                        lo.groups.forEach((group, idx) => {
-                            flattenedData.push({
-                                ...group,
-                                groupNo: idx + 1,
-                                isFirstInLo: idx === 0,
-                                loRowSpan: lo.groups.length
+                    if (loId) {
+                        params.append('lo_id', loId);
+                    }
+
+                    const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_daily_collection_sheet?' + params.toString());
+                
+                    if (response.data && Array.isArray(response.data)) {
+                        const processedData = response.data.map(item => {
+                            const d = item.data || item;
+                            return {
+                                loId: item.loId || item.lo_id,
+                                loName: item.loName || item.lo_name,
+                                groupId: item.groupId || item.group_id,
+                                groupName: item.groupName || item.group_name,
+                                mcbuTarget: parseFloat(d.mcbuTarget || d.mcbu_target) || 0,
+                                mcbuActual: parseFloat(d.mcbuActual || d.mcbu_actual) || 0,
+                                regularLoanTarget: parseFloat(d.regularLoanTarget || d.regular_loan_target) || 0,
+                                regularLoanAdvance: parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
+                                regularLoanActual: parseFloat(d.regularLoanActual || d.regular_loan_actual) || 0,
+                                otherLoanTarget: parseFloat(d.otherLoanTarget || d.other_loan_target) || 0,
+                                otherLoanAdvance: parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0,
+                                otherLoanActual: parseFloat(d.otherLoanActual || d.other_loan_actual) || 0,
+                                admissionNo: parseInt(d.admissionNo || d.admission_no) || 0,
+                                admissionAmount: parseFloat(d.admissionAmount || d.admission_amount) || 0,
+                                lrfCollection: parseFloat(d.lrfCollection || d.lrf_collection) || 0,
+                                cbhbNo: parseInt(d.cbhbNo || d.cbhb_no) || 0,
+                                cbhbAmount: parseFloat(d.cbhbAmount || d.cbhb_amount) || 0,
+                                addHospitalization: parseFloat(d.addHospitalization || d.add_hospitalization) || 0,
+                                otherIncome: parseFloat(d.otherIncome || d.other_income) || 0,
+                                totalCollection: parseFloat(d.totalCollection || d.total_collection) || 0,
+                                mcbuWithdrawal: parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0,
+                                mcbuReturnNo: parseInt(d.mcbuReturnNo || d.mcbu_return_no) || 0,
+                                mcbuReturnAmount: parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0,
+                                netCollection: parseFloat(d.netCollection || d.net_collection) || 0,
+                                renewalNo: parseInt(d.renewalNo || d.renewal_no) || 0,
+                                renewalAmount: parseFloat(d.renewalAmount || d.renewal_amount) || 0,
+                                offsetNo: parseInt(d.offsetNo || d.offset_no) || 0,
+                                offsetAmount: parseFloat(d.offsetAmount || d.offset_amount) || 0,
+                                fullPaymentClients: parseInt(d.fullPaymentClients || d.full_payment_clients) || 0,
+                                activeClients: parseInt(d.activeClients || d.active_clients) || 0,
+                                activeBorrowers: parseInt(d.activeBorrowers || d.active_borrowers) || 0,
+                                totalLoanBalance: parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0,
+                                mcbuBalance: parseFloat(d.mcbuBalance || d.mcbu_balance) || 0,
+                                pastDueNo: parseInt(d.pastDueNo || d.past_due_no) || 0,
+                                pastDueAmount: parseFloat(d.pastDueAmount || d.past_due_amount) || 0,
+                                mispayCount: parseInt(d.mispayCount || d.mispay_count) || 0,
+                                pendingClients: parseInt(d.pendingClients || d.pending_clients) || 0,
+                                transferClients: parseInt(d.transferClients || d.transfer_clients) || 0
+                            };
+                        });
+
+                        // Group data by loId and add group numbering
+                        const groupedByLo = {};
+                        processedData.forEach(item => {
+                            if (!groupedByLo[item.loId]) {
+                                groupedByLo[item.loId] = {
+                                    loId: item.loId,
+                                    loName: item.loName,
+                                    groups: []
+                                };
+                            }
+                            groupedByLo[item.loId].groups.push(item);
+                        });
+
+                        // Flatten with group numbers and row span info
+                        const flattenedData = [];
+                        Object.values(groupedByLo).forEach(lo => {
+                            lo.groups.forEach((group, idx) => {
+                                flattenedData.push({
+                                    ...group,
+                                    groupNo: idx + 1,
+                                    isFirstInLo: idx === 0,
+                                    loRowSpan: lo.groups.length
+                                });
                             });
                         });
-                    });
 
-                    setData(flattenedData);
-                    setTotals(calculateTotals(flattenedData));
-                } else {
-                    setData([]);
-                    setTotals(null);
+                        setBranchData([]);
+                        setData(flattenedData);
+                        setTotals(calculateTotals(flattenedData));
+                    } else {
+                        setData([]);
+                        setBranchData([]);
+                        setTotals(null);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching daily collection data:', error);
                 toast.error('Error fetching daily collection data');
                 setData([]);
+                setBranchData([]);
                 setTotals(null);
             } finally {
                 setLoading(false);
@@ -409,12 +555,15 @@ const DailyCollectionSheet = () => {
         };
 
         fetchData();
-    }, [currentUser, currentBranch?._id, selectedDate, selectedLo?._id]);
+    }, [currentUser, currentBranch?._id, selectedDate, selectedLo?._id, selectedBranch?._id, isAdmin, branchList]);
 
     // Get branch name for display
     const getBranchName = () => {
         if (isLoanOfficer || isBranchManager) {
             return currentUser?.designatedBranch?.name || currentUser?.designatedBranchName || 'Branch';
+        }
+        if (isAdmin) {
+            return selectedBranch?.name || 'All Branches';
         }
         return currentBranch?.name || 'Branch';
     };
@@ -423,6 +572,17 @@ const DailyCollectionSheet = () => {
         setSelectedDate(e.target.value);
     };
     const handleLoChange = (lo) => setSelectedLo(lo);
+    const handleBranchChange = (branch) => {
+        setSelectedBranch(branch);
+        setSelectedLo(null); // Reset LO filter when branch changes
+        setLoanOfficers([]); // Clear LO list, will be re-fetched by useEffect
+        // Clear data based on view mode
+        if (branch) {
+            setBranchData([]); // Switching to LO/Group view
+        } else {
+            setData([]); // Switching to branch summary view
+        }
+    };
 
     return (
         <Layout header={false} noPad={true}>
@@ -460,8 +620,28 @@ const DailyCollectionSheet = () => {
                                     />
                                 </div>
                             </div>
-                            {/* Only show LO filter for branch managers */}
-                            {isBranchManager && (
+                            {/* Branch filter for Admin (rep = 1) */}
+                            {isAdmin && (
+                                <div className="flex items-center space-x-2">
+                                    <Building2 className="w-4 h-4 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Branch:</span>
+                                    <div className="w-52">
+                                        <Select 
+                                            options={branchList?.map(b => ({ ...b, value: b._id, label: b.name })) || []} 
+                                            value={selectedBranch ? { ...selectedBranch, value: selectedBranch._id, label: selectedBranch.name } : null} 
+                                            styles={modernSelectStyles} 
+                                            components={{ DropdownIndicator }} 
+                                            onChange={handleBranchChange} 
+                                            isClearable 
+                                            placeholder="All Branches" 
+                                            menuPortalTarget={typeof document !== 'undefined' ? document.body : null} 
+                                            menuPosition="fixed" 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {/* LO filter for Branch Manager or Admin with selected branch */}
+                            {(isBranchManager || (isAdmin && selectedBranch)) && (
                                 <div className="flex items-center space-x-2">
                                     <User className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm font-medium text-gray-700">Loan Officer:</span>
@@ -480,21 +660,143 @@ const DailyCollectionSheet = () => {
                                     </div>
                                 </div>
                             )}
-                            <div className="flex items-center space-x-2 ml-auto">
-                                <Building2 className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm text-gray-600">
-                                    Branch: <span className="font-semibold">{getBranchName()}</span>
-                                </span>
-                                {isLoanOfficer && (
-                                    <span className="text-sm text-gray-500 ml-2">
-                                        | LO: <span className="font-semibold">{currentUser?.firstName} {currentUser?.lastName}</span>
+                            {/* Branch display for non-admin roles */}
+                            {!isAdmin && (
+                                <div className="flex items-center space-x-2 ml-auto">
+                                    <Building2 className="w-4 h-4 text-gray-600" />
+                                    <span className="text-sm text-gray-600">
+                                        Branch: <span className="font-semibold">{getBranchName()}</span>
                                     </span>
-                                )}
-                            </div>
+                                    {isLoanOfficer && (
+                                        <span className="text-sm text-gray-500 ml-2">
+                                            | LO: <span className="font-semibold">{currentUser?.firstName} {currentUser?.lastName}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="flex-1 p-6 overflow-auto min-h-0">
-                        {data && data.length > 0 ? (
+                        {/* Admin All Branches View */}
+                        {isAdminAllBranches && branchData && branchData.length > 0 ? (
+                            <div className="bg-white rounded-lg shadow-lg">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                            <tr className="bg-gray-100">
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">No.</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">Branch Name</th>
+                                                <th colSpan={2} className="border px-3 py-2 text-center">MCBU Collection</th>
+                                                <th colSpan={6} className="border px-3 py-2 text-center">CLIENT'S LOAN COLLECTION</th>
+                                                <th colSpan={2} className="border px-3 py-2 text-center whitespace-nowrap">Admission Fee</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center">LRF</th>
+                                                <th colSpan={2} className="border px-3 py-2 text-center">C.B.H.B</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">Add'l Hosp.</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">Other Inc.</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">TOTAL</th>
+                                                <th colSpan={3} className="border px-3 py-2 text-center">LESS RETURNS</th>
+                                                <th rowSpan={3} className="border px-3 py-2 text-center whitespace-nowrap">NET</th>
+                                                <th colSpan={5} className="border px-3 py-2 text-center">Full Payment Info</th>
+                                            </tr>
+                                            <tr className="bg-gray-100">
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">Target</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">Actual</th>
+                                                <th colSpan={3} className="border px-2 py-1 text-center text-xs">Regular (60 Days)</th>
+                                                <th colSpan={3} className="border px-2 py-1 text-center text-xs">Other (Weekly)</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">No.</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">Amt.</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">No.</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">₱200</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">MCBU WD</th>
+                                                <th colSpan={2} className="border px-2 py-1 text-center text-xs">MCBU Ret.</th>
+                                                <th colSpan={2} className="border px-2 py-1 text-center text-xs">Renewal</th>
+                                                <th colSpan={2} className="border px-2 py-1 text-center text-xs">Offset</th>
+                                                <th rowSpan={2} className="border px-2 py-1 text-center text-xs">Clients</th>
+                                            </tr>
+                                            <tr className="bg-gray-100">
+                                                <th className="border px-2 py-1 text-center text-xs">Tgt</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Adv</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Act</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Tgt</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Adv</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Act</th>
+                                                <th className="border px-2 py-1 text-center text-xs">No.</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Amt</th>
+                                                <th className="border px-2 py-1 text-center text-xs">No.</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Amt</th>
+                                                <th className="border px-2 py-1 text-center text-xs">No.</th>
+                                                <th className="border px-2 py-1 text-center text-xs">Amt</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {branchData.map((item, index) => (
+                                                <tr key={item.branchId} className="hover:bg-gray-50">
+                                                    <td className="border px-2 py-1 text-center font-medium">{item.branchCode}</td>
+                                                    <td className="border px-2 py-1 text-left text-xs font-medium">{item.branchName}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.mcbuTarget)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.mcbuActual)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.regularLoanTarget)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.regularLoanAdvance)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.regularLoanActual)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.otherLoanTarget)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.otherLoanAdvance)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.otherLoanActual)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.admissionNo}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.admissionAmount)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.lrfCollection)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.cbhbNo}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.cbhbAmount)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.addHospitalization)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.otherIncome)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs font-semibold">{formatPricePhp(item.totalCollection)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.mcbuWithdrawal)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.mcbuReturnNo}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.mcbuReturnAmount)}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs font-semibold">{formatPricePhp(item.netCollection)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.renewalNo}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.renewalAmount)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.offsetNo}</td>
+                                                    <td className="border px-2 py-1 text-right text-xs">{formatPricePhp(item.offsetAmount)}</td>
+                                                    <td className="border px-2 py-1 text-center text-xs">{item.fullPaymentClients}</td>
+                                                </tr>
+                                            ))}
+                                            {totals && (
+                                                <tr className="bg-yellow-50 font-bold">
+                                                    <td className="border px-2 py-2 text-center"></td>
+                                                    <td className="border px-2 py-2 text-left">TOTAL</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.mcbuTarget)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.mcbuActual)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.regularLoanTarget)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.regularLoanAdvance)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.regularLoanActual)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.otherLoanTarget)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.otherLoanAdvance)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.otherLoanActual)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.admissionNo}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.admissionAmount)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.lrfCollection)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.cbhbNo}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.cbhbAmount)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.addHospitalization)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.otherIncome)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.totalCollection)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.mcbuWithdrawal)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.mcbuReturnNo}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.mcbuReturnAmount)}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.netCollection)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.renewalNo}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.renewalAmount)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.offsetNo}</td>
+                                                    <td className="border px-2 py-2 text-right text-xs">{formatPricePhp(totals.offsetAmount)}</td>
+                                                    <td className="border px-2 py-2 text-center text-xs">{totals.fullPaymentClients}</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : data && data.length > 0 ? (
+                            /* Existing LO/Group View */
                             <div className="bg-white rounded-lg shadow-lg">
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
@@ -614,45 +916,6 @@ const DailyCollectionSheet = () => {
                                         </tbody>
                                     </table>
                                 </div>
-                                {totals && (
-                                    <div className="p-6 bg-gray-50 border-t">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Summary</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Active Clients</p>
-                                                <p className="text-xl font-bold text-gray-800">{totals.activeClients}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Active Borrowers</p>
-                                                <p className="text-xl font-bold text-gray-800">{totals.activeBorrowers}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Total Loan Balance</p>
-                                                <p className="text-xl font-bold text-teal-600">{formatPricePhp(totals.totalLoanBalance)}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">MCBU Balance</p>
-                                                <p className="text-xl font-bold text-teal-600">{formatPricePhp(totals.mcbuBalance)}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Past Due (No.)</p>
-                                                <p className="text-xl font-bold text-red-600">{totals.pastDueNo}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Past Due Amount</p>
-                                                <p className="text-xl font-bold text-red-600">{formatPricePhp(totals.pastDueAmount)}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Mispayments</p>
-                                                <p className="text-xl font-bold text-orange-600">{totals.mispayCount}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                <p className="text-sm text-gray-500">Pending Clients</p>
-                                                <p className="text-xl font-bold text-gray-800">{totals.pendingClients}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center h-96 bg-white rounded-lg shadow-lg">
