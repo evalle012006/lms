@@ -143,11 +143,11 @@ const ClientDetailPage = () => {
 
         setLoading(true);
         try {
-            // Step 1: Upload file to /api/upload (same as AddUpdateClientDrawer.js)
+            // Step 1: Upload file to /api/upload
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('origin', 'clients');  // Changed from 'clientId'
-            formData.append('uuid', client._id);   // Changed from 'clientId' to 'uuid'
+            formData.append('origin', 'clients');
+            formData.append('uuid', client._id);
 
             const uploadResponse = await fetch('/api/upload', {
                 method: 'POST',
@@ -164,11 +164,44 @@ const ClientDetailPage = () => {
                 throw new Error('No file URL returned');
             }
 
-            // Step 2: Update client record with the new profile URL
-            const updatedClientData = { ...client, profile: uploadResult.fileUrl };
+            // Step 2: Prepare sanitized client data for update
+            // Only include fields that are needed for the update to avoid type conversion issues
+            const sanitizedClientData = {
+                _id: client._id,
+                firstName: client.firstName,
+                middleName: client.middleName || '',
+                lastName: client.lastName,
+                birthdate: client.birthdate,
+                addressStreetNo: client.addressStreetNo || '',
+                addressBarangayDistrict: client.addressBarangayDistrict || '',
+                addressMunicipalityCity: client.addressMunicipalityCity || '',
+                addressProvince: client.addressProvince || '',
+                addressZipCode: client.addressZipCode || '',
+                contactNumber: client.contactNumber || '',
+                branchId: client.branchId,
+                branchName: client.branchName || '',
+                status: client.status,
+                loId: client.loId,
+                groupId: client.groupId,
+                groupName: client.groupName || '',
+                ciName: client.ciName || '',
+                profile: uploadResult.fileUrl, // New profile URL
+                // Boolean fields - ensure they are actual booleans, not null
+                delinquent: client.delinquent === true,
+                duplicate: client.duplicate === true,
+                groupLeader: client.groupLeader === true,
+                archived: client.archived === true,
+            };
+
+            // Only add archivedBy if archived is true
+            if (sanitizedClientData.archived && client.archivedBy) {
+                sanitizedClientData.archivedBy = client.archivedBy;
+            }
+
+            // Step 3: Update client record
             const updateResponse = await fetchWrapper.sendData(
                 getApiBaseUrl() + 'clients/', 
-                updatedClientData
+                sanitizedClientData
             );
 
             if (updateResponse.success) {

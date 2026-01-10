@@ -22,6 +22,78 @@ export default apiHandler({
     get: getClient
 });
 
+// ============================================
+// SANITIZATION UTILITIES
+// ============================================
+
+/**
+ * Sanitize a boolean field from FormData
+ * Converts string "true"/"false"/"null"/undefined to proper boolean
+ */
+const sanitizeBoolean = (value, defaultValue = false) => {
+    if (value === null || value === undefined || value === 'null' || value === '') {
+        return defaultValue;
+    }
+    if (value === true || value === 'true' || value === '1') {
+        return true;
+    }
+    if (value === false || value === 'false' || value === '0') {
+        return false;
+    }
+    return defaultValue;
+};
+
+/**
+ * Sanitize a string field from FormData
+ * Converts "null"/"undefined" strings to actual null or default value
+ */
+const sanitizeString = (value, defaultValue = null) => {
+    if (value === null || value === undefined || value === 'null' || value === 'undefined') {
+        return defaultValue;
+    }
+    return String(value);
+};
+
+/**
+ * Sanitize all client fields from FormData
+ * This prevents GraphQL errors like "invalid input syntax for type boolean: 'null'"
+ */
+const sanitizeClientFields = (fields) => {
+    return {
+        // String fields
+        firstName: sanitizeString(fields.firstName),
+        middleName: sanitizeString(fields.middleName, ''),
+        lastName: sanitizeString(fields.lastName),
+        birthdate: sanitizeString(fields.birthdate),
+        addressStreetNo: sanitizeString(fields.addressStreetNo, ''),
+        addressBarangayDistrict: sanitizeString(fields.addressBarangayDistrict, ''),
+        addressMunicipalityCity: sanitizeString(fields.addressMunicipalityCity, ''),
+        addressProvince: sanitizeString(fields.addressProvince, ''),
+        addressZipCode: sanitizeString(fields.addressZipCode, ''),
+        contactNumber: sanitizeString(fields.contactNumber, ''),
+        branchId: sanitizeString(fields.branchId),
+        branchName: sanitizeString(fields.branchName, ''),
+        status: sanitizeString(fields.status),
+        loId: sanitizeString(fields.loId),
+        groupId: sanitizeString(fields.groupId),
+        groupName: sanitizeString(fields.groupName, ''),
+        ciName: sanitizeString(fields.ciName, ''),
+        
+        // Boolean fields - IMPORTANT: These were causing the GraphQL error
+        delinquent: sanitizeBoolean(fields.delinquent, false),
+        duplicate: sanitizeBoolean(fields.duplicate, false),
+        groupLeader: sanitizeBoolean(fields.groupLeader, false),
+        archived: sanitizeBoolean(fields.archived, false),
+        
+        // Nullable string fields
+        archivedBy: sanitizeString(fields.archivedBy),
+    };
+};
+
+// ============================================
+// API HANDLERS
+// ============================================
+
 async function getClient(req, res) {
     const { clientId = null } = req.query;
 
@@ -54,152 +126,122 @@ async function updateClient(req, res) {
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, fields, files) {
-            let [clientData] = await graph.query(
-                queryQl(CLIENT_TYPE, {
-                    where: {
-                        _id: { _eq: fields._id ?? null }
-                    }
-                })
-            ).then(res => res.data.clients);
+            try {
+                let [clientData] = await graph.query(
+                    queryQl(CLIENT_TYPE, {
+                        where: {
+                            _id: { _eq: fields._id ?? null }
+                        }
+                    })
+                ).then(res => res.data.clients);
 
-            const isNotificationEnabledFlag = await isNotificationEnabled();
-            // Save previous values for comparison
-            const existingClient = clientData?.[0];
-            const previousGroupLeader = existingClient?.groupLeader || false;
-            const previousDelinquent = existingClient?.delinquent || false;
-        
-            let file = fields.profile;
+                if (!clientData) {
+                    resolve({ success: false, message: 'Client not found' });
+                    return;
+                }
 
-            if (err) {
-                resolve({ formError: true })
-            }
+                const isNotificationEnabledFlag = await isNotificationEnabled();
+                
+                // Save previous values for comparison (for notifications)
+                const previousGroupLeader = clientData?.groupLeader || false;
+                const previousDelinquent = clientData?.delinquent || false;
+            
+                if (err) {
+                    console.error('Form parse error:', err);
+                    resolve({ formError: true });
+                    return;
+                }
 
-            const profile = file ? file : clientData.profile;
+                // IMPORTANT: Sanitize fields to convert string values to proper types
+                const sanitizedFields = sanitizeClientFields(fields);
+                
+                // Handle profile field
+                const profile = sanitizeString(fields.profile) || clientData.profile;
 
-            clientData = { 
-                ... clientData, 
-                firstName: fields.firstName,
-                middleName: fields.middleName,
-                lastName: fields.lastName,
-                birthdate: fields.birthdate,
-                addressStreetNo: fields.addressStreetNo,
-                addressBarangayDistrict: fields.addressBarangayDistrict,
-                addressMunicipalityCity: fields.addressMunicipalityCity,
-                addressProvince: fields.addressProvince,
-                addressZipCode: fields.addressZipCode,
-                contactNumber: fields.contactNumber,
-                branchId: fields.branchId,
-                status: fields.status,
-                delinquent: fields.delinquent,
-                loId: fields.loId,
-                groupName: fields.groupName,
-                groupId: fields.groupId,
-                duplicate: fields.duplicate,
-                groupLeader: fields.groupLeader,
-                profile: profile,
-                archived: fields.archived,
-                archivedBy: fields.archivedBy,
-                // archivedDate: fields.archivedDate || null,
-            };
+                // Merge sanitized fields with existing client data
+                clientData = { 
+                    ...clientData, 
+                    ...sanitizedFields,
+                    profile: profile,
+                };
 
-            await graph.mutation(
-                updateQl(CLIENT_TYPE, {
-                    set: {
-                        firstName: fields.firstName,
-                        middleName: fields.middleName,
-                        lastName: fields.lastName,
-                        birthdate: fields.birthdate,
-                        addressStreetNo: fields.addressStreetNo,
-                        addressBarangayDistrict: fields.addressBarangayDistrict,
-                        addressMunicipalityCity: fields.addressMunicipalityCity,
-                        addressProvince: fields.addressProvince,
-                        addressZipCode: fields.addressZipCode,
-                        contactNumber: fields.contactNumber,
-                        branchId: fields.branchId,
-                        status: fields.status,
-                        delinquent: fields.delinquent,
-                        loId: fields.loId,
-                        groupName: fields.groupName,
-                        groupId: fields.groupId,
-                        profile: profile,
-                        ciName: files.ciName,
-                        duplicate: fields.duplicate,
-                        groupLeader: fields.groupLeader,
-                        archived: fields.archived,
-                        archivedBy: fields.archivedBy,
-                        // archivedDate: fields.archivedDate || null,
-                        dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
-                    },
-                    where: {
-                        _id: { _eq: clientData._id }
-                    }
-                })
-            );
+                // Perform the GraphQL mutation with sanitized values
+                await graph.mutation(
+                    updateQl(CLIENT_TYPE, {
+                        set: {
+                            firstName: sanitizedFields.firstName,
+                            middleName: sanitizedFields.middleName,
+                            lastName: sanitizedFields.lastName,
+                            birthdate: sanitizedFields.birthdate,
+                            addressStreetNo: sanitizedFields.addressStreetNo,
+                            addressBarangayDistrict: sanitizedFields.addressBarangayDistrict,
+                            addressMunicipalityCity: sanitizedFields.addressMunicipalityCity,
+                            addressProvince: sanitizedFields.addressProvince,
+                            addressZipCode: sanitizedFields.addressZipCode,
+                            contactNumber: sanitizedFields.contactNumber,
+                            branchId: sanitizedFields.branchId,
+                            status: sanitizedFields.status,
+                            loId: sanitizedFields.loId,
+                            groupName: sanitizedFields.groupName,
+                            groupId: sanitizedFields.groupId,
+                            profile: profile,
+                            ciName: sanitizedFields.ciName,
+                            // Boolean fields - now properly sanitized
+                            delinquent: sanitizedFields.delinquent,
+                            duplicate: sanitizedFields.duplicate,
+                            groupLeader: sanitizedFields.groupLeader,
+                            archived: sanitizedFields.archived,
+                            archivedBy: sanitizedFields.archivedBy,
+                            // Timestamp
+                            dateModified: moment().toISOString(),
+                        },
+                        where: {
+                            _id: { _eq: fields._id }
+                        }
+                    })
+                );
 
-            if (isNotificationEnabledFlag) {
-                // Check for group leader change and create notification
-                const newGroupLeader = fields.groupLeader || false;
-                if (previousGroupLeader !== newGroupLeader) {
+                // Handle notifications for groupLeader change
+                if (isNotificationEnabledFlag && sanitizedFields.groupLeader !== previousGroupLeader) {
                     try {
-                        const branches = await findBranches({ _id: { _eq: fields.branchId || existingClient?.branchId } });
-                        const groups = await findGroups({ _id: { _eq: fields.groupId || existingClient?.groupId } });
+                        const branches = await findBranches({ _id: { _eq: clientData.branchId } });
                         const branch = branches?.[0];
+                        const groups = await findGroups({ _id: { _eq: clientData.groupId } });
                         const group = groups?.[0];
-
-                        if (branch) {
-                            await notifyGroupLeaderUpdated({
-                                clientName: existingClient?.fullName || `${fields.firstName} ${fields.lastName}`,
-                                clientId: fields._id || existingClient?._id,
-                                groupId: fields.groupId || existingClient?.groupId,
-                                groupName: group?.name || fields.groupName || existingClient?.groupName,
-                                branchId: fields.branchId || existingClient?.branchId,
-                                areaId: branch.areaId,
-                                regionId: branch.regionId,
-                                divisionId: branch.divisionId,
-                                loId: fields.loId || existingClient?.loId,
-                                createdBy: req?.auth?.sub,
-                                createdByName: 'System',
-                                isGroupLeader: newGroupLeader
-                            });
-                            
-                            console.log(`Group leader notification created: ${existingClient?.fullName} - ${newGroupLeader ? 'assigned' : 'removed'}`);
-                        }
+                        
+                        await notifyGroupLeaderUpdated({
+                            clientName: `${clientData.firstName} ${clientData.lastName}`,
+                            branchName: branch?.name || clientData.branchName,
+                            groupName: group?.name || clientData.groupName,
+                            isGroupLeader: sanitizedFields.groupLeader,
+                            branchId: clientData.branchId
+                        });
                     } catch (notifError) {
-                        console.error('Failed to create group leader notification:', notifError.message);
+                        console.error('Failed to send group leader notification:', notifError);
                     }
                 }
 
-                // Check for delinquent status change and create notification
-                const newDelinquent = fields.delinquent || false;
-                if (previousDelinquent !== newDelinquent) {
+                // Handle notifications for delinquent change
+                if (isNotificationEnabledFlag && sanitizedFields.delinquent && !previousDelinquent) {
                     try {
-                        const branches = await findBranches({ _id: { _eq: fields.branchId || existingClient?.branchId } });
+                        const branches = await findBranches({ _id: { _eq: clientData.branchId } });
                         const branch = branches?.[0];
-
-                        if (branch) {
-                            await notifyClientDelinquent({
-                                clientName: existingClient?.fullName || `${fields.firstName} ${fields.lastName}`,
-                                clientId: fields._id || existingClient?._id,
-                                groupId: fields.groupId || existingClient?.groupId,
-                                branchId: fields.branchId || existingClient?.branchId,
-                                areaId: branch.areaId,
-                                regionId: branch.regionId,
-                                divisionId: branch.divisionId,
-                                loId: fields.loId || existingClient?.loId,
-                                createdBy: req?.auth?.sub,
-                                createdByName: 'System',
-                                isDelinquent: newDelinquent
-                            });
-                            
-                            console.log(`Delinquent notification created: ${existingClient?.fullName} - ${newDelinquent ? 'marked' : 'unmarked'}`);
-                        }
+                        
+                        await notifyClientDelinquent({
+                            clientName: `${clientData.firstName} ${clientData.lastName}`,
+                            branchName: branch?.name || clientData.branchName,
+                            branchId: clientData.branchId
+                        });
                     } catch (notifError) {
-                        console.error('Failed to create delinquent notification:', notifError.message);
+                        console.error('Failed to send delinquent notification:', notifError);
                     }
                 }
-            }
 
-            resolve({ success: true, client: clientData });
+                resolve({ success: true, client: clientData });
+            } catch (error) {
+                console.error('Error updating client:', error);
+                resolve({ success: false, message: error.message });
+            }
         });
     });
 
