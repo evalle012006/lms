@@ -28,8 +28,12 @@ import {
     XMarkIcon,
     MagnifyingGlassPlusIcon,
     MagnifyingGlassMinusIcon,
-    EyeIcon
+    EyeIcon,
+    StarIcon,
+    ExclamationCircleIcon,
+    UserCircleIcon
 } from '@heroicons/react/24/outline';
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import TableComponent, { StatusPill } from '@/lib/table';
@@ -48,7 +52,7 @@ const ClientDetailPage = () => {
     const [loanList, setLoanList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [guarantorName, setGuarantorName] = useState('');
-    const [lastLoan, setLastLoan] = useState(null);
+    const [activeLoan, setActiveLoan] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [showAddLoanDrawer, setShowAddLoanDrawer] = useState(false);
     const [showUpdateClientDrawer, setShowUpdateClientDrawer] = useState(false);
@@ -165,7 +169,6 @@ const ClientDetailPage = () => {
             }
 
             // Step 2: Prepare sanitized client data for update
-            // Only include fields that are needed for the update to avoid type conversion issues
             const sanitizedClientData = {
                 _id: client._id,
                 firstName: client.firstName,
@@ -185,15 +188,13 @@ const ClientDetailPage = () => {
                 groupId: client.groupId,
                 groupName: client.groupName || '',
                 ciName: client.ciName || '',
-                profile: uploadResult.fileUrl, // New profile URL
-                // Boolean fields - ensure they are actual booleans, not null
+                profile: uploadResult.fileUrl,
                 delinquent: client.delinquent === true,
                 duplicate: client.duplicate === true,
                 groupLeader: client.groupLeader === true,
                 archived: client.archived === true,
             };
 
-            // Only add archivedBy if archived is true
             if (sanitizedClientData.archived && client.archivedBy) {
                 sanitizedClientData.archivedBy = client.archivedBy;
             }
@@ -205,7 +206,6 @@ const ClientDetailPage = () => {
             );
 
             if (updateResponse.success) {
-                // Update Redux state
                 dispatch(setClient({ ...client, profile: uploadResult.fileUrl }));
                 setImageSrc(uploadResult.fileUrl);
                 setImageError(false);
@@ -218,7 +218,6 @@ const ClientDetailPage = () => {
             toast.error('Failed to upload file. Please try again.');
         } finally {
             setLoading(false);
-            // Reset file input to allow re-uploading same file
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -245,7 +244,7 @@ const ClientDetailPage = () => {
                 case 'completed':
                     return 'bg-green-100 text-green-800';
                 case 'closed':
-                    return 'bg-red-100 text-red-800';
+                    return 'bg-gray-100 text-gray-800';
                 case 'active':
                     return 'bg-blue-100 text-blue-800';
                 default:
@@ -254,8 +253,24 @@ const ClientDetailPage = () => {
         };
 
         return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyle(status)}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusStyle(status)}`}>
                 {status || '-'}
+            </span>
+        );
+    };
+
+    // Boolean badge component
+    const BooleanBadge = ({ value, trueLabel = 'Yes', falseLabel = 'No', trueColor = 'green', falseColor = 'gray' }) => {
+        const colorClasses = {
+            green: value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600',
+            red: value ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600',
+            yellow: value ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600',
+            blue: value ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600',
+        };
+        
+        return (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value ? colorClasses[trueColor].split(' ')[0] + ' ' + colorClasses[trueColor].split(' ')[1] : 'bg-gray-100 text-gray-600'}`}>
+                {value ? trueLabel : falseLabel}
             </span>
         );
     };
@@ -267,24 +282,46 @@ const ClientDetailPage = () => {
         { id: 'documents', label: 'Documents', icon: DocumentTextIcon }
     ];
 
-    // Process guarantor name and last loan when loanList changes
+    // Process guarantor name and active loan when loanList changes
     useEffect(() => {
         if (loanList && loanList.length > 0) {
-            // Filter out rejected loans and get the most recent one
-            const activeLoanList = loanList.filter(loan => loan.loanStatus !== 'reject');
-            const lastLoan = activeLoanList.length > 0 ? activeLoanList[activeLoanList.length - 1] : null;
+            // Find active loan first, if none found, get the most recent (first after sorting)
+            const currentActiveLoan = loanList.find(loan => loan.status === 'active') || loanList[0];
             
-            if (lastLoan) {
-                const firstName = lastLoan.guarantorFirstName || '';
-                const middleName = (lastLoan.guarantorMiddleName && lastLoan.guarantorMiddleName?.trim().length > 0) 
-                    ? ` ${lastLoan.guarantorMiddleName.charAt(0)}.` 
+            if (currentActiveLoan) {
+                const firstName = currentActiveLoan.guarantorFirstName || '';
+                const middleName = (currentActiveLoan.guarantorMiddleName && currentActiveLoan.guarantorMiddleName?.trim().length > 0 && currentActiveLoan.guarantorMiddleName !== '.') 
+                    ? ` ${currentActiveLoan.guarantorMiddleName.charAt(0)}.` 
                     : '';
-                const lastName = lastLoan.guarantorLastName ? ` ${lastLoan.guarantorLastName}` : '';
-                setGuarantorName(`${firstName}${middleName}${lastName}`);
-                setLastLoan(lastLoan);
+                const lastName = currentActiveLoan.guarantorLastName && currentActiveLoan.guarantorLastName !== '.' ? ` ${currentActiveLoan.guarantorLastName}` : '';
+                setGuarantorName(`${firstName}${middleName}${lastName}`.trim() || '-');
+                setActiveLoan(currentActiveLoan);
             }
+        } else {
+            setActiveLoan(null);
+            setGuarantorName('-');
         }
     }, [loanList]);
+
+    // Helper function to format full address
+    const formatFullAddress = () => {
+        const parts = [
+            client?.addressStreetNo,
+            client?.addressBarangayDistrict,
+            client?.addressMunicipalityCity,
+            client?.addressProvince,
+            client?.addressZipCode
+        ].filter(Boolean);
+        
+        return parts.length > 0 ? parts.join(', ') : (client?.address || '-');
+    };
+
+    // Helper function to calculate age from birthdate
+    const calculateAge = (birthdate) => {
+        if (!birthdate) return '-';
+        const years = moment().diff(moment(birthdate), 'years');
+        return years > 0 ? years : '-';
+    };
 
     // Image preview handlers
     const handleOpenImagePreview = () => {
@@ -305,6 +342,13 @@ const ClientDetailPage = () => {
 
     const handleZoomOut = () => {
         setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+    };
+
+    // Get slot number from active loan or client
+    const getSlotNumber = () => {
+        if (activeLoan?.slotNo) return activeLoan.slotNo;
+        if (client?.slotNo) return client.slotNo;
+        return '-';
     };
 
     if (!client) {
@@ -341,7 +385,7 @@ const ClientDetailPage = () => {
                                 <button
                                     type="button"
                                     onClick={handleImageClick}
-                                    className="absolute bottom-0 right-0 p-1.5 bg-primary-600 rounded-full text-white shadow-lg hover:bg-primary-700 transition-colors"
+                                    className="absolute bottom-0 right-0 p-1.5 bg-primary-1 rounded-full text-white shadow-lg hover:bg-primary-2 transition-colors"
                                 >
                                     <CameraIcon className="w-4 h-4" />
                                 </button>
@@ -356,22 +400,41 @@ const ClientDetailPage = () => {
                             
                             {/* Name and Basic Info */}
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900">
-                                    {client.lastName}, {client.firstName} {client.middleName ? `${client.middleName.charAt(0)}.` : ''}
-                                </h1>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        {client.lastName}, {client.firstName} {client.middleName ? `${client.middleName}.` : ''}
+                                    </h1>
+                                    {client.groupLeader && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <StarIconSolid className="w-3 h-3 mr-1" />
+                                            Group Leader
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
                                     <span className="flex items-center">
                                         <IdentificationIcon className="w-4 h-4 mr-1" />
-                                        Slot #{client.slotNo || '-'}
+                                        Slot #{getSlotNumber()}
                                     </span>
                                     <span>•</span>
                                     <span className="flex items-center">
                                         <UserGroupIcon className="w-4 h-4 mr-1" />
                                         {client.groupName || '-'}
                                     </span>
+                                    <span>•</span>
+                                    <span className="flex items-center">
+                                        <BuildingOfficeIcon className="w-4 h-4 mr-1" />
+                                        {client.branchName || '-'}
+                                    </span>
                                 </div>
-                                <div className="mt-2">
+                                <div className="mt-2 flex items-center gap-2">
                                     <LoanStatusPill status={client.status} />
+                                    {client.delinquent && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <ExclamationCircleIcon className="w-3 h-3 mr-1" />
+                                            Delinquent
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -388,12 +451,12 @@ const ClientDetailPage = () => {
                                 className={`
                                     flex items-center py-4 px-1 border-t-2 font-medium text-sm transition-colors
                                     ${activeTab === tab.id
-                                        ? 'border-primary-500 text-primary-600'
+                                        ? 'border-primary-1 text-primary-1'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }
                                 `}
                             >
-                                <tab.icon className={`w-5 h-5 mr-2 ${activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'}`} />
+                                <tab.icon className={`w-5 h-5 mr-2 ${activeTab === tab.id ? 'text-primary-1' : 'text-gray-400'}`} />
                                 {tab.label}
                             </button>
                         ))}
@@ -419,85 +482,254 @@ const ClientDetailPage = () => {
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Date of Birth</label>
                                         <p className="mt-1 text-sm text-gray-900">
-                                            {client.dateOfBirth ? moment(client.dateOfBirth).format('MMMM DD, YYYY') : '-'}
+                                            {client.birthdate ? moment(client.birthdate).format('MMMM DD, YYYY') : '-'}
                                         </p>
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Age</label>
                                         <p className="mt-1 text-sm text-gray-900">
-                                            {client.dateOfBirth ? moment().diff(moment(client.dateOfBirth), 'years') : '-'}
+                                            {calculateAge(client.birthdate)} {calculateAge(client.birthdate) !== '-' ? 'years old' : ''}
                                         </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Gender</label>
-                                        <p className="mt-1 text-sm text-gray-900">{client.gender || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Civil Status</label>
-                                        <p className="mt-1 text-sm text-gray-900">{client.civilStatus || '-'}</p>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-xs font-medium text-gray-500 uppercase">Contact Number</label>
                                     <p className="mt-1 text-sm text-gray-900 flex items-center">
                                         <PhoneIcon className="w-4 h-4 mr-2 text-gray-400" />
-                                        {client.contactNo || '-'}
+                                        {client.contactNumber || '-'}
                                     </p>
                                 </div>
                                 <div>
                                     <label className="text-xs font-medium text-gray-500 uppercase">Address</label>
                                     <p className="mt-1 text-sm text-gray-900 flex items-start">
-                                        <MapPinIcon className="w-4 h-4 mr-2 text-gray-400 mt-0.5" />
-                                        {client.address || '-'}
+                                        <MapPinIcon className="w-4 h-4 mr-2 text-gray-400 mt-0.5 flex-shrink-0" />
+                                        <span>{formatFullAddress()}</span>
                                     </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Date Added</label>
+                                        <p className="mt-1 text-sm text-gray-900">
+                                            {client.dateAdded ? moment(client.dateAdded).format('MMMM DD, YYYY') : '-'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Last Modified</label>
+                                        <p className="mt-1 text-sm text-gray-900">
+                                            {client.dateModified ? moment(client.dateModified).format('MMMM DD, YYYY') : '-'}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Loan Information */}
+                        {/* Assignment & Status Information */}
                         <div className="bg-white rounded-lg border border-gray-200">
                             <div className="p-6 border-b border-gray-200">
                                 <div className="flex items-center">
-                                    <CurrencyDollarIcon className="w-5 h-5 text-gray-400 mr-2" />
-                                    <h3 className="text-lg font-semibold text-gray-900">Current Loan Information</h3>
+                                    <BuildingOfficeIcon className="w-5 h-5 text-gray-400 mr-2" />
+                                    <h3 className="text-lg font-semibold text-gray-900">Assignment & Status</h3>
                                 </div>
                             </div>
                             <div className="p-6 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Loan Cycle</label>
-                                        <p className="mt-1 text-sm text-gray-900">{lastLoan?.loanCycle || '-'}</p>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Branch</label>
+                                        <p className="mt-1 text-sm text-gray-900">{client.branchName || '-'}</p>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Loan Terms</label>
-                                        <p className="mt-1 text-sm text-gray-900">{lastLoan?.loanTerms || '-'} days</p>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Group</label>
+                                        <p className="mt-1 text-sm text-gray-900">{client.groupName || '-'}</p>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Amount Release</label>
-                                        <p className="mt-1 text-sm text-gray-900 font-semibold text-green-600">
-                                            {formatPricePhp(lastLoan?.amountRelease || 0)}
+                                        <label className="text-xs font-medium text-gray-500 uppercase">CI Name</label>
+                                        <p className="mt-1 text-sm text-gray-900 flex items-center">
+                                            <UserCircleIcon className="w-4 h-4 mr-1 text-gray-400" />
+                                            {client.ciName || '-'}
                                         </p>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Loan Balance</label>
-                                        <p className="mt-1 text-sm text-gray-900 font-semibold">
-                                            {formatPricePhp(lastLoan?.loanBalance || 0)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">MCBU</label>
-                                        <p className="mt-1 text-sm text-gray-900">{formatPricePhp(lastLoan?.mcbu || 0)}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase">Mispayments</label>
-                                        <p className="mt-1 text-sm text-gray-900">{lastLoan?.mispayment || 0}</p>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Slot Number</label>
+                                        <p className="mt-1 text-sm text-gray-900">#{getSlotNumber()}</p>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 uppercase">Guarantor</label>
-                                    <p className="mt-1 text-sm text-gray-900">{guarantorName || '-'}</p>
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Group Leader</label>
+                                        <p className="mt-1">
+                                            <BooleanBadge 
+                                                value={client.groupLeader} 
+                                                trueLabel="Yes" 
+                                                falseLabel="No"
+                                                trueColor="yellow"
+                                            />
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Delinquent</label>
+                                        <p className="mt-1">
+                                            <BooleanBadge 
+                                                value={client.delinquent} 
+                                                trueLabel="Yes" 
+                                                falseLabel="No"
+                                                trueColor="red"
+                                            />
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Account Status</label>
+                                        <p className="mt-1">
+                                            <LoanStatusPill status={client.status} />
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500 uppercase">Archived</label>
+                                        <p className="mt-1">
+                                            <BooleanBadge 
+                                                value={client.archived} 
+                                                trueLabel="Yes" 
+                                                falseLabel="No"
+                                                trueColor="red"
+                                            />
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Current Loan Information - Full Width */}
+                        <div className="bg-white rounded-lg border border-gray-200 lg:col-span-2">
+                            <div className="p-6 border-b border-gray-200">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <CurrencyDollarIcon className="w-5 h-5 text-gray-400 mr-2" />
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                            {activeLoan?.status === 'active' ? 'Current Loan Information' : 'Latest Loan Information'}
+                                        </h3>
+                                    </div>
+                                    {activeLoan && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-500">PN: {activeLoan.pnNumber || '-'}</span>
+                                            <LoanStatusPill status={activeLoan.status} />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            {activeLoan ? (
+                                <div className="p-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Loan Cycle</label>
+                                            <p className="mt-1 text-2xl font-bold text-gray-900">{activeLoan.loanCycle || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Loan Terms</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.loanTerms || '-'} days ({activeLoan.occurence || 'daily'})</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Principal Loan</label>
+                                            <p className="mt-1 text-sm text-gray-900">{formatPricePhp(activeLoan.principalLoan || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Amount Release</label>
+                                            <p className="mt-1 text-lg font-semibold text-green-600">{formatPricePhp(activeLoan.amountRelease || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Loan Balance</label>
+                                            <p className="mt-1 text-lg font-semibold text-gray-900">{formatPricePhp(activeLoan.loanBalance || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Daily Collection</label>
+                                            <p className="mt-1 text-sm text-gray-900">{formatPricePhp(activeLoan.activeLoan || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">No. of Payments</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.noOfPayments || 0} / {activeLoan.loanTerms || 0}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Advance Days</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.advanceDays || 0}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100">
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">MCBU</label>
+                                            <p className="mt-1 text-sm text-gray-900">{formatPricePhp(activeLoan.mcbu || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">MCBU Collection</label>
+                                            <p className="mt-1 text-sm text-gray-900">{formatPricePhp(activeLoan.mcbuCollection || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Mispayments</label>
+                                            <p className={`mt-1 text-sm font-medium ${(activeLoan.mispayment || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                                {activeLoan.mispayment || 0}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Past Due</label>
+                                            <p className={`mt-1 text-sm font-medium ${(activeLoan.pastDue || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                                {formatPricePhp(activeLoan.pastDue || 0)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100">
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Date Granted</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {activeLoan.dateGranted ? moment(activeLoan.dateGranted).format('MMM DD, YYYY') : '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Start Date</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {activeLoan.startDate ? moment(activeLoan.startDate).format('MMM DD, YYYY') : '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">End Date</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {activeLoan.endDate ? moment(activeLoan.endDate).format('MMM DD, YYYY') : '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Last Updated</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {activeLoan.lastUpdated ? moment(activeLoan.lastUpdated).format('MMM DD, YYYY') : '-'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100">
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Guarantor</label>
+                                            <p className="mt-1 text-sm text-gray-900">{guarantorName}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Loan Officer</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.loanOfficerName || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">CI Name</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.ciName || client.ciName || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase">Group / Slot</label>
+                                            <p className="mt-1 text-sm text-gray-900">{activeLoan.groupName || '-'} / #{activeLoan.slotNo || '-'}</p>
+                                        </div>
+                                    </div>
+
+
+                                </div>
+                            ) : (
+                                <div className="p-6 text-center">
+                                    <CurrencyDollarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No active loan</h3>
+                                    <p className="text-gray-500">This client doesn't have any loan records.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -520,72 +752,86 @@ const ClientDetailPage = () => {
                                     <Spinner />
                                 </div>
                             ) : loanList.length > 0 ? (
-                                <div className="overflow-auto max-h-96">
+                                <div className="overflow-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    LOAN DATE
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Cycle
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    AMOUNT RELEASED
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    PN Number
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    LOAN BALANCE
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Date Granted
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    STATUS
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Principal
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    CYCLE
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Amount Released
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    GROUP
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Balance
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    PN NUMBER
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Payments
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    MISS PAYMENTS
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
                                                 </th>
-                                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    ACTIONS
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Group
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Miss
+                                                </th>
+                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
                                                 </th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {loanList.map((loan, index) => (
-                                                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <tr key={loan._id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        {loan.loanCycle || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {loan.pnNumber || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                         {loan.dateGranted ? moment(loan.dateGranted).format('MMM DD, YYYY') : 
                                                          loan.dateOfRelease ? moment(loan.dateOfRelease).format('MMM DD, YYYY') : '-'}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {formatPricePhp(loan.principalLoan || 0)}
+                                                    </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                         {formatPricePhp(loan.amountRelease || 0)}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                         {formatPricePhp(loan.loanBalance || 0)}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {loan.noOfPayments || 0} / {loan.loanTerms || 0}
+                                                    </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         <LoanStatusPill status={loan.status} />
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.loanCycle || '-'}
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {loan.groupName || '-'}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.group?.name || loan.groupName || '-'}
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        <span className={`${(loan.mispayment || 0) > 0 ? 'text-red-600 font-medium' : ''}`}>
+                                                            {loan.mispayment || 0}
+                                                        </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.pnNo || '-'}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.mispayment || 0}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-center">
                                                         <button
                                                             type="button"
                                                             onClick={() => handleViewPaymentHistory(loan)}
-                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-primary-1 bg-primary-4 hover:bg-primary-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-1 transition-colors"
                                                             title="View Payment History"
                                                         >
                                                             <EyeIcon className="w-4 h-4 mr-1" />
