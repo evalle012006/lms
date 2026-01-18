@@ -40,9 +40,6 @@ import {
     ERROR_CODES,
     canEditCurrentRelease, 
     canEditWithdrawal, 
-    getEditStatus,
-    isRegionalManagerOrHigher,
-    getEditDisabledReason 
 } from '@/lib/transaction-utils';
 import SaveProgressModal, { useSaveProgress } from '@/lib/ui/SaveProgressModal';
 import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseModal';
