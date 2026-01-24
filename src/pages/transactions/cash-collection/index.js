@@ -200,7 +200,8 @@ const ModernBranchCashCollections = () => {
 
     // No coloring on weekends or holidays
     if (isWeekend || isHoliday) {
-      return bgColorMap.none;
+      // temporary disable colors on holiday/weekend
+      // return bgColorMap.none;
     }
 
     // Draft rows at group level
