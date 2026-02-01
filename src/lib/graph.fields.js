@@ -542,7 +542,6 @@ export const BRANCH_APPROVAL_FIELDS = `
   dateModified
 `;
 
-// Account Types Field (Main Categories)
 export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
     _id
     type_name
@@ -567,7 +566,6 @@ export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
     }
 `;
 
-// Account Names Field (with relationship to Account Type)
 export const MANAGEMENT_ACCOUNT_FIELD = `
     _id
     account_type_id
@@ -596,13 +594,15 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
     }
 `;
 
-// Transaction Field (remains mostly the same, but references account_id)
 export const MANAGEMENT_TRANSACTION_FIELD = `
     _id
     transaction_type
     branch_id
     account_id
-    amount
+    previous_balance
+    debit
+    credit
+    total_balance
     date_added
     inserted_date
     inserted_by

@@ -4,17 +4,19 @@ import { getCurrentDate } from '@/lib/date-utils';
 import moment from 'moment';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, updateQl, queryQl } from '@/lib/graph/graph.util';
-import { MANAGEMENT_TRANSACTION_FIELD } from '@/lib/graph.fields';
 
 const graph = new GraphProvider();
 
-// For insert/update operations, we only need the base fields without relationships
+// Fields for insert/update operations
 const TRANSACTION_INSERT_FIELDS = `
     _id
     transaction_type
     branch_id
     account_id
-    amount
+    previous_balance
+    debit
+    credit
+    total_balance
     date_added
     inserted_date
     inserted_by
@@ -92,19 +94,27 @@ async function save(req, res) {
 
             try {
                 // Validate each transaction
-                if (!transaction.accountId || transaction.amount === undefined || transaction.amount === null) {
+                if (!transaction.accountId) {
                     results.failed.push({
                         accountId: transaction.accountId,
-                        error: 'Each transaction must have accountId and amount'
+                        error: 'Each transaction must have accountId'
                     });
                     continue;
                 }
 
-                const parsedAmount = parseFloat(transaction.amount);
-                if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                // Parse amounts
+                const previousBalance = parseFloat(transaction.previousBalance) || 0;
+                const debit = parseFloat(transaction.debit) || 0;
+                const credit = parseFloat(transaction.credit) || 0;
+
+                // Calculate total balance
+                const totalBalance = previousBalance + debit - credit;
+
+                // Validate that at least one field has a value
+                if (previousBalance === 0 && debit === 0 && credit === 0) {
                     results.failed.push({
                         accountId: transaction.accountId,
-                        error: 'Amount must be a valid positive number'
+                        error: 'At least one field (Previous Balance, Debit, or Credit) must have a value'
                     });
                     continue;
                 }
@@ -118,7 +128,10 @@ async function save(req, res) {
                     addToMutationList(alias => updateQl(MANAGEMENT_TRANSACTIONS_TYPE(alias), {
                         where: { _id: { _eq: existingTransaction._id } },
                         set: {
-                            amount: parsedAmount,
+                            previous_balance: previousBalance,
+                            debit: debit,
+                            credit: credit,
+                            total_balance: totalBalance,
                             modified_date: currentDateTime,
                             modified_by: userId,
                             remarks: transaction.remarks || null
@@ -138,7 +151,10 @@ async function save(req, res) {
                         transaction_type: transactionType,
                         branch_id: branchId,
                         account_id: transaction.accountId,
-                        amount: parsedAmount,
+                        previous_balance: previousBalance,
+                        debit: debit,
+                        credit: credit,
+                        total_balance: totalBalance,
                         date_added: formattedDate,
                         inserted_date: currentDateTime,
                         inserted_by: userId,
@@ -191,7 +207,6 @@ async function save(req, res) {
         // ==========================================
         // STEP 4: DELETE TRANSACTIONS FOR REMOVED ACCOUNTS
         // ==========================================
-        // If an account had a transaction before but is not in the new list, delete it
         const submittedAccountIds = transactions.map(t => t.accountId);
         const accountsToDelete = existingTransactions.filter(
             existing => !submittedAccountIds.includes(existing.account_id)

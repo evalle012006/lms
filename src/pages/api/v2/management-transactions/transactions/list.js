@@ -5,13 +5,16 @@ import moment from 'moment';
 
 const graph = new GraphProvider();
 
-// Simplified fields without relationships
+// Updated fields with new accounting columns
 const TRANSACTION_FIELDS_SIMPLE = `
     _id
     transaction_type
     branch_id
     account_id
-    amount
+    previous_balance
+    debit
+    credit
+    total_balance
     date_added
     inserted_date
     inserted_by
@@ -128,15 +131,9 @@ async function list(req, res) {
             inserted_by_user: usersMap[transaction.inserted_by] || null
         }));
 
-        // Calculate grand total
-        const grandTotal = enrichedTransactions.reduce((sum, transaction) => {
-            return sum + parseFloat(transaction.amount || 0);
-        }, 0);
-
         return res.status(200).json({
             success: true,
             transactions: enrichedTransactions,
-            grandTotal: grandTotal,
             count: enrichedTransactions.length
         });
 

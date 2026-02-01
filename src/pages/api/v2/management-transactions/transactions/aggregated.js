@@ -11,7 +11,10 @@ const TRANSACTION_FIELDS = `
     transaction_type
     branch_id
     account_id
-    amount
+    previous_balance
+    debit
+    credit
+    total_balance
     date_added
 `;
 
@@ -68,7 +71,12 @@ async function getAggregated(req, res) {
             return res.status(200).json({
                 success: true,
                 aggregatedData: [],
-                grandTotal: 0,
+                grandTotals: {
+                    previousBalance: 0,
+                    debit: 0,
+                    credit: 0,
+                    totalBalance: 0
+                },
                 availableBranches: allBranches
             });
         }
@@ -94,35 +102,66 @@ async function getAggregated(req, res) {
 
         const transactions = transactionsRes?.data?.management_transactions || [];
 
-        // Aggregate transactions by branch
-        const branchTotalsMap = {};
+        // Aggregate transactions by branch with all fields
+        const branchAggregateMap = {};
         
         transactions.forEach(transaction => {
             const branchId = transaction.branch_id;
             
-            if (!branchTotalsMap[branchId]) {
-                branchTotalsMap[branchId] = 0;
+            if (!branchAggregateMap[branchId]) {
+                branchAggregateMap[branchId] = {
+                    previousBalance: 0,
+                    debit: 0,
+                    credit: 0,
+                    totalBalance: 0
+                };
             }
             
-            branchTotalsMap[branchId] += parseFloat(transaction.amount) || 0;
+            branchAggregateMap[branchId].previousBalance += parseFloat(transaction.previous_balance) || 0;
+            branchAggregateMap[branchId].debit += parseFloat(transaction.debit) || 0;
+            branchAggregateMap[branchId].credit += parseFloat(transaction.credit) || 0;
+            branchAggregateMap[branchId].totalBalance += parseFloat(transaction.total_balance) || 0;
         });
 
         // Create aggregated data with filtered branches, showing 0 for branches with no transactions
-        const aggregatedData = filteredBranches.map(branch => ({
-            branchId: branch._id,
-            branchCode: branch.code,
-            branchName: branch.name,
-            branchDisplay: `${branch.code} - ${branch.name}`,
-            totalAmount: branchTotalsMap[branch._id] || 0
-        }));
+        const aggregatedData = filteredBranches.map(branch => {
+            const branchData = branchAggregateMap[branch._id] || {
+                previousBalance: 0,
+                debit: 0,
+                credit: 0,
+                totalBalance: 0
+            };
 
-        // Calculate grand total (only from filtered branches, excluding B000)
-        const grandTotal = aggregatedData.reduce((sum, item) => sum + item.totalAmount, 0);
+            return {
+                branchId: branch._id,
+                branchCode: branch.code,
+                branchName: branch.name,
+                branchDisplay: `${branch.code} - ${branch.name}`,
+                previousBalance: branchData.previousBalance,
+                debit: branchData.debit,
+                credit: branchData.credit,
+                totalBalance: branchData.totalBalance
+            };
+        });
+
+        // Calculate grand totals across all filtered branches
+        const grandTotals = aggregatedData.reduce((totals, item) => {
+            totals.previousBalance += item.previousBalance;
+            totals.debit += item.debit;
+            totals.credit += item.credit;
+            totals.totalBalance += item.totalBalance;
+            return totals;
+        }, {
+            previousBalance: 0,
+            debit: 0,
+            credit: 0,
+            totalBalance: 0
+        });
 
         return res.status(200).json({
             success: true,
             aggregatedData: aggregatedData,
-            grandTotal: grandTotal,
+            grandTotals: grandTotals,
             availableBranches: allBranches // All branches except B000 for the filter UI
         });
 

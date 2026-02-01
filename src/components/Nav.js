@@ -589,7 +589,7 @@ const MenuItems = [
                 roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
-                label: "Management Transactions",
+                label: "General Ledger Transaction",
                 url: "/management-transactions",
                 icon: {
                     active: (props) => <Banknote {...props} />,
