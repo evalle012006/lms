@@ -127,7 +127,6 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
                                             options={divisionList}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
-                                            disabled={mode !== 'add'}
                                             placeholder="Select Division"
                                             errors={touched.divisionId && errors.divisionId ? errors.divisionId : undefined}
                                         />
