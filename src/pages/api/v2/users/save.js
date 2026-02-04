@@ -104,11 +104,11 @@ async function save(req, res) {
 
         if (userRole.shortCode === 'deputy_director') {
             const [division] = await findDivisions({ _id: { _eq: userData.divisionId } }, `_id managerIds`);
-            const managerIds = division.managerIds;
+            const managerIds = JSON.parse(division.managerIds ?? '[]');
             managerIds.push(userData._id);
             addToMutationList((alias) => updateQl(createGraphType('divisions', '_id')('division_' + alias), {
                 set: {
-                    managerIds,
+                    managerIds: JSON.stringify([...new Set(managerIds)]),
                 },
                 where: {
                     _id: { _eq: division._id ?? null }

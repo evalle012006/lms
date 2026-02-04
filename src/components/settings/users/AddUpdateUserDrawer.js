@@ -19,7 +19,10 @@ import Select from 'react-select';
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import { getApiBaseUrl } from "@/lib/constants";
 
-const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {    
+const DEFAULT_USER = {};
+const DEFAULT_ROLES = [];
+
+const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLES, showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const [uploading, setUploading] = useState(false);
@@ -46,29 +49,45 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         onClose();
     };
 
-    // Use useEffect to set the initial photo state
     useEffect(() => {
         const currentRole = role ?? user.roleId;
-        if (mode === 'edit' && user.profile) {
-            setPhoto(user.profile);
-        }
 
-        if (mode == 'edit') {
+        if (mode === 'edit') {
             user.profile && setPhoto(user.profile);
             user.transactionType && setOccurence(user.transactionType);
         }
 
-        if(currentRole?.includes('2-')) {
+        if (currentRole?.includes('2-')) {
             const [rep, shortCode] = currentRole?.split('-');
-            switch(shortCode) {
-                case 'area_admin': setSelectedBranchFilter({ id: user.areaId, field: 'areaId' }); break;
-                case 'regional_manager': setSelectedBranchFilter({ id: user.regionId, field: 'regionId' }); break;
-                case 'deputy_director': setSelectedBranchFilter({ id: user.divisionId, field: 'divisionId' }); break;
-                default: break;
+            switch (shortCode) {
+                case 'area_admin':
+                    setSelectedBranchFilter(prev =>
+                        prev?.id === user.areaId && prev?.field === 'areaId'
+                            ? prev
+                            : { id: user.areaId, field: 'areaId' }
+                    );
+                    break;
+                case 'regional_manager':
+                    setSelectedBranchFilter(prev =>
+                        prev?.id === user.regionId && prev?.field === 'regionId'
+                            ? prev
+                            : { id: user.regionId, field: 'regionId' }
+                    );
+                    break;
+                case 'deputy_director':
+                    setSelectedBranchFilter(prev =>
+                        prev?.id === user.divisionId && prev?.field === 'divisionId'
+                            ? prev
+                            : { id: user.divisionId, field: 'divisionId' }
+                    );
+                    break;
+                default:
+                    break;
             }
         }
 
-        setRole(currentRole);
+        // FIX: Only update role if it actually changed
+        setRole(prev => prev === currentRole ? prev : currentRole);
     }, [user, mode, areaList, regionList, divisionList, branchList]);
 
 
