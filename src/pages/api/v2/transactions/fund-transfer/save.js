@@ -85,7 +85,7 @@ async function saveFundTransfer(req, res) {
         const fundTransfer = req.body;
 
         // Access control validation - UPDATED: finance and regional_manager can create fund transfers
-        if (user.role.shortCode !== 'finance' && user.role.shortCode !== 'regional_manager') {
+        if (user.role.shortCode !== 'finance' && user.role.shortCode !== 'regional_manager' && user.role.shortCode !== 'deputy_director') {
             return res.status(403).send({
                 success: false,
                 message: "Access denied. Only finance and regional managers can create fund transfers."

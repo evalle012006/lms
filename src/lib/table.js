@@ -316,6 +316,8 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     const isAreaAdmin = currentUser.role?.shortCode === 'area_admin'; // rep=2
     const isBranchManager = currentUser.role?.rep === 3; // Branch managers with rep = 3
     const isFinance = currentUser.role?.shortCode === 'finance';
+    const isRegionalManager = currentUser.role?.shortCode === 'regional_manager';
+    const isDeputyDirector = currentUser.role?.shortCode === 'deputy_director';
 
     // Add safety checks for status and approval statuses
     const transferStatus = data.status || 'pending';
@@ -325,7 +327,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     switch (actionLabel) {
       case 'Edit Transfer':
         // Base condition: Only the creator (area_admin with rep=2), finance, or regional_manager can edit when transfer is pending
-        const baseCanEdit = (transferStatus === 'pending') && ((isCreator && isAreaAdmin) || isFinance || currentUser.role?.shortCode === 'regional_manager');
+        const baseCanEdit = (transferStatus === 'pending') && ((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector);
         
         // Additional restriction: Don't allow edit if any branch has already approved
         // Once any approval is given, the transfer should not be editable

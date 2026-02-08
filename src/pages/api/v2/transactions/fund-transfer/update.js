@@ -86,11 +86,12 @@ async function updateFundTransfer(req, res) {
         const isAreaAdmin = user.role?.shortCode === 'area_admin';
         const isFinance = user.role?.shortCode === 'finance';
         const isRegionalManager = user.role?.shortCode === 'regional_manager';
+        const isDeputyDirector = user.role?.shortCode === 'deputy_director';
 
-        if (!((isCreator && isAreaAdmin) || isFinance || isRegionalManager)) {
+        if (!((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector)) {
             return res.status(403).send({
                 success: false,
-                message: "Access denied. Only the creator (area_admin), finance, or regional managers can update fund transfers."
+                message: "Access denied. Only the creator (area_admin), finance, regional managers, or deputy directors can update fund transfers."
             });
         }
 
