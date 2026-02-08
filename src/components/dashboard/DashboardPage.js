@@ -794,10 +794,10 @@ const DashboardPage = () => {
                                             { label: 'Active Clients', color: '#3B82F6' },
                                             { label: 'Active Borrowers', color: '#F59E0B' },
                                             { label: 'Good Clients', color: '#BBF7D0' },
-                                            { label: 'All Delinq. Clients', color: '#EF4444' },
+                                            { label: 'All Delinquent Clients', color: '#EF4444' },
                                             { label: 'Mis Payment Clients', color: '#FECDD3' },
                                             { label: 'Past Due Clients', color: '#E9D5FF' },
-                                            { label: 'ASAP Agents', color: '#10B981' },
+                                            { label: 'ACKP Agents', color: '#10B981' },
                                             { label: 'Terminated Agents', color: '#FEF08A' }
                                         ].map((item, index) => (
                                             <div key={index} className="flex items-center space-x-2">

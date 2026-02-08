@@ -8,9 +8,10 @@ import { getApiBaseUrl } from "@/lib/constants";
 import moment from 'moment';
 import DatePicker from "@/lib/ui/DatePicker";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import ButtonOutline from "@/lib/ui/ButtonOutline";
 import { formatPricePhp } from "@/lib/utils";
 import { useRouter } from 'next/router';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronDown, FileText } from 'lucide-react';
 
 const ManagementTransactionsPage = () => {
     const currentUser = useSelector(state => state.user.data);
@@ -62,6 +63,9 @@ const ManagementTransactionsPage = () => {
     const [transactions, setTransactions] = useState([]);
     const [newTransactions, setNewTransactions] = useState({});
     
+    // Previous balances from last transaction
+    const [previousBalances, setPreviousBalances] = useState({});
+    
     // Grand totals
     const [grandTotals, setGrandTotals] = useState({
         previousBalance: 0,
@@ -73,6 +77,9 @@ const ManagementTransactionsPage = () => {
     // Aggregated data for upper management
     const [aggregatedData, setAggregatedData] = useState([]);
 
+    // Summary view state
+    const [showSummary, setShowSummary] = useState(false);
+
     // Check if user can edit (role.rep = 1 or branch manager role.rep = 3)
     const canEdit = currentUser?.role?.rep === 1 || 
                     (currentUser?.role?.rep === 3 && currentDate === dateFilter);
@@ -82,6 +89,30 @@ const ManagementTransactionsPage = () => {
     
     // Override view mode when drilling down into branch detail
     const viewMode = viewingBranchDetail ? 'branch' : baseViewMode;
+
+    // Get page title based on view mode
+    const getPageTitle = () => {
+        if (showSummary) {
+            return 'Transaction Summary';
+        }
+        if (viewMode === 'branch') {
+            return 'General Ledger Transaction';
+        }
+        return 'General Ledger - Aggregated View';
+    };
+
+    const getPageSubtitle = () => {
+        if (showSummary) {
+            return 'View summary of non-zero transactions';
+        }
+        if (viewMode === 'branch') {
+            if (viewingBranchDetail) {
+                return `Branch: ${selectedBranchDetail?.code} - ${selectedBranchDetail?.name}`;
+            }
+            return 'Record and track financial transactions by account';
+        }
+        return 'View aggregated transactions across all branches';
+    };
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -164,6 +195,7 @@ const ManagementTransactionsPage = () => {
             const response = await fetchWrapper.get(apiUrl);
             
             if (response.success) {
+                // Account types are already ordered by display_order from API
                 setAccountTypes(response.accountTypes);
             }
         } catch (error) {
@@ -180,6 +212,7 @@ const ManagementTransactionsPage = () => {
             const response = await fetchWrapper.get(apiUrl);
             
             if (response.success) {
+                // Account names are already ordered by display_order from API
                 setAccounts(prev => ({
                     ...prev,
                     [accountType]: response.accounts
@@ -188,6 +221,29 @@ const ManagementTransactionsPage = () => {
         } catch (error) {
             console.error('Error loading accounts:', error);
             toast.error('Failed to load accounts');
+        }
+    };
+
+    const loadPreviousBalances = async (transactionType, branchId) => {
+        try {
+            // Get the date before the current filter date to fetch previous balances
+            const previousDate = moment(dateFilter).subtract(1, 'day').format('YYYY-MM-DD');
+            
+            const apiUrl = getApiBaseUrl() + 
+                `management-transactions/transactions/previous-balances?transactionType=${transactionType}` +
+                `&branchId=${branchId}` +
+                `&date=${previousDate}`;
+            
+            const response = await fetchWrapper.get(apiUrl);
+            
+            if (response.success && response.previousBalances) {
+                setPreviousBalances(response.previousBalances);
+                return response.previousBalances;
+            }
+            return {};
+        } catch (error) {
+            console.error('Error loading previous balances:', error);
+            return {};
         }
     };
 
@@ -204,6 +260,9 @@ const ManagementTransactionsPage = () => {
                 effectiveBranchId = currentUser.designatedBranchId;
             }
 
+            // Load previous balances first
+            const prevBalances = await loadPreviousBalances(transactionType, effectiveBranchId);
+
             const apiUrl = getApiBaseUrl() + 
                 `management-transactions/transactions/list?transactionType=${transactionType}` +
                 `&branchId=${effectiveBranchId || ''}` +
@@ -214,7 +273,7 @@ const ManagementTransactionsPage = () => {
             if (response.success) {
                 setTransactions(response.transactions);
                 
-                // Pre-populate the input fields with existing transaction data
+                // Pre-populate the input fields
                 const existingData = {};
                 response.transactions.forEach(transaction => {
                     existingData[transaction.account_id] = {
@@ -223,10 +282,22 @@ const ManagementTransactionsPage = () => {
                         credit: transaction.credit || 0
                     };
                 });
+                
+                // If no existing transactions for today, use previous balances
+                if (response.transactions.length === 0) {
+                    Object.keys(prevBalances).forEach(accountId => {
+                        existingData[accountId] = {
+                            previousBalance: prevBalances[accountId] || 0,
+                            debit: 0,
+                            credit: 0
+                        };
+                    });
+                }
+                
                 setNewTransactions(existingData);
                 
                 // Calculate grand totals
-                calculateGrandTotals(response.transactions);
+                calculateGrandTotals(response.transactions.length > 0 ? response.transactions : null);
             }
         } catch (error) {
             console.error('Error loading transactions:', error);
@@ -314,7 +385,16 @@ const ManagementTransactionsPage = () => {
     };
 
     const handleFieldChange = (accountId, field, value) => {
-        let cleanedValue = value.replace(/[^0-9.-]/g, '');
+        // Allow empty string or valid numbers
+        let cleanedValue = value;
+        
+        // If it's empty, keep it empty
+        if (value === '') {
+            cleanedValue = '';
+        } else {
+            // Remove non-numeric characters except decimal point and minus
+            cleanedValue = value.replace(/[^0-9.-]/g, '');
+        }
         
         setNewTransactions(prev => {
             const updated = {
@@ -395,6 +475,7 @@ const ManagementTransactionsPage = () => {
         }, undefined, { shallow: true });
         
         setNewTransactions({});
+        setShowSummary(false);
     };
 
     const handleSubmitAll = async () => {
@@ -481,6 +562,38 @@ const ManagementTransactionsPage = () => {
     const hasExistingTransactions = transactions.length > 0;
     const isEditable = !hasExistingTransactions || canEdit;
 
+    // Filter accounts for summary view - only show accounts with values > 0
+    const summaryAccounts = currentAccounts.filter(account => {
+        const data = newTransactions[account._id];
+        if (!data) return false;
+        
+        const prevBalance = parseFloat(data.previousBalance) || 0;
+        const debit = parseFloat(data.debit) || 0;
+        const credit = parseFloat(data.credit) || 0;
+        const total = calculateTotalBalance(account._id);
+        
+        return prevBalance > 0 || debit > 0 || credit > 0 || total > 0;
+    });
+
+    // Check if previous balance should be disabled
+    // Only disable if the transaction already exists in the database (has been saved)
+    const isPreviousBalanceDisabled = (accountId) => {
+        if (!isEditable) return true;
+        
+        // Check if this account has an existing transaction from the database
+        const existingTransaction = transactions.find(t => t.account_id === accountId);
+        if (existingTransaction && existingTransaction.previous_balance > 0) {
+            return true;
+        }
+        
+        // Check if this account has a previous balance from a prior date
+        if (previousBalances[accountId] && previousBalances[accountId] > 0) {
+            return true;
+        }
+        
+        return false;
+    };
+
     if (loadingAccounts) {
         return (
             <Layout>
@@ -508,14 +621,8 @@ const ManagementTransactionsPage = () => {
                 <div className="flex flex-col gap-4 p-6 border-b border-gray-200 relative z-30">
                     <div className="flex flex-row justify-between items-start">
                         <div className="flex flex-col">
-                            <h1 className="text-2xl font-bold text-gray-800">Management Transactions</h1>
-                            <p className="text-sm text-gray-500 mt-1">
-                                {viewMode === 'branch' 
-                                    ? viewingBranchDetail 
-                                        ? `Branch: ${selectedBranchDetail?.code} - ${selectedBranchDetail?.name}`
-                                        : 'Record and track management expenses and income'
-                                    : 'View aggregated management transactions by branch'}
-                            </p>
+                            <h1 className="text-2xl font-bold text-gray-800">{getPageTitle()}</h1>
+                            <p className="text-sm text-gray-500 mt-1">{getPageSubtitle()}</p>
                         </div>
                     </div>
                     
@@ -529,6 +636,26 @@ const ManagementTransactionsPage = () => {
                             >
                                 <ChevronLeft size={18} />
                                 <span className="text-sm font-medium">Back to Aggregated View</span>
+                            </button>
+                        )}
+
+                        {/* Summary Toggle Button - Fixed styling */}
+                        {viewMode === 'branch' && !showSummary && (currentUser.role.rep === 3 || viewingBranchDetail) && (
+                            <button
+                                onClick={() => setShowSummary(true)}
+                                className="flex items-center gap-2 px-4 py-2 text-teal-600 bg-white border border-teal-600 rounded-md hover:bg-teal-50 transition-colors"
+                            >
+                                <FileText size={18} />
+                                <span className="text-sm font-medium">View Summary</span>
+                            </button>
+                        )}
+
+                        {showSummary && (
+                            <button
+                                onClick={() => setShowSummary(false)}
+                                className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                            >
+                                <span className="text-sm font-medium">Back to Input</span>
                             </button>
                         )}
 
@@ -558,6 +685,7 @@ const ManagementTransactionsPage = () => {
                                                     onClick={() => {
                                                         setSelectedAccountType(accountType);
                                                         setAccountTypeDropdownOpen(false);
+                                                        setShowSummary(false);
                                                     }}
                                                     className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
                                                         selectedAccountType?.type_code === accountType.type_code
@@ -579,7 +707,10 @@ const ManagementTransactionsPage = () => {
                             <DatePicker
                                 name="dateFilter"
                                 value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
+                                onChange={(e) => {
+                                    setDateFilter(e.target.value);
+                                    setShowSummary(false);
+                                }}
                                 maxDate={currentDate}
                                 height="h-9"
                             />
@@ -665,7 +796,7 @@ const ManagementTransactionsPage = () => {
                             </div>
                         )}
 
-                        {viewMode === 'branch' && (currentUser.role.rep === 3 || viewingBranchDetail) && (
+                        {viewMode === 'branch' && !showSummary && (currentUser.role.rep === 3 || viewingBranchDetail) && (
                             <ButtonSolid
                                 label={submitting ? 'Submitting...' : 'Submit All'}
                                 onClick={handleSubmitAll}
@@ -677,7 +808,7 @@ const ManagementTransactionsPage = () => {
                 </div>
 
                 {/* Permission notice */}
-                {viewMode === 'branch' && hasExistingTransactions && !canEdit && (
+                {viewMode === 'branch' && hasExistingTransactions && !canEdit && !showSummary && (
                     <div className="mx-6 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md relative z-20">
                         <p className="text-sm text-yellow-800">
                             Transactions for this date have already been submitted. Only administrators can edit submitted transactions.
@@ -690,6 +821,70 @@ const ManagementTransactionsPage = () => {
                     {loading ? (
                         <div className="flex justify-center items-center h-64">
                             <Spinner />
+                        </div>
+                    ) : showSummary ? (
+                        // Summary View - Only non-zero accounts
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Account Name
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                Previous Balance
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                Debit
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                Credit
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                Total Balance
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {summaryAccounts.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                                    No transactions with values found. All accounts have zero values.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            summaryAccounts.map((account) => {
+                                                const data = newTransactions[account._id] || {};
+                                                const prevBalance = parseFloat(data.previousBalance) || 0;
+                                                const debit = parseFloat(data.debit) || 0;
+                                                const credit = parseFloat(data.credit) || 0;
+                                                const totalBalance = calculateTotalBalance(account._id);
+                                                
+                                                return (
+                                                    <tr key={account._id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                            {account.account_name}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                            {formatPricePhp(prevBalance)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                            {formatPricePhp(debit)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                            {formatPricePhp(credit)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                                            {formatPricePhp(totalBalance)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     ) : viewMode === 'aggregated' ? (
                         // Aggregated View
@@ -787,6 +982,7 @@ const ManagementTransactionsPage = () => {
                                         ) : (
                                             currentAccounts.map((account) => {
                                                 const totalBalance = calculateTotalBalance(account._id);
+                                                const isPrevBalDisabled = isPreviousBalanceDisabled(account._id);
                                                 
                                                 return (
                                                     <tr key={account._id} className="hover:bg-gray-50">
@@ -802,9 +998,9 @@ const ManagementTransactionsPage = () => {
                                                                 onChange={(e) => handleFieldChange(account._id, 'previousBalance', e.target.value)}
                                                                 onWheel={(e) => e.target.blur()}
                                                                 placeholder="0.00"
-                                                                disabled={!isEditable}
+                                                                disabled={isPrevBalDisabled}
                                                                 className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
-                                                                    !isEditable ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                                    isPrevBalDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
                                                                 }`}
                                                             />
                                                         </td>

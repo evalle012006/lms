@@ -18,6 +18,23 @@ const TRANSACTION_FIELDS = `
     date_added
 `;
 
+/**
+ * Convert type_code to snake_case slug
+ */
+function getTransactionTypeSlug(typeCode, typeName) {
+    if (/^[a-z_]+$/.test(typeCode)) {
+        return typeCode;
+    }
+    
+    return typeName
+        .toLowerCase()
+        .replace(/[^\w\s-\/]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[-\/]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+}
+
 export default apiHandler({
     get: getAggregated,
 });
@@ -33,9 +50,38 @@ async function getAggregated(req, res) {
     }
 
     try {
+        // Get account type for slug conversion
+        const accountTypesType = createGraphType(
+            "management_account_types",
+            `_id type_code type_name`
+        );
+
+        const accountTypeRes = await graph.query(
+            queryQl(accountTypesType(), {
+                where: { 
+                    type_code: { _eq: transactionType },
+                    is_active: { _eq: true }
+                }
+            })
+        );
+
+        const accountType = accountTypeRes?.data?.management_account_types?.[0];
+        
+        if (!accountType) {
+            return res.status(400).json({
+                error: true,
+                message: `Account type "${transactionType}" not found`
+            });
+        }
+
+        const transactionTypeSlug = getTransactionTypeSlug(
+            accountType.type_code,
+            accountType.type_name
+        );
+
         const formattedDate = moment(date).format('YYYY-MM-DD');
 
-        // Parse branch IDs filter if provided
+        // Parse branch IDs filter
         const branchIdsArray = branchIds ? branchIds.split(',').filter(Boolean) : [];
 
         // Build where clause for branches - ALWAYS exclude B000
@@ -43,7 +89,6 @@ async function getAggregated(req, res) {
             code: { _neq: 'B000' }
         };
 
-        // If specific branches are selected, filter by those
         if (branchIdsArray.length > 0) {
             branchWhere._id = { _in: branchIdsArray };
         }
@@ -81,10 +126,9 @@ async function getAggregated(req, res) {
             });
         }
 
-        // Get branch IDs to query transactions
         const branchIdsToQuery = filteredBranches.map(b => b._id);
 
-        // Query transactions for the specific date, transaction type, and filtered branches
+        // Query transactions
         const managementTransactionsType = createGraphType(
             "management_transactions",
             TRANSACTION_FIELDS
@@ -93,7 +137,7 @@ async function getAggregated(req, res) {
         const transactionsRes = await graph.query(
             queryQl(managementTransactionsType(), {
                 where: {
-                    transaction_type: { _eq: transactionType },
+                    transaction_type: { _eq: transactionTypeSlug },
                     date_added: { _eq: formattedDate },
                     branch_id: { _in: branchIdsToQuery }
                 }
@@ -102,7 +146,7 @@ async function getAggregated(req, res) {
 
         const transactions = transactionsRes?.data?.management_transactions || [];
 
-        // Aggregate transactions by branch with all fields
+        // Aggregate by branch
         const branchAggregateMap = {};
         
         transactions.forEach(transaction => {
@@ -123,7 +167,7 @@ async function getAggregated(req, res) {
             branchAggregateMap[branchId].totalBalance += parseFloat(transaction.total_balance) || 0;
         });
 
-        // Create aggregated data with filtered branches, showing 0 for branches with no transactions
+        // Create aggregated data
         const aggregatedData = filteredBranches.map(branch => {
             const branchData = branchAggregateMap[branch._id] || {
                 previousBalance: 0,
@@ -144,7 +188,7 @@ async function getAggregated(req, res) {
             };
         });
 
-        // Calculate grand totals across all filtered branches
+        // Calculate grand totals
         const grandTotals = aggregatedData.reduce((totals, item) => {
             totals.previousBalance += item.previousBalance;
             totals.debit += item.debit;
@@ -162,7 +206,7 @@ async function getAggregated(req, res) {
             success: true,
             aggregatedData: aggregatedData,
             grandTotals: grandTotals,
-            availableBranches: allBranches // All branches except B000 for the filter UI
+            availableBranches: allBranches
         });
 
     } catch (error) {

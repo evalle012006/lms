@@ -571,6 +571,7 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
     account_type_id
     account_name
     description
+    display_order
     is_active
     date_added
     inserted_date

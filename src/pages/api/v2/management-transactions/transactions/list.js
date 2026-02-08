@@ -5,7 +5,6 @@ import moment from 'moment';
 
 const graph = new GraphProvider();
 
-// Updated fields with new accounting columns
 const TRANSACTION_FIELDS_SIMPLE = `
     _id
     transaction_type
@@ -26,6 +25,7 @@ const TRANSACTION_FIELDS_SIMPLE = `
 const ACCOUNT_FIELDS = `
     _id
     account_name
+    display_order
 `;
 
 const USER_FIELDS = `
@@ -33,6 +33,23 @@ const USER_FIELDS = `
     firstName
     lastName
 `;
+
+/**
+ * Convert type_code to snake_case slug
+ */
+function getTransactionTypeSlug(typeCode, typeName) {
+    if (/^[a-z_]+$/.test(typeCode)) {
+        return typeCode;
+    }
+    
+    return typeName
+        .toLowerCase()
+        .replace(/[^\w\s-\/]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[-\/]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+}
 
 export default apiHandler({
     get: list,
@@ -49,16 +66,45 @@ async function list(req, res) {
     }
 
     try {
+        // Get account type for slug conversion
+        const accountTypesType = createGraphType(
+            "management_account_types",
+            `_id type_code type_name`
+        );
+
+        const accountTypeRes = await graph.query(
+            queryQl(accountTypesType(), {
+                where: { 
+                    type_code: { _eq: transactionType },
+                    is_active: { _eq: true }
+                }
+            })
+        );
+
+        const accountType = accountTypeRes?.data?.management_account_types?.[0];
+        
+        if (!accountType) {
+            return res.status(400).json({
+                error: true,
+                message: `Account type "${transactionType}" not found`
+            });
+        }
+
+        const transactionTypeSlug = getTransactionTypeSlug(
+            accountType.type_code,
+            accountType.type_name
+        );
+
         // Build where clause
         let where = {
-            transaction_type: { _eq: transactionType }
+            transaction_type: { _eq: transactionTypeSlug }
         };
         
         if (branchId) {
             where.branch_id = { _eq: branchId };
         }
         
-        // Validate and format dates
+        // Date filtering
         if (dateFrom && dateFrom !== 'Invalid date' && dateTo && dateTo !== 'null') {
             const formattedDateFrom = moment(dateFrom, 'YYYY-MM-DD', true);
             const formattedDateTo = moment(dateTo, 'YYYY-MM-DD', true);
@@ -71,9 +117,7 @@ async function list(req, res) {
             }
         }
 
-        const orderBy = [{ date_added: 'desc' }, { inserted_date: 'desc' }];
-
-        // Query transactions without relationships
+        // Query transactions
         const managementTransactionsType = createGraphType(
             "management_transactions",
             TRANSACTION_FIELDS_SIMPLE
@@ -82,23 +126,23 @@ async function list(req, res) {
         const graphRes = await graph.query(
             queryQl(managementTransactionsType(), {
                 where: where,
-                order_by: orderBy
+                order_by: [{ date_added: 'desc' }, { inserted_date: 'desc' }]
             })
         );
 
         const transactions = graphRes?.data?.management_transactions ?? [];
 
-        // Get unique account IDs and user IDs
+        // Fetch related accounts and users
         const accountIds = [...new Set(transactions.map(t => t.account_id).filter(Boolean))];
         const userIds = [...new Set(transactions.map(t => t.inserted_by).filter(Boolean))];
 
-        // Fetch accounts separately if there are any
         let accountsMap = {};
         if (accountIds.length > 0) {
             const accountsType = createGraphType("management_accounts", ACCOUNT_FIELDS);
             const accountsRes = await graph.query(
                 queryQl(accountsType(), {
-                    where: { _id: { _in: accountIds } }
+                    where: { _id: { _in: accountIds } },
+                    order_by: [{ display_order: 'asc' }, { account_name: 'asc' }]
                 })
             );
             const accounts = accountsRes?.data?.management_accounts ?? [];
@@ -108,7 +152,6 @@ async function list(req, res) {
             }, {});
         }
 
-        // Fetch users separately if there are any
         let usersMap = {};
         if (userIds.length > 0) {
             const usersType = createGraphType("users", USER_FIELDS);
@@ -124,7 +167,7 @@ async function list(req, res) {
             }, {});
         }
 
-        // Merge the data manually
+        // Enrich transactions
         const enrichedTransactions = transactions.map(transaction => ({
             ...transaction,
             account: accountsMap[transaction.account_id] || null,

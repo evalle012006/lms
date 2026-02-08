@@ -66,7 +66,8 @@ async function list(req, res) {
                     account_type_id: { _eq: finalAccountTypeId },
                     is_active: { _eq: true } 
                 },
-                order_by: [{ account_name: 'asc' }]
+                // Updated to order by display_order first, then account_name
+                order_by: [{ display_order: 'asc' }, { account_name: 'asc' }]
             })
         );
 
