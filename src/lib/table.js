@@ -324,8 +324,8 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
 
     switch (actionLabel) {
       case 'Edit Transfer':
-        // Base condition: Only the creator (area_admin with rep=2) can edit when transfer is pending
-        const baseCanEdit = (transferStatus === 'pending') && (isCreator && isAreaAdmin) || isFinance;
+        // Base condition: Only the creator (area_admin with rep=2), finance, or regional_manager can edit when transfer is pending
+        const baseCanEdit = (transferStatus === 'pending') && ((isCreator && isAreaAdmin) || isFinance || currentUser.role?.shortCode === 'regional_manager');
         
         // Additional restriction: Don't allow edit if any branch has already approved
         // Once any approval is given, the transfer should not be editable

@@ -81,6 +81,19 @@ async function updateFundTransfer(req, res) {
             return;
         }
 
+        // Access control validation - UPDATED: Only creator (area_admin), finance, or regional_manager can update
+        const isCreator = existingTransfer.insertedById === user._id;
+        const isAreaAdmin = user.role?.shortCode === 'area_admin';
+        const isFinance = user.role?.shortCode === 'finance';
+        const isRegionalManager = user.role?.shortCode === 'regional_manager';
+
+        if (!((isCreator && isAreaAdmin) || isFinance || isRegionalManager)) {
+            return res.status(403).send({
+                success: false,
+                message: "Access denied. Only the creator (area_admin), finance, or regional managers can update fund transfers."
+            });
+        }
+
         const user = await findUserById(userId);
         const fundTransfer = req.body;
 

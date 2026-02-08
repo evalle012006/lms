@@ -622,7 +622,7 @@ const FundTransferPage = () => {
     }
 
     return (
-        <Layout actionButtons={(currentUser?.role?.shortCode === 'finance' ) ? // && !isWeekend && !isHoliday
+        <Layout actionButtons={(currentUser?.role?.shortCode === 'finance' || currentUser?.role?.shortCode === 'regional_manager') ?
             [<ButtonSolid 
                 key="add-transfer"
                 label="Add Fund Transfer" 
