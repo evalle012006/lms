@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, safeNumber, UppercaseFirstLetter } from '@/lib/utils';
+import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import { Info } from 'lucide-react';
 import Select from 'react-select';
@@ -125,6 +125,50 @@ const CashCollectionDetailsPage = () => {
     const [editLoanCashCollection, setEditLoanCashCollection] = useState(null);
     const [editWithdrawalData, setEditWithdrawalData] = useState(null);
     const [editWithdrawalType, setEditWithdrawalType] = useState('mcbu');
+
+    const [highlightedSlotNo, setHighlightedSlotNo] = useState(null);
+
+    const handleHighlightCoMaker = (coMakerSlotNo) => {
+        // Normalize and validate the coMaker value
+        const normalizedSlotNo = normalizeCoMaker(coMakerSlotNo);
+        
+        if (!normalizedSlotNo) {
+            console.log('Invalid coMaker value:', coMakerSlotNo);
+            return;
+        }
+        
+        // Check if the co-maker slot exists and has a client
+        if (!isCoMakerSlotValid(coMakerSlotNo, data)) {
+            console.log('Co-maker slot is empty or does not exist:', normalizedSlotNo);
+            toast.info(`Co-maker slot #${normalizedSlotNo} is empty`);
+            return;
+        }
+        
+        console.log('Looking for slot:', normalizedSlotNo);
+        
+        // Set the highlighted slot number
+        setHighlightedSlotNo(normalizedSlotNo);
+        
+        // Find the row element and scroll to it
+        setTimeout(() => {
+            const rowElement = document.querySelector(`[data-slot-no="${normalizedSlotNo}"]`);
+            
+            if (rowElement) {
+                rowElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                console.log('Found and scrolling to row:', normalizedSlotNo);
+            } else {
+                console.log('Row not found for slot:', normalizedSlotNo);
+            }
+            
+            // Clear highlight after 3 seconds
+            setTimeout(() => {
+                setHighlightedSlotNo(null);
+            }, 3000);
+        }, 100);
+    };
 
     /**
      * Handler for editing current release (principal loan)
@@ -319,7 +363,7 @@ const CashCollectionDetailsPage = () => {
                     let amountRelease = 0;
                     let loanBalance = 0;
                     let mispayment = false;
-                    let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
+                    // let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
                     let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
@@ -406,7 +450,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
-                        coMaker: coMaker,
+                        coMaker: normalizeCoMaker(cc.coMakerId),
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -493,7 +537,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
-                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
+                            coMaker: normalizeCoMaker(cc.coMakerId),
                             loanId: cc.loanId,
                             branchId: cc.branchId,
                             loId: cc.loId,
@@ -647,7 +691,7 @@ const CashCollectionDetailsPage = () => {
                             _id: ccId,
                             loanId: loanId,
                             group: cc.group,
-                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
+                            coMaker: normalizeCoMaker(cc.coMakerId),
                             loId: cc.loId,
                             branchId: cc.branchId,
                             groupId: cc.groupId,
@@ -779,7 +823,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             client: cc.client,
                             groupLeader: cc.client.groupLeader,
-                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
+                            coMaker: normalizeCoMaker(cc.coMakerId),
                             group: cc.group,
                             loanId: cc._id,
                             loId: cc.loId,
@@ -1046,7 +1090,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
+                            coMaker: normalizeCoMaker(loan.coMakerId),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan?.prevLoanId, //currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
@@ -1146,7 +1190,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
+                            coMaker: normalizeCoMaker(loan.coMakerId),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan?.prevLoanId,//currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
@@ -1238,7 +1282,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
+                            coMaker: normalizeCoMaker(loan.coMakerId),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan?.prevLoanId,
@@ -1320,7 +1364,7 @@ const CashCollectionDetailsPage = () => {
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
-                        coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
+                        coMaker: normalizeCoMaker(loan.coMakerId),
                         slotNo: loan.slotNo,
                         loanId: loan._id,
                         groupId: loan.groupId,
@@ -3984,14 +4028,53 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-red-100';
                                         }
 
+                                        const isHighlighted = highlightedSlotNo === cc.slotNo;
+                                        const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
+
                                         return (
-                                            <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima
-                                                                ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
+                                            <tr key={index} 
+                                                data-slot-no={cc.slotNo}
+                                                className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima
+                                                                ${rowBg} ${highlightClass}
+                                                                ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
                                                 {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.advanceDays }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom text-center">
+                                                    {isCoMakerSlotValid(cc.coMaker, data) ? (
+                                                        <button
+                                                            onClick={() => handleHighlightCoMaker(cc.coMaker)}
+                                                            className="inline-flex items-center gap-1 px-2 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150"
+                                                            title={`Click to highlight Slot #${displayCoMaker(cc.coMaker)}`}
+                                                        >
+                                                            <svg 
+                                                                className="w-4 h-4" 
+                                                                fill="none" 
+                                                                stroke="currentColor" 
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path 
+                                                                    strokeLinecap="round" 
+                                                                    strokeLinejoin="round" 
+                                                                    strokeWidth={2} 
+                                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                                                                />
+                                                                <path 
+                                                                    strokeLinecap="round" 
+                                                                    strokeLinejoin="round" 
+                                                                    strokeWidth={2} 
+                                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
+                                                                />
+                                                            </svg>
+                                                            {displayCoMaker(cc.coMaker)}
+                                                        </button>
+                                                    ) : isValidCoMaker(cc.coMaker) ? (
+                                                        <span className="text-gray-500">{displayCoMaker(cc.coMaker)}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mcbuStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.csfStr }</td>

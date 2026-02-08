@@ -284,3 +284,65 @@ export const handleBackToModernBranchCashCollections = (router, currentUser) => 
   
   return true; // Successfully handled back navigation
 };
+
+// Helper function to normalize and validate coMaker value
+export const normalizeCoMaker = (value) => {
+    // Handle falsy values, "null", "undefined", empty strings
+    if (!value || 
+        value === 'null' || 
+        value === 'undefined' || 
+        value === '-' || 
+        value === '' ||
+        value === 0) {
+        return null;
+    }
+    
+    // Convert to number and validate
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
+    
+    // Return null if not a valid positive number
+    if (isNaN(num) || num <= 0) {
+        return null;
+    }
+    
+    return num;
+};
+
+// Helper function to check if coMaker is valid for display
+export const isValidCoMaker = (coMaker) => {
+    const normalized = normalizeCoMaker(coMaker);
+    return normalized !== null;
+};
+
+// Helper function to display coMaker value
+export const displayCoMaker = (coMaker) => {
+    const normalized = normalizeCoMaker(coMaker);
+    return normalized !== null ? normalized : '-';
+};
+
+// Helper function to check if coMaker slot exists and has a client
+export const isCoMakerSlotValid = (coMakerSlotNo, dataArray) => {
+    // First check if the coMaker value is valid
+    const normalized = normalizeCoMaker(coMakerSlotNo);
+    if (!normalized) {
+        return false;
+    }
+    
+    // Find the row with this slot number
+    const coMakerRow = dataArray.find(row => row.slotNo === normalized);
+    
+    // Check if slot exists, has a client, and is not empty/open
+    if (!coMakerRow) {
+        return false;
+    }
+    
+    // Check if the slot is empty (status 'open' or no client)
+    if (coMakerRow.status === 'open' || 
+        !coMakerRow.clientId || 
+        coMakerRow.fullName === '-' ||
+        !coMakerRow.fullName) {
+        return false;
+    }
+    
+    return true;
+};
