@@ -14,13 +14,31 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { typeId, typeName, typeCode, description, displayOrder, userId } = req.body;
+    const { typeId, typeName, typeCode, description, displayOrder, accountGroup, displayGroup, userId } = req.body;
 
     // Validation
     if (!typeName || !typeCode || !userId) {
         return res.status(400).json({
             error: true,
             message: 'Type name, type code, and user ID are required'
+        });
+    }
+
+    // Validate account_group value if provided
+    const validAccountGroups = ['', 'other_receipts', 'management_expenses', 'other_payments'];
+    if (accountGroup && !validAccountGroups.includes(accountGroup)) {
+        return res.status(400).json({
+            error: true,
+            message: 'Invalid account group value. Valid values are: other_receipts, management_expenses, other_payments'
+        });
+    }
+
+    // Validate display_group value if provided
+    const validDisplayGroups = ['', 'assets', 'liabilities', 'management_expenses'];
+    if (displayGroup && !validDisplayGroups.includes(displayGroup)) {
+        return res.status(400).json({
+            error: true,
+            message: 'Invalid display group value. Valid values are: assets, liabilities, management_expenses'
         });
     }
 
@@ -36,6 +54,8 @@ async function save(req, res) {
                 type_name: typeName,
                 description: description || null,
                 display_order: displayOrder || 0,
+                account_group: accountGroup || null,
+                display_group: displayGroup || null,
                 modified_date: moment().toISOString(),
                 modified_by: userId
             };
@@ -70,6 +90,8 @@ async function save(req, res) {
                 type_code: typeCode,
                 description: description || null,
                 display_order: displayOrder || 0,
+                account_group: accountGroup || null,
+                display_group: displayGroup || null,
                 is_active: true,
                 date_added: moment(getCurrentDate()).format('YYYY-MM-DD'),
                 inserted_date: moment().toISOString(),

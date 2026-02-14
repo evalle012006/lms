@@ -17,8 +17,36 @@ const ItemTypes = {
     ACCOUNT_NAME: 'accountName'
 };
 
+// Account Group Options
+const ACCOUNT_GROUP_OPTIONS = [
+    { value: '', label: 'None' },
+    { value: 'other_receipts', label: 'Other Receipts' },
+    { value: 'management_expenses', label: 'Management Expenses' },
+    { value: 'other_payments', label: 'Other Payments' }
+];
+
+// Display Group Options
+const DISPLAY_GROUP_OPTIONS = [
+    { value: '', label: 'None' },
+    { value: 'assets', label: 'Assets' },
+    { value: 'liabilities', label: 'Liabilities' },
+    { value: 'management_expenses', label: 'Management Expenses' }
+];
+
+// Helper function to get group label
+const getGroupLabel = (groupCode) => {
+    const group = ACCOUNT_GROUP_OPTIONS.find(g => g.value === groupCode);
+    return group ? group.label : 'None';
+};
+
+// Helper function to get display group label
+const getDisplayGroupLabel = (groupCode) => {
+    const group = DISPLAY_GROUP_OPTIONS.find(g => g.value === groupCode);
+    return group ? group.label : 'None';
+};
+
 // Draggable Account Type Component
-const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEdit, onDelete }) => {
+const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEdit, onDelete, onDragEnd }) => {
     const ref = React.useRef(null);
 
     const [{ handlerId }, drop] = useDrop({
@@ -51,10 +79,17 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
 
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ACCOUNT_TYPE,
-        item: () => ({ id: type._id, index }),
+        item: () => ({ id: type._id, index, originalIndex: index }),
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
+        end: (item, monitor) => {
+            // Only trigger reorder if the item was actually dropped (not cancelled)
+            // and if the position changed
+            if (monitor.didDrop() || item.index !== item.originalIndex) {
+                onDragEnd();
+            }
+        },
     });
 
     drag(drop(ref));
@@ -79,7 +114,19 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
                         {type.description && (
                             <p className="text-sm text-gray-500 mt-1">{type.description}</p>
                         )}
-                        <p className="text-xs text-gray-400 mt-1">Code: {type.type_code}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <p className="text-xs text-gray-400">Code: {type.type_code}</p>
+                            {type.account_group && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                    {getGroupLabel(type.account_group)}
+                                </span>
+                            )}
+                            {type.display_group && (
+                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                                    {getDisplayGroupLabel(type.display_group)}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
@@ -113,7 +160,7 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
 };
 
 // Draggable Account Name Row Component
-const DraggableAccountNameRow = ({ account, index, moveItem, onDelete }) => {
+const DraggableAccountNameRow = ({ account, index, moveItem, onDelete, onDragEnd }) => {
     const ref = React.useRef(null);
 
     const [{ handlerId }, drop] = useDrop({
@@ -146,10 +193,17 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onDelete }) => {
 
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ACCOUNT_NAME,
-        item: () => ({ id: account._id, index }),
+        item: () => ({ id: account._id, index, originalIndex: index }),
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
+        end: (item, monitor) => {
+            // Only trigger reorder if the item was actually dropped (not cancelled)
+            // and if the position changed
+            if (monitor.didDrop() || item.index !== item.originalIndex) {
+                onDragEnd();
+            }
+        },
     });
 
     drag(drop(ref));
@@ -219,7 +273,9 @@ const ManagementAccountTypesPage = () => {
         typeName: '',
         typeCode: '',
         description: '',
-        displayOrder: 0
+        displayOrder: 0,
+        accountGroup: '',
+        displayGroup: ''
     });
     const [editingType, setEditingType] = useState(null);
 
@@ -358,7 +414,9 @@ const ManagementAccountTypesPage = () => {
             typeName: '',
             typeCode: '',
             description: '',
-            displayOrder: accountTypes.length
+            displayOrder: accountTypes.length,
+            accountGroup: '',
+            displayGroup: ''
         });
         setShowTypeForm(true);
     };
@@ -369,7 +427,9 @@ const ManagementAccountTypesPage = () => {
             typeName: type.type_name,
             typeCode: type.type_code,
             description: type.description || '',
-            displayOrder: type.display_order
+            displayOrder: type.display_order,
+            accountGroup: type.account_group || '',
+            displayGroup: type.display_group || ''
         });
         setShowTypeForm(true);
     };
@@ -391,6 +451,8 @@ const ManagementAccountTypesPage = () => {
                 typeCode: typeFormData.typeCode.trim().toLowerCase().replace(/\s+/g, '_'),
                 description: typeFormData.description.trim(),
                 displayOrder: typeFormData.displayOrder,
+                accountGroup: typeFormData.accountGroup,
+                displayGroup: typeFormData.displayGroup,
                 userId: currentUser._id
             });
 
@@ -550,7 +612,7 @@ const ManagementAccountTypesPage = () => {
                                         <p className="text-sm mt-2">Click "Add Account Type" to create one.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2" onMouseUp={handleAccountTypeDropEnd}>
+                                    <div className="space-y-2">
                                         {accountTypes.map((type, index) => (
                                             <DraggableAccountType
                                                 key={type._id}
@@ -561,6 +623,7 @@ const ManagementAccountTypesPage = () => {
                                                 onClick={() => setSelectedAccountType(type)}
                                                 onEdit={handleEditType}
                                                 onDelete={handleDeleteType}
+                                                onDragEnd={handleAccountTypeDropEnd}
                                             />
                                         ))}
                                     </div>
@@ -595,7 +658,7 @@ const ManagementAccountTypesPage = () => {
                                         </div>
                                     ) : (
                                         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                            <div className="overflow-x-auto" onMouseUp={handleAccountNameDropEnd}>
+                                            <div className="overflow-x-auto">
                                                 <table className="min-w-full divide-y divide-gray-200">
                                                     <thead className="bg-gray-50">
                                                         <tr>
@@ -628,6 +691,7 @@ const ManagementAccountTypesPage = () => {
                                                                     index={index}
                                                                     moveItem={moveAccountName}
                                                                     onDelete={handleDeleteName}
+                                                                    onDragEnd={handleAccountNameDropEnd}
                                                                 />
                                                             ))
                                                         )}
@@ -687,6 +751,44 @@ const ManagementAccountTypesPage = () => {
                                     {editingType && (
                                         <p className="text-xs text-gray-500 mt-1">Type code cannot be changed after creation</p>
                                     )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Account Group
+                                    </label>
+                                    <select
+                                        value={typeFormData.accountGroup}
+                                        onChange={(e) => setTypeFormData({...typeFormData, accountGroup: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        {ACCOUNT_GROUP_OPTIONS.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Used for grouping in transaction summary view
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Display Group
+                                    </label>
+                                    <select
+                                        value={typeFormData.displayGroup}
+                                        onChange={(e) => setTypeFormData({...typeFormData, displayGroup: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        {DISPLAY_GROUP_OPTIONS.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Used for categorizing as Assets, Liabilities, or Management Expenses
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">

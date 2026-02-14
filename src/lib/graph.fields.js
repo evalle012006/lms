@@ -548,6 +548,8 @@ export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
     type_code
     description
     display_order
+    account_group
+    display_group
     is_active
     date_added
     inserted_date

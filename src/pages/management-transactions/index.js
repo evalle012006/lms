@@ -13,6 +13,23 @@ import { formatPricePhp } from "@/lib/utils";
 import { useRouter } from 'next/router';
 import { ChevronLeft, ChevronDown, FileText } from 'lucide-react';
 
+// Account Group Options - matching the ones in account types page
+const ACCOUNT_GROUPS = {
+    other_receipts: 'Other Receipts',
+    management_expenses: 'Management Expenses',
+    other_payments: 'Other Payments'
+};
+
+// Display Group Options
+const DISPLAY_GROUPS = {
+    assets: 'Assets',
+    liabilities: 'Liabilities',
+    management_expenses: 'Management Expenses'
+};
+
+// Tab order for summary view (excluding current account type which is always first)
+const GROUP_TAB_ORDER = ['other_receipts', 'management_expenses', 'other_payments'];
+
 const ManagementTransactionsPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -79,6 +96,16 @@ const ManagementTransactionsPage = () => {
 
     // Summary view state
     const [showSummary, setShowSummary] = useState(false);
+    const [summaryActiveTab, setSummaryActiveTab] = useState('current');
+    const [summaryData, setSummaryData] = useState({});
+    const [loadingSummary, setLoadingSummary] = useState(false);
+
+    // Display Group view state
+    const [selectedDisplayGroup, setSelectedDisplayGroup] = useState(null);
+    const [displayGroupDropdownOpen, setDisplayGroupDropdownOpen] = useState(false);
+    const [displayGroupData, setDisplayGroupData] = useState(null);
+    const [loadingDisplayGroup, setLoadingDisplayGroup] = useState(false);
+    const displayGroupDropdownRef = useRef(null);
 
     // Check if user can edit (role.rep = 1 or branch manager role.rep = 3)
     const canEdit = currentUser?.role?.rep === 1 || 
@@ -103,7 +130,7 @@ const ManagementTransactionsPage = () => {
 
     const getPageSubtitle = () => {
         if (showSummary) {
-            return 'View summary of non-zero transactions';
+            return 'View summary of non-zero transactions grouped by category';
         }
         if (viewMode === 'branch') {
             if (viewingBranchDetail) {
@@ -112,6 +139,29 @@ const ManagementTransactionsPage = () => {
             return 'Record and track financial transactions by account';
         }
         return 'View aggregated transactions across all branches';
+    };
+
+    // Build summary tabs based on available account types with groups
+    const getSummaryTabs = () => {
+        const tabs = [
+            { key: 'current', label: selectedAccountType?.type_name || 'Current', group: null }
+        ];
+
+        // Add tabs for each group that has account types
+        GROUP_TAB_ORDER.forEach(groupCode => {
+            const hasTypes = accountTypes.some(type => 
+                type.account_group === groupCode && type._id !== selectedAccountType?._id
+            );
+            if (hasTypes) {
+                tabs.push({
+                    key: groupCode,
+                    label: ACCOUNT_GROUPS[groupCode],
+                    group: groupCode
+                });
+            }
+        });
+
+        return tabs;
     };
 
     // Close dropdowns when clicking outside
@@ -124,6 +174,9 @@ const ManagementTransactionsPage = () => {
             }
             if (accountTypeDropdownRef.current && !accountTypeDropdownRef.current.contains(event.target)) {
                 setAccountTypeDropdownOpen(false);
+            }
+            if (displayGroupDropdownRef.current && !displayGroupDropdownRef.current.contains(event.target)) {
+                setDisplayGroupDropdownOpen(false);
             }
         };
 
@@ -187,6 +240,13 @@ const ManagementTransactionsPage = () => {
             }
         }
     }, [selectedAccountType, dateFilter, viewMode, viewingBranchDetail, selectedBranchDetail]);
+
+    // Load summary data when entering summary view
+    useEffect(() => {
+        if (showSummary && dateFilter) {
+            loadAllSummaryData();
+        }
+    }, [showSummary, dateFilter]);
 
     const loadAccountTypes = async () => {
         setLoadingAccounts(true);
@@ -355,6 +415,103 @@ const ManagementTransactionsPage = () => {
         }
     };
 
+    // Load all summary data for all account types grouped by category
+    const loadAllSummaryData = async () => {
+        if (!dateFilter) return;
+
+        setLoadingSummary(true);
+        try {
+            let branchId;
+            if (currentUser.role.rep === 3) {
+                branchId = currentUser.designatedBranchId;
+            } else if (viewingBranchDetail && selectedBranchDetail) {
+                branchId = selectedBranchDetail._id;
+            }
+
+            if (!branchId) {
+                setLoadingSummary(false);
+                return;
+            }
+
+            const apiUrl = getApiBaseUrl() + 
+                `management-transactions/transactions/summary?branchId=${branchId}&date=${dateFilter}`;
+            
+            const response = await fetchWrapper.get(apiUrl);
+            
+            if (response.success) {
+                setSummaryData(response.summaryData || {});
+                
+                // Calculate grand totals from summary
+                if (response.grandTotals) {
+                    setGrandTotals(response.grandTotals);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading summary data:', error);
+            toast.error('Failed to load summary data');
+        } finally {
+            setLoadingSummary(false);
+        }
+    };
+
+    // Load display group data (Assets, Liabilities, Management Expenses)
+    const loadDisplayGroupData = async (displayGroup) => {
+        if (!dateFilter || !displayGroup) return;
+
+        setLoadingDisplayGroup(true);
+        try {
+            let branchId;
+            if (currentUser.role.rep === 3) {
+                branchId = currentUser.designatedBranchId;
+            } else if (viewingBranchDetail && selectedBranchDetail) {
+                branchId = selectedBranchDetail._id;
+            }
+
+            if (!branchId) {
+                setLoadingDisplayGroup(false);
+                return;
+            }
+
+            const apiUrl = getApiBaseUrl() + 
+                `management-transactions/transactions/display-group?branchId=${branchId}&date=${dateFilter}&displayGroup=${displayGroup}`;
+            
+            const response = await fetchWrapper.get(apiUrl);
+            
+            if (response.success) {
+                setDisplayGroupData(response.data || null);
+                
+                // Update grand totals from display group data
+                if (response.grandTotals) {
+                    setGrandTotals(response.grandTotals);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading display group data:', error);
+            toast.error('Failed to load display group data');
+        } finally {
+            setLoadingDisplayGroup(false);
+        }
+    };
+
+    // Handle display group selection
+    const handleDisplayGroupSelect = (groupCode) => {
+        setSelectedDisplayGroup(groupCode);
+        setDisplayGroupDropdownOpen(false);
+        setShowSummary(false);
+        
+        if (groupCode) {
+            loadDisplayGroupData(groupCode);
+        } else {
+            setDisplayGroupData(null);
+        }
+    };
+
+    // Clear display group when switching views
+    const clearDisplayGroup = () => {
+        setSelectedDisplayGroup(null);
+        setDisplayGroupData(null);
+    };
+
     const calculateGrandTotals = (transactionsData = null) => {
         const dataToUse = transactionsData || Object.entries(newTransactions).map(([accountId, data]) => ({
             account_id: accountId,
@@ -478,6 +635,11 @@ const ManagementTransactionsPage = () => {
         setShowSummary(false);
     };
 
+    const handleViewSummary = () => {
+        setShowSummary(true);
+        setSummaryActiveTab('current');
+    };
+
     const handleSubmitAll = async () => {
         // Validate that at least one transaction has data
         const hasData = Object.values(newTransactions).some(data => {
@@ -594,6 +756,256 @@ const ManagementTransactionsPage = () => {
         return false;
     };
 
+    // Get data for a specific summary tab
+    const getSummaryTabData = (tabKey) => {
+        if (tabKey === 'current') {
+            // Return current account type data from newTransactions
+            return {
+                accountType: selectedAccountType,
+                accounts: summaryAccounts.map(account => {
+                    const data = newTransactions[account._id] || {};
+                    return {
+                        ...account,
+                        previousBalance: parseFloat(data.previousBalance) || 0,
+                        debit: parseFloat(data.debit) || 0,
+                        credit: parseFloat(data.credit) || 0,
+                        totalBalance: calculateTotalBalance(account._id)
+                    };
+                })
+            };
+        }
+
+        // Return data for grouped account types
+        return summaryData[tabKey] || { accountTypes: [], totals: {} };
+    };
+
+    // Calculate totals for current tab
+    const calculateTabTotals = (tabKey) => {
+        if (tabKey === 'current') {
+            return summaryAccounts.reduce((acc, account) => {
+                const data = newTransactions[account._id] || {};
+                acc.previousBalance += parseFloat(data.previousBalance) || 0;
+                acc.debit += parseFloat(data.debit) || 0;
+                acc.credit += parseFloat(data.credit) || 0;
+                acc.totalBalance += calculateTotalBalance(account._id);
+                return acc;
+            }, { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 });
+        }
+
+        const groupData = summaryData[tabKey];
+        if (!groupData || !groupData.totals) {
+            return { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 };
+        }
+        return groupData.totals;
+    };
+
+    // Render summary table for a specific tab
+    const renderSummaryTable = (tabKey) => {
+        if (tabKey === 'current') {
+            const tabData = getSummaryTabData(tabKey);
+            const tabTotals = calculateTabTotals(tabKey);
+
+            return (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                            {selectedAccountType?.type_name}
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Account Name
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                        Previous Balance
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                        Debit
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                        Credit
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                        Total Balance
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {tabData.accounts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                            No transactions with values found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    tabData.accounts.map((account) => (
+                                        <tr key={account._id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {account.account_name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.previousBalance)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.debit)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.credit)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                                {formatPricePhp(account.totalBalance)}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                            {tabData.accounts.length > 0 && (
+                                <tfoot className="bg-gray-100">
+                                    <tr>
+                                        <td className="px-6 py-3 text-left text-sm font-bold text-gray-700">
+                                            Subtotal
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(tabTotals.previousBalance)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(tabTotals.debit)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(tabTotals.credit)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700 bg-gray-200">
+                                            {formatPricePhp(tabTotals.totalBalance)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render grouped account types
+        const groupData = summaryData[tabKey];
+        const tabTotals = calculateTabTotals(tabKey);
+
+        if (!groupData || !groupData.accountTypes || groupData.accountTypes.length === 0) {
+            return (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                    No transactions found for {ACCOUNT_GROUPS[tabKey]}.
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-6">
+                {groupData.accountTypes.map((typeData) => (
+                    <div key={typeData.type_code} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="p-4 border-b border-gray-200 bg-gray-50">
+                            <h3 className="text-lg font-semibold text-gray-800">
+                                {typeData.type_name}
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Account Name
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                            Previous Balance
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                            Debit
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                            Credit
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                            Total Balance
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {typeData.accounts.map((account) => (
+                                        <tr key={account._id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {account.account_name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.previous_balance)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.debit)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {formatPricePhp(account.credit)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                                {formatPricePhp(account.total_balance)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-gray-100">
+                                    <tr>
+                                        <td className="px-6 py-3 text-left text-sm font-bold text-gray-700">
+                                            Subtotal - {typeData.type_name}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(typeData.totals.previousBalance)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(typeData.totals.debit)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                            {formatPricePhp(typeData.totals.credit)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700 bg-gray-200">
+                                            {formatPricePhp(typeData.totals.totalBalance)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                ))}
+
+                {/* Group Total */}
+                <div className="bg-teal-50 rounded-lg border border-teal-200 p-4">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                            <tbody>
+                                <tr>
+                                    <td className="px-6 py-2 text-left font-bold text-teal-800">
+                                        {ACCOUNT_GROUPS[tabKey]} Total:
+                                    </td>
+                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
+                                        {formatPricePhp(tabTotals.previousBalance)}
+                                    </td>
+                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
+                                        {formatPricePhp(tabTotals.debit)}
+                                    </td>
+                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
+                                        {formatPricePhp(tabTotals.credit)}
+                                    </td>
+                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
+                                        {formatPricePhp(tabTotals.totalBalance)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (loadingAccounts) {
         return (
             <Layout>
@@ -613,6 +1025,8 @@ const ManagementTransactionsPage = () => {
             </Layout>
         );
     }
+
+    const summaryTabs = getSummaryTabs();
 
     return (
         <Layout>
@@ -639,10 +1053,13 @@ const ManagementTransactionsPage = () => {
                             </button>
                         )}
 
-                        {/* Summary Toggle Button - Fixed styling */}
-                        {viewMode === 'branch' && !showSummary && (currentUser.role.rep === 3 || viewingBranchDetail) && (
+                        {/* Summary Toggle Button */}
+                        {viewMode === 'branch' && !showSummary && !selectedDisplayGroup && (currentUser.role.rep === 3 || viewingBranchDetail) && (
                             <button
-                                onClick={() => setShowSummary(true)}
+                                onClick={() => {
+                                    handleViewSummary();
+                                    clearDisplayGroup();
+                                }}
                                 className="flex items-center gap-2 px-4 py-2 text-teal-600 bg-white border border-teal-600 rounded-md hover:bg-teal-50 transition-colors"
                             >
                                 <FileText size={18} />
@@ -650,57 +1067,117 @@ const ManagementTransactionsPage = () => {
                             </button>
                         )}
 
-                        {showSummary && (
+                        {/* Display Group Dropdown */}
+                        {viewMode === 'branch' && !showSummary && (currentUser.role.rep === 3 || viewingBranchDetail) && (
+                            <div className="relative" ref={displayGroupDropdownRef}>
+                                <button
+                                    onClick={() => setDisplayGroupDropdownOpen(!displayGroupDropdownOpen)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                                        selectedDisplayGroup 
+                                            ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <span className="text-sm font-medium">
+                                        {selectedDisplayGroup ? DISPLAY_GROUPS[selectedDisplayGroup] : 'Display Group'}
+                                    </span>
+                                    <ChevronDown 
+                                        size={16} 
+                                        className={`transition-transform ${displayGroupDropdownOpen ? 'rotate-180' : ''}`} 
+                                    />
+                                </button>
+
+                                {displayGroupDropdownOpen && (
+                                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden z-50">
+                                        <button
+                                            onClick={() => handleDisplayGroupSelect(null)}
+                                            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+                                                !selectedDisplayGroup ? 'bg-gray-100 font-medium' : 'text-gray-700'
+                                            }`}
+                                        >
+                                            None (Show Account Type)
+                                        </button>
+                                        {Object.entries(DISPLAY_GROUPS).map(([code, label]) => (
+                                            <button
+                                                key={code}
+                                                onClick={() => handleDisplayGroupSelect(code)}
+                                                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+                                                    selectedDisplayGroup === code
+                                                        ? 'bg-purple-50 text-purple-700 font-medium'
+                                                        : 'text-gray-700'
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {(showSummary || selectedDisplayGroup) && (
                             <button
-                                onClick={() => setShowSummary(false)}
+                                onClick={() => {
+                                    setShowSummary(false);
+                                    clearDisplayGroup();
+                                }}
                                 className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                             >
                                 <span className="text-sm font-medium">Back to Input</span>
                             </button>
                         )}
 
-                        {/* Account Type Dropdown */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-600">Account Type:</span>
-                            <div className="relative" ref={accountTypeDropdownRef}>
-                                <button
-                                    onClick={() => setAccountTypeDropdownOpen(!accountTypeDropdownOpen)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[200px]"
-                                >
-                                    <span className="text-sm font-medium text-gray-700 flex-1 text-left">
-                                        {selectedAccountType?.type_name || 'Select Type'}
-                                    </span>
-                                    <ChevronDown 
-                                        size={16} 
-                                        className={`transition-transform ${accountTypeDropdownOpen ? 'rotate-180' : ''}`} 
-                                    />
-                                </button>
+                        {/* Account Type Dropdown - Hide in summary view and display group view */}
+                        {!showSummary && !selectedDisplayGroup && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-600">Account Type:</span>
+                                <div className="relative" ref={accountTypeDropdownRef}>
+                                    <button
+                                        onClick={() => setAccountTypeDropdownOpen(!accountTypeDropdownOpen)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[200px]"
+                                    >
+                                        <span className="text-sm font-medium text-gray-700 flex-1 text-left">
+                                            {selectedAccountType?.type_name || 'Select Type'}
+                                        </span>
+                                        <ChevronDown 
+                                            size={16} 
+                                            className={`transition-transform ${accountTypeDropdownOpen ? 'rotate-180' : ''}`} 
+                                        />
+                                    </button>
 
-                                {accountTypeDropdownOpen && (
-                                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden z-50">
-                                        <div className="max-h-60 overflow-y-auto">
-                                            {accountTypes.map(accountType => (
-                                                <button
-                                                    key={accountType.type_code}
-                                                    onClick={() => {
-                                                        setSelectedAccountType(accountType);
-                                                        setAccountTypeDropdownOpen(false);
-                                                        setShowSummary(false);
-                                                    }}
-                                                    className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-                                                        selectedAccountType?.type_code === accountType.type_code
-                                                            ? 'bg-teal-50 text-teal-700 font-medium'
-                                                            : 'text-gray-700'
-                                                    }`}
-                                                >
-                                                    {accountType.type_name}
-                                                </button>
-                                            ))}
+                                    {accountTypeDropdownOpen && (
+                                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden z-50">
+                                            <div className="max-h-60 overflow-y-auto">
+                                                {accountTypes.map(accountType => (
+                                                    <button
+                                                        key={accountType.type_code}
+                                                        onClick={() => {
+                                                            setSelectedAccountType(accountType);
+                                                            setAccountTypeDropdownOpen(false);
+                                                            setShowSummary(false);
+                                                        }}
+                                                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+                                                            selectedAccountType?.type_code === accountType.type_code
+                                                                ? 'bg-teal-50 text-teal-700 font-medium'
+                                                                : 'text-gray-700'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span>{accountType.type_name}</span>
+                                                            {accountType.account_group && (
+                                                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full">
+                                                                    {ACCOUNT_GROUPS[accountType.account_group]}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-600">Date:</span>
@@ -717,7 +1194,7 @@ const ManagementTransactionsPage = () => {
                         </div>
 
                         {/* Branch Filter Dropdown */}
-                        {baseViewMode === 'aggregated' && !viewingBranchDetail && availableBranches.length > 0 && (
+                        {baseViewMode === 'aggregated' && !viewingBranchDetail && availableBranches.length > 0 && !showSummary && (
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-gray-600">Branches:</span>
                                 
@@ -796,7 +1273,11 @@ const ManagementTransactionsPage = () => {
                             </div>
                         )}
 
-                        {viewMode === 'branch' && !showSummary && (currentUser.role.rep === 3 || viewingBranchDetail) && (
+                        {/* Spacer to push Submit All to the right */}
+                        <div className="flex-grow"></div>
+
+                        {/* Submit All Button - Always on the right */}
+                        {viewMode === 'branch' && !showSummary && !selectedDisplayGroup && (currentUser.role.rep === 3 || viewingBranchDetail) && (
                             <ButtonSolid
                                 label={submitting ? 'Submitting...' : 'Submit All'}
                                 onClick={handleSubmitAll}
@@ -816,76 +1297,156 @@ const ManagementTransactionsPage = () => {
                     </div>
                 )}
 
+                {/* Summary Tabs */}
+                {showSummary && (
+                    <div className="px-6 pt-4 border-b border-gray-200">
+                        <div className="flex gap-1 overflow-x-auto">
+                            {summaryTabs.map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setSummaryActiveTab(tab.key)}
+                                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+                                        summaryActiveTab === tab.key
+                                            ? 'bg-teal-600 text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Content */}
                 <div className="flex-grow overflow-auto p-6 relative z-10">
-                    {loading ? (
+                    {loading || loadingSummary || loadingDisplayGroup ? (
                         <div className="flex justify-center items-center h-64">
                             <Spinner />
                         </div>
-                    ) : showSummary ? (
-                        // Summary View - Only non-zero accounts
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Account Name
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                                Previous Balance
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                                Debit
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                                Credit
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                                Total Balance
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {summaryAccounts.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                                    No transactions with values found. All accounts have zero values.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            summaryAccounts.map((account) => {
-                                                const data = newTransactions[account._id] || {};
-                                                const prevBalance = parseFloat(data.previousBalance) || 0;
-                                                const debit = parseFloat(data.debit) || 0;
-                                                const credit = parseFloat(data.credit) || 0;
-                                                const totalBalance = calculateTotalBalance(account._id);
-                                                
-                                                return (
-                                                    <tr key={account._id} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                            {account.account_name}
+                    ) : selectedDisplayGroup && displayGroupData ? (
+                        // Display Group View
+                        <div className="space-y-6">
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                                <h2 className="text-lg font-semibold text-purple-800">
+                                    {DISPLAY_GROUPS[selectedDisplayGroup]} - Transaction Summary
+                                </h2>
+                                <p className="text-sm text-purple-600 mt-1">
+                                    Showing all account names with transactions for {moment(dateFilter).format('MMMM D, YYYY')}
+                                </p>
+                            </div>
+                            
+                            {displayGroupData.accountTypes && displayGroupData.accountTypes.length > 0 ? (
+                                displayGroupData.accountTypes.map((typeData) => (
+                                    <div key={typeData.type_code} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                                        <div className="p-4 border-b border-gray-200 bg-gray-50">
+                                            <h3 className="text-lg font-semibold text-gray-800">
+                                                {typeData.type_name}
+                                            </h3>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Account Name
+                                                        </th>
+                                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                            Previous Balance
+                                                        </th>
+                                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                            Debit
+                                                        </th>
+                                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                            Credit
+                                                        </th>
+                                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                                                            Total Balance
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {typeData.accounts.map((account) => (
+                                                        <tr key={account._id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                                {account.account_name}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {formatPricePhp(account.previous_balance)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {formatPricePhp(account.debit)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                {formatPricePhp(account.credit)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                                                {formatPricePhp(account.total_balance)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                                <tfoot className="bg-gray-100">
+                                                    <tr>
+                                                        <td className="px-6 py-3 text-left text-sm font-bold text-gray-700">
+                                                            Subtotal - {typeData.type_name}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            {formatPricePhp(prevBalance)}
+                                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                                            {formatPricePhp(typeData.totals.previousBalance)}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            {formatPricePhp(debit)}
+                                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                                            {formatPricePhp(typeData.totals.debit)}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            {formatPricePhp(credit)}
+                                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                                            {formatPricePhp(typeData.totals.credit)}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
-                                                            {formatPricePhp(totalBalance)}
+                                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700 bg-gray-200">
+                                                            {formatPricePhp(typeData.totals.totalBalance)}
                                                         </td>
                                                     </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                                    No transactions found for {DISPLAY_GROUPS[selectedDisplayGroup]} on this date.
+                                </div>
+                            )}
+
+                            {/* Display Group Total */}
+                            {displayGroupData.totals && (
+                                <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full">
+                                            <tbody>
+                                                <tr>
+                                                    <td className="px-6 py-2 text-left font-bold text-purple-800">
+                                                        {DISPLAY_GROUPS[selectedDisplayGroup]} Total:
+                                                    </td>
+                                                    <td className="px-6 py-2 text-right w-48 font-bold text-purple-800">
+                                                        {formatPricePhp(displayGroupData.totals.previousBalance)}
+                                                    </td>
+                                                    <td className="px-6 py-2 text-right w-48 font-bold text-purple-800">
+                                                        {formatPricePhp(displayGroupData.totals.debit)}
+                                                    </td>
+                                                    <td className="px-6 py-2 text-right w-48 font-bold text-purple-800">
+                                                        {formatPricePhp(displayGroupData.totals.credit)}
+                                                    </td>
+                                                    <td className="px-6 py-2 text-right w-48 font-bold text-purple-800">
+                                                        {formatPricePhp(displayGroupData.totals.totalBalance)}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    ) : showSummary ? (
+                        // Summary View with Tabs
+                        renderSummaryTable(summaryActiveTab)
                     ) : viewMode === 'aggregated' ? (
                         // Aggregated View
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
