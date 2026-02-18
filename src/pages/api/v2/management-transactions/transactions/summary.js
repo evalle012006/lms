@@ -35,7 +35,7 @@ async function getSummary(req, res) {
 
         const accountTypes = accountTypesRes?.data?.management_account_types ?? [];
 
-        // Fetch all active accounts
+        // Fetch all active accounts (includes account-level account_group)
         const managementAccountsType = createGraphType(
             "management_accounts",
             MANAGEMENT_ACCOUNT_FIELD
@@ -82,7 +82,14 @@ async function getSummary(req, res) {
             };
         });
 
-        // Group account types by their account_group
+        // Create a map of account type id to account type for quick lookup
+        const accountTypeMap = {};
+        accountTypes.forEach(at => {
+            accountTypeMap[at._id] = at;
+        });
+
+        // Group accounts by their EFFECTIVE account_group
+        // Priority: account.account_group > accountType.account_group
         const groupedData = {
             other_receipts: { 
                 accountTypes: [], 
@@ -106,64 +113,91 @@ async function getSummary(req, res) {
             totalBalance: 0
         };
 
-        // Process each account type
-        accountTypes.forEach(accountType => {
-            const typeAccounts = accounts.filter(a => a.account_type_id === accountType._id);
+        // Group accounts by their effective group
+        const accountsByEffectiveGroup = {
+            other_receipts: [],
+            management_expenses: [],
+            other_payments: []
+        };
+
+        accounts.forEach(account => {
+            const txData = transactionMap[account._id];
+            if (!txData) return;
             
-            // Filter accounts that have transactions with non-zero values
-            const accountsWithData = typeAccounts
-                .map(account => {
-                    const txData = transactionMap[account._id];
-                    if (!txData) return null;
-                    
-                    // Only include if any value is > 0
-                    if (txData.previous_balance > 0 || txData.debit > 0 || txData.credit > 0 || txData.total_balance !== 0) {
-                        return {
-                            _id: account._id,
-                            account_name: account.account_name,
-                            description: account.description,
-                            ...txData
-                        };
-                    }
-                    return null;
-                })
-                .filter(Boolean);
-
-            // Calculate totals for this account type
-            const typeTotals = accountsWithData.reduce((acc, account) => {
-                acc.previousBalance += account.previous_balance;
-                acc.debit += account.debit;
-                acc.credit += account.credit;
-                acc.totalBalance += account.total_balance;
-                return acc;
-            }, { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 });
-
-            // Add to grand totals
-            grandTotals.previousBalance += typeTotals.previousBalance;
-            grandTotals.debit += typeTotals.debit;
-            grandTotals.credit += typeTotals.credit;
-            grandTotals.totalBalance += typeTotals.totalBalance;
-
-            // Only add to grouped data if there are accounts with data and the type has a group
-            if (accountsWithData.length > 0 && accountType.account_group) {
-                const group = accountType.account_group;
-                
-                if (groupedData[group]) {
-                    groupedData[group].accountTypes.push({
-                        _id: accountType._id,
-                        type_name: accountType.type_name,
-                        type_code: accountType.type_code,
-                        accounts: accountsWithData,
-                        totals: typeTotals
-                    });
-
-                    // Add to group totals
-                    groupedData[group].totals.previousBalance += typeTotals.previousBalance;
-                    groupedData[group].totals.debit += typeTotals.debit;
-                    groupedData[group].totals.credit += typeTotals.credit;
-                    groupedData[group].totals.totalBalance += typeTotals.totalBalance;
-                }
+            // Only include if any value is > 0 or total is not 0
+            if (!(txData.previous_balance > 0 || txData.debit > 0 || txData.credit > 0 || txData.total_balance !== 0)) {
+                return;
             }
+
+            // Determine effective group: account-level takes priority over account type
+            const accountType = accountTypeMap[account.account_type_id];
+            const effectiveGroup = account.account_group || accountType?.account_group;
+
+            if (effectiveGroup && accountsByEffectiveGroup[effectiveGroup]) {
+                accountsByEffectiveGroup[effectiveGroup].push({
+                    ...account,
+                    accountType: accountType,
+                    txData: txData,
+                    effectiveGroup: effectiveGroup
+                });
+            }
+        });
+
+        // Now organize accounts by account type within each group
+        Object.keys(accountsByEffectiveGroup).forEach(groupCode => {
+            const groupAccounts = accountsByEffectiveGroup[groupCode];
+            
+            // Group accounts by account type
+            const accountsByType = {};
+            groupAccounts.forEach(account => {
+                const typeId = account.account_type_id;
+                if (!accountsByType[typeId]) {
+                    accountsByType[typeId] = {
+                        accountType: account.accountType,
+                        accounts: []
+                    };
+                }
+                accountsByType[typeId].accounts.push({
+                    _id: account._id,
+                    account_name: account.account_name,
+                    description: account.description,
+                    account_group: account.account_group,
+                    ...account.txData
+                });
+            });
+
+            // Convert to array and calculate totals
+            Object.values(accountsByType).forEach(typeData => {
+                if (typeData.accounts.length === 0) return;
+
+                const typeTotals = typeData.accounts.reduce((acc, account) => {
+                    acc.previousBalance += account.previous_balance;
+                    acc.debit += account.debit;
+                    acc.credit += account.credit;
+                    acc.totalBalance += account.total_balance;
+                    return acc;
+                }, { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 });
+
+                groupedData[groupCode].accountTypes.push({
+                    _id: typeData.accountType._id,
+                    type_name: typeData.accountType.type_name,
+                    type_code: typeData.accountType.type_code,
+                    accounts: typeData.accounts,
+                    totals: typeTotals
+                });
+
+                // Add to group totals
+                groupedData[groupCode].totals.previousBalance += typeTotals.previousBalance;
+                groupedData[groupCode].totals.debit += typeTotals.debit;
+                groupedData[groupCode].totals.credit += typeTotals.credit;
+                groupedData[groupCode].totals.totalBalance += typeTotals.totalBalance;
+
+                // Add to grand totals
+                grandTotals.previousBalance += typeTotals.previousBalance;
+                grandTotals.debit += typeTotals.debit;
+                grandTotals.credit += typeTotals.credit;
+                grandTotals.totalBalance += typeTotals.totalBalance;
+            });
         });
 
         return res.status(200).json({

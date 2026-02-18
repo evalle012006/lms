@@ -160,7 +160,7 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
 };
 
 // Draggable Account Name Row Component
-const DraggableAccountNameRow = ({ account, index, moveItem, onDelete, onDragEnd }) => {
+const DraggableAccountNameRow = ({ account, index, moveItem, onEdit, onDelete, onDragEnd }) => {
     const ref = React.useRef(null);
 
     const [{ handlerId }, drop] = useDrop({
@@ -218,7 +218,14 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onDelete, onDragEnd
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 <div className="flex items-center">
                     <Bars3Icon className="h-5 w-5 text-gray-400 mr-3" />
-                    {account.account_name}
+                    <div className="flex flex-col">
+                        <span>{account.account_name}</span>
+                        {account.account_group && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full mt-1 w-fit">
+                                {getGroupLabel(account.account_group)}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </td>
             <td className="px-6 py-4 text-sm text-gray-900">
@@ -231,16 +238,28 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onDelete, onDragEnd
                 }
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-center">
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(account);
-                    }}
-                    className="text-red-600 hover:text-red-900 transition-colors"
-                    title="Delete"
-                >
-                    <TrashIcon className="h-5 w-5" />
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(account);
+                        }}
+                        className="text-teal-600 hover:text-teal-900 transition-colors"
+                        title="Edit"
+                    >
+                        <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(account);
+                        }}
+                        className="text-red-600 hover:text-red-900 transition-colors"
+                        title="Delete"
+                    >
+                        <TrashIcon className="h-5 w-5" />
+                    </button>
+                </div>
             </td>
         </tr>
     );
@@ -283,8 +302,10 @@ const ManagementAccountTypesPage = () => {
     const [showNameForm, setShowNameForm] = useState(false);
     const [nameFormData, setNameFormData] = useState({
         accountName: '',
-        description: ''
+        description: '',
+        accountGroup: ''
     });
+    const [editingName, setEditingName] = useState(null);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -484,9 +505,21 @@ const ManagementAccountTypesPage = () => {
             toast.error('Please select an account type first');
             return;
         }
+        setEditingName(null);
         setNameFormData({
             accountName: '',
-            description: ''
+            description: '',
+            accountGroup: ''
+        });
+        setShowNameForm(true);
+    };
+
+    const handleEditName = (account) => {
+        setEditingName(account);
+        setNameFormData({
+            accountName: account.account_name,
+            description: account.description || '',
+            accountGroup: account.account_group || ''
         });
         setShowNameForm(true);
     };
@@ -503,18 +536,21 @@ const ManagementAccountTypesPage = () => {
         try {
             const apiUrl = getApiBaseUrl() + 'management-transactions/account-names/save';
             const response = await fetchWrapper.post(apiUrl, {
+                accountId: editingName?._id,
                 accountTypeId: selectedAccountType._id,
                 accountName: nameFormData.accountName.trim(),
                 description: nameFormData.description.trim(),
+                accountGroup: nameFormData.accountGroup,
                 userId: currentUser._id
             });
 
             if (response.success) {
-                toast.success('Account name added successfully');
+                toast.success(editingName ? 'Account name updated successfully' : 'Account name added successfully');
                 setShowNameForm(false);
+                setEditingName(null);
                 loadAccountNames(selectedAccountType._id);
             } else {
-                toast.error(response.message || 'Failed to add account name');
+                toast.error(response.message || 'Failed to save account name');
             }
         } catch (error) {
             console.error('Error saving account name:', error);
@@ -690,6 +726,7 @@ const ManagementAccountTypesPage = () => {
                                                                     account={account}
                                                                     index={index}
                                                                     moveItem={moveAccountName}
+                                                                    onEdit={handleEditName}
                                                                     onDelete={handleDeleteName}
                                                                     onDragEnd={handleAccountNameDropEnd}
                                                                 />
@@ -837,7 +874,9 @@ const ManagementAccountTypesPage = () => {
                 <Dialog show={showNameForm}>
                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div className="mb-4">
-                            <h3 className="text-2xl font-semibold text-gray-900">Add Account Name</h3>
+                            <h3 className="text-2xl font-semibold text-gray-900">
+                                {editingName ? 'Edit Account Name' : 'Add Account Name'}
+                            </h3>
                         </div>
                         
                         <form onSubmit={handleSubmitName}>
@@ -857,6 +896,30 @@ const ManagementAccountTypesPage = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Account Group (Override)
+                                    </label>
+                                    <select
+                                        value={nameFormData.accountGroup}
+                                        onChange={(e) => setNameFormData({...nameFormData, accountGroup: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        {ACCOUNT_GROUP_OPTIONS.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        If set, this overrides the account type's group for summary view.
+                                        {selectedAccountType?.account_group && (
+                                            <span className="block mt-1">
+                                                Account Type default: <span className="font-medium">{getGroupLabel(selectedAccountType.account_group)}</span>
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Description (Optional)
                                     </label>
                                     <textarea
@@ -872,14 +935,17 @@ const ManagementAccountTypesPage = () => {
                             <div className="flex flex-row justify-center text-center px-4 py-3 mt-6 sm:px-6 sm:flex gap-3">
                                 <ButtonOutline 
                                     type="button" 
-                                    onClick={() => setShowNameForm(false)}
+                                    onClick={() => {
+                                        setShowNameForm(false);
+                                        setEditingName(null);
+                                    }}
                                     label="Cancel"
                                     className="p-2"
                                 />
                                 <ButtonSolid 
                                     type="submit" 
                                     disabled={isSubmitting}
-                                    label={isSubmitting ? 'Saving...' : 'Save'}
+                                    label={isSubmitting ? 'Saving...' : editingName ? 'Update' : 'Save'}
                                     className="p-2"
                                 />
                             </div>
