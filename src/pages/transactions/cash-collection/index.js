@@ -972,7 +972,95 @@ const ModernBranchCashCollections = () => {
       }
   
       if (response && response.data) {
-        const processedData = response.data.map(item => {
+
+        const mapTotal = (name, loNo, acc, item) => ({
+          csf: (acc.csf || 0) + (item.csf || 0),
+          mcbu: (acc.mcbu || 0) + (item.mcbu || 0),
+          name: name,
+          transactionType: 'all',
+          c_csf: (acc.c_csf || 0) + (item.c_csf || 0),
+          csfIn: (acc.csfIn || 0) + (item.csfIn || 0),
+          c_mcbu: (acc.c_mcbu || 0) + (item.c_mcbu || 0),
+          excess: (acc.excess || 0) + (item.excess || 0),
+          mispay: (acc.mispay || 0) + (item.mispay || 0),
+          prev_csf: (acc.prev_csf || 0) + (item.prev_csf || 0),
+          pastDueNo: (acc.pastDueNo || 0) + (item.pastDueNo || 0),
+          prev_mcbu: (acc.prev_mcbu || 0) + (item.prev_mcbu || 0),
+          cashOnHand: (acc.cashOnHand || 0) + (item.cashOnHand || 0),
+          mcbuReturn: (acc.mcbuReturn || 0) + (item.mcbuReturn || 0),
+          otherIncome: (acc.otherIncome || 0) + (item.otherIncome || 0),
+          prev_excess: (acc.prev_excess || 0) + (item.prev_excess || 0),
+          prev_mispay: (acc.prev_mispay || 0) + (item.prev_mispay || 0),
+          csfReturnAmt: (acc.csfReturnAmt || 0) + (item.csfReturnAmt || 0),
+          mcbuInterest: (acc.mcbuInterest || 0) + (item.mcbuInterest || 0),
+          mcbuReturnNo: (acc.mcbuReturnNo || 0) + (item.mcbuReturnNo || 0),
+          activeClients: (acc.activeClients || 0) + (item.activeClients || 0),
+          csfCollection: (acc.csfCollection || 0) + (item.csfCollection || 0),
+          csfWithdrawal: (acc.csfWithdrawal || 0) + (item.csfWithdrawal || 0),
+          lrfCollection: (acc.lrfCollection || 0) + (item.lrfCollection || 0),
+          pastDueAmount: (acc.pastDueAmount || 0) + (item.pastDueAmount || 0),
+          c_csfReturnAmt: (acc.c_csfReturnAmt || 0) + (item.c_csfReturnAmt || 0),
+          cbhbCollection: (acc.cbhbCollection || 0) + (item.cbhbCollection || 0),
+          mcbuCollection: (acc.mcbuCollection || 0) + (item.mcbuCollection || 0),
+          mcbuWithdrawal: (acc.mcbuWithdrawal || 0) + (item.mcbuWithdrawal || 0),
+          prev_pastDueNo: (acc.prev_pastDueNo || 0) + (item.prev_pastDueNo || 0),
+          activeBorrowers: (acc.activeBorrowers || 0) + (item.activeBorrowers || 0),
+          c_activeClients: (acc.c_activeClients || 0) + (item.c_activeClients || 0),
+          c_csfWithdrawal: (acc.c_csfWithdrawal || 0) + (item.c_csfWithdrawal || 0),
+          otherCollection: (acc.otherCollection || 0) + (item.otherCollection || 0),
+          prev_cashOnHand: (acc.prev_cashOnHand || 0) + (item.prev_cashOnHand || 0),
+          prev_mcbuReturn: (acc.prev_mcbuReturn || 0) + (item.prev_mcbuReturn || 0),
+          transferClients: (acc.transferClients || 0) + (item.transferClients || 0),
+          totalLoanBalance: (acc.totalLoanBalance || 0) + (item.totalLoanBalance || 0),
+          totalLoanRelease: (acc.totalLoanRelease || 0) + (item.totalLoanRelease || 0),
+          c_activeBorrowers: (acc.c_activeBorrowers || 0) + (item.c_activeBorrowers || 0),
+          fullPaymentAmount: (acc.fullPaymentAmount || 0) + (item.fullPaymentAmount || 0),
+          fullPaymentPerson: (acc.fullPaymentPerson || 0) + (item.fullPaymentPerson || 0),
+          prev_mcbuReturnNo: (acc.prev_mcbuReturnNo || 0) + (item.prev_mcbuReturnNo || 0),
+          addHospitalization: (acc.addHospitalization || 0) + (item.addHospitalization || 0),
+          c_totalLoanBalance: (acc.c_totalLoanBalance || 0) + (item.c_totalLoanBalance || 0),
+          c_totalLoanRelease: (acc.c_totalLoanRelease || 0) + (item.c_totalLoanRelease || 0),
+          prev_activeClients: (acc.prev_activeClients || 0) + (item.prev_activeClients || 0),
+          prev_pastDueAmount: (acc.prev_pastDueAmount || 0) + (item.prev_pastDueAmount || 0),
+          totalNetCollection: (acc.totalNetCollection || 0) + (item.totalNetCollection || 0),
+          admissionCollection: (acc.admissionCollection || 0) + (item.admissionCollection || 0),
+          loanCollectionDaily: (acc.loanCollectionDaily || 0) + (item.loanCollectionDaily || 0),
+          prev_mcbuCollection: (acc.prev_mcbuCollection || 0) + (item.prev_mcbuCollection || 0),
+          prev_mcbuWithdrawal: (acc.prev_mcbuWithdrawal || 0) + (item.prev_mcbuWithdrawal || 0),
+          actualLoanCollection: (acc.actualLoanCollection || 0) + (item.actualLoanCollection || 0),
+          currentReleaseAmount: (acc.currentReleaseAmount || 0) + (item.currentReleaseAmount || 0),
+          loanCollectionWeekly: (acc.loanCollectionWeekly || 0) + (item.loanCollectionWeekly || 0),
+          prev_activeBorrowers: (acc.prev_activeBorrowers || 0) + (item.prev_activeBorrowers || 0),
+          prev_transferClients: (acc.prev_transferClients || 0) + (item.prev_transferClients || 0),
+          targetLoanCollection: (acc.targetLoanCollection || 0) + (item.targetLoanCollection || 0),
+          prev_totalLoanBalance: (acc.prev_totalLoanBalance || 0) + (item.prev_totalLoanBalance || 0),
+          prev_totalLoanRelease: (acc.prev_totalLoanRelease || 0) + (item.prev_totalLoanRelease || 0),
+          c_targetLoanCollection: (acc.c_targetLoanCollection || 0) + (item.c_targetLoanCollection || 0),
+          otherPictureCollection: (acc.otherPictureCollection || 0) + (item.otherPictureCollection || 0),
+          prev_fullPaymentAmount: (acc.prev_fullPaymentAmount || 0) + (item.prev_fullPaymentAmount || 0),
+          prev_fullPaymentPerson: (acc.prev_fullPaymentPerson || 0) + (item.prev_fullPaymentPerson || 0),
+          otherPassbookCollection: (acc.otherPassbookCollection || 0) + (item.otherPassbookCollection || 0),
+          currentReleasePerson_New: (acc.currentReleasePerson_New || 0) + (item.currentReleasePerson_New || 0),
+          currentReleasePerson_Rel: (acc.currentReleasePerson_Rel || 0) + (item.currentReleasePerson_Rel || 0),
+          prev_loanCollectionDaily: (acc.prev_loanCollectionDaily || 0) + (item.prev_loanCollectionDaily || 0),
+          prev_actualLoanCollection: (acc.prev_actualLoanCollection || 0) + (item.prev_actualLoanCollection || 0),
+          prev_currentReleaseAmount: (acc.prev_currentReleaseAmount || 0) + (item.prev_currentReleaseAmount || 0),
+          prev_loanCollectionWeekly: (acc.prev_loanCollectionWeekly || 0) + (item.prev_loanCollectionWeekly || 0),
+          prev_currentReleasePerson_New: (acc.prev_currentReleasePerson_New || 0) + (item.prev_currentReleasePerson_New || 0),
+          prev_currentReleasePerson_Rel: (acc.prev_currentReleasePerson_Rel || 0) + (item.prev_currentReleasePerson_Rel || 0),
+          loNo,
+          groupStatus: item.groupStatus || null,
+        });
+
+        console.log(response.data.filter(item => item.transactionType === 'weekly'));
+
+        const dailyTotal = response.data.filter(item => item.transactionType === 'daily').reduce((acc, item) => mapTotal('DAILY TOTAL', 99998, acc, item), {});
+        const weeklyTotal = response.data.filter(item => item.transactionType === 'weekly').reduce((acc, item) => mapTotal('WEEKLY TOTAL', 99999, acc, item), {});
+        
+
+        console.log(dailyTotal, weeklyTotal);
+
+        const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c).map(item => {
           const formattedName = filter === 'branch' && item.code ? 
             `${item.code} - ${item.name}` : 
             item.name;
@@ -1115,6 +1203,8 @@ const ModernBranchCashCollections = () => {
             }
           });
         }
+
+        console.log(processedData);
         
         // console.log('Processed data length:', processedData.length);
         // console.log('Current filter:', filter);
