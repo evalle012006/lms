@@ -282,8 +282,19 @@ const FundTransferPage = () => {
         }
     ], [historyTotals]);
 
-    // Rest of the handlers remain the same...
     const handleEditAction = (row) => {
+        // Check if user is Finance role - they can edit regardless of status
+        const isFinance = currentUser.role?.shortCode === 'finance';
+        
+        // Allow Finance to edit any fund transfer regardless of status
+        if (isFinance) {
+            setMode("edit");
+            setFundTransfer(row.original);
+            handleShowAddDrawer();
+            return;
+        }
+        
+        // Regular validation for other users
         if (row.original.status === 'pending') {
             setMode("edit");
             setFundTransfer(row.original);

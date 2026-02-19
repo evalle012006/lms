@@ -81,21 +81,8 @@ async function updateFundTransfer(req, res) {
             return;
         }
 
-        // Access control validation - UPDATED: Only creator (area_admin), finance, or regional_manager can update
-        const isCreator = existingTransfer.insertedById === user._id;
-        const isAreaAdmin = user.role?.shortCode === 'area_admin';
-        const isFinance = user.role?.shortCode === 'finance';
-        const isRegionalManager = user.role?.shortCode === 'regional_manager';
-        const isDeputyDirector = user.role?.shortCode === 'deputy_director';
-
-        if (!((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector)) {
-            return res.status(403).send({
-                success: false,
-                message: "Access denied. Only the creator (area_admin), finance, regional managers, or deputy directors can update fund transfers."
-            });
-        }
-
         const user = await findUserById(userId);
+        const isFTAdmin = ['ftadmin@ambercashph.com', 'ftadmin1@ambercashph.com'].includes(user.email);
         const fundTransfer = req.body;
 
         // Required field validation
@@ -170,8 +157,22 @@ async function updateFundTransfer(req, res) {
             return;
         }
 
+        // Access control validation - UPDATED: Only creator (area_admin), finance, or regional_manager can update
+        const isCreator = existingTransfer.insertedById === user._id;
+        const isAreaAdmin = user.role?.shortCode === 'area_admin';
+        const isFinance = user.role?.shortCode === 'finance';
+        const isRegionalManager = user.role?.shortCode === 'regional_manager';
+        const isDeputyDirector = user.role?.shortCode === 'deputy_director';
+
+        if (!((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector)) {
+            return res.status(403).send({
+                success: false,
+                message: "Access denied. Only the creator (area_admin), finance, regional managers, or deputy directors can update fund transfers."
+            });
+        }
+
         // Check if transfer is still pending
-        if (existingTransfer.status !== 'pending') {
+        if (existingTransfer.status !== 'pending' && !isFinance) {
             res.status(400).send({
                 success: false,
                 message: "Cannot edit approved or rejected fund transfers."
@@ -180,8 +181,8 @@ async function updateFundTransfer(req, res) {
         }
 
         // Check if any approval has been given
-        if (existingTransfer.giverApprovalStatus === 'approved' || 
-            existingTransfer.receiverApprovalStatus === 'approved') {
+        if ((existingTransfer.giverApprovalStatus === 'approved' || 
+            existingTransfer.receiverApprovalStatus === 'approved') && !isFinance) {
             res.status(400).send({
                 success: false,
                 message: "Cannot edit fund transfer. At least one branch has already approved this transfer."
@@ -233,15 +234,18 @@ async function updateFundTransfer(req, res) {
             updateSet.transactionCode = newTransactionCode;
         }
 
-        // Reset approval statuses if any changes
-        updateSet.giverApprovalStatus = 'pending';
-        updateSet.receiverApprovalStatus = 'pending';
-        updateSet.giverApprovalId = null;
-        updateSet.receiverApprovalId = null;
-        updateSet.giverRejectReason = null;
-        updateSet.receiverRejectReason = null;
-        updateSet.giverApproveRejectDate = null;
-        updateSet.receiverApproveRejectDate = null;
+        // Reset approval statuses if any changes (but only if not FT Admin editing approved transfer)
+        // If FT Admin is editing an already approved transfer, preserve the approval status
+        if (!isFTAdmin || existingTransfer.status === 'pending') {
+            updateSet.giverApprovalStatus = 'pending';
+            updateSet.receiverApprovalStatus = 'pending';
+            updateSet.giverApprovalId = null;
+            updateSet.receiverApprovalId = null;
+            updateSet.giverRejectReason = null;
+            updateSet.receiverRejectReason = null;
+            updateSet.giverApproveRejectDate = null;
+            updateSet.receiverApproveRejectDate = null;
+        }
 
         // Update the fund transfer
         const [data] = await graph.mutation(

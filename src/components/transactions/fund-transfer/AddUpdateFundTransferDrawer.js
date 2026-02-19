@@ -26,6 +26,8 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
     const [selectedReceiverBranch, setSelectedReceiverBranch] = useState();
     const [selectedAccount, setSelectedAccount] = useState();
 
+    const isFinance = currentUser.role?.shortCode === 'finance';
+
     // Account options
     const accountOptions = [
         { value: 'BMC', label: 'Bank Manager\'s Check' },
@@ -292,6 +294,14 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                     <Spinner />
                 ) : (
                     <div className="px-2 pb-8">
+                        {mode === 'edit' && isFinance && (
+                            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                <p className="text-xs text-amber-800">
+                                    <span className="font-bold">⚠️ Admin Override:</span> You are editing an approved/rejected fund transfer. 
+                                    Please ensure changes are necessary and properly documented.
+                                </p>
+                            </div>
+                        )}
                         {/* Transaction Code Display - Only show in edit mode */}
                         {mode === 'edit' && fundTransfer?.transactionCode && (
                             <div className="mt-4 mb-6">
@@ -414,10 +424,10 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             onChange={(field, value) => handleChangeAccount(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Account Type"
-                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
+                                            disabled={mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                             errors={touched.account && errors.account ? errors.account : undefined}
                                         />
-                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                        {mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
                                             <p className="mt-1 text-xs text-gray-500">
                                                 Cannot change account type after approval
                                             </p>
@@ -434,7 +444,7 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             onChange={(field, value) => handleChangeGiverBranch(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Giver Branch"
-                                            disabled={currentUser?.role?.rep === 3}
+                                            disabled={currentUser?.role?.rep === 3 || (mode === 'edit' && !isFinance)}
                                             errors={touched.giverBranchId && errors.giverBranchId ? errors.giverBranchId : undefined}
                                         />
                                         {mode === 'edit' && (
@@ -453,11 +463,11 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             options={getReceiverBranchOptions()}
                                             onChange={(field, value) => handleChangeReceiverBranch(field, value)}
                                             onBlur={setFieldTouched}
-                                            disabled={!selectedGiverBranch || (mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved'))}
+                                            disabled={!selectedGiverBranch || (mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved'))}
                                             placeholder="Select Receiver Branch"
                                             errors={touched.receiverBranchId && errors.receiverBranchId ? errors.receiverBranchId : undefined}
                                         />
-                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                        {mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
                                             <p className="mt-1 text-xs text-gray-500">
                                                 Cannot change receiver branch after approval
                                             </p>
@@ -472,10 +482,10 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             placeholder="Enter transfer amount"
                                             onChange={handleChange}
                                             onBlur={() => setFieldTouched('amount', true)}
-                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
+                                            disabled={mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                             errors={touched.amount && errors.amount ? errors.amount : undefined}
                                         />
-                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                        {mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
                                             <p className="mt-1 text-xs text-gray-500">
                                                 Cannot change amount after approval
                                             </p>
@@ -503,11 +513,11 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                     onBlur={() => setFieldTouched('description', true)}
                                                     placeholder="Enter transfer description/purpose"
                                                     rows={4}
-                                                    disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
+                                                    disabled={mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                                     className={`
                                                         p-1 pl-0 text-gray-500 font-medium border-none focus:ring-0 text-sm resize-none
                                                         ${errors.description && touched.description && 'text-red-400'}
-                                                        ${mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && 'bg-gray-50 cursor-not-allowed'}
+                                                        ${mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && 'bg-gray-50 cursor-not-allowed'}
                                                     `}
                                                 />
                                             </div>
@@ -515,7 +525,7 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                         {errors.description && touched.description && (
                                             <span className="text-red-400 text-xs font-medium">{errors.description}</span>
                                         )}
-                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                        {mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
                                             <p className="mt-1 text-xs text-gray-500">
                                                 Cannot change description after approval
                                             </p>
@@ -635,11 +645,11 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             label={mode === 'edit' ? 'Update Transfer' : 'Submit Transfer'} 
                                             type="submit" 
                                             isSubmitting={isValidating && isSubmitting} 
-                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected')}
+                                            disabled={mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected')}
                                         />
                                     </div>
                                     
-                                    {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected') && (
+                                    {mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected') && (
                                         <p className="mt-2 text-xs text-gray-500 text-center">
                                             This transfer cannot be modified due to its current approval status
                                         </p>
