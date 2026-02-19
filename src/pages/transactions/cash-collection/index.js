@@ -1050,6 +1050,7 @@ const ModernBranchCashCollections = () => {
           prev_currentReleasePerson_Rel: (acc.prev_currentReleasePerson_Rel || 0) + (item.prev_currentReleasePerson_Rel || 0),
           loNo,
           groupStatus: acc.groupStatus ?? item.groupStatus,
+          hideLock: true,
         });
 
         console.log(response.data.filter(item => item.transactionType === 'weekly'));
@@ -2436,7 +2437,7 @@ const ModernBranchCashCollections = () => {
                                         </div>
                                       ) : column.key === 'actions' ? (
                                         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                                          {(currentFilter === 'lo' || currentFilter === 'branch') && (
+                                          {((currentFilter === 'lo' || currentFilter === 'branch') && !row.hideLock) && (
                                             <>
                                               <button
                                                 onClick={(e) => {
@@ -2472,7 +2473,7 @@ const ModernBranchCashCollections = () => {
                                           )}
                                           
                                           {/* NEW: Repair button for group level */}
-                                          {currentFilter === 'group' && (
+                                          {currentFilter === 'group' && !row.hideLock (
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
