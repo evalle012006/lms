@@ -1049,7 +1049,7 @@ const ModernBranchCashCollections = () => {
           prev_currentReleasePerson_New: (acc.prev_currentReleasePerson_New || 0) + (item.prev_currentReleasePerson_New || 0),
           prev_currentReleasePerson_Rel: (acc.prev_currentReleasePerson_Rel || 0) + (item.prev_currentReleasePerson_Rel || 0),
           loNo,
-          groupStatus: item.groupStatus || null,
+          groupStatus: acc.groupStatus ?? item.groupStatus,
         });
 
         console.log(response.data.filter(item => item.transactionType === 'weekly'));
@@ -1057,10 +1057,9 @@ const ModernBranchCashCollections = () => {
         const dailyTotal = response.data.filter(item => item.transactionType === 'daily').reduce((acc, item) => mapTotal('DAILY TOTAL', 99998, acc, item), {});
         const weeklyTotal = response.data.filter(item => item.transactionType === 'weekly').reduce((acc, item) => mapTotal('WEEKLY TOTAL', 99999, acc, item), {});
         
-
         console.log(dailyTotal, weeklyTotal);
 
-        const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c).map(item => {
+        const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c.name).map(item => {
           const formattedName = filter === 'branch' && item.code ? 
             `${item.code} - ${item.name}` : 
             item.name;
