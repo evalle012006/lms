@@ -35,7 +35,7 @@ async function getSummary(req, res) {
 
         const accountTypes = accountTypesRes?.data?.management_account_types ?? [];
 
-        // Fetch all active accounts (includes account-level account_group)
+        // Fetch all active accounts (includes account-level account_groups)
         const managementAccountsType = createGraphType(
             "management_accounts",
             MANAGEMENT_ACCOUNT_FIELD
@@ -88,8 +88,20 @@ async function getSummary(req, res) {
             accountTypeMap[at._id] = at;
         });
 
-        // Group accounts by their EFFECTIVE account_group
-        // Priority: account.account_group > accountType.account_group
+        // Helper function to get effective groups for an account
+        // Priority: account.account_groups > accountType.account_groups
+        const getEffectiveGroups = (account, accountType) => {
+            // Handle both array and single value formats
+            const accountGroups = Array.isArray(account.account_groups) ? account.account_groups :
+                                  (account.account_group ? [account.account_group] : []);
+            const typeGroups = Array.isArray(accountType?.account_groups) ? accountType.account_groups :
+                               (accountType?.account_group ? [accountType.account_group] : []);
+            
+            // If account has its own groups, use them; otherwise fall back to type groups
+            return accountGroups.length > 0 ? accountGroups : typeGroups;
+        };
+
+        // Group accounts by their EFFECTIVE account_groups
         const groupedData = {
             other_receipts: { 
                 accountTypes: [], 
@@ -113,7 +125,7 @@ async function getSummary(req, res) {
             totalBalance: 0
         };
 
-        // Group accounts by their effective group
+        // Group accounts by their effective groups
         const accountsByEffectiveGroup = {
             other_receipts: [],
             management_expenses: [],
@@ -129,18 +141,21 @@ async function getSummary(req, res) {
                 return;
             }
 
-            // Determine effective group: account-level takes priority over account type
+            // Determine effective groups (can be multiple)
             const accountType = accountTypeMap[account.account_type_id];
-            const effectiveGroup = account.account_group || accountType?.account_group;
+            const effectiveGroups = getEffectiveGroups(account, accountType);
 
-            if (effectiveGroup && accountsByEffectiveGroup[effectiveGroup]) {
-                accountsByEffectiveGroup[effectiveGroup].push({
-                    ...account,
-                    accountType: accountType,
-                    txData: txData,
-                    effectiveGroup: effectiveGroup
-                });
-            }
+            // Add to each group the account belongs to
+            effectiveGroups.forEach(groupCode => {
+                if (accountsByEffectiveGroup[groupCode]) {
+                    accountsByEffectiveGroup[groupCode].push({
+                        ...account,
+                        accountType: accountType,
+                        txData: txData,
+                        effectiveGroup: groupCode
+                    });
+                }
+            });
         });
 
         // Now organize accounts by account type within each group
@@ -157,13 +172,18 @@ async function getSummary(req, res) {
                         accounts: []
                     };
                 }
-                accountsByType[typeId].accounts.push({
-                    _id: account._id,
-                    account_name: account.account_name,
-                    description: account.description,
-                    account_group: account.account_group,
-                    ...account.txData
-                });
+                
+                // Check if this account is already added (avoid duplicates from same account in same type)
+                const alreadyAdded = accountsByType[typeId].accounts.some(a => a._id === account._id);
+                if (!alreadyAdded) {
+                    accountsByType[typeId].accounts.push({
+                        _id: account._id,
+                        account_name: account.account_name,
+                        description: account.description,
+                        account_groups: account.account_groups,
+                        ...account.txData
+                    });
+                }
             });
 
             // Convert to array and calculate totals

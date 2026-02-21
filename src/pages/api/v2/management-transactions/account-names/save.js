@@ -14,7 +14,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { accountId, accountTypeId, accountName, description, accountGroup, userId } = req.body;
+    const { accountId, accountTypeId, accountName, description, accountGroups, userId } = req.body;
 
     // Validation
     if (!accountTypeId || !accountName || !userId) {
@@ -24,13 +24,16 @@ async function save(req, res) {
         });
     }
 
-    // Validate account_group value if provided
-    const validAccountGroups = ['', 'other_receipts', 'management_expenses', 'other_payments'];
-    if (accountGroup && !validAccountGroups.includes(accountGroup)) {
-        return res.status(400).json({
-            error: true,
-            message: 'Invalid account group value. Valid values are: other_receipts, management_expenses, other_payments'
-        });
+    // Validate account_groups values if provided
+    const validAccountGroups = ['other_receipts', 'management_expenses', 'other_payments'];
+    if (accountGroups && Array.isArray(accountGroups)) {
+        const invalidGroups = accountGroups.filter(g => !validAccountGroups.includes(g));
+        if (invalidGroups.length > 0) {
+            return res.status(400).json({
+                error: true,
+                message: `Invalid account group values: ${invalidGroups.join(', ')}. Valid values are: ${validAccountGroups.join(', ')}`
+            });
+        }
     }
 
     try {
@@ -44,7 +47,7 @@ async function save(req, res) {
             const updateData = {
                 account_name: accountName,
                 description: description || null,
-                account_group: accountGroup || null,
+                account_groups: accountGroups || [],
                 modified_date: moment().toISOString(),
                 modified_by: userId
             };
@@ -93,7 +96,7 @@ async function save(req, res) {
                 account_type_id: accountTypeId,
                 account_name: accountName,
                 description: description || null,
-                account_group: accountGroup || null,
+                account_groups: accountGroups || [],
                 display_order: maxOrder + 1,
                 is_active: true,
                 date_added: moment(getCurrentDate()).format('YYYY-MM-DD'),

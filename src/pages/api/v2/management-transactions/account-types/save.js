@@ -14,7 +14,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { typeId, typeName, typeCode, description, displayOrder, accountGroup, displayGroup, userId } = req.body;
+    const { typeId, typeName, typeCode, description, displayOrder, accountGroups, displayGroups, userId } = req.body;
 
     // Validation
     if (!typeName || !typeCode || !userId) {
@@ -24,22 +24,28 @@ async function save(req, res) {
         });
     }
 
-    // Validate account_group value if provided
-    const validAccountGroups = ['', 'other_receipts', 'management_expenses', 'other_payments'];
-    if (accountGroup && !validAccountGroups.includes(accountGroup)) {
-        return res.status(400).json({
-            error: true,
-            message: 'Invalid account group value. Valid values are: other_receipts, management_expenses, other_payments'
-        });
+    // Validate account_groups values if provided
+    const validAccountGroups = ['other_receipts', 'management_expenses', 'other_payments'];
+    if (accountGroups && Array.isArray(accountGroups)) {
+        const invalidGroups = accountGroups.filter(g => !validAccountGroups.includes(g));
+        if (invalidGroups.length > 0) {
+            return res.status(400).json({
+                error: true,
+                message: `Invalid account group values: ${invalidGroups.join(', ')}. Valid values are: ${validAccountGroups.join(', ')}`
+            });
+        }
     }
 
-    // Validate display_group value if provided
-    const validDisplayGroups = ['', 'assets', 'liabilities', 'management_expenses'];
-    if (displayGroup && !validDisplayGroups.includes(displayGroup)) {
-        return res.status(400).json({
-            error: true,
-            message: 'Invalid display group value. Valid values are: assets, liabilities, management_expenses'
-        });
+    // Validate display_groups values if provided
+    const validDisplayGroups = ['assets', 'liabilities', 'management_expenses'];
+    if (displayGroups && Array.isArray(displayGroups)) {
+        const invalidGroups = displayGroups.filter(g => !validDisplayGroups.includes(g));
+        if (invalidGroups.length > 0) {
+            return res.status(400).json({
+                error: true,
+                message: `Invalid display group values: ${invalidGroups.join(', ')}. Valid values are: ${validDisplayGroups.join(', ')}`
+            });
+        }
     }
 
     try {
@@ -54,8 +60,8 @@ async function save(req, res) {
                 type_name: typeName,
                 description: description || null,
                 display_order: displayOrder || 0,
-                account_group: accountGroup || null,
-                display_group: displayGroup || null,
+                account_groups: accountGroups || [],
+                display_groups: displayGroups || [],
                 modified_date: moment().toISOString(),
                 modified_by: userId
             };
@@ -90,8 +96,8 @@ async function save(req, res) {
                 type_code: typeCode,
                 description: description || null,
                 display_order: displayOrder || 0,
-                account_group: accountGroup || null,
-                display_group: displayGroup || null,
+                account_groups: accountGroups || [],
+                display_groups: displayGroups || [],
                 is_active: true,
                 date_added: moment(getCurrentDate()).format('YYYY-MM-DD'),
                 inserted_date: moment().toISOString(),

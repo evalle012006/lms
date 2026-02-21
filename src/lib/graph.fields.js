@@ -548,8 +548,8 @@ export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
     type_code
     description
     display_order
-    account_group
-    display_group
+    account_groups
+    display_groups
     is_active
     date_added
     inserted_date
@@ -574,7 +574,7 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
     account_name
     description
     display_order
-    account_group
+    account_groups
     is_active
     date_added
     inserted_date
@@ -585,7 +585,7 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
         _id
         type_name
         type_code
-        account_group
+        account_groups
     }
     inserted_by_user {
         _id

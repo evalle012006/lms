@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Layout from "@/components/Layout";
 import { useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { getApiBaseUrl } from "@/lib/constants";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
-import { PlusIcon, TrashIcon, PencilIcon, ChevronRightIcon, Bars3Icon } from '@heroicons/react/24/solid';
+import { PlusIcon, TrashIcon, PencilIcon, ChevronRightIcon, Bars3Icon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import Dialog from "@/lib/ui/Dialog";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -17,9 +17,8 @@ const ItemTypes = {
     ACCOUNT_NAME: 'accountName'
 };
 
-// Account Group Options
+// Account Group Options (without 'None' - empty array means none selected)
 const ACCOUNT_GROUP_OPTIONS = [
-    { value: '', label: 'None' },
     { value: 'other_receipts', label: 'Other Receipts' },
     { value: 'management_expenses', label: 'Management Expenses' },
     { value: 'other_payments', label: 'Other Payments' }
@@ -27,22 +26,113 @@ const ACCOUNT_GROUP_OPTIONS = [
 
 // Display Group Options
 const DISPLAY_GROUP_OPTIONS = [
-    { value: '', label: 'None' },
     { value: 'assets', label: 'Assets' },
     { value: 'liabilities', label: 'Liabilities' },
     { value: 'management_expenses', label: 'Management Expenses' }
 ];
 
-// Helper function to get group label
-const getGroupLabel = (groupCode) => {
-    const group = ACCOUNT_GROUP_OPTIONS.find(g => g.value === groupCode);
-    return group ? group.label : 'None';
+// Helper function to get group labels (for multiple groups)
+const getGroupLabels = (groupCodes) => {
+    if (!groupCodes || !Array.isArray(groupCodes) || groupCodes.length === 0) return [];
+    return groupCodes.map(code => {
+        const group = ACCOUNT_GROUP_OPTIONS.find(g => g.value === code);
+        return group ? group.label : code;
+    });
 };
 
-// Helper function to get display group label
-const getDisplayGroupLabel = (groupCode) => {
-    const group = DISPLAY_GROUP_OPTIONS.find(g => g.value === groupCode);
-    return group ? group.label : 'None';
+// Helper function to get display group labels (for multiple groups)
+const getDisplayGroupLabels = (groupCodes) => {
+    if (!groupCodes || !Array.isArray(groupCodes) || groupCodes.length === 0) return [];
+    return groupCodes.map(code => {
+        const group = DISPLAY_GROUP_OPTIONS.find(g => g.value === code);
+        return group ? group.label : code;
+    });
+};
+
+// Multi-Select Dropdown Component
+const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, label }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleToggle = (value) => {
+        const newValues = selectedValues.includes(value)
+            ? selectedValues.filter(v => v !== value)
+            : [...selectedValues, value];
+        onChange(newValues);
+    };
+
+    const removeTag = (e, value) => {
+        e.stopPropagation();
+        onChange(selectedValues.filter(v => v !== value));
+    };
+
+    const getSelectedLabels = () => {
+        return selectedValues.map(value => {
+            const option = options.find(o => o.value === value);
+            return option ? option.label : value;
+        });
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <div
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full min-h-[42px] px-4 py-2 border border-gray-300 rounded-md cursor-pointer bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 flex items-center justify-between gap-2"
+            >
+                <div className="flex flex-wrap gap-1 flex-1">
+                    {selectedValues.length === 0 ? (
+                        <span className="text-gray-400">{placeholder || 'Select options...'}</span>
+                    ) : (
+                        getSelectedLabels().map((label, idx) => (
+                            <span
+                                key={selectedValues[idx]}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full text-xs"
+                            >
+                                {label}
+                                <XMarkIcon
+                                    className="h-3 w-3 cursor-pointer hover:text-teal-900"
+                                    onClick={(e) => removeTag(e, selectedValues[idx])}
+                                />
+                            </span>
+                        ))
+                    )}
+                </div>
+                <ChevronDownIcon className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {options.map(option => (
+                        <label
+                            key={option.value}
+                            className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedValues.includes(option.value)}
+                                onChange={() => handleToggle(option.value)}
+                                className="rounded text-teal-600 focus:ring-teal-500"
+                            />
+                            <span className="text-sm text-gray-700">{option.label}</span>
+                        </label>
+                    ))}
+                    {options.length === 0 && (
+                        <div className="px-4 py-2 text-sm text-gray-500">No options available</div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };
 
 // Draggable Account Type Component
@@ -94,6 +184,12 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
 
     drag(drop(ref));
 
+    // Get arrays of groups (handle both old single value and new array format)
+    const accountGroups = Array.isArray(type.account_groups) ? type.account_groups : 
+                          (type.account_group ? [type.account_group] : []);
+    const displayGroups = Array.isArray(type.display_groups) ? type.display_groups : 
+                          (type.display_group ? [type.display_group] : []);
+
     return (
         <div
             ref={ref}
@@ -116,16 +212,16 @@ const DraggableAccountType = ({ type, index, moveItem, isSelected, onClick, onEd
                         )}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <p className="text-xs text-gray-400">Code: {type.type_code}</p>
-                            {type.account_group && (
-                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                                    {getGroupLabel(type.account_group)}
+                            {accountGroups.map(group => (
+                                <span key={group} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                    {ACCOUNT_GROUP_OPTIONS.find(g => g.value === group)?.label || group}
                                 </span>
-                            )}
-                            {type.display_group && (
-                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
-                                    {getDisplayGroupLabel(type.display_group)}
+                            ))}
+                            {displayGroups.map(group => (
+                                <span key={group} className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                                    {DISPLAY_GROUP_OPTIONS.find(g => g.value === group)?.label || group}
                                 </span>
-                            )}
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -208,6 +304,10 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onEdit, onDelete, o
 
     drag(drop(ref));
 
+    // Get array of groups (handle both old single value and new array format)
+    const accountGroups = Array.isArray(account.account_groups) ? account.account_groups : 
+                          (account.account_group ? [account.account_group] : []);
+
     return (
         <tr 
             ref={ref}
@@ -220,10 +320,14 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onEdit, onDelete, o
                     <Bars3Icon className="h-5 w-5 text-gray-400 mr-3" />
                     <div className="flex flex-col">
                         <span>{account.account_name}</span>
-                        {account.account_group && (
-                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full mt-1 w-fit">
-                                {getGroupLabel(account.account_group)}
-                            </span>
+                        {accountGroups.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {accountGroups.map(group => (
+                                    <span key={group} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                        {ACCOUNT_GROUP_OPTIONS.find(g => g.value === group)?.label || group}
+                                    </span>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -293,8 +397,8 @@ const ManagementAccountTypesPage = () => {
         typeCode: '',
         description: '',
         displayOrder: 0,
-        accountGroup: '',
-        displayGroup: ''
+        accountGroups: [],
+        displayGroups: []
     });
     const [editingType, setEditingType] = useState(null);
 
@@ -303,7 +407,7 @@ const ManagementAccountTypesPage = () => {
     const [nameFormData, setNameFormData] = useState({
         accountName: '',
         description: '',
-        accountGroup: ''
+        accountGroups: []
     });
     const [editingName, setEditingName] = useState(null);
 
@@ -436,21 +540,26 @@ const ManagementAccountTypesPage = () => {
             typeCode: '',
             description: '',
             displayOrder: accountTypes.length,
-            accountGroup: '',
-            displayGroup: ''
+            accountGroups: [],
+            displayGroups: []
         });
         setShowTypeForm(true);
     };
 
     const handleEditType = (type) => {
         setEditingType(type);
+        // Handle both old single value and new array format
+        const accountGroups = Array.isArray(type.account_groups) ? type.account_groups : 
+                              (type.account_group ? [type.account_group] : []);
+        const displayGroups = Array.isArray(type.display_groups) ? type.display_groups : 
+                              (type.display_group ? [type.display_group] : []);
         setTypeFormData({
             typeName: type.type_name,
             typeCode: type.type_code,
             description: type.description || '',
             displayOrder: type.display_order,
-            accountGroup: type.account_group || '',
-            displayGroup: type.display_group || ''
+            accountGroups: accountGroups,
+            displayGroups: displayGroups
         });
         setShowTypeForm(true);
     };
@@ -472,8 +581,8 @@ const ManagementAccountTypesPage = () => {
                 typeCode: typeFormData.typeCode.trim().toLowerCase().replace(/\s+/g, '_'),
                 description: typeFormData.description.trim(),
                 displayOrder: typeFormData.displayOrder,
-                accountGroup: typeFormData.accountGroup,
-                displayGroup: typeFormData.displayGroup,
+                accountGroups: typeFormData.accountGroups,
+                displayGroups: typeFormData.displayGroups,
                 userId: currentUser._id
             });
 
@@ -509,17 +618,20 @@ const ManagementAccountTypesPage = () => {
         setNameFormData({
             accountName: '',
             description: '',
-            accountGroup: ''
+            accountGroups: []
         });
         setShowNameForm(true);
     };
 
     const handleEditName = (account) => {
         setEditingName(account);
+        // Handle both old single value and new array format
+        const accountGroups = Array.isArray(account.account_groups) ? account.account_groups : 
+                              (account.account_group ? [account.account_group] : []);
         setNameFormData({
             accountName: account.account_name,
             description: account.description || '',
-            accountGroup: account.account_group || ''
+            accountGroups: accountGroups
         });
         setShowNameForm(true);
     };
@@ -540,7 +652,7 @@ const ManagementAccountTypesPage = () => {
                 accountTypeId: selectedAccountType._id,
                 accountName: nameFormData.accountName.trim(),
                 description: nameFormData.description.trim(),
-                accountGroup: nameFormData.accountGroup,
+                accountGroups: nameFormData.accountGroups,
                 userId: currentUser._id
             });
 
@@ -791,40 +903,30 @@ const ManagementAccountTypesPage = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Account Group
+                                        Account Groups
                                     </label>
-                                    <select
-                                        value={typeFormData.accountGroup}
-                                        onChange={(e) => setTypeFormData({...typeFormData, accountGroup: e.target.value})}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                    >
-                                        {ACCOUNT_GROUP_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <MultiSelectDropdown
+                                        options={ACCOUNT_GROUP_OPTIONS}
+                                        selectedValues={typeFormData.accountGroups}
+                                        onChange={(values) => setTypeFormData({...typeFormData, accountGroups: values})}
+                                        placeholder="Select account groups..."
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Used for grouping in transaction summary view
+                                        Used for grouping in transaction summary view (can select multiple)
                                     </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Display Group
+                                        Display Groups
                                     </label>
-                                    <select
-                                        value={typeFormData.displayGroup}
-                                        onChange={(e) => setTypeFormData({...typeFormData, displayGroup: e.target.value})}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                    >
-                                        {DISPLAY_GROUP_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <MultiSelectDropdown
+                                        options={DISPLAY_GROUP_OPTIONS}
+                                        selectedValues={typeFormData.displayGroups}
+                                        onChange={(values) => setTypeFormData({...typeFormData, displayGroups: values})}
+                                        placeholder="Select display groups..."
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Used for categorizing as Assets, Liabilities, or Management Expenses
+                                        Used for categorizing as Assets, Liabilities, or Management Expenses (can select multiple)
                                     </p>
                                 </div>
                                 <div>
@@ -896,24 +998,19 @@ const ManagementAccountTypesPage = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Account Group (Override)
+                                        Account Groups (Override)
                                     </label>
-                                    <select
-                                        value={nameFormData.accountGroup}
-                                        onChange={(e) => setNameFormData({...nameFormData, accountGroup: e.target.value})}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                    >
-                                        {ACCOUNT_GROUP_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <MultiSelectDropdown
+                                        options={ACCOUNT_GROUP_OPTIONS}
+                                        selectedValues={nameFormData.accountGroups}
+                                        onChange={(values) => setNameFormData({...nameFormData, accountGroups: values})}
+                                        placeholder="Select account groups..."
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
-                                        If set, this overrides the account type's group for summary view.
-                                        {selectedAccountType?.account_group && (
+                                        If set, this overrides the account type's groups for summary view (can select multiple).
+                                        {selectedAccountType?.account_groups && selectedAccountType.account_groups.length > 0 && (
                                             <span className="block mt-1">
-                                                Account Type default: <span className="font-medium">{getGroupLabel(selectedAccountType.account_group)}</span>
+                                                Account Type default: <span className="font-medium">{getGroupLabels(selectedAccountType.account_groups).join(', ')}</span>
                                             </span>
                                         )}
                                     </p>

@@ -141,18 +141,15 @@ const ManagementTransactionsPage = () => {
         return 'View aggregated transactions across all branches';
     };
 
-    // Build summary tabs based on available account types with groups
+    // Build summary tabs based on summaryData that has transactions
     const getSummaryTabs = () => {
-        const tabs = [
-            { key: 'current', label: selectedAccountType?.type_name || 'Current', group: null }
-        ];
+        const tabs = [];
 
-        // Add tabs for each group that has account types
+        // Add tabs for each group that has data in summaryData
         GROUP_TAB_ORDER.forEach(groupCode => {
-            const hasTypes = accountTypes.some(type => 
-                type.account_group === groupCode && type._id !== selectedAccountType?._id
-            );
-            if (hasTypes) {
+            const groupData = summaryData[groupCode];
+            // Only show tab if there are account types with transactions in this group
+            if (groupData && groupData.accountTypes && groupData.accountTypes.length > 0) {
                 tabs.push({
                     key: groupCode,
                     label: ACCOUNT_GROUPS[groupCode],
@@ -637,7 +634,12 @@ const ManagementTransactionsPage = () => {
 
     const handleViewSummary = () => {
         setShowSummary(true);
-        setSummaryActiveTab('current');
+        // Set the first available tab based on summaryData
+        const firstAvailableTab = GROUP_TAB_ORDER.find(groupCode => {
+            const groupData = summaryData[groupCode];
+            return groupData && groupData.accountTypes && groupData.accountTypes.length > 0;
+        });
+        setSummaryActiveTab(firstAvailableTab || GROUP_TAB_ORDER[0]);
     };
 
     const handleSubmitAll = async () => {
@@ -758,40 +760,12 @@ const ManagementTransactionsPage = () => {
 
     // Get data for a specific summary tab
     const getSummaryTabData = (tabKey) => {
-        if (tabKey === 'current') {
-            // Return current account type data from newTransactions
-            return {
-                accountType: selectedAccountType,
-                accounts: summaryAccounts.map(account => {
-                    const data = newTransactions[account._id] || {};
-                    return {
-                        ...account,
-                        previousBalance: parseFloat(data.previousBalance) || 0,
-                        debit: parseFloat(data.debit) || 0,
-                        credit: parseFloat(data.credit) || 0,
-                        totalBalance: calculateTotalBalance(account._id)
-                    };
-                })
-            };
-        }
-
         // Return data for grouped account types
         return summaryData[tabKey] || { accountTypes: [], totals: {} };
     };
 
     // Calculate totals for current tab
     const calculateTabTotals = (tabKey) => {
-        if (tabKey === 'current') {
-            return summaryAccounts.reduce((acc, account) => {
-                const data = newTransactions[account._id] || {};
-                acc.previousBalance += parseFloat(data.previousBalance) || 0;
-                acc.debit += parseFloat(data.debit) || 0;
-                acc.credit += parseFloat(data.credit) || 0;
-                acc.totalBalance += calculateTotalBalance(account._id);
-                return acc;
-            }, { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 });
-        }
-
         const groupData = summaryData[tabKey];
         if (!groupData || !groupData.totals) {
             return { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 };
@@ -799,96 +773,8 @@ const ManagementTransactionsPage = () => {
         return groupData.totals;
     };
 
-    // Render summary table for a specific tab
+    // Render summary table for a specific tab (group)
     const renderSummaryTable = (tabKey) => {
-        if (tabKey === 'current') {
-            const tabData = getSummaryTabData(tabKey);
-            const tabTotals = calculateTabTotals(tabKey);
-
-            return (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                        <h3 className="text-lg font-semibold text-gray-800">
-                            {selectedAccountType?.type_name}
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Account Name
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                        Previous Balance
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                        Debit
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                        Credit
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                        Total Balance
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {tabData.accounts.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                            No transactions with values found.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    tabData.accounts.map((account) => (
-                                        <tr key={account._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {account.account_name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.previousBalance)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.debit)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.credit)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
-                                                {formatPricePhp(account.totalBalance)}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                            {tabData.accounts.length > 0 && (
-                                <tfoot className="bg-gray-100">
-                                    <tr>
-                                        <td className="px-6 py-3 text-left text-sm font-bold text-gray-700">
-                                            Subtotal
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(tabTotals.previousBalance)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(tabTotals.debit)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(tabTotals.credit)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700 bg-gray-200">
-                                            {formatPricePhp(tabTotals.totalBalance)}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            )}
-                        </table>
-                    </div>
-                </div>
-            );
-        }
-
         // Render grouped account types
         const groupData = summaryData[tabKey];
         const tabTotals = calculateTabTotals(tabKey);
