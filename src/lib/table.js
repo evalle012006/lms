@@ -318,7 +318,6 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     const isFinance = currentUser.role?.shortCode === 'finance';
     const isRegionalManager = currentUser.role?.shortCode === 'regional_manager';
     const isDeputyDirector = currentUser.role?.shortCode === 'deputy_director';
-    const isFTAdmin = currentUser?.email === 'ftadmin@ambercashph.com';
 
     // Add safety checks for status and approval statuses
     const transferStatus = data.status || 'pending';
@@ -327,8 +326,10 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
 
     switch (actionLabel) {
       case 'Edit Transfer':
-        // Check if user is FT Admin
-        const isFTAdminEdit = isFTAdmin;
+        // Check if weekend or holiday first - these affect ALL users
+        if ((isWeekend || isHoliday) && !isFinance) {
+          return false;
+        }
         
         // Base condition: Only the creator (area_admin with rep=2), finance, or regional_manager can edit when transfer is pending
         const baseCanEdit = (transferStatus === 'pending') && ((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector);
@@ -337,16 +338,16 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
         // Once any approval is given, the transfer should not be editable
         const hasAnyApproval = (giverApprovalStatus === 'approved') || (receiverApprovalStatus === 'approved');
         
-        // FT Admin can edit regardless of status or approval
-        const canEdit = isFTAdminEdit || (baseCanEdit && !hasAnyApproval);
+        //  can edit regardless of status or approval
+        const canEdit = isFinance || (baseCanEdit && !hasAnyApproval);
         
         return canEdit;
 
       case 'Approve Transfer':
         // Check if weekend or holiday first - these affect ALL users
-        if (isWeekend || isHoliday) {
-          return false;
-        }
+        // if (isWeekend || isHoliday) {
+        //   return false;
+        // }
 
         const canApprove = (transferStatus === 'pending') && (
           // Branch managers (rep=3) can approve if they're from involved branch
@@ -365,9 +366,9 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
 
       case 'Reject Transfer':
         // Check if weekend or holiday first - these affect ALL users
-        if (isWeekend || isHoliday) {
-          return false;
-        }
+        // if (isWeekend || isHoliday) {
+        //   return false;
+        // }
 
         const canReject = (transferStatus === 'pending') && (
           // Branch managers (rep=3) can reject if they're from involved branch
