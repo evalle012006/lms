@@ -662,3 +662,22 @@ export const NOTIFICATION_FIELDS = `
   date_added
   date_modified
 `;
+
+export const UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS = `
+  _id
+  client_id
+  group_id
+  branch_id
+  area_id
+  region_id
+  division_id
+  loan_id
+  cash_collection_id
+  status
+  date_added
+  document_url
+  inserted_by
+  inserted_date
+  modified_by
+  modified_date
+`;

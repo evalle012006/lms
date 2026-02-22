@@ -27,7 +27,8 @@ import {
     Menu,
     X,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    ReceiptText
 } from 'lucide-react';
 import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
@@ -375,7 +376,19 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: []
-            }
+            },
+            {
+                label: "Unclaimed Transactions",
+                url: "/transactions/unclaimed-transactions",
+                icon: {
+                    active: (props) => <ReceiptText {...props} />,
+                    notActive: (props) => <ReceiptText {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [] // Available to all roles, you can restrict if needed
+            },
         ]
     },
     {
@@ -475,7 +488,19 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: []
-            }
+            },
+            {
+                label: "Unclaimed Transactions",
+                url: "/transactions/unclaimed-transactions",
+                icon: {
+                    active: (props) => <ReceiptText {...props} />,
+                    notActive: (props) => <ReceiptText {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [] // Available to all roles, you can restrict if needed
+            },
         ]
     },
     {
@@ -624,6 +649,18 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+            },
+            {
+                label: "Unclaimed Transactions",
+                url: "/transactions/unclaimed-transactions",
+                icon: {
+                    active: (props) => <ReceiptText {...props} />,
+                    notActive: (props) => <ReceiptText {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [] // Available to all roles, you can restrict if needed
             },
             {
                 label: "TEST",

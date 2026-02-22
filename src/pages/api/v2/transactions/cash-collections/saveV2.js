@@ -263,7 +263,7 @@ async function executeSave(req, user_id, transactionId) {
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
 
-                const collection = JSON.parse(JSON.stringify(cc));
+                let collection = JSON.parse(JSON.stringify(cc));
                 delete collection.reverted;
 
                 // get loan snapshot 
@@ -307,9 +307,23 @@ async function executeSave(req, user_id, transactionId) {
                     }
                 }
 
-                let activeLoan = collection?.activeLoan;
-                if (collection.status != 'pending' && collection.activeLoan == 0) {
-                    activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
+                // let activeLoan = collection?.activeLoan;
+                // if (collection.status != 'pending' && collection.activeLoan == 0) {
+                //     activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
+                // }
+
+                if (collection.remarks && collection.remarks.value === 'offset-unclaimed') {
+                    collection.status = 'closed';
+                    collection.loanCycle = 0;
+                    collection.closedDate = currentDate;
+                    collection.dateModified = currentDate;
+                    collection.activeLoan = 0;
+                    collection.targetCollection = 0;
+                    collection.paymentCollection = 0;
+                }
+
+                if (collection.loanbalance <= 0) {
+                    collection.noOfPayments = loan.loanTerms;
                 }
 
                 logger.debug({user_id, transactionId, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, clientId: collection.clientId});
@@ -565,7 +579,7 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
 
         loan.history = collection.history;
 
-        if (collection.loanBalance <= 0 || collection?.remarks?.value == 'offset-matured-pd') {
+        if ((collection.loanBalance <= 0 || collection?.remarks?.value == 'offset-matured-pd') && collection.remarks.value !== 'offset-unclaimed') {
             loan.status = collection.status;
             if (collection.status === 'tomorrow') {
                 loan.status = 'active';
@@ -589,6 +603,13 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
                 loan.closedDate = currentDate;
                 loan.dateModified = currentDate;
             }
+        } else if (collection.remarks.value === 'offset-unclaimed') {
+            loan.status = 'closed';
+            loan.loanCycle = 0;
+            loan.remarks = collection.closeRemarks || 'Closed due to unclaimed amount.';
+            loan.closedDate = currentDate;
+            loan.dateModified = currentDate;
+            loan.activeLoan = 0;
         }
 
         loan.lastUpdated = currentDate;
@@ -652,7 +673,8 @@ async function updateClient(user_id, mutationQl, loan) {
         client = client[0];
         client.status = loan.clientStatus;
 
-        if (client.status === 'offset') {
+        if (client.status === 'offset' || (loan.remarks && loan.remarks.value === 'offset-unclaimed')) {
+            client.status = 'offset'; // for both cases, client status should be set to offset
             client.oldLoId = client.loId;
             client.oldGroupId = client.groupId;
             client.groupId = null;
