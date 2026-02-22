@@ -5,6 +5,7 @@ import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { LOAN_FIELDS } from '@/lib/graph.fields'
 import { createBadDebtCollectionsType } from '@/pages/api/v2/other-transactions/badDebtCollection/common'
+import { generateUUID } from '@/lib/utils';
 
 const graph = new GraphProvider();
 const loanType = createGraphType("loans", LOAN_FIELDS)();
@@ -39,6 +40,7 @@ async function save(req, res) {
       }),
       insertQl(createBadDebtCollectionsType(), {
         objects: [{
+          _id: generateUUID(),
           ...formData,
           maturedPastDue: maturedPD,
           dateAdded: moment(getCurrentDate()).format("YYYY-MM-DD"),
