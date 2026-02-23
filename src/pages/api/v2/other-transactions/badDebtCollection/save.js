@@ -2,9 +2,9 @@ import { apiHandler } from "@/services/api-handler";
 import { getCurrentDate } from '@/lib/date-utils';
 import moment from "moment";
 import { GraphProvider } from "@/lib/graph/graph.provider";
-import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
-import { LOAN_FIELDS } from '@/lib/graph.fields'
-import { createBadDebtCollectionsType } from '@/pages/api/v2/other-transactions/badDebtCollection/common'
+import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { LOAN_FIELDS } from '@/lib/graph.fields';
+import { createBadDebtCollectionsType } from '@/pages/api/v2/other-transactions/badDebtCollection/common';
 import { generateUUID } from '@/lib/utils';
 
 const graph = new GraphProvider();
@@ -21,14 +21,17 @@ async function save(req, res) {
   if (loan) {
     const maturedPD = formData.maturedPastDue - formData.paymentCollection;
     loan.maturedPastDue = maturedPD;
+    
     if (loan.noBadDebtPayment) {
       loan.noBadDebtPayment += 1;
     } else {
       loan.noBadDebtPayment = 1;
     }
 
+    // CRITICAL FIX: Set maturedPD flag to false when balance is paid off
     if (maturedPD <= 0) {
       loan.maturedPastDue = 0;
+      loan.maturedPD = false;  // This removes the loan from bad debts list
     }
 
     delete loan._id;
@@ -40,7 +43,7 @@ async function save(req, res) {
       }),
       insertQl(createBadDebtCollectionsType(), {
         objects: [{
-          _id: generateUUID(),
+          _id: generateUUID(), // CRITICAL: Generate UUID for PostgreSQL
           ...formData,
           maturedPastDue: maturedPD,
           dateAdded: moment(getCurrentDate()).format("YYYY-MM-DD"),

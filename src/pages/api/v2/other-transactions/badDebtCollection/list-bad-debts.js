@@ -37,7 +37,7 @@ async function list(req, res) {
           if (user.areaId && user.role.shortCode === "area_admin") {
             filter = { branch: { areaId: { _eq: user.areaId } } };
           } else if (user.regionId && user.role.shortCode === "regional_manager") {
-            filter = { branch: { regionId: { _eq: user.areaId } } };
+            filter = { branch: { regionId: { _eq: user.regionId } } };
           } else if (user.divisionId && user.role.shortCode === "deputy_director") {
             filter = { branch: { divisionId: { _eq: user.divisionId } } };
           }
@@ -55,6 +55,7 @@ async function list(req, res) {
         where: {
           maturedPD: { _eq: true },
           status: { _eq: "closed" },
+          maturedPastDue: { _gt: 0 },  // CRITICAL FIX: Only show loans with actual past due > 0
           ...filter
         },
         limit: 2000

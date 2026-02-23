@@ -1,18 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import Spinner from "@/components/Spinner";
-import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
 import TableComponent from "@/lib/table";
-import Dialog from "@/lib/ui/Dialog";
-import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setBadDebt, setBadDebtList, setBadDebtCollectionList, setOriginalBadDebtList, setOriginalBadDebtCollectionList } from "@/redux/actions/badDebtCollectionActions";
+import { 
+    setBadDebt, 
+    setBadDebtList, 
+    setBadDebtCollectionList, 
+    setOriginalBadDebtList, 
+    setOriginalBadDebtCollectionList 
+} from "@/redux/actions/badDebtCollectionActions";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { PlusIcon } from '@heroicons/react/24/solid';
-import { setBranch, setBranchList } from "@/redux/actions/branchActions";
-import AddUpdateDebtCollection from "@/components/other-transactions/badDebtCollection/AddUpdateBadDebtDrawer";
+import { PlusIcon, BanknotesIcon, UsersIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
+import AddUpdateBadDebtCollection from "@/components/other-transactions/badDebtCollection/AddUpdateBadDebtDrawer";
 import { formatPricePhp } from "@/lib/utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
@@ -20,443 +21,103 @@ import { getApiBaseUrl } from "@/lib/constants";
 import { toast } from "react-toastify";
 import BadDebtFilters from "@/components/other-transactions/badDebtCollection/BadDebtFilters";
 
+// Stats Card Component
+const StatsCard = ({ icon: Icon, label, value, subValue, iconBgColor = "bg-blue-100", iconColor = "text-blue-600" }) => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+        <div className="flex items-center justify-between">
+            <div className="flex-1">
+                <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>
+                <p className="text-2xl font-bold text-gray-900">{value}</p>
+                {subValue && (
+                    <p className="text-xs text-gray-500 mt-1">{subValue}</p>
+                )}
+            </div>
+            <div className={`p-3 ${iconBgColor} rounded-lg`}>
+                <Icon className={`h-6 w-6 ${iconColor}`} />
+            </div>
+        </div>
+    </div>
+);
+
+// Empty State Component
+const EmptyState = ({ message, actionButton }) => (
+    <div className="text-center py-12 px-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+            <BanknotesIcon className="h-8 w-8 text-gray-400" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Found</h3>
+        <p className="text-gray-500 mb-6">{message}</p>
+        {actionButton}
+    </div>
+);
+
 export default function BadDebtCollectionPage() {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState('add');
+    const [showAddDrawer, setShowAddDrawer] = useState(false);
+    const [selectedTab, setSelectedTab] = useTabs(['list', 'collection']);
+    
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.badDebtCollection.list);
     const collectionList = useSelector(state => state.badDebtCollection.collectionList);
-    const data = useSelector(state => state.badDebtCollection.data);
-    const branchList = useSelector(state => state.branch.list);
-    const state = useSelector(state => state); // Access entire Redux state
+    const originalList = useSelector(state => state.badDebtCollection.originalList);
+    const originalCollectionList = useSelector(state => state.badDebtCollection.originalCollectionList);
 
-    const [showAddDrawer, setShowAddDrawer] = useState(false);
-    const [mode, setMode] = useState('add');
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [activeFilters, setActiveFilters] = useState({
-        list: {
-            branchId: '',
-            loId: '',
-            groupId: '',
-            clientId: ''
-        },
-        collection: {
-            branchId: '',
-            loId: '',
-            groupId: '',
-            clientId: ''
-        }
-    });
-
-    const [selectedTab, setSelectedTab] = useTabs([
-        'list',
-        'collection'
-    ]);
-
-    const handleFilterChange = (filters, tabName) => {
-        setActiveFilters({
-            ...activeFilters,
-            [tabName]: filters
-        });
-
-        // Apply filters directly to the data
-        if (tabName === 'list') {
-            applyListFilters(filters);
-        } else {
-            applyCollectionFilters(filters);
-        }
-    };
-    
-    // Filter data locally instead of making API calls
-    const applyListFilters = (filters) => {
-        setLoading(true);
-        const { branchId, loId, groupId, clientId } = filters;
-        
-        // Use state from outside the function instead of calling useSelector here
-        const allData = state.badDebtCollection.originalList || [];
-        if (!allData || allData.length === 0) {
-            setLoading(false);
-            return;
-        }
-        
-        let filteredData = [...allData];
-        
-        // Apply filters
-        if (branchId) {
-            filteredData = filteredData.filter(item => item.branchId === branchId);
-        }
-        
-        if (loId) {
-            filteredData = filteredData.filter(item => item.loId === loId);
-        }
-        
-        if (groupId) {
-            filteredData = filteredData.filter(item => item.groupId === groupId);
-        }
-        
-        if (clientId) {
-            filteredData = filteredData.filter(item => item.clientId === clientId);
-        }
-        
-        // Add totals row if there's data
-        if (filteredData.length > 0) {
-            filteredData.push(processListTotals(filteredData));
-        }
-        
-        dispatch(setBadDebtList(filteredData));
-        setLoading(false);
-    };
-    
-    const applyCollectionFilters = (filters) => {
-        setLoading(true);
-        const { branchId, loId, groupId, clientId } = filters;
-        
-        // Use state from outside the function instead of calling useSelector here
-        const allData = state.badDebtCollection.originalCollectionList || [];
-        if (!allData || allData.length === 0) {
-            setLoading(false);
-            return;
-        }
-        
-        let filteredData = [...allData];
-        
-        // Apply filters
-        if (branchId) {
-            filteredData = filteredData.filter(item => item.branchId === branchId);
-        }
-        
-        if (loId) {
-            filteredData = filteredData.filter(item => item.loId === loId);
-        }
-        
-        if (groupId) {
-            filteredData = filteredData.filter(item => item.groupId === groupId);
-        }
-        
-        if (clientId) {
-            filteredData = filteredData.filter(item => item.clientId === clientId);
-        }
-        
-        // Add totals row if there's data
-        if (filteredData.length > 0) {
-            filteredData.push(processCollectionListTotals(filteredData));
-        }
-        
-        dispatch(setBadDebtCollectionList(filteredData));
-        setLoading(false);
+    // Stats calculation
+    const stats = {
+        totalBadDebts: list.filter(item => !item.totalData).length,
+        totalCollections: collectionList.filter(item => !item.totalData).length,
+        totalOutstanding: list.reduce((sum, item) => {
+            if (!item.totalData) {
+                return sum + (parseFloat(item.netBalance) || 0);
+            }
+            return sum;
+        }, 0),
+        totalCollected: collectionList.reduce((sum, item) => {
+            if (!item.totalData) {
+                return sum + (parseFloat(item.paymentCollection) || 0);
+            }
+            return sum;
+        }, 0)
     };
 
-    const getList = async (filters = activeFilters.list) => {
-        setLoading(true);
-        let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list-bad-debts';
-        let params = {};
-
-        if (currentUser.role.rep === 1) {
-            if (filters.branchId) params.branchId = filters.branchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 2) {
-            params.currentUserId = currentUser._id;
-            if (filters.branchId) params.branchId = filters.branchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 3) {
-            params.branchId = currentUser.designatedBranchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 4) {
-            params.loId = currentUser._id;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        }
-
-        if (Object.keys(params).length > 0) {
-            url = url + '?' + new URLSearchParams(params);
-        }
-
-        try {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    let mcbu = bd.mcbuReturnAmt;
-                    if (netBalance <= 0) {
-                        mcbu = 0;
-                    }
-
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        amountRelease: bd.history.amountRelease,
-                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: mcbu,
-                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
-                        loanBalance: bd.history.loanBalance,
-                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
-                    });
-                });
-                if (responseData.length > 0) {
-                    responseData.push(processListTotals(responseData));
-                }
-                // Store original list for filtering
-                dispatch(setOriginalBadDebtList(responseData.filter(item => !item.totalData)));
-                dispatch(setBadDebtList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } catch (error) {
-            setLoading(false);
-            toast.error('An error occurred while fetching bad debt list');
-            console.error(error);
-        }
-    }
-
-    const processListTotals = (responseData) => {
-        let totalAmountRelease = 0;
-        let totalLoanBalance = 0;
-        let totalMcbu = 0;
-        let totalNetBalance = 0;
-
-        responseData.map(data => {
-            totalNetBalance += data.netBalance ? data.netBalance : 0;
-            totalAmountRelease += data.amountRelease ? data.amountRelease : 0;
-            totalLoanBalance += data.loanBalance ? data.loanBalance : 0;
-            totalMcbu += data.mcbuReturnAmt ? data.mcbuReturnAmt : 0;
-        });
-
-        return {
-            groupName: '-',
-            fullName: 'TOTALS',
-            loName: '-',
-            branchName: '-',
-            netBalance: totalNetBalance,
-            netBalanceStr: totalNetBalance > 0 ? formatPricePhp(totalNetBalance) : '-',
-            loanBalance: totalLoanBalance,
-            loanBalanceStr: totalLoanBalance > 0 ? formatPricePhp(totalLoanBalance) : '-',
-            amountRelease: totalAmountRelease,
-            amountReleaseStr: totalAmountRelease > 0 ? formatPricePhp(totalAmountRelease) : '-',
-            mcbuReturnAmt: totalMcbu,
-            mcbuReturnAmtStr: totalMcbu > 0 ? formatPricePhp(totalMcbu) : '-',
-            totalData: true
-        }
-    }
-
-    const getCollectionList = async (filters = activeFilters.collection) => {
-        setLoading(true);
-        let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list';
-        let params = {};
-
-        if (currentUser.role.rep === 1) {
-            if (filters.branchId) params.branchId = filters.branchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 2) {
-            params.currentUserId = currentUser._id;
-            if (filters.branchId) params.branchId = filters.branchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 3) {
-            params.branchId = currentUser.designatedBranchId;
-            if (filters.loId) params.loId = filters.loId;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        } else if (currentUser.role.rep === 4) {
-            params.loId = currentUser._id;
-            if (filters.groupId) params.groupId = filters.groupId;
-            if (filters.clientId) params.clientId = filters.clientId;
-        }
-
-        if (Object.keys(params).length > 0) {
-            url = url + '?' + new URLSearchParams(params);
-        }
-
-        try {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    if (netBalance <= 0) {
-                        netBalance = 0;
-                    }
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        paymentCollection: bd.paymentCollection,
-                        paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
-                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
-                    });
-                });
-                if (responseData.length > 0) {
-                    responseData.push(processCollectionListTotals(responseData));
-                }
-                // Store original collection list for filtering
-                dispatch(setOriginalBadDebtCollectionList(responseData.filter(item => !item.totalData)));
-                dispatch(setBadDebtCollectionList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } catch (error) {
-            setLoading(false);
-            toast.error('An error occurred while fetching collection list');
-            console.error(error);
-        }
-    }
-
-    const processCollectionListTotals = (responseData) => {
-        let totalAmountRelease = 0;
-        let totalAmountCollected = 0;
-        let totalNetBalance = 0;
-
-        const unique = [];
-        responseData.map(data => {
-            const existIdx = unique.findIndex(u => u.clientId == data.clientId);
-            if (existIdx == -1) {
-                unique.push(data);
-            } else {
-                unique[existIdx] = data;
-            }
-            totalAmountCollected += data.paymentCollection;
-        });
-
-        unique.map(data => {
-            totalAmountRelease += data.amountRelease;
-            totalNetBalance += data.netBalance;
-        });
-
-        return {
-            groupName: '-',
-            fullName: 'TOTALS',
-            loName: '-',
-            branchName: '-',
-            paymentCollection: totalAmountCollected,
-            paymentCollectionStr: totalAmountCollected > 0 ? formatPricePhp(totalAmountCollected) : '-',
-            amountRelease: totalAmountRelease,
-            amountReleaseStr: totalAmountRelease > 0 ? formatPricePhp(totalAmountRelease) : '-',
-            netBalance: totalNetBalance,
-            netBalanceStr: totalNetBalance > 0 ? formatPricePhp(totalNetBalance) : '-',
-            totalData: true
-        }
-    }
-
-    const getListBranch = async () => {
-        setLoading(true);
-        let url = getApiBaseUrl() + 'branches/list';
-        try {
-            if (currentUser.role.rep === 1) {
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    dispatch(setBranchList(response.branches));
-                    setLoading(false);
-                } else if (response.error) {
-                    setLoading(false);
-                    toast.error(response.message);
-                }
-            } else if (currentUser.role.rep === 2) {
-                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    dispatch(setBranchList(response.branches));
-                    setLoading(false);
-                } else if (response.error) {
-                    setLoading(false);
-                    toast.error(response.message);
-                }
-            } else if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-                url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    dispatch(setBranchList(response.branches));
-                    setLoading(false);
-                } else if (response.error) {
-                    setLoading(false);
-                    toast.error(response.message);
-                }
-            }
-        } catch (error) {
-            setLoading(false);
-            toast.error('An error occurred while fetching branches');
-            console.error(error);
-        }
-    }
-
-    const [columns, setColumns] = useState([
+    // Column definitions for List of Bad Debts
+    const listColumns = [
         {
-            Header: "Name",
-            accessor: 'fullName'
+            Header: "Client Name",
+            accessor: 'fullName',
+            Cell: ({ value }) => (
+                <div className="font-medium text-gray-900">{value}</div>
+            )
         },
         {
             Header: "Amount Release",
-            accessor: 'amountReleaseStr'
-        },
-        {
-            Header: "Amount Collected",
-            accessor: 'paymentCollectionStr'
-        },
-        {
-            Header: "Net Balance",
-            accessor: 'netBalanceStr'
-        },
-        {
-            Header: "Branch",
-            accessor: 'branchName'
-        },
-        {
-            Header: "Loan Officer",
-            accessor: 'loName'
-        },
-        {
-            Header: "Group",
-            accessor: 'groupName'
-        },
-        {
-            Header: "Date Collected",
-            accessor: 'dateAdded'
-        }
-    ]);
-
-    const [listColumns, setListColumns] = useState([
-        {
-            Header: "Name",
-            accessor: 'fullName'
-        },
-        {
-            Header: "Amount Release",
-            accessor: 'amountReleaseStr'
+            accessor: 'amountReleaseStr',
+            Cell: ({ value }) => (
+                <div className="text-right font-medium">{value}</div>
+            )
         },
         {
             Header: "Loan Balance",
-            accessor: 'loanBalanceStr'
+            accessor: 'loanBalanceStr',
+            Cell: ({ value }) => (
+                <div className="text-right font-medium text-orange-600">{value}</div>
+            )
         },
         {
             Header: "MCBU",
-            accessor: 'mcbuReturnAmtStr'
+            accessor: 'mcbuReturnAmtStr',
+            Cell: ({ value }) => (
+                <div className="text-right">{value}</div>
+            )
         },
         {
             Header: "Net Balance",
-            accessor: 'netBalanceStr'
+            accessor: 'netBalanceStr',
+            Cell: ({ value }) => (
+                <div className="text-right font-semibold text-red-600">{value}</div>
+            )
         },
         {
             Header: "Branch",
@@ -472,174 +133,362 @@ export default function BadDebtCollectionPage() {
         },
         {
             Header: "Offset Date",
-            accessor: 'fullPaymentDate'
+            accessor: 'fullPaymentDate',
+            Cell: ({ value }) => (
+                <div className="text-gray-600">{value || 'N/A'}</div>
+            )
         },
         {
             Header: "Remarks",
-            accessor: 'remarks'
+            accessor: 'remarks',
+            Cell: ({ value }) => (
+                <div className="text-gray-600 text-sm">{value || '-'}</div>
+            )
         }
-    ]);
+    ];
+
+    // Column definitions for Collection of Bad Debts
+    const collectionColumns = [
+        {
+            Header: "Client Name",
+            accessor: 'fullName',
+            Cell: ({ value }) => (
+                <div className="font-medium text-gray-900">{value}</div>
+            )
+        },
+        {
+            Header: "Amount Collected",
+            accessor: 'paymentCollectionStr',
+            Cell: ({ value }) => (
+                <div className="text-right font-semibold text-green-600">{value}</div>
+            )
+        },
+        {
+            Header: "Loan Release",
+            accessor: 'loanReleaseStr',
+            Cell: ({ value }) => (
+                <div className="text-right">{value}</div>
+            )
+        },
+        {
+            Header: "Matured Past Due",
+            accessor: 'maturedPastDueStr',
+            Cell: ({ value }) => (
+                <div className="text-right text-orange-600">{value}</div>
+            )
+        },
+        {
+            Header: "MCBU",
+            accessor: 'mcbuStr',
+            Cell: ({ value }) => (
+                <div className="text-right">{value}</div>
+            )
+        },
+        {
+            Header: "Branch",
+            accessor: 'branchName'
+        },
+        {
+            Header: "Loan Officer",
+            accessor: 'loName'
+        },
+        {
+            Header: "Group",
+            accessor: 'groupName'
+        },
+        {
+            Header: "Date Collected",
+            accessor: 'dateAdded',
+            Cell: ({ value }) => (
+                <div className="text-gray-600">{value}</div>
+            )
+        }
+    ];
 
     const handleShowAddDrawer = () => {
+        setMode('add');
         setShowAddDrawer(true);
-    }
+    };
 
     const handleCloseAddDrawer = () => {
+        setShowAddDrawer(false);
         setLoading(true);
-        setMode('add');
         window.location.reload();
-    }
+    };
 
-    const actionButtons = [
-        <ButtonSolid key="add-button" label="Add Bad Debt" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    ];
+    const handleFilterChange = (filters, tabName) => {
+        const sourceList = tabName === 'list' ? originalList : originalCollectionList;
+        const setListAction = tabName === 'list' ? setBadDebtList : setBadDebtCollectionList;
 
-    const handleEditAction = (row) => {
-        setMode("edit");
-        dispatch(setBadDebt(row.original));
-        handleShowAddDrawer();
-    }
+        let filteredData = sourceList;
 
-    const handleDeleteAction = (row) => {
-        dispatch(setBadDebt(row.original));
-        setShowDeleteDialog(true);
-    }
-
-    const rowActionButtons = [
-        { label: 'Edit', action: handleEditAction },
-        // { label: 'Delete', action: handleDeleteAction }
-    ];
-
-    const handleDelete = () => {
-        if (data) {
-            setLoading(true);
-            fetchWrapper.postCors(getApiBaseUrl() + 'branches/delete', data)
-                .then(response => {
-                    if (response.success) {
-                        setShowDeleteDialog(false);
-                        toast.success('Branch successfully deleted.');
-                        setLoading(false);
-                        getListBranch();
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
-                    } else {
-                        console.log(response);
-                    }
-                });
+        if (filters.branchId) {
+            filteredData = filteredData.filter(item => item.branchId === filters.branchId);
         }
-    }
 
+        if (filters.loId) {
+            filteredData = filteredData.filter(item => item.loId === filters.loId);
+        }
+
+        if (filters.groupId) {
+            filteredData = filteredData.filter(item => item.groupId === filters.groupId);
+        }
+
+        if (filters.clientId) {
+            filteredData = filteredData.filter(item => item.clientId === filters.clientId);
+        }
+
+        dispatch(setListAction(filteredData));
+    };
+
+    // Fetch data on component mount
     useEffect(() => {
-        let mounted = true;
-        mounted && getListBranch();
-        return (() => {
-            mounted = false;
-        });
-    }, []);
+        let isMounted = true;
 
-    useEffect(() => {
-        if (branchList && branchList.length > 0) {
-            getList();
-            getCollectionList();
-
-            if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
-                dispatch(setBranch(branchList[0]));
+        const fetchData = async () => {
+            // Prevent multiple simultaneous calls
+            if (loading) return;
+            
+            setLoading(true);
+            try {
+                const params = new URLSearchParams();
                 
-                // Set initial filters for branch manager and loan officer
-                if (currentUser.role.rep == 3) {
-                    setActiveFilters({
-                        list: {
-                            ...activeFilters.list,
-                            branchId: currentUser.designatedBranchId
-                        },
-                        collection: {
-                            ...activeFilters.collection,
-                            branchId: currentUser.designatedBranchId
-                        }
+                if (currentUser.role.rep === 3) {
+                    params.append('branchId', currentUser.designatedBranchId);
+                } else if (currentUser.role.rep === 4) {
+                    params.append('loId', currentUser._id);
+                } else {
+                    params.append('currentUserId', currentUser._id);
+                }
+
+                // Fetch bad debt list
+                const listUrl = getApiBaseUrl() + 'other-transactions/badDebtCollection/list-bad-debts?' + params;
+                const listResponse = await fetchWrapper.get(listUrl);
+                
+                if (isMounted && listResponse.success) {
+                    const formattedList = listResponse.data.map(item => {
+                        // Extract data from arrays
+                        const client = item.client?.length > 0 ? item.client[0] : null;
+                        const branch = item.branch?.length > 0 ? item.branch[0] : null;
+                        const lo = item.lo?.length > 0 ? item.lo[0] : null;
+                        const group = item.group?.length > 0 ? item.group[0] : null;
+                        const loan = item.loan?.length > 0 ? item.loan[0] : null;
+                        
+                        // Calculate values
+                        const pastDue = loan?.pastDue || item.maturedPastDue || 0;
+                        const mcbuReturnAmt = loan?.mcbuReturnAmt || item.mcbuReturnAmt || 0;
+                        const netBalance = pastDue + mcbuReturnAmt;
+                        
+                        return {
+                            ...item,
+                            fullName: client?.name || 'N/A',
+                            branchName: branch?.name || 'N/A',
+                            loName: lo ? `${lo.firstName} ${lo.lastName}` : 'N/A',
+                            groupName: group?.name || 'N/A',
+                            amountReleaseStr: formatPricePhp(item.amountRelease || 0),
+                            loanBalanceStr: formatPricePhp(pastDue),
+                            mcbuReturnAmtStr: formatPricePhp(mcbuReturnAmt),
+                            netBalance: netBalance,
+                            netBalanceStr: formatPricePhp(netBalance),
+                            fullPaymentDate: item.fullPaymentDate || '',
+                            remarks: item.remarks || ''
+                        };
                     });
-                } else if (currentUser.role.rep == 4) {
-                    setActiveFilters({
-                        list: {
-                            ...activeFilters.list,
-                            branchId: branchList[0]._id,
-                            loId: currentUser._id
-                        },
-                        collection: {
-                            ...activeFilters.collection,
-                            branchId: branchList[0]._id,
-                            loId: currentUser._id
-                        }
-                    });
+                    
+                    dispatch(setBadDebtList(formattedList));
+                    dispatch(setOriginalBadDebtList(formattedList));
+                }
+
+                // Fetch collections
+                const collectionUrl = getApiBaseUrl() + 'other-transactions/badDebtCollection/list?' + params;
+                const collectionResponse = await fetchWrapper.get(collectionUrl);
+                
+                if (isMounted && collectionResponse.success) {
+                    const formattedCollections = collectionResponse.data.map(item => ({
+                        ...item,
+                        fullName: item.client?.length > 0 ? item.client[0].name : 'N/A',
+                        branchName: item.branch?.length > 0 ? item.branch[0].name : 'N/A',
+                        loName: item.lo?.length > 0 ? `${item.lo[0].firstName} ${item.lo[0].lastName}` : 'N/A',
+                        groupName: item.group?.length > 0 ? item.group[0].name : 'N/A',
+                        paymentCollectionStr: formatPricePhp(item.paymentCollection || 0),
+                        loanReleaseStr: formatPricePhp(item.loanRelease || 0),
+                        maturedPastDueStr: formatPricePhp(item.maturedPastDue || 0),
+                        mcbuStr: formatPricePhp(item.mcbu || 0)
+                    }));
+                    
+                    dispatch(setBadDebtCollectionList(formattedCollections));
+                    dispatch(setOriginalBadDebtCollectionList(formattedCollections));
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                if (isMounted) {
+                    toast.error('Failed to load bad debt data');
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
                 }
             }
+        };
+
+        if (currentUser && !list.length && !collectionList.length) {
+            fetchData();
         }
-    }, [branchList]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [currentUser]);
 
     return (
-        <Layout actionButtons={(selectedTab == 'collection' && (currentUser?.role?.rep == 3 || currentUser.role.rep == 4)) ? actionButtons : null}>
-            <div className="pb-4">
+        <Layout 
+            title="Bad Debt Collection Management"
+            showBackButton={false}
+            actionButtons={[
+                <ButtonSolid 
+                    key="add-button" 
+                    label="Record Collection" 
+                    type="button" 
+                    className="shadow-sm" 
+                    onClick={handleShowAddDrawer} 
+                    icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
+                />
+            ]}
+        >
+            <div className="pb-6">
                 {loading ? (
-                    <Spinner />
+                    <div className="flex items-center justify-center py-12">
+                        <Spinner />
+                    </div>
                 ) : (
                     <React.Fragment>
-                        <nav className="flex pl-10 bg-white border-b border-gray-300">
-                            <TabSelector
-                                isActive={selectedTab === "list"}
-                                onClick={() => setSelectedTab("list")}>
-                                List of Bad Debts
-                            </TabSelector>
-                            <TabSelector
-                                isActive={selectedTab === "collection"}
-                                onClick={() => setSelectedTab("collection")}>
-                                Collection of Bad Debts
-                            </TabSelector>
-                        </nav>
-                        <div>
-                            <TabPanel hidden={selectedTab !== 'list'}>
-                                <BadDebtFilters 
-                                    onFilterChange={handleFilterChange} 
-                                    tabName="list" 
-                                />
-                                <TableComponent 
-                                    columns={listColumns} 
-                                    data={list} 
-                                    hasActionButtons={false} 
-                                    showFilters={false} 
-                                />
-                            </TabPanel>
-                            <TabPanel hidden={selectedTab !== 'collection'}>
-                                <BadDebtFilters 
-                                    onFilterChange={handleFilterChange} 
-                                    tabName="collection" 
-                                />
-                                <TableComponent 
-                                    columns={columns} 
-                                    data={collectionList} 
-                                    hasActionButtons={false} 
-                                    showFilters={false} 
-                                />
-                            </TabPanel>
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <StatsCard
+                                icon={UsersIcon}
+                                label="Total Bad Debts"
+                                value={stats.totalBadDebts}
+                                iconBgColor="bg-red-100"
+                                iconColor="text-red-600"
+                            />
+                            <StatsCard
+                                icon={BanknotesIcon}
+                                label="Total Collections"
+                                value={stats.totalCollections}
+                                iconBgColor="bg-green-100"
+                                iconColor="text-green-600"
+                            />
+                            <StatsCard
+                                icon={CurrencyDollarIcon}
+                                label="Outstanding Amount"
+                                value={formatPricePhp(stats.totalOutstanding)}
+                                iconBgColor="bg-orange-100"
+                                iconColor="text-orange-600"
+                            />
+                            <StatsCard
+                                icon={CurrencyDollarIcon}
+                                label="Total Collected"
+                                value={formatPricePhp(stats.totalCollected)}
+                                iconBgColor="bg-blue-100"
+                                iconColor="text-blue-600"
+                            />
+                        </div>
+
+                        {/* Tabs Navigation */}
+                        <div className="bg-white rounded-t-lg shadow-sm border border-gray-200">
+                            <nav className="flex border-b border-gray-200">
+                                <TabSelector
+                                    isActive={selectedTab === "list"}
+                                    onClick={() => setSelectedTab("list")}
+                                    className="px-6 py-4 text-sm font-medium"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <UsersIcon className="h-5 w-5" />
+                                        <span>List of Bad Debts</span>
+                                        <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
+                                            {stats.totalBadDebts}
+                                        </span>
+                                    </div>
+                                </TabSelector>
+                                <TabSelector
+                                    isActive={selectedTab === "collection"}
+                                    onClick={() => setSelectedTab("collection")}
+                                    className="px-6 py-4 text-sm font-medium"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <BanknotesIcon className="h-5 w-5" />
+                                        <span>Collection History</span>
+                                        <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
+                                            {stats.totalCollections}
+                                        </span>
+                                    </div>
+                                </TabSelector>
+                            </nav>
+
+                            {/* Tab Content */}
+                            <div className="p-6">
+                                <TabPanel hidden={selectedTab !== 'list'}>
+                                    <BadDebtFilters 
+                                        onFilterChange={handleFilterChange} 
+                                        tabName="list" 
+                                    />
+                                    
+                                    {list.length === 0 ? (
+                                        <EmptyState 
+                                            message="No bad debts found. This is good news!"
+                                        />
+                                    ) : (
+                                        <TableComponent 
+                                            columns={listColumns} 
+                                            data={list} 
+                                            hasActionButtons={false} 
+                                            showFilters={false}
+                                            pageSize={20}
+                                        />
+                                    )}
+                                </TabPanel>
+
+                                <TabPanel hidden={selectedTab !== 'collection'}>
+                                    <BadDebtFilters 
+                                        onFilterChange={handleFilterChange} 
+                                        tabName="collection" 
+                                    />
+                                    
+                                    {collectionList.length === 0 ? (
+                                        <EmptyState 
+                                            message="No collections recorded yet."
+                                            actionButton={
+                                                <ButtonSolid
+                                                    label="Record First Collection"
+                                                    onClick={handleShowAddDrawer}
+                                                    icon={[<PlusIcon className="w-4 h-4" />, 'left']}
+                                                />
+                                            }
+                                        />
+                                    ) : (
+                                        <TableComponent 
+                                            columns={collectionColumns} 
+                                            data={collectionList} 
+                                            hasActionButtons={false} 
+                                            showFilters={false}
+                                            pageSize={20}
+                                        />
+                                    )}
+                                </TabPanel>
+                            </div>
                         </div>
                     </React.Fragment>
                 )}
             </div>
-            <AddUpdateDebtCollection mode={mode} data={data} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
-            <Dialog show={showDeleteDialog}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div className="sm:flex sm:items-start justify-center">
-                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
-                            <div className="mt-2">
-                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to delete?</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
-                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowDeleteDialog(false)} />
-                    <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
-                </div>
-            </Dialog>
+
+            {/* Add/Update Drawer */}
+            <AddUpdateBadDebtCollection
+                mode={mode}
+                data={{}}
+                showSidebar={showAddDrawer}
+                setShowSidebar={setShowAddDrawer}
+                onClose={handleCloseAddDrawer}
+            />
         </Layout>
-    )
+    );
 }
