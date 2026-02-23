@@ -35,7 +35,7 @@ export default apiHandler({
  */
 async function listUnclaimedTransactions(req, res) {
     const user_id = req?.auth?.sub;
-    const { status, branchId, loId, groupId } = req.query;
+    const { status, branchId, loId, groupId, date } = req.query;
 
     try {
         // Get current user for role-based filtering
@@ -57,17 +57,22 @@ async function listUnclaimedTransactions(req, res) {
 
         // Build where clause for cash collections with remark 'offset-unclaimed'
         // remarks is a JSONB field: { "label": "...", "value": "offset-unclaimed" }
-        // IMPORTANT: Only show past transactions (dateAdded < current date)
         const currentSystemDate = moment(getSystemDate()).format('YYYY-MM-DD');
         
         let cashCollectionWhere = {
             remarks: {
                 _contains: { value: 'offset-unclaimed' }
-            },
-            dateAdded: {
-                _lt: currentSystemDate  // Only past dates, exclude current date
             }
         };
+
+        // Date filtering:
+        // If specific date provided: filter by that date
+        // If no date provided: show all dates before today
+        if (date) {
+            cashCollectionWhere.dateAdded = { _eq: date };
+        } else {
+            cashCollectionWhere.dateAdded = { _lt: currentSystemDate };
+        }
 
         // Apply role-based filtering
         // Priority: Query params > User role-based filtering
@@ -103,7 +108,14 @@ async function listUnclaimedTransactions(req, res) {
                 })
             );
 
-            const claimedTxList = claimedTransactions.data?.unclaimedTransactions || [];
+            let claimedTxList = claimedTransactions.data?.unclaimedTransactions || [];
+            
+            // Filter by date if provided (filter by date part of date_added)
+            if (date && claimedTxList.length > 0) {
+                claimedTxList = claimedTxList.filter(tx => 
+                    tx.date_added && moment(tx.date_added).format('YYYY-MM-DD') === date
+                );
+            }
             
             if (claimedTxList.length === 0) {
                 return res.status(200).json({
@@ -134,7 +146,9 @@ async function listUnclaimedTransactions(req, res) {
                     const cc = ccMap.get(tx.cash_collection_id);
                     if (!cc) return null; // Skip if cashCollection not found
 
-                    const unclaimedAmount = (cc.mcbu || 0) + (cc.csf || 0) - (cc.loanBalance || 0);
+                    // Calculate unclaimed amount using correct field names:
+                    // mcbuReturnAmt + csfReturnAmt - paymentCollection
+                    const unclaimedAmount = (cc.mcbuReturnAmt || 0) + (cc.csfReturnAmt || 0) - (cc.paymentCollection || 0);
 
                     return {
                         _id: cc._id,
@@ -145,9 +159,9 @@ async function listUnclaimedTransactions(req, res) {
                         slotNo: cc.slotNo || '-',
                         clientName: cc.fullName || '-',
                         amountRelease: cc.amountRelease || 0,
-                        loanBalance: cc.loanBalance || 0,
-                        mcbu: cc.mcbu || 0,
-                        csf: cc.csf || 0,
+                        loanBalance: cc.paymentCollection || 0, // Using paymentCollection
+                        mcbu: cc.mcbuReturnAmt || 0, // Using mcbuReturnAmt
+                        csf: cc.csfReturnAmt || 0, // Using csfReturnAmt
                         unclaimedAmount: unclaimedAmount,
                         status: tx.status,
                         dateClaimed: tx.date_added,
@@ -205,7 +219,9 @@ async function listUnclaimedTransactions(req, res) {
                 return null;
             }
             
-            const unclaimedAmount = (cc.mcbu || 0) + (cc.csf || 0) - (cc.loanBalance || 0);
+            // Calculate unclaimed amount using correct field names:
+            // mcbuReturnAmt + csfReturnAmt - paymentCollection
+            const unclaimedAmount = (cc.mcbuReturnAmt || 0) + (cc.csfReturnAmt || 0) - (cc.paymentCollection || 0);
 
             return {
                 _id: cc._id,
@@ -216,9 +232,9 @@ async function listUnclaimedTransactions(req, res) {
                 slotNo: cc.slotNo || '-',
                 clientName: cc.fullName || '-',
                 amountRelease: cc.amountRelease || 0,
-                loanBalance: cc.loanBalance || 0,
-                mcbu: cc.mcbu || 0,
-                csf: cc.csf || 0,
+                loanBalance: cc.paymentCollection || 0, // Using paymentCollection as loanBalance
+                mcbu: cc.mcbuReturnAmt || 0, // Using mcbuReturnAmt
+                csf: cc.csfReturnAmt || 0, // Using csfReturnAmt
                 unclaimedAmount: unclaimedAmount,
                 status: existingTx?.status || 'unclaimed',
                 dateClaimed: existingTx?.date_added || null,
