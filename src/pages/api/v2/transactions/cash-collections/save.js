@@ -133,13 +133,6 @@ async function save(req, res) {
                     collection.transferred = false;
                 }
 
-                if (collection.remarks && collection.remarks.value === 'offset-unclaimed') {
-                    collection.status = 'closed';
-                    collection.loanCycle = 0;
-                    collection.closedDate = currentDate;
-                    collection.dateModified = currentDate;
-                }
-
                 if (collection.loanBalance <= 0) {
                     if (collection.occurence == 'daily') {
                         collection.noOfPayments = 60;
@@ -417,7 +410,7 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
 
         loan.history = collection.history;
 
-        if ((collection.loanBalance <= 0 || collection?.remarks?.value == 'offset-matured-pd') && collection.remarks.value !== 'offset-unclaimed') {
+        if (collection.loanBalance <= 0 || collection?.remarks?.value == 'offset-matured-pd') {
             loan.status = collection.status;
             if (collection.status === 'tomorrow') {
                 loan.status = 'active';
@@ -441,12 +434,6 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
                 loan.closedDate = currentDate;
                 loan.dateModified = currentDate;
             }
-        } else if (collection.remarks.value === 'offset-unclaimed') {
-            loan.status = 'closed';
-            loan.loanCycle = 0;
-            loan.remarks = collection.closeRemarks || 'Closed due to unclaimed amount.';
-            loan.closedDate = currentDate;
-            loan.dateModified = currentDate;
         }
 
         loan.lastUpdated = currentDate;
@@ -511,8 +498,7 @@ async function updateClient(user_id, mutationQl, loan) {
 
         client.status = loan.clientStatus;
 
-        if (client.status === 'offset' || (loan.remarks && loan.remarks.value === 'offset-unclaimed')) {
-            client.status = 'offset'; // for both cases, client status should be set to offset
+        if (client.status === 'offset') {
             client.oldLoId = client.loId;
             client.oldGroupId = client.groupId;
             client.groupId = null;

@@ -693,11 +693,6 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
                             paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
                         }
-
-                        if (remarks.value && remarks.value === 'offset-unclaimed') {
-                            amountRelease = cc.amountRelease;
-                            loanBalance = cc.loanBalance;
-                        }
                         
                         collection = {
                             ...cc,
@@ -781,7 +776,7 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                         }
     
-                        if (loanBalance > 0 && !cc?.maturedPD && !remarks.value?.includes('offset-unclaimed')) {
+                        if (loanBalance > 0) {
                             collection.transferred = true;
                         }
                         setEditMode(false);
@@ -1712,9 +1707,8 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add("Actual collection is below the target collection.");
                     } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                         if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
-                            && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') && cc.remarks.value !== 'offset-matured-pd'
-                            && cc.remarks.value !== 'offset-unclaimed') {
-                                errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
+                            && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') && cc.remarks.value !== 'offset-matured-pd' ) {
+                            errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                         }
                     } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) || parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) && cc.loanBalance !== 0) {
                         if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
@@ -1726,7 +1720,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
                     }
     
-                    if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value?.startsWith('offset')) && !cc?.maturedPDPrevTransaction) {
+                    if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset')) && !cc?.maturedPDPrevTransaction) {
                         errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
                     }
                 }
@@ -1778,11 +1772,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (cc.csfError || (cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
-                    && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') 
-                        && cc.remarks.value !== "past due" 
-                        && !cc.remarks.value?.startsWith('excused')
-                        && cc.remarks.value !== 'offset-unclaimed')
-                    )) {
+                        && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
@@ -2607,10 +2597,8 @@ const CashCollectionDetailsPage = () => {
                         } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
-                        } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") 
-                            && (remarks.value && remarks.value !== 'offset-unclaimed' && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) 
-                            && temp.mcbu < temp.loanBalance) {
-                                toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
+                        } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
+                            toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
                             toast.error("Error occured. Invalid remarks. Slot No " + temp.slotNo + " has MCBU withdrawal transaction. Should only choose a reloaner remarks.");
                         } else if (!mcbuErrorData) {
@@ -2682,33 +2670,12 @@ const CashCollectionDetailsPage = () => {
                                             temp.csf = temp.prevData.csf;
                                         }
                                         
-                                        if (remarks.value === 'offset-unclaimed') {
-                                            temp.loanBalance = temp.prevData.loanBalance;
-                                            temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                            temp.paymentCollection = 0;
-                                            temp.paymentCollectionStr = '-';
-                                            temp.activeLoan = 0;
-                                            temp.activeLoanStr = '-';
-                                            temp.targetCollection = 0;
-                                            temp.targetCollectionStr = '-';
+                                        if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
+                                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                        }
 
-                                            if (temp.mcbuCol > 0) {
-                                                temp.mcbu = temp.mcbu - temp.mcbuCol;
-                                                temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                                            }
-
-                                            if (temp.csfCollection > 0) {
-                                                temp.csf = temp.csf - temp.csfCollection;
-                                                temp.csfStr = temp.csf > 0 ? formatPricePhp(temp.csf) : '-';
-                                            }
-                                        } else {
-                                            if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
-                                                temp.mcbu = temp.mcbu - temp.mcbuCol;
-                                            }
-
-                                            if (temp.csf !== temp.prevData.csf && temp.csfCollection && temp.csfCollection > 0) {
-                                                temp.csf = temp.csf - temp.csfCollection;
-                                            }
+                                        if (temp.csf !== temp.prevData.csf && temp.csfCollection && temp.csfCollection > 0) {
+                                            temp.csf = temp.csf - temp.csfCollection;
                                         }
         
                                         temp.mcbuCol = 0;
@@ -2741,34 +2708,33 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                         }
+                                        temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                        temp.csfReturnAmt = temp.csf;
+                                        temp.csfReturnAmtStr = formatPricePhp(temp.csf);
 
-                                        if (remarks.value !== 'offset-unclaimed') {
-                                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                            temp.csfReturnAmt = temp.csf;
-                                            temp.csfReturnAmtStr = formatPricePhp(temp.csf);
-
-                                            // add mcbu and csf values
-                                            temp.mcbuReturnAmt += temp.csf;
-                                            temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
-
-                                            temp.mcbu = 0;
-                                            temp.mcbuStr = '-';
-                                            temp.csf = 0;
-                                            temp.csfStr = '-';
-                                        }
+                                        // add mcbu and csf values
+                                        temp.mcbuReturnAmt += temp.csf;
+                                        temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
                                         
+                                        temp.mcbu = 0;
+                                        temp.mcbuStr = '-';
                                         temp.mcbuError = false;
+                                        temp.csf = 0;
+                                        temp.csfStr = '-';
                                         temp.csfError = false;
 
-                                        if (temp?.maturedPD && remarks.value == 'offset-matured-pd' && remarks.value !== 'offset-unclaimed') {
-                                            temp.prevData.loanBalance = temp.loanBalance;
+                                        if (temp?.maturedPD && remarks.value == 'offset-matured-pd') {
+                                            prevData.loanBalance = temp.loanBalance;
                                             temp.loanBalance = 0;
                                             temp.loanBalanceStr = '-';
                                         }
 
-                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0 && remarks.value !== 'offset-unclaimed') {
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
                                             temp.fullPayment = temp?.history?.amountRelease;
                                         }
+
+                                        temp.history = history;
+                                        temp.prevData = prevData;
 
                                         temp = removeCsfIn(temp);
                                     }
@@ -3290,7 +3256,7 @@ const CashCollectionDetailsPage = () => {
 
     const removeCsfIn = (selected) => {
         let temp = JSON.parse(JSON.stringify(selected));
-        if (!hasGroupLeader || (temp.remarks && temp.remarks.value === 'offset-unclaimed')) {
+        if (!hasGroupLeader) {
             temp.totalCollection = temp.totalCollection - temp.csfIn;
             temp.totalCollectionStr = formatPricePhp(temp.totalCollection);
             temp.csfIn = 0;
