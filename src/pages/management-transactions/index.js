@@ -99,6 +99,8 @@ const ManagementTransactionsPage = () => {
     const [summaryActiveTab, setSummaryActiveTab] = useState('current');
     const [summaryData, setSummaryData] = useState({});
     const [loadingSummary, setLoadingSummary] = useState(false);
+    const [showAllAccounts, setShowAllAccounts] = useState(false);
+    const [allAccountsSummaryData, setAllAccountsSummaryData] = useState({});
 
     // Display Group view state
     const [selectedDisplayGroup, setSelectedDisplayGroup] = useState(null);
@@ -141,14 +143,15 @@ const ManagementTransactionsPage = () => {
         return 'View aggregated transactions across all branches';
     };
 
-    // Build summary tabs based on summaryData that has transactions
+    // Build summary tabs based on summaryData that has transactions (or all accounts if showAllAccounts is true)
     const getSummaryTabs = () => {
         const tabs = [];
+        const dataSource = showAllAccounts ? allAccountsSummaryData : summaryData;
 
-        // Add tabs for each group that has data in summaryData
+        // Add tabs for each group that has data
         GROUP_TAB_ORDER.forEach(groupCode => {
-            const groupData = summaryData[groupCode];
-            // Only show tab if there are account types with transactions in this group
+            const groupData = dataSource[groupCode];
+            // Only show tab if there are account types in this group
             if (groupData && groupData.accountTypes && groupData.accountTypes.length > 0) {
                 tabs.push({
                     key: groupCode,
@@ -430,18 +433,25 @@ const ManagementTransactionsPage = () => {
                 return;
             }
 
-            const apiUrl = getApiBaseUrl() + 
-                `management-transactions/transactions/summary?branchId=${branchId}&date=${dateFilter}`;
+            // Fetch both summary data (with transactions only) and all accounts data
+            const [summaryResponse, allAccountsResponse] = await Promise.all([
+                fetchWrapper.get(getApiBaseUrl() + 
+                    `management-transactions/transactions/summary?branchId=${branchId}&date=${dateFilter}`),
+                fetchWrapper.get(getApiBaseUrl() + 
+                    `management-transactions/transactions/summary-all?branchId=${branchId}&date=${dateFilter}`)
+            ]);
             
-            const response = await fetchWrapper.get(apiUrl);
-            
-            if (response.success) {
-                setSummaryData(response.summaryData || {});
+            if (summaryResponse.success) {
+                setSummaryData(summaryResponse.summaryData || {});
                 
                 // Calculate grand totals from summary
-                if (response.grandTotals) {
-                    setGrandTotals(response.grandTotals);
+                if (summaryResponse.grandTotals) {
+                    setGrandTotals(summaryResponse.grandTotals);
                 }
+            }
+
+            if (allAccountsResponse.success) {
+                setAllAccountsSummaryData(allAccountsResponse.summaryData || {});
             }
         } catch (error) {
             console.error('Error loading summary data:', error);
@@ -634,9 +644,10 @@ const ManagementTransactionsPage = () => {
 
     const handleViewSummary = () => {
         setShowSummary(true);
-        // Set the first available tab based on summaryData
+        // Set the first available tab based on data source (using summaryData by default since showAllAccounts starts as false)
+        const dataSource = showAllAccounts ? allAccountsSummaryData : summaryData;
         const firstAvailableTab = GROUP_TAB_ORDER.find(groupCode => {
-            const groupData = summaryData[groupCode];
+            const groupData = dataSource[groupCode];
             return groupData && groupData.accountTypes && groupData.accountTypes.length > 0;
         });
         setSummaryActiveTab(firstAvailableTab || GROUP_TAB_ORDER[0]);
@@ -760,13 +771,15 @@ const ManagementTransactionsPage = () => {
 
     // Get data for a specific summary tab
     const getSummaryTabData = (tabKey) => {
-        // Return data for grouped account types
-        return summaryData[tabKey] || { accountTypes: [], totals: {} };
+        // Return data for grouped account types based on showAllAccounts setting
+        const dataSource = showAllAccounts ? allAccountsSummaryData : summaryData;
+        return dataSource[tabKey] || { accountTypes: [], totals: {} };
     };
 
     // Calculate totals for current tab
     const calculateTabTotals = (tabKey) => {
-        const groupData = summaryData[tabKey];
+        const dataSource = showAllAccounts ? allAccountsSummaryData : summaryData;
+        const groupData = dataSource[tabKey];
         if (!groupData || !groupData.totals) {
             return { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 };
         }
@@ -775,14 +788,18 @@ const ManagementTransactionsPage = () => {
 
     // Render summary table for a specific tab (group)
     const renderSummaryTable = (tabKey) => {
-        // Render grouped account types
-        const groupData = summaryData[tabKey];
+        // Render grouped account types based on showAllAccounts setting
+        const dataSource = showAllAccounts ? allAccountsSummaryData : summaryData;
+        const groupData = dataSource[tabKey];
         const tabTotals = calculateTabTotals(tabKey);
 
         if (!groupData || !groupData.accountTypes || groupData.accountTypes.length === 0) {
             return (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
-                    No transactions found for {ACCOUNT_GROUPS[tabKey]}.
+                    {showAllAccounts 
+                        ? `No accounts found for ${ACCOUNT_GROUPS[tabKey]}.`
+                        : `No transactions found for ${ACCOUNT_GROUPS[tabKey]}.`
+                    }
                 </div>
             );
         }
@@ -1186,20 +1203,39 @@ const ManagementTransactionsPage = () => {
                 {/* Summary Tabs */}
                 {showSummary && (
                     <div className="px-6 pt-4 border-b border-gray-200">
-                        <div className="flex gap-1 overflow-x-auto">
-                            {summaryTabs.map(tab => (
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex gap-1 overflow-x-auto">
+                                {summaryTabs.map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setSummaryActiveTab(tab.key)}
+                                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+                                            summaryActiveTab === tab.key
+                                                ? 'bg-teal-600 text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <label className="text-sm text-gray-600 whitespace-nowrap">
+                                    Show All Accounts
+                                </label>
                                 <button
-                                    key={tab.key}
-                                    onClick={() => setSummaryActiveTab(tab.key)}
-                                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
-                                        summaryActiveTab === tab.key
-                                            ? 'bg-teal-600 text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    onClick={() => setShowAllAccounts(!showAllAccounts)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                        showAllAccounts ? 'bg-teal-600' : 'bg-gray-300'
                                     }`}
                                 >
-                                    {tab.label}
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                            showAllAccounts ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
                                 </button>
-                            ))}
+                            </div>
                         </div>
                     </div>
                 )}
