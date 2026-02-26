@@ -12,6 +12,7 @@ import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
 import { getApiBaseUrl } from "@/lib/constants";
 import InputNumber from "@/lib/ui/InputNumber";
+import { useMemo } from "react";
 
 const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -20,7 +21,8 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Fund Transfer');
-    const branchList = useSelector(state => state.branch.list);
+    const branchListData = useSelector(state => state.branch.list);
+    const branchList = useMemo(() => branchListData.map(branch => ({ ... branch, _id: branch._id, label: `${branch.code} ${branch.name}` })), [branchListData]);
 
     const [selectedGiverBranch, setSelectedGiverBranch] = useState();
     const [selectedReceiverBranch, setSelectedReceiverBranch] = useState();
