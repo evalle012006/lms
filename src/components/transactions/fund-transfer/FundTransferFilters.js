@@ -81,7 +81,7 @@ const FundTransferFilters = ({
         { value: '', label: 'All Branches' },
         ...(branchList || []).map(branch => ({
             value: branch._id,
-            label: branch.name
+            label: `${branch.code} ${branch.name}`
         }))
     ];
 
@@ -257,7 +257,7 @@ const FundTransferFilters = ({
                 </div>
 
                 {/* Giver Branch Filter */}
-                <div className="min-w-[180px]">
+                <div className="min-w-[200px]">
                     <SelectDropdown
                         name="giverBranch"
                         field="giverBranch"
@@ -272,7 +272,7 @@ const FundTransferFilters = ({
                 </div>
 
                 {/* Receiver Branch Filter */}
-                <div className="min-w-[180px]">
+                <div className="min-w-[200px]">
                     <SelectDropdown
                         name="receiverBranch"
                         field="receiverBranch"
