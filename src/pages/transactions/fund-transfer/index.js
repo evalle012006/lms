@@ -133,12 +133,12 @@ const FundTransferPage = () => {
         },
         {
             Header: "From Branch",
-            accessor: 'giverBranch.name',
+            accessor: 'giverBranchDisplay',
             totalType: 'none'
         },
         {
             Header: "To Branch",
-            accessor: 'receiverBranch.name',
+            accessor: 'receiverBranchDisplay',
             totalType: 'none'
         },
         {
@@ -559,6 +559,12 @@ const FundTransferPage = () => {
         }
     }, [getFundTransferList, isRefreshing]);
 
+    const mapBranchWithCode = (branch) => ({
+        ... branch,
+        giverBranchDisplay: branch.giverBranch ? `${branch.giverBranch.code} ${branch.giverBranch.name}` : '',
+        receiverBranchDisplay: branch.receiverBranch ? `${branch.receiverBranch.code} ${branch.receiverBranch.name}` : ''
+    })
+
     // Initialize filtered data when main data changes
     useEffect(() => {
         setFilteredTransactionData(fundTransferList || []);
@@ -673,7 +679,7 @@ const FundTransferPage = () => {
                             <TabPanel hidden={selectedTab !== "fund-transfer-transactions"}>
                                 <TableComponent 
                                     columns={transactionColumns} 
-                                    data={filteredTransactionData} 
+                                    data={filteredTransactionData.map(mapBranchWithCode)} 
                                     pageSize={20} 
                                     hasActionButtons={true} 
                                     rowActionButtons={rowActionButtons}
@@ -689,7 +695,7 @@ const FundTransferPage = () => {
                             <TabPanel hidden={selectedTab !== "fund-transfer-history"}>
                                 <TableComponent 
                                     columns={historyColumns} 
-                                    data={filteredHistoryData} 
+                                    data={filteredHistoryData.map(mapBranchWithCode)} 
                                     pageSize={20} 
                                     hasActionButtons={false} 
                                     showFilters={false} // Disable table filters since we have custom filters
@@ -720,8 +726,8 @@ const FundTransferPage = () => {
                                             {fundTransfer && (
                                                 <div className="mt-4 text-sm text-gray-600">
                                                     <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
-                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
-                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.code} {fundTransfer.giverBranch?.name}</p>
+                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.code} {fundTransfer.receiverBranch?.name}</p>
                                                     <div className="mt-3 text-xs text-orange-600 bg-orange-50 p-2 rounded">
                                                         <p className="font-semibold">⚠️ Warning:</p>
                                                         <p>This action cannot be undone. The transfer will be permanently deleted.</p>
@@ -772,8 +778,8 @@ const FundTransferPage = () => {
                                             {fundTransfer && (
                                                 <div className="mt-4 text-sm text-gray-600">
                                                     <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
-                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
-                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.code} {fundTransfer.giverBranch?.name}</p>
+                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.code} {fundTransfer.receiverBranch?.name}</p>
                                                     {currentUser.role?.shortCode === 'finance' && (
                                                         <div className="mt-2 text-xs text-green-600">
                                                             <p>✓ Step 1: Giver branch approved</p>
@@ -830,8 +836,8 @@ const FundTransferPage = () => {
                                             {fundTransfer && (
                                                 <div className="mt-4 text-sm text-gray-600 mb-4">
                                                     <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
-                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
-                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.code} {fundTransfer.giverBranch?.name}</p>
+                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.code} {fundTransfer.receiverBranch?.name}</p>
                                                 </div>
                                             )}
                                             <div className="mt-4">
