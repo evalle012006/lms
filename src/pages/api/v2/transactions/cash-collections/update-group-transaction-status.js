@@ -56,6 +56,17 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
                 };
                 return;
             }
+
+            // FIXED: Check for pending fund transfers at branch level
+            const pendingFundTransfers = await checkBranchFundTransfers(branchId, dateFor);
+            
+            if (pendingFundTransfers.length > 0) {
+                response = {
+                    error: true,
+                    message: "Cannot approve branch. There are pending Fund Transfers. Please check and approve or contact Finance Admin."
+                };
+                return;
+            }
         }
 
         // Handle branch approval
@@ -180,7 +191,8 @@ async function processLOApproval(loId, branchId, currentDate, currentTime, mode,
                 response = { error: true, message: "Some groups have pending MCBU withdrawals for the selected Loan Officer. Please reject or delete them." };
                 return;
             } else if (hasPendingFundTransfers.length > 0) {
-                response = { error: true, message: "Branch has a pending Fund Transfer. Please check and approve or contact Finance Admin." };
+                // FIXED: Enhanced error message to be more specific
+                response = { error: true, message: "Branch has pending Fund Transfer(s). Please check and approve or contact Finance Admin." };
                 return;
             } else if (finalNoDenominationTransactions.length > 0 || finalValidNoDenominationTransactions.length > 0) {
                 response = { error: true, message: "LO has no Denomination entries. Please check and add them." };
@@ -191,6 +203,19 @@ async function processLOApproval(loId, branchId, currentDate, currentTime, mode,
             } else if (hasPendingLoans.length > 0) {
                 response = { error: true, message: "LO has pending Loan entries. Please check and approve or contact Branch Manager." };
                 return;
+            }
+
+            // FIXED: Additional check for branch-level fund transfers
+            // This catches fund transfers that might not be in the group-level query
+            if (branchId) {
+                const branchFundTransfers = await checkBranchFundTransfers(branchId, currentDate);
+                if (branchFundTransfers.length > 0) {
+                    response = { 
+                        error: true, 
+                        message: "Branch has pending Fund Transfer(s). Please check and approve or contact Finance Admin." 
+                    };
+                    return;
+                }
             }
         }
 
@@ -416,6 +441,69 @@ async function checkBranchTransactionStatus(branchId, currentDate) {
         return unclosedCollections.data?.cashCollections || [];
     } catch (error) {
         console.error('Error checking branch transaction status:', error);
+        throw error;
+    }
+}
+
+/**
+ * FIXED: New function to check for pending fund transfers at branch level
+ * This provides a comprehensive check for all fund transfer scenarios
+ */
+async function checkBranchFundTransfers(branchId, currentDate) {
+    try {
+        console.log(`Checking fund transfers for branch ${branchId} on ${currentDate}`);
+        
+        const pendingTransfers = await graph.query(
+            queryQl(
+                createGraphType('fund_transfer', `
+                    _id
+                    giverBranchId
+                    receiverBranchId
+                    status
+                    giverApprovalStatus
+                    receiverApprovalStatus
+                    amount
+                `)('fundTransfers'),
+                {
+                    where: {
+                        _and: [
+                            {
+                                _or: [
+                                    { giverBranchId: { _eq: branchId } },
+                                    { receiverBranchId: { _eq: branchId } }
+                                ]
+                            },
+                            { insertedDate: { _eq: currentDate } },
+                            { deleted: { _eq: false } },
+                            {
+                                _or: [
+                                    { status: { _eq: 'pending' } },
+                                    { giverApprovalStatus: { _eq: 'pending' } },
+                                    { receiverApprovalStatus: { _eq: 'pending' } }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            )
+        );
+
+        const transfers = pendingTransfers.data?.fundTransfers || [];
+        
+        if (transfers.length > 0) {
+            console.log(`Found ${transfers.length} pending fund transfer(s) for branch ${branchId}:`, 
+                transfers.map(t => ({
+                    id: t._id,
+                    status: t.status,
+                    giverApprovalStatus: t.giverApprovalStatus,
+                    receiverApprovalStatus: t.receiverApprovalStatus
+                }))
+            );
+        }
+
+        return transfers;
+    } catch (error) {
+        console.error('Error checking branch fund transfers:', error);
         throw error;
     }
 }
