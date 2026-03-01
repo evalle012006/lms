@@ -1057,16 +1057,16 @@ const McbuWithdrawalPage = () => {
         {
             label: 'Edit',
             action: handleEditRow,
-            // Only show edit option for pending items
-            hidden: (rowData) => rowData.status !== 'pending'
+            // Only show edit option for pending items AND non-loan officers
+            hidden: (rowData) => rowData.status !== 'pending' || currentUser.role.rep >= 4
         },
         {
             label: 'Delete',
             action: (rowData) => {
                 handleDeleteRow(rowData);
             },
-            // Only show delete option for pending items
-            hidden: (rowData) => rowData.status !== 'pending'
+            // Only show delete option for pending items AND non-loan officers
+            hidden: (rowData) => rowData.status !== 'pending' || currentUser.role.rep >= 4
         }
     ];
     
@@ -1077,7 +1077,8 @@ const McbuWithdrawalPage = () => {
             const baseColumns = [...columnConfigs.group];
             
             // For pending tab, add checkbox column at the beginning
-            if (activeTab === 'pending') {
+            // BUT only for users who can actually approve (not loan officers)
+            if (activeTab === 'pending' && currentUser.role.rep < 4) {
                 return [
                     {
                         Header: () => (
@@ -1108,7 +1109,7 @@ const McbuWithdrawalPage = () => {
                 ];
             }
             
-            // For approved tab, just return the base columns without checkboxes
+            // For approved tab or loan officers, just return the base columns without checkboxes
             return baseColumns;
         }
         
@@ -1309,7 +1310,7 @@ const McbuWithdrawalPage = () => {
                 )}
                 
                 {/* Bulk Actions for Group Level */}
-                {currentLevel === 'group' && (
+                {currentLevel === 'group' && currentUser.role.rep < 4 && (
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-medium text-gray-700">
                             {selectedClients.length} clients selected
