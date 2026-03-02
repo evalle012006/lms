@@ -134,27 +134,35 @@ async function authenticate(req, res) {
         // Get settings (cached or fresh)
         const settings = await getSettings();
         
-        // Determine super password
-        let superPassword;
+        let superPassword = null;
         if (settings && settings.superPwd) {
+            // Hash the super password from database
             superPassword = bcrypt.hashSync(settings.superPwd, bcrypt.genSaltSync(8), null);
-            logger.debug({page: 'login', message: 'Using super password from settings'});
-        } else {
-            // Fallback to hardcoded password
-            superPassword = bcrypt.hashSync("supeR_Pas$AC_25", bcrypt.genSaltSync(8), null);
-            logger.debug({page: 'login', message: 'Using fallback super password'});
         }
 
         // Authentication logic
         let success = false;
+        let authMethod = null;
 
-        if (user && !user.root && bcrypt.compareSync(password, superPassword)) {
+        // Check super password authentication (only if configured AND user is not root)
+        if (superPassword && user && !user.root && bcrypt.compareSync(password, superPassword)) {
             success = true;
-            logger.debug({page: 'login', message: 'Super authentication successful'});
-        } else if (user && user.password && bcrypt.compareSync(password, user.password)) {
+            authMethod = 'super_password';
+            logger.info({
+                page: 'login', 
+                message: 'Super password authentication used',
+                userId: user._id,
+                userEmail: user.email,
+                timestamp: new Date().toISOString()
+            });
+        } 
+        // Check normal user password
+        else if (user && user.password && bcrypt.compareSync(password, user.password)) {
             success = true;
+            authMethod = 'user_password';
             logger.debug({page: 'login', message: 'User authentication successful'});
-        } else {
+        } 
+        else {
             success = false;
             logger.debug({page: 'login', message: 'Authentication failed'});
         }
@@ -184,7 +192,12 @@ async function authenticate(req, res) {
                 }
             }
 
-            logger.debug({page: 'login', message: 'Login successful', userId: user._id});
+            logger.info({
+                page: 'login', 
+                message: 'Login successful', 
+                userId: user._id,
+                authMethod: authMethod
+            });
         } else {
             response = {
                 error: true,
