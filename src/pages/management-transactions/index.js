@@ -821,16 +821,7 @@ const ManagementTransactionsPage = () => {
                                             Account Name
                                         </th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                            Previous Balance
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                            Debit
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                            Credit
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                            Total Balance
+                                            Total
                                         </th>
                                     </tr>
                                 </thead>
@@ -840,16 +831,7 @@ const ManagementTransactionsPage = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 {account.account_name}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.previous_balance)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.debit)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                {formatPricePhp(account.credit)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
                                                 {formatPricePhp(account.total_balance)}
                                             </td>
                                         </tr>
@@ -861,15 +843,6 @@ const ManagementTransactionsPage = () => {
                                             Subtotal - {typeData.type_name}
                                         </td>
                                         <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(typeData.totals.previousBalance)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(typeData.totals.debit)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
-                                            {formatPricePhp(typeData.totals.credit)}
-                                        </td>
-                                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-700 bg-gray-200">
                                             {formatPricePhp(typeData.totals.totalBalance)}
                                         </td>
                                     </tr>
@@ -881,28 +854,13 @@ const ManagementTransactionsPage = () => {
 
                 {/* Group Total */}
                 <div className="bg-teal-50 rounded-lg border border-teal-200 p-4">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full">
-                            <tbody>
-                                <tr>
-                                    <td className="px-6 py-2 text-left font-bold text-teal-800">
-                                        {ACCOUNT_GROUPS[tabKey]} Total:
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
-                                        {formatPricePhp(tabTotals.previousBalance)}
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
-                                        {formatPricePhp(tabTotals.debit)}
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
-                                        {formatPricePhp(tabTotals.credit)}
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48 font-bold text-teal-800">
-                                        {formatPricePhp(tabTotals.totalBalance)}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div className="flex justify-between items-center px-6">
+                        <span className="font-bold text-teal-800">
+                            {ACCOUNT_GROUPS[tabKey]} Total:
+                        </span>
+                        <span className="font-bold text-teal-800 text-lg">
+                            {formatPricePhp(tabTotals.totalBalance)}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -1533,37 +1491,50 @@ const ManagementTransactionsPage = () => {
 
                 {/* Grand Total Footer */}
                 <footer className="bg-white px-6 py-4 shadow-inner border-t-4 border-gray-200 relative z-20">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full">
-                            <tbody>
-                                <tr>
-                                    <td className="px-6 py-2 text-left font-bold text-gray-600">
-                                        Grand Total:
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48">
-                                        <span className="text-base font-bold text-red-600">
-                                            {formatPricePhp(grandTotals.previousBalance)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48">
-                                        <span className="text-base font-bold text-red-600">
-                                            {formatPricePhp(grandTotals.debit)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48">
-                                        <span className="text-base font-bold text-red-600">
-                                            {formatPricePhp(grandTotals.credit)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-2 text-right w-48">
-                                        <span className="text-base font-bold text-red-600">
-                                            {formatPricePhp(grandTotals.totalBalance)}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    {showSummary ? (
+                        // Summary view - only show total
+                        <div className="flex justify-between items-center px-6">
+                            <span className="font-bold text-gray-600">
+                                Grand Total:
+                            </span>
+                            <span className="text-lg font-bold text-red-600">
+                                {formatPricePhp(grandTotals.totalBalance)}
+                            </span>
+                        </div>
+                    ) : (
+                        // Input view - show all columns
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full">
+                                <tbody>
+                                    <tr>
+                                        <td className="px-6 py-2 text-left font-bold text-gray-600">
+                                            Grand Total:
+                                        </td>
+                                        <td className="px-6 py-2 text-right w-48">
+                                            <span className="text-base font-bold text-red-600">
+                                                {formatPricePhp(grandTotals.previousBalance)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-2 text-right w-48">
+                                            <span className="text-base font-bold text-red-600">
+                                                {formatPricePhp(grandTotals.debit)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-2 text-right w-48">
+                                            <span className="text-base font-bold text-red-600">
+                                                {formatPricePhp(grandTotals.credit)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-2 text-right w-48">
+                                            <span className="text-base font-bold text-red-600">
+                                                {formatPricePhp(grandTotals.totalBalance)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </footer>
             </div>
         </Layout>
