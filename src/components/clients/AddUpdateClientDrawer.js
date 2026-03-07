@@ -15,12 +15,13 @@ import 'react-calendar/dist/Calendar.css';
 import moment from 'moment';
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
-import Image from 'next/image';
 import { checkFileSize } from "@/lib/utils";
 import { calculateAge } from "@/lib/date-utils";
 import { useRouter } from "next/router";
 import ClientSearchTool from "../dashboard/ClientSearchTool";
 import { getApiBaseUrl } from "@/lib/constants";
+// ✅ Private file display — handles signed URLs automatically
+import PrivateImage from "@/components/common/PrivateImage";
 
 // Section Header Component
 const SectionHeader = ({ title, subtitle, className = "" }) => (
@@ -64,6 +65,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
+    // ✅ photo: stores key (e.g. "lms/clients/uuid/file.jpg") or blob URL for instant preview
+    //    PrivateImage + useSignedUrl handle both automatically
     const [photo, setPhoto] = useState(client.profile || '');
     const [image, setImage] = useState('');
     const [selectedGroup, setSelectedGroup] = useState(client.group?.[0] || null);
@@ -228,6 +231,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             return;
         }
 
+        // ✅ Show blob URL immediately for instant preview
+        //    useSignedUrl inside PrivateImage will return blob URLs as-is (no API call)
         setPhoto(URL.createObjectURL(fileUploaded));
         setImage(fileUploaded);
 
@@ -248,11 +253,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             }
 
             const responseData = await response.json();
-            const updatedData = {...client, profile: responseData.fileUrl};
+            // ✅ Save fileKey (storage path) to DB — not a public URL
+            const updatedData = { ...client, profile: responseData.fileKey };
             const result = await handleUpdateClient(updatedData);
             if (result.success) {
                 toast.success('File uploaded successfully.');
-                setPhoto(responseData.fileUrl);
+                // ✅ Switch from blob URL to the storage key
+                //    PrivateImage will fetch the signed URL automatically
+                setPhoto(responseData.fileKey);
             }
         } catch (error) {
             console.error('Error uploading file:', error);
@@ -336,12 +344,15 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         />
                                         <div className="flex space-x-6">
                                             <div className="w-48 h-48 relative flex justify-center bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden hover:border-blue-400 transition-colors">
-                                                <Image 
-                                                    src={photo || placeholder}
+                                                {/* ✅ PrivateImage handles both blob URLs (instant preview)
+                                                    and storage keys (fetches signed URL automatically) */}
+                                                <PrivateImage 
+                                                    src={photo || null}
                                                     alt="Profile"
                                                     layout="fill"
                                                     objectFit="cover"
                                                     className="rounded-xl"
+                                                    fallback={placeholder}
                                                 />
                                                 <input 
                                                     type="file" 
@@ -599,9 +610,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 </div>
 
-                                {/* IMPORTANT CLIENT SETTINGS - PROMINENT SECTION */}
+                                {/* IMPORTANT CLIENT SETTINGS */}
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 relative overflow-hidden">
-                                    {/* Top accent bar */}
                                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                                     
                                     <div className="flex items-center space-x-3 mb-6">
@@ -617,7 +627,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                     
                                     <div className="space-y-4">
-                                        {/* Group Leader Toggle - Always Show */}
+                                        {/* Group Leader Toggle */}
                                         <div className="p-4 border-2 rounded-lg transition-all duration-200 border-gray-300 bg-white shadow-sm hover:shadow-md">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex-1">
@@ -628,9 +638,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                             </svg>
                                                         </div>
                                                         <div>
-                                                            <h4 className="text-sm font-semibold text-gray-900">
-                                                                👑 Group Leader
-                                                            </h4>
+                                                            <h4 className="text-sm font-semibold text-gray-900">👑 Group Leader</h4>
                                                             <p className="text-xs text-gray-600 mt-1">
                                                                 When adding loan for this client, {transactionSettings.mcbuCsfMCBUForNM || 0} will be needed as a minimum initial MCBU.
                                                             </p>
@@ -641,29 +649,21 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     <button
                                                         type="button"
                                                         className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 border-2 ${
-                                                            values.groupLeader 
-                                                                ? 'bg-blue-500 border-blue-600' 
-                                                                : 'bg-gray-200 border-gray-300'
+                                                            values.groupLeader ? 'bg-blue-500 border-blue-600' : 'bg-gray-200 border-gray-300'
                                                         }`}
                                                         onClick={() => setFieldValue('groupLeader', !values.groupLeader)}
                                                         disabled={mode === 'edit' && client?.status !== 'pending' && currentUser.role.rep === 4}
                                                     >
-                                                        <span
-                                                            className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${
-                                                                values.groupLeader ? 'translate-x-6' : 'translate-x-1'
-                                                            }`}
-                                                        />
+                                                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${values.groupLeader ? 'translate-x-6' : 'translate-x-1'}`} />
                                                     </button>
                                                     <div className="text-xs text-center mt-1 font-medium">
-                                                        <span className={values.groupLeader ? 'text-blue-600' : 'text-gray-500'}>
-                                                            {values.groupLeader ? 'YES' : 'NO'}
-                                                        </span>
+                                                        <span className={values.groupLeader ? 'text-blue-600' : 'text-gray-500'}>{values.groupLeader ? 'YES' : 'NO'}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        {/* Delinquent Toggle - Only show for edit mode and when status is not pending */}
+                                        {/* Delinquent Toggle */}
                                         {mode === 'edit' && values.status !== 'pending' && (
                                             <div className="p-4 border-2 rounded-lg transition-all duration-200 border-gray-300 bg-white shadow-sm hover:shadow-md">
                                                 <div className="flex items-center justify-between">
@@ -675,12 +675,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                                 </svg>
                                                             </div>
                                                             <div>
-                                                                <h4 className="text-sm font-semibold text-gray-900">
-                                                                    ⚠️ Delinquent Status
-                                                                </h4>
-                                                                <p className="text-xs text-gray-600 mt-1">
-                                                                    Mark this client as having payment issues, overdue obligations, or collection concerns
-                                                                </p>
+                                                                <h4 className="text-sm font-semibold text-gray-900">⚠️ Delinquent Status</h4>
+                                                                <p className="text-xs text-gray-600 mt-1">Mark this client as having payment issues, overdue obligations, or collection concerns</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -688,22 +684,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                         <button
                                                             type="button"
                                                             className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 border-2 ${
-                                                                values.delinquent 
-                                                                    ? 'bg-red-500 border-red-600' 
-                                                                    : 'bg-gray-200 border-gray-300'
+                                                                values.delinquent ? 'bg-red-500 border-red-600' : 'bg-gray-200 border-gray-300'
                                                             }`}
                                                             onClick={() => setFieldValue('delinquent', !values.delinquent)}
                                                         >
-                                                            <span
-                                                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${
-                                                                    values.delinquent ? 'translate-x-6' : 'translate-x-1'
-                                                                }`}
-                                                            />
+                                                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${values.delinquent ? 'translate-x-6' : 'translate-x-1'}`} />
                                                         </button>
                                                         <div className="text-xs text-center mt-1 font-medium">
-                                                            <span className={values.delinquent ? 'text-red-600' : 'text-gray-500'}>
-                                                                {values.delinquent ? 'YES' : 'NO'}
-                                                            </span>
+                                                            <span className={values.delinquent ? 'text-red-600' : 'text-gray-500'}>{values.delinquent ? 'YES' : 'NO'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -711,7 +699,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         )}
                                     </div>
                                     
-                                    {/* Additional visual emphasis */}
                                     <div className="mt-4 text-xs text-blue-600 bg-blue-100 rounded-lg p-3">
                                         <strong>💡 Reminder:</strong> These setting will mark the client as a ACKP Client. Double-check before saving.
                                     </div>
@@ -720,17 +707,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                 {/* Action Buttons */}
                                 <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-6 mt-8 -mx-2 px-2">
                                     <div className="flex space-x-4">
-                                        <ButtonOutline 
-                                            label="Cancel" 
-                                            onClick={handleCancel} 
-                                            className="flex-1"
-                                        />
-                                        <ButtonSolid 
-                                            label={mode === 'add' ? 'Add Client' : 'Update Client'} 
-                                            type="submit" 
-                                            isSubmitting={isValidating && isSubmitting}
-                                            className="flex-1"
-                                        />
+                                        <ButtonOutline label="Cancel" onClick={handleCancel} className="flex-1" />
+                                        <ButtonSolid label={mode === 'add' ? 'Add Client' : 'Update Client'} type="submit" isSubmitting={isValidating && isSubmitting} className="flex-1" />
                                     </div>
                                 </div>
                             </form>

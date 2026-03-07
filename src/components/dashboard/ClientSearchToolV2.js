@@ -11,6 +11,7 @@ import placeholder from '/public/images/image-placeholder.png';
 import moment from 'moment';
 import { getApiBaseUrl } from '@/lib/constants';
 import { Search, X } from 'lucide-react';
+import SignedAvatar from '@/lib/SignedAvatar';
 
 const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
     const dispatch = useDispatch();
@@ -282,7 +283,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                         {selectedClient && (
                             <div className="w-full mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                                 <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                                    <Avatar 
+                                    <SignedAvatar
                                         name={selectedClient?.fullName} 
                                         src={selectedClient?.profile || placeholder.src} 
                                         className="w-16 h-16 sm:w-20 sm:h-20" 

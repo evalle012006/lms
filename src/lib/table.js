@@ -14,6 +14,7 @@ import CheckBox from './ui/checkbox';
 import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
 import { useEffect } from 'react';
+import { useSignedUrl } from 'hooks/useSignedUrl';
 
 // Helper functions to check transfer status
 const isRecentlyCreated = (insertedDate) => {
@@ -110,9 +111,13 @@ export function StatusPill({ value }) {
 }
 
 export function AvatarCell({ value, column, row }) {
-  const url = row.original[column.imgAccessor];
+  const rawUrl = row.original[column.imgAccessor];
   const errorMessage = row.original.errorMsg ? row.original.errorMsg : '';
   const email = row.original[column.emailAccessor];
+
+  // ✅ Resolve storage key or legacy URL → temporary signed URL
+  //    useSignedUrl handles: keys, legacy full URLs, blob URLs, null
+  const { signedUrl } = useSignedUrl(rawUrl);
 
   return (
     <div className="flex items-center">
@@ -122,7 +127,7 @@ export function AvatarCell({ value, column, row }) {
       <div className="image-container mr-3">
         <Avatar 
           name={value} 
-          src={url}
+          src={signedUrl || undefined}
           size={28}
           className="flex-shrink-0"
         />

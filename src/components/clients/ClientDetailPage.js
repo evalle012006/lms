@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
 import moment from 'moment';
-import Image from 'next/image';
 import { 
     UserIcon, 
     PhoneIcon, 
@@ -43,6 +42,9 @@ import { formatPricePhp, checkFileSize } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import { setClient } from "@/redux/actions/clientActions";
 import PaymentHistoryModal from "./PaymentHistoryModal";
+// ✅ Private file display — handles signed URLs automatically
+import PrivateImage from "@/components/common/PrivateImage";
+import { useSignedUrl } from "hooks/useSignedUrl";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -56,8 +58,8 @@ const ClientDetailPage = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [showAddLoanDrawer, setShowAddLoanDrawer] = useState(false);
     const [showUpdateClientDrawer, setShowUpdateClientDrawer] = useState(false);
-    const [imageError, setImageError] = useState(false);
-    const [imageSrc, setImageSrc] = useState(null);
+
+    // ✅ Removed: imageError + imageSrc states (handled by PrivateImage / useSignedUrl)
     
     // Payment History Modal state
     const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
@@ -69,22 +71,15 @@ const ClientDetailPage = () => {
     
     const fileInputRef = useRef(null);
 
+    // ✅ Get signed URL for the full-screen preview modal
+    const { signedUrl: profileSignedUrl } = useSignedUrl(client?.profile);
+
     // Fetch client details (including loans) when client changes
     useEffect(() => {
         if (client?._id) {
             getClientDetails();
         }
     }, [client?._id]);
-
-    // Update image source when client changes
-    useEffect(() => {
-        if (client?.profile) {
-            setImageSrc(client.profile);
-            setImageError(false);
-        } else {
-            setImageSrc(placeholder);
-        }
-    }, [client?.profile]);
 
     // API function to get client details and loan data
     const getClientDetails = async () => {
@@ -164,8 +159,9 @@ const ClientDetailPage = () => {
 
             const uploadResult = await uploadResponse.json();
             
-            if (!uploadResult.fileUrl) {
-                throw new Error('No file URL returned');
+            // ✅ API now returns fileKey (storage path), not a public URL
+            if (!uploadResult.fileKey) {
+                throw new Error('No file key returned');
             }
 
             // Step 2: Prepare sanitized client data for update
@@ -188,7 +184,7 @@ const ClientDetailPage = () => {
                 groupId: client.groupId,
                 groupName: client.groupName || '',
                 ciName: client.ciName || '',
-                profile: uploadResult.fileUrl,
+                profile: uploadResult.fileKey,  // ✅ store key, not public URL
                 delinquent: client.delinquent === true,
                 duplicate: client.duplicate === true,
                 groupLeader: client.groupLeader === true,
@@ -206,9 +202,8 @@ const ClientDetailPage = () => {
             );
 
             if (updateResponse.success) {
-                dispatch(setClient({ ...client, profile: uploadResult.fileUrl }));
-                setImageSrc(uploadResult.fileUrl);
-                setImageError(false);
+                // ✅ Update Redux with the fileKey — PrivateImage will fetch the signed URL
+                dispatch(setClient({ ...client, profile: uploadResult.fileKey }));
                 toast.success('Photo successfully updated.');
             } else {
                 toast.error(updateResponse.message || 'Failed to update client profile');
@@ -325,7 +320,8 @@ const ClientDetailPage = () => {
 
     // Image preview handlers
     const handleOpenImagePreview = () => {
-        if (imageSrc && imageSrc !== placeholder) {
+        // ✅ Check client.profile (key) instead of imageSrc state
+        if (client?.profile) {
             setShowImagePreview(true);
             setZoomLevel(1);
         }
@@ -373,13 +369,14 @@ const ClientDetailPage = () => {
                                     className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg cursor-pointer"
                                     onClick={handleOpenImagePreview}
                                 >
-                                    <Image
-                                        src={imageError ? placeholder : (imageSrc || placeholder)}
+                                    {/* ✅ PrivateImage fetches a signed URL automatically */}
+                                    <PrivateImage
+                                        src={client.profile}
                                         alt={`${client.firstName} ${client.lastName}`}
                                         width={96}
                                         height={96}
                                         className="object-cover w-full h-full"
-                                        onError={() => setImageError(true)}
+                                        fallback={placeholder}
                                     />
                                 </div>
                                 <button
@@ -720,8 +717,6 @@ const ClientDetailPage = () => {
                                             <p className="mt-1 text-sm text-gray-900">{activeLoan.groupName || '-'} / #{activeLoan.slotNo || '-'}</p>
                                         </div>
                                     </div>
-
-
                                 </div>
                             ) : (
                                 <div className="p-6 text-center">
@@ -756,83 +751,42 @@ const ClientDetailPage = () => {
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Cycle
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    PN Number
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Date Granted
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Principal
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Amount Released
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Balance
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Payments
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Status
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Group
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Miss
-                                                </th>
-                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Actions
-                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cycle</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PN Number</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Granted</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Released</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payments</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Miss</th>
+                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {loanList.map((loan, index) => (
                                                 <tr key={loan._id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                        {loan.loanCycle || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.pnNumber || '-'}
-                                                    </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{loan.loanCycle || '-'}</td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{loan.pnNumber || '-'}</td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                         {loan.dateGranted ? moment(loan.dateGranted).format('MMM DD, YYYY') : 
                                                          loan.dateOfRelease ? moment(loan.dateOfRelease).format('MMM DD, YYYY') : '-'}
                                                     </td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatPricePhp(loan.principalLoan || 0)}</td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatPricePhp(loan.amountRelease || 0)}</td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatPricePhp(loan.loanBalance || 0)}</td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{loan.noOfPayments || 0} / {loan.loanTerms || 0}</td>
+                                                    <td className="px-4 py-4 whitespace-nowrap"><LoanStatusPill status={loan.status} /></td>
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{loan.groupName || '-'}</td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {formatPricePhp(loan.principalLoan || 0)}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {formatPricePhp(loan.amountRelease || 0)}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {formatPricePhp(loan.loanBalance || 0)}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.noOfPayments || 0} / {loan.loanTerms || 0}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap">
-                                                        <LoanStatusPill status={loan.status} />
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {loan.groupName || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        <span className={`${(loan.mispayment || 0) > 0 ? 'text-red-600 font-medium' : ''}`}>
-                                                            {loan.mispayment || 0}
-                                                        </span>
+                                                        <span className={`${(loan.mispayment || 0) > 0 ? 'text-red-600 font-medium' : ''}`}>{loan.mispayment || 0}</span>
                                                     </td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-center">
                                                         <button
                                                             type="button"
                                                             onClick={() => handleViewPaymentHistory(loan)}
                                                             className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-primary-1 bg-primary-4 hover:bg-primary-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-1 transition-colors"
-                                                            title="View Payment History"
                                                         >
                                                             <EyeIcon className="w-4 h-4 mr-1" />
                                                             View History
@@ -891,27 +845,19 @@ const ClientDetailPage = () => {
                         ></div>
                         <div className="relative z-10">
                             <div className="absolute top-4 right-4 flex space-x-2">
-                                <button
-                                    onClick={handleZoomIn}
-                                    className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100"
-                                >
+                                <button onClick={handleZoomIn} className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100">
                                     <MagnifyingGlassPlusIcon className="w-6 h-6" />
                                 </button>
-                                <button
-                                    onClick={handleZoomOut}
-                                    className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100"
-                                >
+                                <button onClick={handleZoomOut} className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100">
                                     <MagnifyingGlassMinusIcon className="w-6 h-6" />
                                 </button>
-                                <button
-                                    onClick={handleCloseImagePreview}
-                                    className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100"
-                                >
+                                <button onClick={handleCloseImagePreview} className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100">
                                     <XMarkIcon className="w-6 h-6" />
                                 </button>
                             </div>
+                            {/* ✅ Use signed URL for the raw <img> in the preview modal */}
                             <img
-                                src={imageSrc}
+                                src={profileSignedUrl || placeholder.src}
                                 alt="Client Profile"
                                 style={{ transform: `scale(${zoomLevel})` }}
                                 className="max-w-full max-h-[80vh] rounded-lg transition-transform duration-200"

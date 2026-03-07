@@ -12,9 +12,10 @@ import InputEmail from "@/lib/ui/InputEmail";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import placeholder from '/public/images/image-placeholder.png';
-import Image from 'next/image';
 import { checkFileSize } from "@/lib/utils";
 import { getApiBaseUrl } from '@/lib/constants';
+// ✅ Private file display — handles signed URLs automatically
+import PrivateImage from "@/components/common/PrivateImage";
 
 const UserDetailsPage = () => {
     const router = useRouter();
@@ -23,9 +24,9 @@ const UserDetailsPage = () => {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
+    // ✅ photo: stores key (e.g. "lms/profiles/uuid/file.jpg") or blob URL for instant preview
+    //    PrivateImage + useSignedUrl handle both automatically
     const [photo, setPhoto] = useState('');
-    const [photoW, setPhotoW] = useState(200);
-    const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
     const hiddenInput = useRef(null);
     const [data, setData] = useState({});
@@ -41,6 +42,8 @@ const UserDetailsPage = () => {
         if (fileSizeMsg) {
             toast.error(fileSizeMsg);
         } else {
+            // ✅ Show blob URL immediately for instant preview
+            //    useSignedUrl inside PrivateImage returns blob URLs as-is (no API call)
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
 
@@ -61,13 +64,18 @@ const UserDetailsPage = () => {
                 }
 
                 const responseData = await response.json();
-                const updatedData = {...data, profile: responseData.fileUrl, role: JSON.stringify(data.role)}
+                // ✅ Save fileKey (storage path) to DB — not a public URL
+                const updatedData = { ...data, profile: responseData.fileKey, role: JSON.stringify(data.role) };
                 setData(updatedData);
                 await triggerSaveUpdate(updatedData);
+                // ✅ Switch from blob URL to the storage key
+                //    PrivateImage will fetch the signed URL automatically
+                setPhoto(responseData.fileKey);
                 toast.success('File uploaded successfully.');
             } catch (error) {
                 console.error('Error uploading file:', error);
                 toast.error('Failed to upload file. Please try again.');
+                setPhoto(data.profile || '');
             } finally {
                 setUploading(false);
             }
@@ -77,7 +85,7 @@ const UserDetailsPage = () => {
     const handleRemoveImage = () => {
         setPhoto('');
         setImage('');
-        setData(prevData => ({...prevData, profile: ''}));
+        setData(prevData => ({ ...prevData, profile: '' }));
         if (hiddenInput.current) {
             hiddenInput.current.value = '';
         }
@@ -85,14 +93,14 @@ const UserDetailsPage = () => {
 
     const handleSaveUpdate = async (e) => {
         e.preventDefault();
-        const values = {...data, _id: uuid, role: JSON.stringify(data.role)};
+        const values = { ...data, _id: uuid, role: JSON.stringify(data.role) };
         await triggerSaveUpdate(values);
     }
 
     const triggerSaveUpdate = async (userData) => {
         setLoading(true);
         try {
-            const response = await fetchWrapper.sendData(getApiBaseUrl() + 'users/', userData);
+            await fetchWrapper.sendData(getApiBaseUrl() + 'users/', userData);
             getCurrentUser();
             toast.success('User successfully updated.');
         } catch (error) {
@@ -108,9 +116,9 @@ const UserDetailsPage = () => {
         const params = { _id: uuid };
         try {
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
             if (response.success) {
-                const user = {...response.user};
+                const user = { ...response.user };
+                // ✅ user.profile is now a key — PrivateImage will fetch the signed URL
                 setPhoto(user.profile);
                 dispatch(setUser(user));
                 setData(user);
@@ -135,9 +143,7 @@ const UserDetailsPage = () => {
     return (
         <Layout>
             {loading ? (
-                // <div className="absolute top-1/2 left-1/2">
-                    <Spinner />
-                // </div>
+                <Spinner />
             ) : (
                 <div className="flex flex-col">
                     <div className="mx-auto my-4 bg-white w-3/4 p-4 rounded-lg">
@@ -147,11 +153,16 @@ const UserDetailsPage = () => {
                                 <div className="photo-row mt-4 flex space-x-4">
                                     <div className="photo-container rounded-lg">
                                         <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
-                                            <Image src={!photo ? placeholder : photo}
-                                                className="overflow-hidden"
+                                            {/* ✅ PrivateImage handles both blob URLs (instant preview)
+                                                and storage keys (fetches signed URL automatically) */}
+                                            <PrivateImage
+                                                src={photo || null}
+                                                className="overflow-hidden object-cover"
                                                 alt="Profile Photo"
-                                                width={photoW}
-                                                height={photoH} />
+                                                width={200}
+                                                height={200}
+                                                fallback={placeholder}
+                                            />
                                         </div>
                                         <input type="file" name="file" ref={hiddenInput} onChange={handleFileChange} className="hidden" />
                                     </div>

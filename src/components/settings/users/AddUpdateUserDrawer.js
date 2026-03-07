@@ -11,13 +11,14 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import placeholder from '/public/images/image-placeholder.png';
-import Image from 'next/image';
 import Spinner from "@/components/Spinner";
 import RadioButton from "@/lib/ui/radio-button";
 import { checkFileSize } from "@/lib/utils";
 import Select from 'react-select';
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import { getApiBaseUrl } from "@/lib/constants";
+// ✅ Private file display — handles signed URLs automatically
+import PrivateImage from "@/components/common/PrivateImage";
 
 const DEFAULT_USER = {};
 const DEFAULT_ROLES = [];
@@ -27,6 +28,8 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
     const formikRef = useRef();
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
+    // ✅ photo: stores key (e.g. "lms/profiles/uuid/file.jpg") or blob URL for instant preview
+    //    PrivateImage + useSignedUrl handle both automatically
     const [photo, setPhoto] = useState('');
     const [image, setImage] = useState('');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -53,6 +56,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
         const currentRole = role ?? user.roleId;
 
         if (mode === 'edit') {
+            // ✅ user.profile is now a key or legacy URL — PrivateImage handles both
             user.profile && setPhoto(user.profile);
             user.transactionType && setOccurence(user.transactionType);
         }
@@ -86,7 +90,6 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
             }
         }
 
-        // FIX: Only update role if it actually changed
         setRole(prev => prev === currentRole ? prev : currentRole);
     }, [user, mode, areaList, regionList, divisionList, branchList]);
 
@@ -125,11 +128,9 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
 
     const selectedRole = useMemo(() => {
         if (role) {
-           
             const [rep, shortCode] = role.split('-') ?? [];
             const selected = roles.find(r => r.rep === +rep);
-
-            return { ... selected, shortCode};
+            return { ...selected, shortCode};
         }
         return null;
     }, [user, role]);
@@ -157,28 +158,24 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
     const handleBranchChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleAreaChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleRegionChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleDivisionChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
@@ -229,7 +226,6 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                     values.divisionId = selectedBranch.divisionId;
                 }
 
-                // values.transactionType = occurence;
                 values.transactionType = values?.weekly ? 'weekly' : 'daily';
             }
 
@@ -271,6 +267,8 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
         if (fileSizeMsg) {
             toast.error(fileSizeMsg);
         } else {
+            // ✅ Show blob URL immediately for instant preview
+            //    useSignedUrl inside PrivateImage returns blob URLs as-is (no API call)
             const photoUrl = URL.createObjectURL(fileUploaded);
             setPhoto(photoUrl);
             setImage(fileUploaded);
@@ -295,17 +293,20 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                 const roleArr = user.roleId.split('-');
                 const roleShortCode = roleArr[1];
                 const selectedRole = roles.find(role => role.shortCode === roleShortCode);
-                const updatedData = {...user, profile: responseData.fileUrl, role: JSON.stringify(selectedRole)};
-                console.log('file updated ', updatedData);
+                // ✅ Save fileKey (storage path) to DB — not a public URL
+                const updatedData = { ...user, profile: responseData.fileKey, role: JSON.stringify(selectedRole) };
+                console.log('file updated', updatedData);
                 const result = await handleUpdateUser(updatedData);
                 if (result.success) {
                     toast.success('File uploaded successfully.');
-                    setPhoto(responseData.fileUrl); // Update photo state with the new URL
+                    // ✅ Switch from blob URL to the storage key
+                    //    PrivateImage will fetch the signed URL automatically
+                    setPhoto(responseData.fileKey);
                 }
             } catch (error) {
                 console.error('Error uploading file:', error);
                 toast.error('Failed to upload file. Please try again.');
-                setPhoto(user.profile || ''); // Revert to original photo if upload fails
+                setPhoto(user.profile || '');
             } finally {
                 setUploading(false);
             }
@@ -330,9 +331,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
     return (
         <SideBar title={mode === 'add' ? 'Add Team Member' : 'Edit Profile'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
             {loading ? (
-                // <div className="flex items-center justify-center h-screen">
-                    <Spinner />
-                // </div>
+                <Spinner />
             ) : (
                 <div className="px-2">
                     <Formik
@@ -350,12 +349,15 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                         <div className="photo-row mt-4 flex space-x-4">
                                             <div className="photo-container rounded-lg">
                                                 <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
-                                                    <Image 
-                                                        src={!photo ? placeholder : photo}
+                                                    {/* ✅ PrivateImage handles both blob URLs (instant preview)
+                                                        and storage keys (fetches signed URL automatically) */}
+                                                    <PrivateImage 
+                                                        src={photo || null}
                                                         className="overflow-hidden object-cover"
                                                         width={200}
                                                         height={200}
                                                         alt="Profile Photo"
+                                                        fallback={placeholder}
                                                     />
                                                 </div>
                                                 <input type="file" name="file" ref={hiddenInput} onChange={handleFileChange} className="hidden" />
@@ -435,20 +437,19 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                     />
                                 </div>
                                 {selectedRole?.shortCode?.includes('area_admin') && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="areaId"
-                                                field="areaId"
-                                                value={values.areaId}
-                                                label="Area"
-                                                options={areaList}
-                                                onChange={(field, value) => handleAreaChange(field, value)}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Area"
-                                                errors={touched.area && errors.area ? errors.area : undefined}
-                                            />
-                                        </div>
-                                    
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="areaId"
+                                            field="areaId"
+                                            value={values.areaId}
+                                            label="Area"
+                                            options={areaList}
+                                            onChange={(field, value) => handleAreaChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Area"
+                                            errors={touched.area && errors.area ? errors.area : undefined}
+                                        />
+                                    </div>
                                 )}
                                 {selectedRole?.shortCode?.includes('regional_manager') && (
                                     <div className="mt-4">
@@ -538,28 +539,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                                 field="loNo"
                                                 value={values.loNo}
                                                 label="LO Number"
-                                                options={[
-                                                    {label: '1', value: 1},
-                                                    {label: '2', value: 2},
-                                                    {label: '3', value: 3},
-                                                    {label: '4', value: 4},
-                                                    {label: '5', value: 5},
-                                                    {label: '6', value: 6},
-                                                    {label: '7', value: 7},
-                                                    {label: '8', value: 8},
-                                                    {label: '9', value: 9},
-                                                    {label: '10', value: 10},
-                                                    {label: '11', value: 11},
-                                                    {label: '12', value: 12},
-                                                    {label: '13', value: 13},
-                                                    {label: '14', value: 14},
-                                                    {label: '15', value: 15},
-                                                    {label: '16', value: 16},
-                                                    {label: '17', value: 17},
-                                                    {label: '18', value: 18},
-                                                    {label: '19', value: 19},
-                                                    {label: '20', value: 20}
-                                                ]}
+                                                options={[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map(n => ({label: String(n), value: n}))}
                                                 onChange={setFieldValue}
                                                 onBlur={setFieldTouched}
                                                 placeholder="Select LO Number"

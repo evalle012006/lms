@@ -26,19 +26,18 @@ const deleteExistingFile = async (bucket, prefix) => {
       Bucket: bucket,
       Key: listResponse.Contents[0].Key
     });
-
     await s3Client.send(deleteCommand);
     console.log(`Deleted existing file: ${listResponse.Contents[0].Key}`);
   }
 };
 
+// ✅ ACL removed — bucket/objects are now PRIVATE by default
 const upload = multer({
   storage: multerS3({
     s3: s3Client,
     bucket: process.env.SPACES_BUCKET,
-    acl: 'public-read',
+    // No ACL field = inherits bucket default (private)
     key: function (req, file, cb) {
-      // Use a temporary key
       cb(null, `temp/${Date.now().toString()}-${file.originalname}`);
     }
   })
@@ -69,36 +68,38 @@ export default async function handler(req, res) {
 
           const prefix = `${process.env.SPACES_ROOT}/${origin}/${uuid}/`;
 
-          // Delete existing file
+          // Delete existing file in that folder
           await deleteExistingFile(process.env.SPACES_BUCKET, prefix);
 
-          // Set the key for the new file
+          // Build final key
           const newKey = `${prefix}${Date.now().toString()}-${req.file.originalname}`;
 
-          // Copy the file to the new location
+          // Move from temp to final location (no ACL = private)
           const copyParams = {
             Bucket: process.env.SPACES_BUCKET,
             CopySource: `${process.env.SPACES_BUCKET}/${req.file.key}`,
             Key: newKey,
-            ACL: 'public-read'
+            // ✅ No ACL: 'public-read' — object is private
           };
 
           await s3Client.send(new CopyObjectCommand(copyParams));
 
-          // Delete the original file
+          // Delete the temp file
           await s3Client.send(new DeleteObjectCommand({
             Bucket: process.env.SPACES_BUCKET,
             Key: req.file.key
           }));
 
           req.file.key = newKey;
-          req.file.location = `https://${process.env.SPACES_BUCKET}.sgp1.digitaloceanspaces.com/${newKey}`;
 
           resolve();
         });
       });
 
-      res.status(200).json({ fileUrl: req.file.location });
+      // ✅ Return ONLY the key (path), NOT the full public URL
+      // Consumers should call /api/signed-url?key=... to get a temporary URL
+      res.status(200).json({ fileKey: req.file.key });
+
     } catch (error) {
       console.error('Error uploading file:', error);
       res.status(500).json({ error: 'Failed to upload file', details: error.message });

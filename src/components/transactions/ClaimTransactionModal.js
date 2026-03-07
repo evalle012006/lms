@@ -97,8 +97,9 @@ export default function ClaimTransactionModal({
 
             const uploadResult = await uploadResponse.json();
 
-            if (!uploadResult.fileUrl) {
-                throw new Error('No file URL returned from upload');
+            // ✅ API now returns fileKey (storage path), not a public URL
+            if (!uploadResult.fileKey) {
+                throw new Error('No file key returned from upload');
             }
 
             setUploadProgress(60);
@@ -114,7 +115,7 @@ export default function ClaimTransactionModal({
                     regionId: tx.regionId,
                     divisionId: tx.divisionId,
                     loanId: tx.loanId,
-                    documentUrl: uploadResult.fileUrl
+                    documentUrl: uploadResult.fileKey  // ✅ store key, not public URL
                 }));
 
                 setProcessedCount(0);
@@ -136,7 +137,7 @@ export default function ClaimTransactionModal({
                     regionId: transaction.regionId,
                     divisionId: transaction.divisionId,
                     loanId: transaction.loanId,
-                    documentUrl: uploadResult.fileUrl
+                    documentUrl: uploadResult.fileKey  // ✅ store key, not public URL
                 });
             }
 

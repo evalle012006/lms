@@ -10,29 +10,33 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/solid';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { useSignedUrl } from 'hooks/useSignedUrl';
 
 const Avatar = ({ name, src, className }) => {
-  if (src) {
+  // Only pass src to Image if it's a valid absolute URL
+  const isValidSrc = src && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/'));
+
+  if (isValidSrc) {
     return (
       <div className={`h-10 w-10 rounded-full overflow-hidden ${className}`}>
-        <Image 
-          src={src} 
-          alt={name} 
-          width={40} 
-          height={40} 
+        <Image
+          src={src}
+          alt={name}
+          width={40}
+          height={40}
           className="object-cover w-full h-full"
         />
       </div>
     );
   }
-  
-  // Display initials if no image is provided
+
+  // Fallback to initials
   const initials = name
-    .split(' ')
+    ?.split(' ')
     .map(part => part.charAt(0))
     .join('')
-    .toUpperCase();
-    
+    .toUpperCase() ?? '?';
+
   return (
     <div className={`h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium ${className}`}>
       {initials}
@@ -46,6 +50,7 @@ const HeaderComponent = () => {
   const dropdownRef = useRef(null);
   const router = useRouter();
   const userState = useSelector(state => state.user.data);
+  const { signedUrl: profileUrl } = useSignedUrl(userState?.profile);
   
   const fullName = `${userState?.firstName || ''} ${userState?.lastName || ''}`.trim();
 
@@ -108,7 +113,7 @@ const HeaderComponent = () => {
             
             <Avatar 
               name={fullName}
-              src={userState?.profile} 
+              src={profileUrl} 
             />
             <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
           </div>
