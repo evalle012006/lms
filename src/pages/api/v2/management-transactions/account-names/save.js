@@ -14,7 +14,16 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { accountId, accountTypeId, accountName, description, accountGroups, userId } = req.body;
+    const { 
+        accountId, 
+        accountTypeId, 
+        accountName, 
+        description, 
+        accountGroups, 
+        serviceCharge,
+        interestRate,
+        userId 
+    } = req.body;
 
     // Validation
     if (!accountTypeId || !accountName || !userId) {
@@ -36,6 +45,14 @@ async function save(req, res) {
         }
     }
 
+    // Validate interest_rate if service_charge is true
+    if (serviceCharge && (interestRate === undefined || interestRate === null || interestRate < 0)) {
+        return res.status(400).json({
+            error: true,
+            message: 'Interest rate is required when service charge is enabled'
+        });
+    }
+
     try {
         const managementAccountsType = createGraphType(
             "management_accounts",
@@ -48,6 +65,8 @@ async function save(req, res) {
                 account_name: accountName,
                 description: description || null,
                 account_groups: accountGroups || [],
+                service_charge: serviceCharge || false,
+                interest_rate: parseFloat(interestRate) || 0,
                 modified_date: moment().toISOString(),
                 modified_by: userId
             };
@@ -97,6 +116,8 @@ async function save(req, res) {
                 account_name: accountName,
                 description: description || null,
                 account_groups: accountGroups || [],
+                service_charge: serviceCharge || false,
+                interest_rate: parseFloat(interestRate) || 0,
                 display_order: maxOrder + 1,
                 is_active: true,
                 date_added: moment(getCurrentDate()).format('YYYY-MM-DD'),

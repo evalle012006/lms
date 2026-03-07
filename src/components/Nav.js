@@ -623,8 +623,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                // roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
-                roles: ["admin"]
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "Fund Transfer",

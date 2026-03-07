@@ -320,15 +320,18 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onEdit, onDelete, o
                     <Bars3Icon className="h-5 w-5 text-gray-400 mr-3" />
                     <div className="flex flex-col">
                         <span>{account.account_name}</span>
-                        {accountGroups.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                                {accountGroups.map(group => (
-                                    <span key={group} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                                        {ACCOUNT_GROUP_OPTIONS.find(g => g.value === group)?.label || group}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {account.service_charge && (
+                                <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                                    S.C. {account.interest_rate ? `${(account.interest_rate * 100).toFixed(0)}%` : ''}
+                                </span>
+                            )}
+                            {accountGroups.map(group => (
+                                <span key={group} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                    {ACCOUNT_GROUP_OPTIONS.find(g => g.value === group)?.label || group}
+                                </span>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </td>
@@ -407,7 +410,9 @@ const ManagementAccountTypesPage = () => {
     const [nameFormData, setNameFormData] = useState({
         accountName: '',
         description: '',
-        accountGroups: []
+        accountGroups: [],
+        serviceCharge: false,
+        interestRate: ''
     });
     const [editingName, setEditingName] = useState(null);
 
@@ -618,7 +623,9 @@ const ManagementAccountTypesPage = () => {
         setNameFormData({
             accountName: '',
             description: '',
-            accountGroups: []
+            accountGroups: [],
+            serviceCharge: false,
+            interestRate: ''
         });
         setShowNameForm(true);
     };
@@ -631,7 +638,9 @@ const ManagementAccountTypesPage = () => {
         setNameFormData({
             accountName: account.account_name,
             description: account.description || '',
-            accountGroups: accountGroups
+            accountGroups: accountGroups,
+            serviceCharge: account.service_charge || false,
+            interestRate: account.interest_rate ? (account.interest_rate * 100).toFixed(2) : ''
         });
         setShowNameForm(true);
     };
@@ -644,6 +653,12 @@ const ManagementAccountTypesPage = () => {
             return;
         }
 
+        // Validate interest rate if service charge is enabled
+        if (nameFormData.serviceCharge && (!nameFormData.interestRate || parseFloat(nameFormData.interestRate) <= 0)) {
+            toast.error('Please enter a valid interest rate when service charge is enabled');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const apiUrl = getApiBaseUrl() + 'management-transactions/account-names/save';
@@ -653,6 +668,8 @@ const ManagementAccountTypesPage = () => {
                 accountName: nameFormData.accountName.trim(),
                 description: nameFormData.description.trim(),
                 accountGroups: nameFormData.accountGroups,
+                serviceCharge: nameFormData.serviceCharge,
+                interestRate: nameFormData.serviceCharge ? parseFloat(nameFormData.interestRate) / 100 : 0,
                 userId: currentUser._id
             });
 
@@ -1015,6 +1032,54 @@ const ManagementAccountTypesPage = () => {
                                         )}
                                     </p>
                                 </div>
+                                
+                                {/* Service Charge Section */}
+                                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-sm font-medium text-gray-700">
+                                            Service Charge (with S.C.)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNameFormData({
+                                                ...nameFormData, 
+                                                serviceCharge: !nameFormData.serviceCharge,
+                                                interestRate: !nameFormData.serviceCharge ? nameFormData.interestRate : ''
+                                            })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                nameFormData.serviceCharge ? 'bg-teal-600' : 'bg-gray-300'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    nameFormData.serviceCharge ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                    {nameFormData.serviceCharge && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Interest Rate (%) *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                max="100"
+                                                value={nameFormData.interestRate}
+                                                onChange={(e) => setNameFormData({...nameFormData, interestRate: e.target.value})}
+                                                placeholder="e.g., 9 for 9%"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                A "Less: Unearned Service Charges" row will be auto-generated below this account.
+                                                Debit/Credit will be calculated as: value × {nameFormData.interestRate || '0'}%
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Description (Optional)

@@ -827,11 +827,28 @@ const ManagementTransactionsPage = () => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {typeData.accounts.map((account) => (
-                                        <tr key={account._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <tr 
+                                            key={account._id} 
+                                            className={account.is_service_charge 
+                                                ? "bg-amber-50 hover:bg-amber-100" 
+                                                : "hover:bg-gray-50"
+                                            }
+                                        >
+                                            <td className={`whitespace-nowrap text-sm ${
+                                                account.is_service_charge 
+                                                    ? "px-6 py-3 pl-12 text-gray-700 font-medium" 
+                                                    : "px-6 py-4 font-medium text-gray-900"
+                                            }`}>
                                                 {account.account_name}
+                                                {account.service_charge && !account.is_service_charge && (
+                                                    <span className="text-xs text-amber-600 ml-1">(with S.C.)</span>
+                                                )}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                                            <td className={`whitespace-nowrap text-sm text-right font-medium ${
+                                                account.is_service_charge 
+                                                    ? "px-6 py-3 text-gray-700" 
+                                                    : "px-6 py-4 text-gray-900"
+                                            }`}>
                                                 {formatPricePhp(account.total_balance)}
                                             </td>
                                         </tr>
@@ -1425,60 +1442,103 @@ const ManagementTransactionsPage = () => {
                                                 const totalBalance = calculateTotalBalance(account._id);
                                                 const isPrevBalDisabled = isPreviousBalanceDisabled(account._id);
                                                 
+                                                // Calculate service charge values
+                                                const hasServiceCharge = account.service_charge && account.interest_rate > 0;
+                                                const scDebit = hasServiceCharge ? 
+                                                    -(parseFloat(newTransactions[account._id]?.debit || 0) * account.interest_rate) : 0;
+                                                const scCredit = hasServiceCharge ? 
+                                                    -(parseFloat(newTransactions[account._id]?.credit || 0) * account.interest_rate) : 0;
+                                                const scTotal = scDebit - scCredit;
+                                                
+                                                // Generate unique key for service charge row
+                                                const scRowKey = `${account._id}_sc`;
+                                                
                                                 return (
-                                                    <tr key={account._id} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                            {account.account_name}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                value={newTransactions[account._id]?.previousBalance || ''}
-                                                                onChange={(e) => handleFieldChange(account._id, 'previousBalance', e.target.value)}
-                                                                onWheel={(e) => e.target.blur()}
-                                                                placeholder="0.00"
-                                                                disabled={isPrevBalDisabled}
-                                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
-                                                                    isPrevBalDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
-                                                                }`}
-                                                            />
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                value={newTransactions[account._id]?.debit || ''}
-                                                                onChange={(e) => handleFieldChange(account._id, 'debit', e.target.value)}
-                                                                onWheel={(e) => e.target.blur()}
-                                                                placeholder="0.00"
-                                                                disabled={!isEditable}
-                                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
-                                                                    !isEditable ? 'bg-gray-100 cursor-not-allowed' : ''
-                                                                }`}
-                                                            />
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                value={newTransactions[account._id]?.credit || ''}
-                                                                onChange={(e) => handleFieldChange(account._id, 'credit', e.target.value)}
-                                                                onWheel={(e) => e.target.blur()}
-                                                                placeholder="0.00"
-                                                                disabled={!isEditable}
-                                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
-                                                                    !isEditable ? 'bg-gray-100 cursor-not-allowed' : ''
-                                                                }`}
-                                                            />
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
-                                                            {formatPricePhp(totalBalance)}
-                                                        </td>
-                                                    </tr>
+                                                    <React.Fragment key={account._id}>
+                                                        <tr className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                                {account.account_name}
+                                                                {hasServiceCharge && (
+                                                                    <span className="text-xs text-amber-600 ml-1">(with S.C.)</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    value={newTransactions[account._id]?.previousBalance || ''}
+                                                                    onChange={(e) => handleFieldChange(account._id, 'previousBalance', e.target.value)}
+                                                                    onWheel={(e) => e.target.blur()}
+                                                                    placeholder="0.00"
+                                                                    disabled={isPrevBalDisabled}
+                                                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
+                                                                        isPrevBalDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
+                                                                    }`}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    value={newTransactions[account._id]?.debit || ''}
+                                                                    onChange={(e) => handleFieldChange(account._id, 'debit', e.target.value)}
+                                                                    onWheel={(e) => e.target.blur()}
+                                                                    placeholder="0.00"
+                                                                    disabled={!isEditable}
+                                                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
+                                                                        !isEditable ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                                    }`}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    value={newTransactions[account._id]?.credit || ''}
+                                                                    onChange={(e) => handleFieldChange(account._id, 'credit', e.target.value)}
+                                                                    onWheel={(e) => e.target.blur()}
+                                                                    placeholder="0.00"
+                                                                    disabled={!isEditable}
+                                                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-right ${
+                                                                        !isEditable ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                                    }`}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium bg-gray-50">
+                                                                {formatPricePhp(totalBalance)}
+                                                            </td>
+                                                        </tr>
+                                                        {/* Service Charge Row - auto-calculated from parent */}
+                                                        {hasServiceCharge && (
+                                                            <tr key={scRowKey} className="bg-amber-50 hover:bg-amber-100">
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 pl-12">
+                                                                    <span className="font-medium">Less: Unearned Service Charges</span>
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                                                    <span className="px-3 py-2 inline-block">
+                                                                        {/* Previous balance for SC is typically 0 or carried from previous period */}
+                                                                        {formatPricePhp(0)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                                                    <span className="px-3 py-2 inline-block font-medium">
+                                                                        {formatPricePhp(scDebit)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                                                    <span className="px-3 py-2 inline-block font-medium">
+                                                                        {formatPricePhp(scCredit)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right font-medium bg-amber-100">
+                                                                    {formatPricePhp(scTotal)}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
                                                 );
                                             })
                                         )}

@@ -35,7 +35,7 @@ async function getSummary(req, res) {
 
         const accountTypes = accountTypesRes?.data?.management_account_types ?? [];
 
-        // Fetch all active accounts (includes account-level account_groups)
+        // Fetch all active accounts (includes account-level account_groups, service_charge, interest_rate)
         const managementAccountsType = createGraphType(
             "management_accounts",
             MANAGEMENT_ACCOUNT_FIELD
@@ -99,6 +99,29 @@ async function getSummary(req, res) {
             
             // If account has its own groups, use them; otherwise fall back to type groups
             return accountGroups.length > 0 ? accountGroups : typeGroups;
+        };
+
+        // Helper function to calculate service charge values
+        const calculateServiceCharge = (account, txData) => {
+            if (!account.service_charge || !account.interest_rate || account.interest_rate <= 0) {
+                return null;
+            }
+            
+            const rate = parseFloat(account.interest_rate) || 0;
+            const scDebit = -(txData.debit * rate);
+            const scCredit = -(txData.credit * rate);
+            const scTotal = scDebit - scCredit;
+            
+            return {
+                _id: `${account._id}_sc`,
+                account_name: 'Less: Unearned Service Charges',
+                is_service_charge: true,
+                parent_account_id: account._id,
+                previous_balance: 0,
+                debit: scDebit,
+                credit: scCredit,
+                total_balance: scTotal
+            };
         };
 
         // Group accounts by their EFFECTIVE account_groups
@@ -176,13 +199,22 @@ async function getSummary(req, res) {
                 // Check if this account is already added (avoid duplicates from same account in same type)
                 const alreadyAdded = accountsByType[typeId].accounts.some(a => a._id === account._id);
                 if (!alreadyAdded) {
+                    // Add the main account
                     accountsByType[typeId].accounts.push({
                         _id: account._id,
                         account_name: account.account_name,
                         description: account.description,
                         account_groups: account.account_groups,
+                        service_charge: account.service_charge,
+                        interest_rate: account.interest_rate,
                         ...account.txData
                     });
+                    
+                    // If account has service charge, add the service charge row
+                    const scRow = calculateServiceCharge(account, account.txData);
+                    if (scRow) {
+                        accountsByType[typeId].accounts.push(scRow);
+                    }
                 }
             });
 
