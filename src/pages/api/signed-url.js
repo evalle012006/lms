@@ -30,10 +30,22 @@ async function getSignedFileUrl(req, res) {
   }
 
   // Handles both legacy full URLs and new storage keys
-  const objectKey = extractKeyFromValue(key);
+  const rawKey = extractKeyFromValue(key);
 
-  if (!objectKey) {
+  if (!rawKey) {
     return res.status(400).json({ error: "Invalid key or URL provided" });
+  }
+
+  // Decode any URL-encoded characters in the key (e.g. %20 → space, %2520 → %20 → space).
+  // Filenames with spaces/special chars get stored as "file%20name.jpg" in the DB but the
+  // actual S3 object key uses a literal space. Without this, the key gets
+  // double-encoded (%2520) and S3 returns NoSuchKey.
+  let objectKey;
+  try {
+    objectKey = decodeURIComponent(rawKey);
+  } catch {
+    // If decoding fails (malformed encoding), use the raw key as-is
+    objectKey = rawKey;
   }
 
   const command = new GetObjectCommand({
