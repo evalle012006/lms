@@ -1,25 +1,5 @@
-/**
- * /api/v2/cronjobs/migrate-client-profile-urls.js
- *
- * Hasura scheduled trigger — converts stored full DigitalOcean Spaces URLs
- * in client.profile to path-only storage keys.
- *
- * BEFORE: https://ambercashph.sgp1.digitaloceanspaces.com/lms/clients/uuid/file.png
- * AFTER:  lms/clients/uuid/file.png
- *
- * Runs in the background (fire-and-forget). Responds immediately so Hasura
- * doesn't time out. Processes up to batchSize records per trigger firing.
- *
- * ─── Hasura Scheduled Trigger Config ─────────────────────────────
- *  URL:      {{BASE_URL}}/api/v2/cronjobs/migrate-client-profile-urls
- *  Method:   POST
- *  Headers:  x-webhook-api-key: {{WEBHOOK_API_KEY}}
- *  Schedule: * * * * *  (every minute — disable once logs show "nothing to migrate")
- *  Payload:  { "batchSize": 5000 }   ← optional, defaults to 5000
- */
-
+import { gql } from 'apollo-boost';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
 
@@ -27,12 +7,6 @@ const graph = new GraphProvider();
 
 const DO_SPACES_ORIGIN = 'https://ambercashph.sgp1.digitaloceanspaces.com';
 const DEFAULT_BATCH_SIZE = 5000;
-
-// ─── Graph Types ──────────────────────────────────────────────────────────────
-
-const CLIENT_TYPE     = createGraphType('client',           '_id profile')('clients');
-const CLIENT_AGG_TYPE = createGraphType('client_aggregate', 'aggregate { count }')('client_aggregate');
-const CLIENT_MUT_TYPE = createGraphType('client',           '_id');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,14 +27,18 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function runMigration(batchSize) {
     logger.debug({ cron: 'migrate-client-profile-urls: start', batchSize });
 
-    // Count how many full URLs still remain
-    const aggResult = await graph.query(
-        queryQl(CLIENT_AGG_TYPE, {
-            where: { profile: { _like: `${DO_SPACES_ORIGIN}/%` } }
-        })
-    );
-    const remaining = aggResult?.data?.client_aggregate?.[0]?.aggregate?.count ?? 0;
+    // Count remaining full URLs
+    const countResult = await graph.apollo.query({
+        query: gql`
+            query CountClientProfileUrls {
+                client_aggregate(where: { profile: { _like: "${DO_SPACES_ORIGIN}/%" } }) {
+                    aggregate { count }
+                }
+            }
+        `
+    });
 
+    const remaining = countResult?.data?.client_aggregate?.[0]?.aggregate?.count ?? 0;
     logger.debug({ cron: 'migrate-client-profile-urls: remaining', remaining });
 
     if (remaining === 0) {
@@ -68,18 +46,26 @@ async function runMigration(batchSize) {
         return;
     }
 
-    // Always offset: 0 — each run migrates records so they drop out of the
-    // _like filter, meaning the next batch is always at the top
-    const clientsResult = await graph.query(
-        queryQl(CLIENT_TYPE, {
-            where:    { profile: { _like: `${DO_SPACES_ORIGIN}/%` } },
-            limit:    batchSize,
-            offset:   0,
-            order_by: { dateAdded: 'desc' },
-        })
-    );
-    const clients = clientsResult?.data?.clients ?? [];
+    // Fetch one batch — always offset 0 since migrated records drop out of
+    // the _like filter, so the next batch is always at the top
+    const fetchResult = await graph.apollo.query({
+        query: gql`
+            query FetchClientProfileUrls($limit: Int) {
+                client(
+                    where: { profile: { _like: "${DO_SPACES_ORIGIN}/%" } }
+                    limit: $limit
+                    offset: 0
+                    order_by: { dateAdded: desc }
+                ) {
+                    _id
+                    profile
+                }
+            }
+        `,
+        variables: { limit: batchSize }
+    });
 
+    const clients = fetchResult?.data?.client ?? [];
     logger.debug({ cron: 'migrate-client-profile-urls: fetched batch', count: clients.length });
 
     if (clients.length === 0) {
@@ -89,46 +75,41 @@ async function runMigration(batchSize) {
 
     let updated = 0;
     let skipped = 0;
-    let batch_update = [];
 
-    for (const client of clients) {
-        const key = extractKey(client.profile);
+    // Process in sub-batches of 500 to avoid oversized mutation payloads
+    for (let i = 0; i < clients.length; i += 500) {
+        const chunk = clients.slice(i, i + 500);
+        const mutations = [];
 
-        if (!key) {
-            logger.warn({ cron: 'migrate-client-profile-urls: could not parse key', profile: client.profile });
-            skipped++;
-            continue;
+        for (const client of chunk) {
+            const key = extractKey(client.profile);
+            if (!key) {
+                logger.warn({ cron: 'migrate-client-profile-urls: could not parse key', profile: client.profile });
+                skipped++;
+                continue;
+            }
+
+            mutations.push(`
+                update_${updated + mutations.length}: update_client_by_pk(
+                    pk_columns: { _id: "${client._id}" }
+                    _set: { profile: "${key}" }
+                ) { _id }
+            `);
         }
 
-        batch_update.push(
-            updateQl(CLIENT_MUT_TYPE('client_migrate_' + batch_update.length), {
-                set:   { profile: key },
-                where: { _id: { _eq: client._id } },
-            })
-        );
+        if (mutations.length === 0) continue;
 
-        // Flush every 500 to avoid oversized mutation payloads
-        if (batch_update.length === 500) {
-            logger.debug({ cron: 'migrate-client-profile-urls: flushing sub-batch', batch_count: batch_update.length });
-            const result = await graph.mutation(...batch_update);
-            updated += batch_update.length;
-            batch_update = [];
-            await sleep(300);
-            logger.debug({ cron: 'migrate-client-profile-urls: sub-batch done', error_count: result.errors?.length ?? 0 });
-        }
-    }
+        await graph.apollo.mutate({
+            mutation: gql`mutation MigrateClientProfiles { ${mutations.join('\n')} }`
+        });
 
-    // Flush remainder
-    if (batch_update.length > 0) {
-        logger.debug({ cron: 'migrate-client-profile-urls: flushing final batch', batch_count: batch_update.length });
-        const result = await graph.mutation(...batch_update);
-        updated += batch_update.length;
+        updated += mutations.length;
         await sleep(300);
-        logger.debug({ cron: 'migrate-client-profile-urls: final batch done', error_count: result.errors?.length ?? 0 });
+        logger.debug({ cron: 'migrate-client-profile-urls: sub-batch done', updated_so_far: updated });
     }
 
     logger.debug({
-        cron:      'migrate-client-profile-urls: complete',
+        cron:            'migrate-client-profile-urls: complete',
         updated,
         skipped,
         remaining_after: remaining - updated,
@@ -142,7 +123,7 @@ export default apiHandler({
 });
 
 async function migrateClientProfileUrls(req, res) {
-    const batchSize = req.body?.batchSize ?? DEFAULT_BATCH_SIZE;
+    const batchSize = req.body?.payload?.batchSize ?? req.body?.batchSize ?? DEFAULT_BATCH_SIZE;
 
     // Fire and forget — respond immediately so Hasura doesn't time out
     runMigration(batchSize).catch((err) => {
