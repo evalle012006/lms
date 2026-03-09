@@ -101,16 +101,64 @@ async function getSummary(req, res) {
             return accountGroups.length > 0 ? accountGroups : typeGroups;
         };
 
-        // Helper function to calculate service charge values
+        // Helper function to safely evaluate service charge formula
+        const evaluateFormula = (formula, debit, credit) => {
+            if (!formula || typeof formula !== 'string') return 0;
+            
+            try {
+                const expression = formula
+                    .replace(/debit/gi, String(parseFloat(debit) || 0))
+                    .replace(/credit/gi, String(parseFloat(credit) || 0));
+                
+                if (!/^[\d\s+\-*/().]+$/.test(expression)) {
+                    return 0;
+                }
+                
+                const result = new Function(`return ${expression}`)();
+                
+                if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+                    return 0;
+                }
+                
+                return result;
+            } catch (e) {
+                return 0;
+            }
+        };
+
+        // Helper to check if formula contains a variable
+        const formulaUsesVariable = (formula, variable) => {
+            if (!formula) return false;
+            const regex = new RegExp(variable, 'gi');
+            return regex.test(formula);
+        };
+
+        // Helper function to calculate service charge values using formula
+        // Calculate based on which variables the formula uses
         const calculateServiceCharge = (account, txData) => {
-            if (!account.service_charge || !account.interest_rate || account.interest_rate <= 0) {
+            if (!account.service_charge || !account.service_charge_formula) {
                 return null;
             }
             
-            const rate = parseFloat(account.interest_rate) || 0;
-            const scDebit = -(txData.debit * rate);
-            const scCredit = -(txData.credit * rate);
-            const scTotal = scDebit - scCredit;
+            // Check which variables the formula uses
+            const formulaUsesDebit = formulaUsesVariable(account.service_charge_formula, 'debit');
+            const formulaUsesCredit = formulaUsesVariable(account.service_charge_formula, 'credit');
+            
+            // Only show service charge if formula uses debit and debit has value, 
+            // OR formula uses credit and credit has value
+            const shouldShow = (formulaUsesDebit && txData.debit > 0) || 
+                               (formulaUsesCredit && txData.credit > 0);
+            
+            if (!shouldShow) {
+                return null;
+            }
+            
+            // Calculate the formula result with actual values
+            const formulaResult = evaluateFormula(account.service_charge_formula, txData.debit, txData.credit);
+            
+            // Assign result to debit/credit columns based on which variables the formula uses
+            const scDebit = (formulaUsesDebit && txData.debit > 0) ? formulaResult : 0;
+            const scCredit = (formulaUsesCredit && txData.credit > 0) ? formulaResult : 0;
             
             return {
                 _id: `${account._id}_sc`,
@@ -120,7 +168,7 @@ async function getSummary(req, res) {
                 previous_balance: 0,
                 debit: scDebit,
                 credit: scCredit,
-                total_balance: scTotal
+                total_balance: scDebit - scCredit
             };
         };
 
@@ -206,7 +254,7 @@ async function getSummary(req, res) {
                         description: account.description,
                         account_groups: account.account_groups,
                         service_charge: account.service_charge,
-                        interest_rate: account.interest_rate,
+                        service_charge_formula: account.service_charge_formula,
                         ...account.txData
                     });
                     

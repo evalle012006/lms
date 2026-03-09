@@ -13,6 +13,64 @@ export default apiHandler({
     post: save,
 });
 
+// Validate service charge formula
+// Allowed: debit, credit, numbers, operators (+, -, *, /), parentheses, spaces, decimal points
+function validateFormula(formula) {
+    if (!formula || typeof formula !== 'string') {
+        return { valid: false, message: 'Formula is required' };
+    }
+    
+    const trimmed = formula.trim();
+    if (trimmed.length === 0) {
+        return { valid: false, message: 'Formula cannot be empty' };
+    }
+    
+    if (trimmed.length > 255) {
+        return { valid: false, message: 'Formula is too long (max 255 characters)' };
+    }
+    
+    // Check for only allowed characters: debit, credit, numbers, operators, parentheses, spaces, dots
+    // First, replace valid tokens with placeholders
+    let testFormula = trimmed
+        .replace(/debit/gi, '1')
+        .replace(/credit/gi, '1');
+    
+    // Check if only valid characters remain: numbers, operators, parentheses, spaces, dots
+    const validPattern = /^[\d\s+\-*/().]+$/;
+    if (!validPattern.test(testFormula)) {
+        return { valid: false, message: 'Formula contains invalid characters. Only debit, credit, numbers, and operators (+, -, *, /, parentheses) are allowed.' };
+    }
+    
+    // Check for balanced parentheses
+    let depth = 0;
+    for (const char of trimmed) {
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+        if (depth < 0) {
+            return { valid: false, message: 'Unbalanced parentheses in formula' };
+        }
+    }
+    if (depth !== 0) {
+        return { valid: false, message: 'Unbalanced parentheses in formula' };
+    }
+    
+    // Try to evaluate with test values to check syntax
+    try {
+        const testEval = trimmed
+            .replace(/debit/gi, '100')
+            .replace(/credit/gi, '100');
+        // Use Function constructor for safer eval
+        const result = new Function(`return ${testEval}`)();
+        if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+            return { valid: false, message: 'Formula does not produce a valid number' };
+        }
+    } catch (e) {
+        return { valid: false, message: 'Invalid formula syntax: ' + e.message };
+    }
+    
+    return { valid: true };
+}
+
 async function save(req, res) {
     const { 
         accountId, 
@@ -21,7 +79,7 @@ async function save(req, res) {
         description, 
         accountGroups, 
         serviceCharge,
-        interestRate,
+        serviceChargeFormula,
         userId 
     } = req.body;
 
@@ -45,12 +103,15 @@ async function save(req, res) {
         }
     }
 
-    // Validate interest_rate if service_charge is true
-    if (serviceCharge && (interestRate === undefined || interestRate === null || interestRate < 0)) {
-        return res.status(400).json({
-            error: true,
-            message: 'Interest rate is required when service charge is enabled'
-        });
+    // Validate formula if service_charge is true
+    if (serviceCharge) {
+        const formulaValidation = validateFormula(serviceChargeFormula);
+        if (!formulaValidation.valid) {
+            return res.status(400).json({
+                error: true,
+                message: formulaValidation.message
+            });
+        }
     }
 
     try {
@@ -66,7 +127,7 @@ async function save(req, res) {
                 description: description || null,
                 account_groups: accountGroups || [],
                 service_charge: serviceCharge || false,
-                interest_rate: parseFloat(interestRate) || 0,
+                service_charge_formula: serviceCharge ? serviceChargeFormula.trim() : null,
                 modified_date: moment().toISOString(),
                 modified_by: userId
             };
@@ -117,7 +178,7 @@ async function save(req, res) {
                 description: description || null,
                 account_groups: accountGroups || [],
                 service_charge: serviceCharge || false,
-                interest_rate: parseFloat(interestRate) || 0,
+                service_charge_formula: serviceCharge ? serviceChargeFormula.trim() : null,
                 display_order: maxOrder + 1,
                 is_active: true,
                 date_added: moment(getCurrentDate()).format('YYYY-MM-DD'),

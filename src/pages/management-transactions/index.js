@@ -30,6 +30,44 @@ const DISPLAY_GROUPS = {
 // Tab order for summary view (excluding current account type which is always first)
 const GROUP_TAB_ORDER = ['other_receipts', 'management_expenses', 'other_payments'];
 
+// Helper function to safely evaluate service charge formula
+// Only allows: debit, credit, numbers, +, -, *, /, (, )
+const evaluateServiceChargeFormula = (formula, debit, credit) => {
+    if (!formula || typeof formula !== 'string') return 0;
+    
+    try {
+        // Replace variables with actual values
+        const expression = formula
+            .replace(/debit/gi, String(parseFloat(debit) || 0))
+            .replace(/credit/gi, String(parseFloat(credit) || 0));
+        
+        // Validate the expression contains only allowed characters
+        if (!/^[\d\s+\-*/().]+$/.test(expression)) {
+            console.warn('Invalid formula expression:', expression);
+            return 0;
+        }
+        
+        // Use Function constructor for safer evaluation
+        const result = new Function(`return ${expression}`)();
+        
+        if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+            return 0;
+        }
+        
+        return result;
+    } catch (e) {
+        console.warn('Error evaluating formula:', formula, e);
+        return 0;
+    }
+};
+
+// Helper to check if formula contains a variable
+const formulaUsesVariable = (formula, variable) => {
+    if (!formula) return false;
+    const regex = new RegExp(variable, 'gi');
+    return regex.test(formula);
+};
+
 const ManagementTransactionsPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -1442,12 +1480,32 @@ const ManagementTransactionsPage = () => {
                                                 const totalBalance = calculateTotalBalance(account._id);
                                                 const isPrevBalDisabled = isPreviousBalanceDisabled(account._id);
                                                 
-                                                // Calculate service charge values
-                                                const hasServiceCharge = account.service_charge && account.interest_rate > 0;
-                                                const scDebit = hasServiceCharge ? 
-                                                    -(parseFloat(newTransactions[account._id]?.debit || 0) * account.interest_rate) : 0;
-                                                const scCredit = hasServiceCharge ? 
-                                                    -(parseFloat(newTransactions[account._id]?.credit || 0) * account.interest_rate) : 0;
+                                                // Calculate service charge values using formula
+                                                const hasServiceCharge = account.service_charge && account.service_charge_formula;
+                                                const debitValue = parseFloat(newTransactions[account._id]?.debit || 0);
+                                                const creditValue = parseFloat(newTransactions[account._id]?.credit || 0);
+                                                
+                                                // Check which variables the formula uses
+                                                const formulaUsesDebit = hasServiceCharge && formulaUsesVariable(account.service_charge_formula, 'debit');
+                                                const formulaUsesCredit = hasServiceCharge && formulaUsesVariable(account.service_charge_formula, 'credit');
+                                                
+                                                // Determine if we should show service charge row
+                                                // Show if formula uses debit and debit has value, OR formula uses credit and credit has value
+                                                const shouldShowServiceCharge = hasServiceCharge && (
+                                                    (formulaUsesDebit && debitValue > 0) || 
+                                                    (formulaUsesCredit && creditValue > 0)
+                                                );
+                                                
+                                                // Calculate the formula result with actual values
+                                                const formulaResult = shouldShowServiceCharge ? 
+                                                    evaluateServiceChargeFormula(account.service_charge_formula, debitValue, creditValue) : 0;
+                                                
+                                                // Assign result to debit/credit columns based on which variables the formula uses
+                                                // If formula uses both, show same result in both columns
+                                                // If formula uses only debit, show result only in debit column
+                                                // If formula uses only credit, show result only in credit column
+                                                const scDebit = (shouldShowServiceCharge && formulaUsesDebit && debitValue > 0) ? formulaResult : 0;
+                                                const scCredit = (shouldShowServiceCharge && formulaUsesCredit && creditValue > 0) ? formulaResult : 0;
                                                 const scTotal = scDebit - scCredit;
                                                 
                                                 // Generate unique key for service charge row
@@ -1511,15 +1569,14 @@ const ManagementTransactionsPage = () => {
                                                                 {formatPricePhp(totalBalance)}
                                                             </td>
                                                         </tr>
-                                                        {/* Service Charge Row - auto-calculated from parent */}
-                                                        {hasServiceCharge && (
+                                                        {/* Service Charge Row - only show when both debit and credit have values */}
+                                                        {shouldShowServiceCharge && (
                                                             <tr key={scRowKey} className="bg-amber-50 hover:bg-amber-100">
                                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 pl-12">
                                                                     <span className="font-medium">Less: Unearned Service Charges</span>
                                                                 </td>
                                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
-                                                                    <span className="px-3 py-2 inline-block">
-                                                                        {/* Previous balance for SC is typically 0 or carried from previous period */}
+                                                                    <span className="px-3 py-2 inline-block text-gray-400">
                                                                         {formatPricePhp(0)}
                                                                     </span>
                                                                 </td>

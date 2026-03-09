@@ -187,3 +187,96 @@ export const LO_19_DAILY_GROUPS = [
 export const LO_20_DAILY_GROUPS = [
     'BEAUTY', 'COURAGE', 'CONFIDENCE', 'FAITH', 'DIGNITY', 'JUSTICE', 'LOYALTY', 'ETHICAL', 'SINCERITY', 'UNITY', 'WISDOM', 'GRATITUDE'
 ];
+
+export const SUMMARY_RECEIPTS = [
+    { no: '1a', key: 'rcptMcbu',                   label: 'MCBU Collection',                          source: 'collection' },
+    { no: '1b', key: 'rcptCsf',                    label: 'CSF Collection',                           source: 'collection' },
+    { no: 2,    key: 'rcptRegularLoan',             label: 'Regular Loan Collection (Daily / 60 Days)',source: 'collection' },
+    { no: 3,    key: 'rcptOtherLoan',               label: 'Other Loan Collection (Weekly)',           source: 'collection' },
+    { no: 4,    key: 'rcptStaffCbu',                label: 'Staff Collection CBU / CashBond',          source: 'gl' },
+    { no: 5,    key: 'rcptStaffPrincipal',          label: 'Staff Principal Loan collection',          source: 'gl' },
+    { no: 6,    key: 'rcptAdminFees',               label: 'Admin Fees #',                             source: 'collection' },
+    { no: 7,    key: 'rcptLrf',                     label: 'LRF Collection',                           source: 'collection' },
+    { no: 8,    key: 'rcptCbhb',                    label: 'C B H B Collection',                       source: 'collection' },
+    { no: 9,    key: 'rcptAddHospi',                label: 'ADD-Hospi #',                              source: 'collection' },
+    { no: 10,   key: 'rcptWtax',                    label: 'W/Tax, EE&ER',                             source: 'gl' },
+    { no: 11,   key: 'rcptMcbuUnclaimedIn',         label: 'MCBU Unclaimed (In)',                      source: 'special' },
+    { no: '12a',key: 'rcptOtherIncomePassbook',     label: 'Other Income (Passbook)',                  source: 'collection' },
+    { no: '12b',key: 'rcptOtherIncome',             label: 'Other Income',                             source: 'collection' },
+    { no: '12c',key: 'rcptOtherIncomeCsf',          label: 'Other Income CSF W/o Agent',               source: 'collection' },
+    { no: 13,   key: 'rcptOtherReceiptsPicture',    label: 'Other Receipts (Picture)',                 source: 'collection' },
+    { no: 14,   key: 'rcptOtherReceiptsGl',         label: 'Other Receipts',                           source: 'gl' },
+    { no: 15,   key: 'rcptFundTransferIn',          label: 'Fund Transfer',                            source: 'special' },
+    { no: 16,   key: 'rcptBankWithdrawal',          label: 'Bank Withdrawal',                          source: 'special' },
+];
+
+export const SUMMARY_PAYMENTS = [
+    { no: 1,    key: 'payLoanRelease',              label: 'Client Loan Release # of Prs.',            source: 'collection' },
+    { no: '2a', key: 'payMcbuWithdrawal',           label: 'Client MCBU withd.',                       source: 'collection' },
+    { no: '2b', key: 'payCsfWithdrawal',            label: 'CSF Withd.',                               source: 'collection' },
+    { no: '3a', key: 'payMcbuReturn',               label: 'MCBU Return',                              source: 'collection' },
+    { no: '3b', key: 'payCsfReturn',                label: 'CSF Return',                               source: 'collection' },
+    { no: 4,    key: 'payStaffLoanRelease',         label: 'Staff Loan Release / Staff CBU withd.',    source: 'gl' },
+    { no: 5,    key: 'payMngtExpenses',             label: 'Mngt. Expenses',                           source: 'gl' },
+    { no: 6,    key: 'payCbhbDisbursed',            label: 'CBHB Disbursed',                           source: 'gl' },
+    { no: 7,    key: 'payMcbuUnclaimedOut',         label: 'MCBU Unclaimed (Out)',                     source: 'special' },
+    { no: 8,    key: 'payRebates',                  label: 'Rebates',                                  source: 'gl' },
+    { no: 9,    key: 'payOtherPayments',            label: 'Other payments',                           source: 'gl' },
+    { no: 10,   key: 'payFundTransferOut',          label: 'Fund Transfer',                            source: 'special' },
+    { no: 11,   key: 'payBankDeposits',             label: 'Bank Deposits',                            source: 'special' },
+];
+
+// Map fn_get_dcs_summary snake_case fields → camelCase keys
+// Used by SummaryPanel to build its amount objects.
+export const mapSummaryData = (d) => {
+    if (!d) return null;
+    // Guard: if array was accidentally passed, unwrap first element
+    const raw = Array.isArray(d) ? d[0] : d;
+    if (!raw) return null;
+    return {
+        // Balance
+        beginningBalance:           parseFloat(raw.beginning_balance)            || 0,
+        // Receipts
+        rcptMcbu:                   parseFloat(raw.rcpt_mcbu)                    || 0,
+        rcptCsf:                    parseFloat(raw.rcpt_csf)                     || 0,
+        rcptRegularLoan:            parseFloat(raw.rcpt_regular_loan)            || 0,
+        rcptOtherLoan:              parseFloat(raw.rcpt_other_loan)              || 0,
+        rcptAdminFees:              parseFloat(raw.rcpt_admin_fees)              || 0,
+        rcptLrf:                    parseFloat(raw.rcpt_lrf)                     || 0,
+        rcptCbhb:                   parseFloat(raw.rcpt_cbhb)                    || 0,
+        rcptAddHospi:               parseFloat(raw.rcpt_add_hospi)               || 0,
+        rcptOtherIncomePassbook:    parseFloat(raw.rcpt_other_income_passbook)   || 0,
+        rcptOtherIncome:            parseFloat(raw.rcpt_other_income)            || 0,
+        rcptOtherIncomeCsf:         parseFloat(raw.rcpt_other_income_csf)        || 0,
+        rcptOtherReceiptsPicture:   parseFloat(raw.rcpt_other_receipts_picture)  || 0,
+        rcptStaffCbu:               parseFloat(raw.rcpt_staff_cbu)               || 0,
+        rcptStaffPrincipal:         parseFloat(raw.rcpt_staff_principal)         || 0,
+        rcptWtax:                   parseFloat(raw.rcpt_wtax)                    || 0,
+        rcptOtherReceiptsGl:        parseFloat(raw.rcpt_other_receipts_gl)       || 0,
+        rcptMcbuUnclaimedIn:        parseFloat(raw.rcpt_mcbu_unclaimed_in)       || 0,
+        rcptFundTransferIn:         parseFloat(raw.rcpt_fund_transfer_in)        || 0,
+        rcptBankWithdrawal:         parseFloat(raw.rcpt_bank_withdrawal)         || 0,
+        totalReceipts:              parseFloat(raw.total_receipts)               || 0,
+        // Payments
+        payLoanRelease:             parseFloat(raw.pay_loan_release_amount)      || 0,
+        payLoanReleaseNo:           parseInt(raw.pay_loan_release_no)            || 0,
+        payMcbuWithdrawal:          parseFloat(raw.pay_mcbu_withdrawal)          || 0,
+        payCsfWithdrawal:           parseFloat(raw.pay_csf_withdrawal)           || 0,
+        payMcbuReturn:              parseFloat(raw.pay_mcbu_return)              || 0,
+        payCsfReturn:               parseFloat(raw.pay_csf_return)               || 0,
+        payStaffLoanRelease:        parseFloat(raw.pay_staff_loan_release)       || 0,
+        payMngtExpenses:            parseFloat(raw.pay_mngt_expenses)            || 0,
+        payCbhbDisbursed:           parseFloat(raw.pay_cbhb_disbursed)           || 0,
+        payMcbuUnclaimedOut:        parseFloat(raw.pay_mcbu_unclaimed_out)       || 0,
+        payRebates:                 parseFloat(raw.pay_rebates)                  || 0,
+        payOtherPayments:           parseFloat(raw.pay_other_payments)           || 0,
+        payFundTransferOut:         parseFloat(raw.pay_fund_transfer_out)        || 0,
+        payBankDeposits:            parseFloat(raw.pay_bank_deposits)            || 0,
+        totalPayments:              parseFloat(raw.total_payments)               || 0,
+        // Balance
+        closingBalance:             parseFloat(raw.closing_balance)              || 0,
+        // JSONB arrays
+        loanReleasePerLo:           raw.loan_release_per_lo   || [],
+        denominationSummary:        raw.denomination_summary  || [],
+    };
+};

@@ -322,8 +322,8 @@ const DraggableAccountNameRow = ({ account, index, moveItem, onEdit, onDelete, o
                         <span>{account.account_name}</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                             {account.service_charge && (
-                                <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-                                    S.C. {account.interest_rate ? `${(account.interest_rate * 100).toFixed(0)}%` : ''}
+                                <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full" title={account.service_charge_formula || ''}>
+                                    S.C.
                                 </span>
                             )}
                             {accountGroups.map(group => (
@@ -412,7 +412,7 @@ const ManagementAccountTypesPage = () => {
         description: '',
         accountGroups: [],
         serviceCharge: false,
-        interestRate: ''
+        serviceChargeFormula: ''
     });
     const [editingName, setEditingName] = useState(null);
 
@@ -625,7 +625,7 @@ const ManagementAccountTypesPage = () => {
             description: '',
             accountGroups: [],
             serviceCharge: false,
-            interestRate: ''
+            serviceChargeFormula: ''
         });
         setShowNameForm(true);
     };
@@ -640,7 +640,7 @@ const ManagementAccountTypesPage = () => {
             description: account.description || '',
             accountGroups: accountGroups,
             serviceCharge: account.service_charge || false,
-            interestRate: account.interest_rate ? (account.interest_rate * 100).toFixed(2) : ''
+            serviceChargeFormula: account.service_charge_formula || ''
         });
         setShowNameForm(true);
     };
@@ -653,9 +653,9 @@ const ManagementAccountTypesPage = () => {
             return;
         }
 
-        // Validate interest rate if service charge is enabled
-        if (nameFormData.serviceCharge && (!nameFormData.interestRate || parseFloat(nameFormData.interestRate) <= 0)) {
-            toast.error('Please enter a valid interest rate when service charge is enabled');
+        // Validate formula if service charge is enabled
+        if (nameFormData.serviceCharge && !nameFormData.serviceChargeFormula.trim()) {
+            toast.error('Please enter a formula when service charge is enabled');
             return;
         }
 
@@ -669,7 +669,7 @@ const ManagementAccountTypesPage = () => {
                 description: nameFormData.description.trim(),
                 accountGroups: nameFormData.accountGroups,
                 serviceCharge: nameFormData.serviceCharge,
-                interestRate: nameFormData.serviceCharge ? parseFloat(nameFormData.interestRate) / 100 : 0,
+                serviceChargeFormula: nameFormData.serviceChargeFormula.trim(),
                 userId: currentUser._id
             });
 
@@ -1044,7 +1044,7 @@ const ManagementAccountTypesPage = () => {
                                             onClick={() => setNameFormData({
                                                 ...nameFormData, 
                                                 serviceCharge: !nameFormData.serviceCharge,
-                                                interestRate: !nameFormData.serviceCharge ? nameFormData.interestRate : ''
+                                                serviceChargeFormula: !nameFormData.serviceCharge ? nameFormData.serviceChargeFormula : ''
                                             })}
                                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                                                 nameFormData.serviceCharge ? 'bg-teal-600' : 'bg-gray-300'
@@ -1060,22 +1060,26 @@ const ManagementAccountTypesPage = () => {
                                     {nameFormData.serviceCharge && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Interest Rate (%) *
+                                                Formula *
                                             </label>
                                             <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max="100"
-                                                value={nameFormData.interestRate}
-                                                onChange={(e) => setNameFormData({...nameFormData, interestRate: e.target.value})}
-                                                placeholder="e.g., 9 for 9%"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                                type="text"
+                                                value={nameFormData.serviceChargeFormula}
+                                                onChange={(e) => setNameFormData({...nameFormData, serviceChargeFormula: e.target.value})}
+                                                placeholder="e.g., (debit + credit) / 12"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm"
                                             />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                A "Less: Unearned Service Charges" row will be auto-generated below this account.
-                                                Debit/Credit will be calculated as: value × {nameFormData.interestRate || '0'}%
-                                            </p>
+                                            <div className="mt-2 text-xs text-gray-500 space-y-1">
+                                                <p>A "Less: Unearned Service Charges" row will be auto-generated below this account.</p>
+                                                <p><strong>Variables:</strong> <code className="bg-gray-200 px-1 rounded">debit</code>, <code className="bg-gray-200 px-1 rounded">credit</code></p>
+                                                <p><strong>Operators:</strong> <code className="bg-gray-200 px-1 rounded">+</code> <code className="bg-gray-200 px-1 rounded">-</code> <code className="bg-gray-200 px-1 rounded">*</code> <code className="bg-gray-200 px-1 rounded">/</code> <code className="bg-gray-200 px-1 rounded">( )</code></p>
+                                                <p><strong>Examples:</strong></p>
+                                                <ul className="list-disc list-inside pl-2">
+                                                    <li><code className="bg-gray-200 px-1 rounded">(debit + credit) / 12</code></li>
+                                                    <li><code className="bg-gray-200 px-1 rounded">-(debit / 11)</code></li>
+                                                    <li><code className="bg-gray-200 px-1 rounded">debit * 0.09</code></li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

@@ -298,7 +298,7 @@ async function runMigration(migration) {
         [migration.idField]:   row[migration.idField],
         [migration.updateField]: key,
       });
-      console.log(`    ✏️   ${row[migration.idField]}  →  ${key}`);
+      console.log(`    ✏️   ${updated} ${row[migration.idField]}  →  ${key}`);
     }
 
     updated++;

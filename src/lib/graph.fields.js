@@ -576,7 +576,7 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
     display_order
     account_groups
     service_charge
-    interest_rate
+    service_charge_formula
     is_active
     date_added
     inserted_date
