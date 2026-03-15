@@ -577,6 +577,14 @@ export const MANAGEMENT_ACCOUNT_FIELD = `
     account_groups
     service_charge
     service_charge_formula
+    row_type
+    prev_balance_formula
+    debit_formula
+    credit_formula
+    balance_formula
+    aggregate_refs
+    indent_level
+    parent_account_id
     is_active
     date_added
     inserted_date

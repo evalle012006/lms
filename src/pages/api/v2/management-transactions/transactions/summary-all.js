@@ -9,6 +9,112 @@ export default apiHandler({
     get: getSummaryAll,
 });
 
+// ── Formula evaluator ─────────────────────────────────────────────────────────
+// Variables: prev_balance, debit, credit — operators: + - * / ( )
+// Returns null if formula is empty/invalid (caller uses raw value as fallback)
+const evalFormula = (formula, vars) => {
+    if (!formula || typeof formula !== 'string' || !formula.trim()) return null;
+    try {
+        const expr = formula
+            .replace(/prev_balance/gi, String(vars.prev_balance ?? 0))
+            .replace(/debit/gi,        String(vars.debit        ?? 0))
+            .replace(/credit/gi,       String(vars.credit       ?? 0));
+        if (!/^[\d\s+\-*/().]+$/.test(expr)) return null;
+        const result = new Function(`return ${expr}`)();
+        return typeof result === 'number' && isFinite(result) ? result : null;
+    } catch {
+        return null;
+    }
+};
+
+// ── Compute display columns for a single account row ──────────────────────────
+const computeRowValues = (account, raw) => {
+    const rawPrev   = parseFloat(raw.prev_balance) || 0;
+    const rawDebit  = parseFloat(raw.debit)        || 0;
+    const rawCredit = parseFloat(raw.credit)       || 0;
+
+    if (!account.row_type || account.row_type === 'standard') {
+        return {
+            previous_balance: rawPrev,
+            debit:            rawDebit,
+            credit:           rawCredit,
+            total_balance:    rawPrev + rawDebit - rawCredit,
+        };
+    }
+
+    // row_type === 'formula': transform each column independently
+    const vars = { prev_balance: rawPrev, debit: rawDebit, credit: rawCredit };
+    const displayPrev   = evalFormula(account.prev_balance_formula, vars) ?? rawPrev;
+    const displayDebit  = evalFormula(account.debit_formula,        vars) ?? rawDebit;
+    const displayCredit = evalFormula(account.credit_formula,       vars) ?? rawCredit;
+
+    // balance_formula receives already-transformed values
+    const balanceVars  = { prev_balance: displayPrev, debit: displayDebit, credit: displayCredit };
+    const totalBalance = evalFormula(account.balance_formula, balanceVars)
+        ?? (displayPrev + displayDebit - displayCredit);
+
+    return {
+        previous_balance: displayPrev,
+        debit:            displayDebit,
+        credit:           displayCredit,
+        total_balance:    totalBalance,
+    };
+};
+
+// ── Compute aggregate row from already-computed sibling rows ──────────────────
+const computeAggregateRowValues = (aggregateRefs, computedMap) => {
+    const totals = { previous_balance: 0, debit: 0, credit: 0, total_balance: 0 };
+    for (const ref of aggregateRefs) {
+        const row  = computedMap[ref.id];
+        if (!row) continue;
+        const sign = ref.op === 'subtract' ? -1 : 1;
+        totals.previous_balance += sign * (row.previous_balance ?? 0);
+        totals.debit            += sign * (row.debit            ?? 0);
+        totals.credit           += sign * (row.credit           ?? 0);
+        totals.total_balance    += sign * (row.total_balance    ?? 0);
+    }
+    return totals;
+};
+
+// ── Helper: check if formula string uses a variable ───────────────────────────
+const formulaUsesVariable = (formula, variable) => {
+    if (!formula) return false;
+    return new RegExp(variable, 'gi').test(formula);
+};
+
+// ── Legacy service charge row (for rows not yet migrated to per-column formulas)
+// Kept for backward compatibility: fires only when service_charge=true
+// AND debit_formula/credit_formula are still null
+const calculateServiceCharge = (account, txData) => {
+    if (!account.service_charge || !account.service_charge_formula) return null;
+    // Skip if already migrated to new per-column formula system
+    if (account.debit_formula || account.credit_formula) return null;
+
+    const formulaUsesDebit  = formulaUsesVariable(account.service_charge_formula, 'debit');
+    const formulaUsesCredit = formulaUsesVariable(account.service_charge_formula, 'credit');
+
+    const shouldShow = (formulaUsesDebit  && txData.debit  > 0) ||
+                       (formulaUsesCredit && txData.credit > 0);
+    if (!shouldShow) return null;
+
+    const vars          = { prev_balance: 0, debit: txData.debit, credit: txData.credit };
+    const formulaResult = evalFormula(account.service_charge_formula, vars) ?? 0;
+
+    const scDebit  = (formulaUsesDebit  && txData.debit  > 0) ? formulaResult : 0;
+    const scCredit = (formulaUsesCredit && txData.credit > 0) ? formulaResult : 0;
+
+    return {
+        _id:               `${account._id}_sc`,
+        account_name:      'Less: Unearned Service Charges',
+        is_service_charge: true,
+        parent_account_id: account._id,
+        previous_balance:  0,
+        debit:             scDebit,
+        credit:            scCredit,
+        total_balance:     scDebit - scCredit,
+    };
+};
+
 async function getSummaryAll(req, res) {
     const { branchId, date } = req.query;
 
@@ -35,7 +141,7 @@ async function getSummaryAll(req, res) {
 
         const accountTypes = accountTypesRes?.data?.management_account_types ?? [];
 
-        // Fetch all active accounts (includes account-level account_groups, service_charge, interest_rate)
+        // Fetch all active accounts
         const managementAccountsType = createGraphType(
             "management_accounts",
             MANAGEMENT_ACCOUNT_FIELD
@@ -67,128 +173,66 @@ async function getSummaryAll(req, res) {
 
         const transactions = transactionsRes?.data?.management_transactions ?? [];
 
-        // Create a map of account_id to transaction data
+        // Create a map of account_id to raw transaction data
         const transactionMap = {};
         transactions.forEach(t => {
-            const prevBalance = parseFloat(t.previous_balance) || 0;
-            const debit = parseFloat(t.debit) || 0;
-            const credit = parseFloat(t.credit) || 0;
-            
             transactionMap[t.account_id] = {
-                previous_balance: prevBalance,
-                debit: debit,
-                credit: credit,
-                total_balance: prevBalance + debit - credit
+                prev_balance: parseFloat(t.previous_balance) || 0,
+                debit:        parseFloat(t.debit)            || 0,
+                credit:       parseFloat(t.credit)           || 0,
             };
         });
 
         // Create a map of account type id to account type for quick lookup
         const accountTypeMap = {};
-        accountTypes.forEach(at => {
-            accountTypeMap[at._id] = at;
+        accountTypes.forEach(at => { accountTypeMap[at._id] = at; });
+
+        // ── Pass 1: compute standard + formula rows (ALL accounts, zeros if no tx)
+        const computedMap = {};
+
+        accounts.forEach(account => {
+            if (account.row_type === 'aggregate') return;
+            // summary-all uses zeros when no transaction exists
+            const raw = transactionMap[account._id] ?? { prev_balance: 0, debit: 0, credit: 0 };
+            computedMap[account._id] = computeRowValues(account, raw);
         });
 
-        // Helper function to get effective groups for an account
+        // ── Pass 2: compute aggregate rows ────────────────────────────────────
+        accounts.forEach(account => {
+            if (account.row_type !== 'aggregate') return;
+            if (!account.aggregate_refs?.length) {
+                computedMap[account._id] = { previous_balance: 0, debit: 0, credit: 0, total_balance: 0 };
+                return;
+            }
+            computedMap[account._id] = computeAggregateRowValues(account.aggregate_refs, computedMap);
+        });
+
+        // Helper: get effective groups for an account
         // Priority: account.account_groups > accountType.account_groups
         const getEffectiveGroups = (account, accountType) => {
-            // Handle both array and single value formats
             const accountGroups = Array.isArray(account.account_groups) ? account.account_groups :
                                   (account.account_group ? [account.account_group] : []);
             const typeGroups = Array.isArray(accountType?.account_groups) ? accountType.account_groups :
                                (accountType?.account_group ? [accountType.account_group] : []);
-            
-            // If account has its own groups, use them; otherwise fall back to type groups
             return accountGroups.length > 0 ? accountGroups : typeGroups;
-        };
-
-        // Helper function to safely evaluate service charge formula
-        const evaluateFormula = (formula, debit, credit) => {
-            if (!formula || typeof formula !== 'string') return 0;
-            
-            try {
-                const expression = formula
-                    .replace(/debit/gi, String(parseFloat(debit) || 0))
-                    .replace(/credit/gi, String(parseFloat(credit) || 0));
-                
-                if (!/^[\d\s+\-*/().]+$/.test(expression)) {
-                    return 0;
-                }
-                
-                const result = new Function(`return ${expression}`)();
-                
-                if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
-                    return 0;
-                }
-                
-                return result;
-            } catch (e) {
-                return 0;
-            }
-        };
-
-        // Helper to check if formula contains a variable
-        const formulaUsesVariable = (formula, variable) => {
-            if (!formula) return false;
-            const regex = new RegExp(variable, 'gi');
-            return regex.test(formula);
-        };
-
-        // Helper function to calculate service charge values using formula
-        // Calculate based on which variables the formula uses
-        const calculateServiceCharge = (account, txData) => {
-            if (!account.service_charge || !account.service_charge_formula) {
-                return null;
-            }
-            
-            // Check which variables the formula uses
-            const formulaUsesDebit = formulaUsesVariable(account.service_charge_formula, 'debit');
-            const formulaUsesCredit = formulaUsesVariable(account.service_charge_formula, 'credit');
-            
-            // Only show service charge if formula uses debit and debit has value, 
-            // OR formula uses credit and credit has value
-            const shouldShow = (formulaUsesDebit && txData.debit > 0) || 
-                               (formulaUsesCredit && txData.credit > 0);
-            
-            if (!shouldShow) {
-                return null;
-            }
-            
-            // Calculate the formula result with actual values
-            const formulaResult = evaluateFormula(account.service_charge_formula, txData.debit, txData.credit);
-            
-            // Assign result to debit/credit columns based on which variables the formula uses
-            const scDebit = (formulaUsesDebit && txData.debit > 0) ? formulaResult : 0;
-            const scCredit = (formulaUsesCredit && txData.credit > 0) ? formulaResult : 0;
-            
-            return {
-                _id: `${account._id}_sc`,
-                account_name: 'Less: Unearned Service Charges',
-                is_service_charge: true,
-                parent_account_id: account._id,
-                previous_balance: 0,
-                debit: scDebit,
-                credit: scCredit,
-                total_balance: scDebit - scCredit
-            };
         };
 
         // Group ALL accounts by their effective account_groups (regardless of transactions)
         const groupedData = {
-            other_receipts: { 
-                accountTypes: [], 
-                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 } 
+            other_receipts: {
+                accountTypes: [],
+                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 }
             },
-            management_expenses: { 
-                accountTypes: [], 
-                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 } 
+            management_expenses: {
+                accountTypes: [],
+                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 }
             },
-            other_payments: { 
-                accountTypes: [], 
-                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 } 
+            other_payments: {
+                accountTypes: [],
+                totals: { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 }
             }
         };
 
-        // Grand totals for all groups
         const grandTotals = {
             previousBalance: 0,
             debit: 0,
@@ -196,7 +240,6 @@ async function getSummaryAll(req, res) {
             totalBalance: 0
         };
 
-        // Group accounts by their effective groups
         const accountsByEffectiveGroup = {
             other_receipts: [],
             management_expenses: [],
@@ -205,25 +248,16 @@ async function getSummaryAll(req, res) {
 
         // Include ALL accounts, not just those with transactions
         accounts.forEach(account => {
-            // Get transaction data if exists, otherwise use zeros
-            const txData = transactionMap[account._id] || {
-                previous_balance: 0,
-                debit: 0,
-                credit: 0,
-                total_balance: 0
-            };
-
-            // Determine effective groups (can be multiple)
-            const accountType = accountTypeMap[account.account_type_id];
+            const accountType    = accountTypeMap[account.account_type_id];
             const effectiveGroups = getEffectiveGroups(account, accountType);
+            const computed       = computedMap[account._id] ?? { previous_balance: 0, debit: 0, credit: 0, total_balance: 0 };
 
-            // Add to each group the account belongs to
             effectiveGroups.forEach(groupCode => {
                 if (accountsByEffectiveGroup[groupCode]) {
                     accountsByEffectiveGroup[groupCode].push({
                         ...account,
-                        accountType: accountType,
-                        txData: txData,
+                        accountType,
+                        computed,
                         effectiveGroup: groupCode
                     });
                 }
@@ -233,8 +267,7 @@ async function getSummaryAll(req, res) {
         // Now organize accounts by account type within each group
         Object.keys(accountsByEffectiveGroup).forEach(groupCode => {
             const groupAccounts = accountsByEffectiveGroup[groupCode];
-            
-            // Group accounts by account type
+
             const accountsByType = {};
             groupAccounts.forEach(account => {
                 const typeId = account.account_type_id;
@@ -244,32 +277,32 @@ async function getSummaryAll(req, res) {
                         accounts: []
                     };
                 }
-                
-                // Check if this account is already added (avoid duplicates from same account in same type)
+
                 const alreadyAdded = accountsByType[typeId].accounts.some(a => a._id === account._id);
                 if (!alreadyAdded) {
-                    // Add the main account
+                    // Add the main account with computed column values
                     accountsByType[typeId].accounts.push({
-                        _id: account._id,
-                        account_name: account.account_name,
-                        description: account.description,
-                        display_order: account.display_order,
-                        account_groups: account.account_groups,
-                        service_charge: account.service_charge,
+                        _id:               account._id,
+                        account_name:      account.account_name,
+                        description:       account.description,
+                        display_order:     account.display_order,
+                        account_groups:    account.account_groups,
+                        service_charge:    account.service_charge,
                         service_charge_formula: account.service_charge_formula,
-                        ...account.txData
+                        row_type:          account.row_type,
+                        indent_level:      account.indent_level ?? 1,
+                        ...account.computed,
                     });
-                    
-                    // If account has service charge, add the service charge row
-                    const scRow = calculateServiceCharge(account, account.txData);
-                    if (scRow) {
-                        accountsByType[typeId].accounts.push(scRow);
-                    }
+
+                    // Legacy SC row injection (backward compat for pre-migration rows)
+                    const raw = transactionMap[account._id] ?? { prev_balance: 0, debit: 0, credit: 0 };
+                    const scRow = calculateServiceCharge(account, raw);
+                    if (scRow) accountsByType[typeId].accounts.push(scRow);
                 }
             });
 
-            // Sort accounts within each type by display_order (service charge rows stay after their parent)
-            // We sort by extracting base account ID and keeping SC rows after their parents
+            // Sort accounts within each type by display_order
+            // SC rows stay after their parent accounts since we push them immediately after
             Object.values(accountsByType).forEach(typeData => {
                 // Don't re-sort to keep SC rows immediately after their parent accounts
             });
@@ -279,33 +312,31 @@ async function getSummaryAll(req, res) {
                 if (typeData.accounts.length === 0) return;
 
                 const typeTotals = typeData.accounts.reduce((acc, account) => {
-                    acc.previousBalance += account.previous_balance;
-                    acc.debit += account.debit;
-                    acc.credit += account.credit;
-                    acc.totalBalance += account.total_balance;
+                    acc.previousBalance += account.previous_balance ?? 0;
+                    acc.debit           += account.debit            ?? 0;
+                    acc.credit          += account.credit           ?? 0;
+                    acc.totalBalance    += account.total_balance     ?? 0;
                     return acc;
                 }, { previousBalance: 0, debit: 0, credit: 0, totalBalance: 0 });
 
                 groupedData[groupCode].accountTypes.push({
-                    _id: typeData.accountType._id,
-                    type_name: typeData.accountType.type_name,
-                    type_code: typeData.accountType.type_code,
+                    _id:          typeData.accountType._id,
+                    type_name:    typeData.accountType.type_name,
+                    type_code:    typeData.accountType.type_code,
                     display_order: typeData.accountType.display_order,
-                    accounts: typeData.accounts,
-                    totals: typeTotals
+                    accounts:     typeData.accounts,
+                    totals:       typeTotals
                 });
 
-                // Add to group totals
                 groupedData[groupCode].totals.previousBalance += typeTotals.previousBalance;
-                groupedData[groupCode].totals.debit += typeTotals.debit;
-                groupedData[groupCode].totals.credit += typeTotals.credit;
-                groupedData[groupCode].totals.totalBalance += typeTotals.totalBalance;
+                groupedData[groupCode].totals.debit           += typeTotals.debit;
+                groupedData[groupCode].totals.credit          += typeTotals.credit;
+                groupedData[groupCode].totals.totalBalance    += typeTotals.totalBalance;
 
-                // Add to grand totals
                 grandTotals.previousBalance += typeTotals.previousBalance;
-                grandTotals.debit += typeTotals.debit;
-                grandTotals.credit += typeTotals.credit;
-                grandTotals.totalBalance += typeTotals.totalBalance;
+                grandTotals.debit           += typeTotals.debit;
+                grandTotals.credit          += typeTotals.credit;
+                grandTotals.totalBalance    += typeTotals.totalBalance;
             });
 
             // Sort account types by display_order
