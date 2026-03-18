@@ -3,7 +3,7 @@ import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import moment from 'moment';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, updateQl, queryQl } from '@/lib/graph/graph.util';
 import { MANAGEMENT_ACCOUNT_FIELD } from '@/lib/graph.fields';
 import { filterGraphFields } from '@/lib/graph.functions';
 
@@ -265,15 +265,17 @@ async function save(req, res) {
 
         } else {
             // ── INSERT — get next display_order ───────────────────────────────
-            const maxOrderResult = await graph.query(`
-                query GetMaxOrder($accountTypeId: String!) {
-                    management_accounts(
-                        where: { account_type_id: { _eq: $accountTypeId } }
-                        order_by: { display_order: desc }
-                        limit: 1
-                    ) { display_order }
-                }
-            `, { accountTypeId });
+            // graph.query expects a QueryQLStatementFunction (from queryQl), NOT a raw string.
+            // Passing a raw string causes "m is not a function" because graph.provider
+            // tries to call the string as fn(0) inside this.statement().
+            const maxOrderType = createGraphType('management_accounts', 'display_order');
+            const maxOrderResult = await graph.query(
+                queryQl(maxOrderType(), {
+                    where:    { account_type_id: { _eq: accountTypeId } },
+                    order_by: [{ display_order: 'desc' }],
+                    limit:    1,
+                })
+            );
 
             const maxOrder = maxOrderResult?.data?.management_accounts?.[0]?.display_order ?? -1;
 
@@ -290,7 +292,7 @@ async function save(req, res) {
 
             const result = await graph.mutation(
                 insertQl(managementAccountsType(), {
-                    objects: [filterGraphFields(MANAGEMENT_ACCOUNT_FIELD, accountData)],
+                    objects: [accountData], // accountData has only scalar DB cols — filterGraphFields breaks with relationship blocks in MANAGEMENT_ACCOUNT_FIELD
                 })
             );
 

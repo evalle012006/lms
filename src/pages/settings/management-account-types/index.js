@@ -340,9 +340,14 @@ const ManagementAccountTypesPage = () => {
                     </div>
                 </div>
 
-                {/* ── Account Type Dialog ───────────────────────────────────── */}
-                <Dialog show={showTypeForm}>
-                    <div className="bg-white px-6 pt-6 pb-4" style={{ width: '520px', maxWidth: '95vw' }}>
+
+                {/* ── Account Type Dialog — custom overlay bypasses Dialog's sm width cap ── */}
+                {showTypeForm && (
+                <div className="modal-container" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="modal-backdrop" />
+                    <div className="modal-body flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl px-6 pt-6 pb-4 w-full"
+                         style={{ maxWidth: '540px', maxHeight: '92vh', overflowY: 'auto' }}>
                         <h3 className="text-xl font-semibold text-gray-900 mb-5">
                             {editingType ? 'Edit Account Type' : 'Add New Account Type'}
                         </h3>
@@ -398,7 +403,10 @@ const ManagementAccountTypesPage = () => {
                             </div>
                         </form>
                     </div>
-                </Dialog>
+                    </div>
+                </div>
+                )}
+
 
 
                 {/* ── Account Name Dialog — custom wide overlay bypasses Dialog's sm cap ── */}
