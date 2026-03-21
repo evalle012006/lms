@@ -1085,6 +1085,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 collection.hasMcbuInterest = safeNumber(cc.mcbuInterest) > 0 ? true : false;
+                collection.bmRevertCount = cc.bmRevertCount ? cc.bmRevertCount : 0;
 
                 collection.selected = false;
                 cashCollection.push(collection);
@@ -3317,6 +3318,9 @@ const CashCollectionDetailsPage = () => {
                         window.location.reload();
                     }, 1000);
                 }, 1000);
+            } else {
+                setLoading(false);
+                toast.error(response.message || 'Revert failed.');
             }
         } else {
             toast.error('No row(s) selected!');
@@ -3969,7 +3973,7 @@ const CashCollectionDetailsPage = () => {
                 <Spinner />
             ) : (
                 <div className="overflow-x-auto">
-                    {console.log("Edit mode: ", editMode)}
+                    {/* {console.log("Edit mode: ", editMode)} */}
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch.lockTransaction) ? false : editMode : false}  hasDraft={hasDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
@@ -3980,7 +3984,7 @@ const CashCollectionDetailsPage = () => {
                                                 data={groupClients}
                                                 groupInfo={currentGroup}
                                                 dateFilter={dateFilter}
-                                                occurence="daily"
+                                                occurence="weekly"
                                                 currentUser={currentUser}
                                             />
                                         }
@@ -3990,7 +3994,11 @@ const CashCollectionDetailsPage = () => {
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">
-                                        {currentUser.role.rep == 3 && <th className="p-2 text-center"><CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} /></th>}
+                                        {(currentUser.role.rep == 3 || data.some(cc => (cc.bmRevertCount || 0) >= 1)) && (
+                                            <th className="p-2 text-center">
+                                                <CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} />
+                                            </th>
+                                        )}
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Advance Credit</th>
@@ -4056,12 +4064,43 @@ const CashCollectionDetailsPage = () => {
 
                                         const isHighlighted = highlightedSlotNo === cc.slotNo;
                                         const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
-
+                                        
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
+                                                                ${rowBg} ${highlightClass}
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
-                                                {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
-                                                <td className="bg- px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
+                                                {(currentUser.role.rep == 3 || (currentUser.role.rep < 3 && (cc.bmRevertCount || 0) >= 1)) && (
+                                                    <th className="p-2 text-center">
+                                                        {cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-') && (
+                                                        currentUser.role.rep == 3 && (cc.bmRevertCount || 0) >= 1 ? (
+                                                            // BM already used revert — show disabled indicator
+                                                            <span
+                                                            title="BM revert already used. Only a higher-level manager can revert this."
+                                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 border border-amber-400 cursor-not-allowed"
+                                                            >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                                            </svg>
+                                                            </span>
+                                                        ) : (
+                                                            // Normal checkbox — visible to BM (bmRevertCount=0) and to rep<3 when bmRevertCount>=1
+                                                            <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />
+                                                        )
+                                                        )}
+                                                    </th>
+                                                )}
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
+                                                    {cc.status !== 'totals' ? (
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                        <span>{cc.slotNo}</span>
+                                                        {(cc.bmRevertCount || 0) >= 1 && (
+                                                            <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-300 rounded px-1 leading-tight whitespace-nowrap">
+                                                            BM Reverted
+                                                            </span>
+                                                        )}
+                                                        </div>
+                                                    ) : ''}
+                                                </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.advanceDays }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom text-center">

@@ -1,5 +1,5 @@
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
-import { findClients, findGroups, findLoans } from '@/lib/graph.functions';
+import { findClients, findGroups, findLoans, findUserById } from '@/lib/graph.functions'; // ← added findUserById
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import logger from '@/logger';
@@ -15,235 +15,239 @@ export default apiHandler({
     post: revert,
 });
 
-let statusCode = 200;
-let response = {};
-
-/*
-const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
-const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
- */
-
 async function revert(req, res) {
     const user_id = req?.auth?.sub;
     const cashCollections = req.body;
     let statusCode = 200;
     let response = {};
     const mutationQL = [];
-  
+
     try {
-      // Process each cash collection sequentially to avoid race conditions
-      const groupCache = {};
-      for (const cc of cashCollections) {
-        let cashCollection = {...cc};
-        let loanId = cashCollection.loanId;
-        if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
-            loanId = cashCollection.prevLoanId;
+        // ── BM limit: resolve requesting user's role ──────────────────────
+        const requestingUser = await findUserById(user_id);
+        const isBranchManager = requestingUser?.role?.rep === 3;
+
+        // ── Pre-flight BM limit check (before touching any mutations) ─────
+        if (isBranchManager) {
+            const allLoanIds = cashCollections.map(cc =>
+                (cc.status === 'pending' || cc.status === 'tomorrow') && cc.loanCycle > 1
+                    ? cc.prevLoanId
+                    : cc.loanId
+            ).filter(Boolean);
+
+            const loans = await findLoans({ _id: { _in: [...new Set(allLoanIds)] } });
+            const blocked = loans.some(l => (l.bmRevertCount || 0) >= 1);
+
+            if (blocked) {
+                return res.status(200)
+                  .setHeader('Content-Type', 'application/json')
+                  .end(JSON.stringify({
+                      success: false,
+                      error: true,
+                      message: 'Branch manager has already used their one-time revert for this slot. Only a higher-level manager can revert this transaction.'
+                  }));
+            }
         }
+        // ─────────────────────────────────────────────────────────────────
 
-        if(!loanId) {
-          continue;
-        }
+        const groupCache = {};
 
-        logger.debug({
-          user_id, 
-          page: `Reverting Transaction Loan: ${cashCollection.clientId}`, 
-          data: cashCollection
-        });
-        
-        // Get loan history
-        const loanHistoryResult = await graph.query(
-          queryQl(createGraphType('loans_history', `_id data`)('loan_history'), {
-            where: {
-              loan_id: { _eq: loanId }
-            },
-            limit: 1,
-            order_by: [{
-              created_dt: 'desc'
-            }]
-          })
-        );
+        for (const cc of cashCollections) {
+            let cashCollection = {...cc};
+            let loanId = cashCollection.loanId;
+            if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
+                loanId = cashCollection.prevLoanId;
+            }
 
-        console.log('done loan fetch')
+            if (!loanId) {
+                continue;
+            }
 
-        const loan_history = loanHistoryResult.data?.loan_history?.[0];
-        const currentLoan = findLoans({ _id: { _eq: loan_history._id } });
+            logger.debug({
+                user_id,
+                page: `Reverting Transaction Loan: ${cashCollection.clientId}`,
+                data: cashCollection
+            });
 
-        const [client] = await findClients({ _id: { _eq: loan_history.data.clientId } });
-        const [group] = await findGroups({ _id: { _eq: loan_history.data['groupId'] } });
-
-        if (!groupCache[group._id]) {
-          groupCache[group._id] = {
-            groupId: group._id,
-            slots: []
-          }
-        }
-
-        // new loan should be ignore in rollback
-        const ignoreRollback = (currentLoan.status == 'pending' && currentLoan.loanCycle == 1);
-        if (ignoreRollback) {
-          continue;
-        }
-
-         // Update loan with history data
-        if (loan_history) {
-          // Delete cash collection
-          mutationQL.push(
-            deleteQl(
-              CASH_COLLECTION_TYPE(`cash_collection_${mutationQL.length}`),
-              {
-                _id: { _eq: cashCollection._id }
-              }
-            )
-          );
-
-
-          if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
-            // Delete new loan
-            mutationQL.push(
-                deleteQl(
-                createGraphType('loans', `_id`)(`loans_${mutationQL.length}`),
-                {
-                    _id: { _eq: cashCollection.loanId }
-                }
-                )
+            // Get loan history
+            const loanHistoryResult = await graph.query(
+                queryQl(createGraphType('loans_history', `_id data`)('loan_history'), {
+                    where: {
+                        loan_id: { _eq: loanId }
+                    },
+                    limit: 1,
+                    order_by: [{
+                        created_dt: 'desc'
+                    }]
+                })
             );
-          }
 
-          let prevLoanData = {
-            ...loan_history.data,
-            reverted: true,
-            revertedDateTime: new Date(),
-          };
+            console.log('done loan fetch');
 
-          if (cashCollection?.mcbuWithdrawalId) {
-            prevLoanData.mcbu = prevLoanData.mcbu + prevLoanData.mcbuWithdrawal;
-            prevLoanData.mcbuWithdrawal = 0;
-          }
+            const loan_history = loanHistoryResult.data?.loan_history?.[0];
+            const currentLoan = await findLoans({ _id: { _eq: loanId } }).then(r => r[0]);
 
-          if (cashCollection?.csfWithdrawalId) {
-            prevLoanData.csf = prevLoanData.csf + prevLoanData.csfWithdrawal;
-            prevLoanData.csfWithdrawal = 0;
-          }
-  
-          // Update loan with history data
-          mutationQL.push(
-            updateQl(
-              LOAN_TYPE(`loan_${mutationQL.length}`),
-              {
-                set: { ...prevLoanData },
-                where: {
-                  _id: { _eq: loanId }
+            const [client] = await findClients({ _id: { _eq: loan_history.data.clientId } });
+            const [group] = await findGroups({ _id: { _eq: loan_history.data['groupId'] } });
+
+            if (!groupCache[group._id]) {
+                groupCache[group._id] = {
+                    groupId: group._id,
+                    slots: []
+                };
+            }
+
+            // new loan should be ignored in rollback
+            const ignoreRollback = (currentLoan.status == 'pending' && currentLoan.loanCycle == 1);
+            if (ignoreRollback) {
+                continue;
+            }
+
+            if (loan_history) {
+                // Delete cash collection
+                mutationQL.push(
+                    deleteQl(
+                        CASH_COLLECTION_TYPE(`cash_collection_${mutationQL.length}`),
+                        { _id: { _eq: cashCollection._id } }
+                    )
+                );
+
+                if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
+                    // Delete new loan
+                    mutationQL.push(
+                        deleteQl(
+                            createGraphType('loans', `_id`)(`loans_${mutationQL.length}`),
+                            { _id: { _eq: cashCollection.loanId } }
+                        )
+                    );
                 }
-              }
-            )
-          );
-  
-          // Delete loan history
-          mutationQL.push(
-            deleteQl(
-              createGraphType('loans_history', `_id`)(`loan_history_${mutationQL.length}`),
-              {
-                _id: { _eq: loan_history._id }
-              }
-            )
-          );
 
-          // Delete mcbu withdrawal transaction
-          if (cashCollection?.mcbuWithdrawalId) {
-            mutationQL.push(
-              deleteQl(
-                createGraphType('mcbu_withdrawals', `_id`)(`mcbu_withdrawals_${mutationQL.length}`),
-                {
-                  _id: { _eq: cashCollection.mcbuWithdrawalId }
-                }
-              )
-            );
-          }
+                let prevLoanData = {
+                    ...loan_history.data,
+                    reverted: true,
+                    revertedDateTime: new Date(),
+                    // ── Stamp BM revert count ────────────────────────────
+                    bmRevertCount: isBranchManager
+                        ? (currentLoan.bmRevertCount || 0) + 1
+                        : (currentLoan.bmRevertCount || 0),
+                    // ────────────────────────────────────────────────────
+                };
 
-          // update client if cashCollection is closed
-          if (cashCollection.status == 'closed') {
-            groupCache[group._id].slots.push(cashCollection.slotNo);
-            mutationQL.push(
-              updateQl(
-                createGraphType('client', `_id`)(`client_${mutationQL.length}`),
-                {
-                  set: {
-                    groupId: client.oldGroupId,
-                    loId: client.oldLoId,
-                    oldGroupId: null,
-                    oldLoId: null
-                  },
-                  where: {
-                    _id: { _eq: client._id }
-                  }
+                if (cashCollection?.mcbuWithdrawalId) {
+                    prevLoanData.mcbu = prevLoanData.mcbu + prevLoanData.mcbuWithdrawal;
+                    prevLoanData.mcbuWithdrawal = 0;
                 }
-              )
-            )
-          }
+
+                if (cashCollection?.csfWithdrawalId) {
+                    prevLoanData.csf = prevLoanData.csf + prevLoanData.csfWithdrawal;
+                    prevLoanData.csfWithdrawal = 0;
+                }
+
+                // Update loan with history data
+                mutationQL.push(
+                    updateQl(
+                        LOAN_TYPE(`loan_${mutationQL.length}`),
+                        {
+                            set: { ...prevLoanData },
+                            where: { _id: { _eq: loanId } }
+                        }
+                    )
+                );
+
+                // Delete loan history
+                mutationQL.push(
+                    deleteQl(
+                        createGraphType('loans_history', `_id`)(`loan_history_${mutationQL.length}`),
+                        { _id: { _eq: loan_history._id } }
+                    )
+                );
+
+                // Delete mcbu withdrawal transaction
+                if (cashCollection?.mcbuWithdrawalId) {
+                    mutationQL.push(
+                        deleteQl(
+                            createGraphType('mcbu_withdrawals', `_id`)(`mcbu_withdrawals_${mutationQL.length}`),
+                            { _id: { _eq: cashCollection.mcbuWithdrawalId } }
+                        )
+                    );
+                }
+
+                // Update client if cashCollection is closed
+                if (cashCollection.status == 'closed') {
+                    groupCache[group._id].slots.push(cashCollection.slotNo);
+                    mutationQL.push(
+                        updateQl(
+                            createGraphType('client', `_id`)(`client_${mutationQL.length}`),
+                            {
+                                set: {
+                                    groupId: client.oldGroupId,
+                                    loId: client.oldLoId,
+                                    oldGroupId: null,
+                                    oldLoId: null
+                                },
+                                where: { _id: { _eq: client._id } }
+                            }
+                        )
+                    );
+                }
+            }
         }
-      }
 
-      // Execute mutations if there are any
-      if (mutationQL.length > 0) {
-        // there should only be one group here
-        const groups = Object.values(groupCache);
-        for(const group of groups) {
-          if(group.slots.length) {
-            await updateGroup(mutationQL, group.groupId, group.slots);
-          }
+        // Execute mutations if there are any
+        if (mutationQL.length > 0) {
+            const groups = Object.values(groupCache);
+            for (const group of groups) {
+                if (group.slots.length) {
+                    await updateGroup(mutationQL, group.groupId, group.slots);
+                }
+            }
+
+            const result = await graph.mutation(...mutationQL);
+            response = { success: true, data: result?.data };
+        } else {
+            response = { success: true, message: "No valid records to revert" };
         }
-        
-        const result = await graph.mutation(...mutationQL);
-        response = { success: true, data: result?.data };
-      } else {
-        response = { success: true, message: "No valid records to revert" };
-      }
-  
+
     } catch (error) {
-      console.error(error);
-      logger.error({
-        user_id,
-        page: 'Rollback Transaction Error',
-        error: error.message,
-        stack: error.stack
-      });
-  
-      statusCode = 500;
-      response = { 
-        success: false, 
-        error: error.message 
-      };
+        console.error(error);
+        logger.error({
+            user_id,
+            page: 'Rollback Transaction Error',
+            error: error.message,
+            stack: error.stack
+        });
+
+        statusCode = 500;
+        response = {
+            success: false,
+            error: error.message
+        };
     } finally {
-      // Always send a response
-      res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+        res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
     }
-  }
+}
 
+async function updateGroup(mutationQl, groupId, slots) {
+    const [group] = await findGroups({ _id: { _eq: groupId } });
+    group.availableSlots = group.availableSlots.filter(s => !slots.includes(s));
+    group.noOfClients = group.noOfClients + slots.length;
+    if (group.capacity == group.noOfClients) {
+        group.status = 'full';
+    } else {
+        group.status = 'available';
+    }
 
-  async function updateGroup(mutationQl, groupId, slots) {
-      const [group] = await findGroups({ _id: { _eq: groupId, } });
-      group.availableSlots = group.availableSlots.filter(s => !slots.includes(s));
-      group.noOfClients = group.noOfClients + slots.length;
-      if (group.capacity == group.noOfClients) {
-          group.status = 'full';
-      } else {
-          group.status = 'available';
-      }
+    delete group._id;
 
-      delete group._id;
-      
-      mutationQl.push(
-          updateQl(
+    mutationQl.push(
+        updateQl(
             createGraphType('groups', `_id`)(`groupst_${mutationQl.length}`),
             {
-              set: {
-                  ... group
-              },
-              where: {
-                  _id: { _eq: groupId }
-              }
-            })
-      );
-  }
+                set: { ...group },
+                where: { _id: { _eq: groupId } }
+            }
+        )
+    );
+}

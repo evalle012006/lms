@@ -173,6 +173,7 @@ export const LOAN_FIELDS = `
   preApproved
   preApprovedDate
   editHistory
+  bmRevertCount
   `;
 
 export const GROUP_FIELDS = `
@@ -346,6 +347,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   csfIn
   otherIncome
   addHospitalization
+  bmRevertCount
   `;
 
 export const LOS_TOTALS_FIELDS = `

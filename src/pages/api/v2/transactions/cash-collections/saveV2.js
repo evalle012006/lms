@@ -268,6 +268,11 @@ async function executeSave(req, user_id, transactionId) {
 
                 // get loan snapshot 
                 let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
+
+                // Propagate bmRevertCount from loan into the CC record so the UI can check it
+                if (loan) {
+                    collection.bmRevertCount = loan.bmRevertCount || 0;
+                }
                 
                 if (!loan) {
                     logger.warn({user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Loan not found', loanId: collection.loanId});

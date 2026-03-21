@@ -292,7 +292,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </>
                         )}
 
-                        {(!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && !branchLock && currentUser.role.rep == 3 && !allowMcbuInterest && !allowMcbuWithdrawal) && (
+                        {(!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && !branchLock && (currentUser.role.rep == 2 || currentUser.role.rep == 3) && !allowMcbuInterest && !allowMcbuWithdrawal) && (
                             <div className="w-40">
                                 <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
                             </div>

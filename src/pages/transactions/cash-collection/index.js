@@ -1053,12 +1053,12 @@ const ModernBranchCashCollections = () => {
           hideLock: true,
         });
 
-        console.log(response.data.filter(item => item.transactionType === 'weekly'));
+        // console.log(response.data.filter(item => item.transactionType === 'weekly'));
 
         const dailyTotal = response.data.filter(item => item.transactionType === 'daily').reduce((acc, item) => mapTotal('DAILY TOTAL', 99998, acc, item), {});
         const weeklyTotal = response.data.filter(item => item.transactionType === 'weekly').reduce((acc, item) => mapTotal('WEEKLY TOTAL', 99999, acc, item), {});
         
-        console.log(dailyTotal, weeklyTotal);
+        // console.log(dailyTotal, weeklyTotal);
 
         const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c.name).map(item => {
           const formattedName = filter === 'branch' && item.code ? 
@@ -1204,7 +1204,7 @@ const ModernBranchCashCollections = () => {
           });
         }
 
-        console.log(processedData);
+        // console.log(processedData);
         
         // console.log('Processed data length:', processedData.length);
         // console.log('Current filter:', filter);
