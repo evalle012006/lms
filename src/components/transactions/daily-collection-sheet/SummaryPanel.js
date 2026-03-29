@@ -1,7 +1,4 @@
 // src/components/transactions/daily-collection-sheet/SummaryPanel.jsx
-// DCS Cashbook/Summary section — shows Beginning Balance, Receipts, Payments,
-// Closing Balance, and Loan Release per LO.
-// Renamed from CashbookPanel. Data comes from fn_get_dcs_summary.
 
 import React from 'react';
 import { BookOpen } from 'lucide-react';
@@ -9,12 +6,20 @@ import { formatPricePhp } from '@/lib/utils';
 import { SUMMARY_RECEIPTS, SUMMARY_PAYMENTS, mapSummaryData } from '@/lib/constants';
 
 // ── Row component ────────────────────────────────────────────
+// When `no` is provided the table has 3 columns: no | label | value
+// When `no` is null (totals row) the label spans the first 2 columns so the
+// value always lands in the rightmost (3rd) column.
 const SummaryRow = ({ label, value, bold = false, highlight = false, no = null }) => (
     <tr className={`${highlight ? 'bg-amber-50 font-bold' : ''} ${bold ? 'font-semibold' : ''}`}>
-        {no !== null && (
+        {no !== null ? (
             <td className="border border-gray-300 px-2 py-1 text-center text-xs text-gray-500 w-8">{no}</td>
-        )}
-        <td className="border border-gray-300 px-3 py-1 text-xs">{label}</td>
+        ) : null}
+        <td
+            className="border border-gray-300 px-3 py-1 text-xs"
+            colSpan={no === null ? 2 : 1}
+        >
+            {label}
+        </td>
         <td className={`border border-gray-300 px-3 py-1 text-right text-xs min-w-[100px] ${
             value < 0 ? 'text-red-600' : value > 0 ? 'text-gray-900' : 'text-gray-400'
         }`}>

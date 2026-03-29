@@ -1,7 +1,5 @@
 // src/pages/transactions/daily-collection-sheet/index.js
-// Updated: API → get_daily_collection_sheet_v2 + get_daily_collection_summary
-// Tabs:    DCS Table | Summary | Morning/Afternoon
-// Sub-components extracted to src/components/transactions/daily-collection-sheet/
+// Updated: CSF Collection + CSF Withdrawal + CSF Return added throughout
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -51,9 +49,12 @@ const parseRow = (item) => {
         morningRemittance:   parseFloat(item.morning_remittance   || item.morningRemittance)   || 0,
         afternoonRemittance: parseFloat(item.afternoon_remittance || item.afternoonRemittance) || 0,
         denomNetCollection:  parseFloat(item.denom_net_collection  || item.denomNetCollection)  || 0,
-        // JSONB data fields
+        // MCBU
         mcbuTarget:          parseFloat(d.mcbuTarget    || d.mcbu_target)    || 0,
         mcbuActual:          parseFloat(d.mcbuActual    || d.mcbu_actual)    || 0,
+        // CSF Collection (new) — top-level column from native query OR jsonb
+        csfCollection:       parseFloat(item.csf_collection || d.csfCollection || d.csf_collection) || 0,
+        // Regular Loan
         regularLoanTarget:   parseFloat(d.regularLoanTarget  || d.regular_loan_target)  || 0,
         regularLoanAdvance:  parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
         regularLoanActual:   parseFloat(d.regularLoanActual  || d.regular_loan_actual)  || 0,
@@ -68,9 +69,14 @@ const parseRow = (item) => {
         addHospitalization:  parseFloat(d.addHospitalization || d.add_hospitalization) || 0,
         otherIncome:         parseFloat(d.otherIncome  || d.other_income)  || 0,
         totalCollection:     parseFloat(d.totalCollection || d.total_collection) || 0,
+        // MCBU Less Returns
         mcbuWithdrawal:      parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0,
         mcbuReturnNo:        parseInt(d.mcbuReturnNo  || d.mcbu_return_no)  || 0,
         mcbuReturnAmount:    parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0,
+        // CSF Less Returns (new)
+        csfWithdrawal:       parseFloat(item.csf_withdrawal || d.csfWithdrawal || d.csf_withdrawal) || 0,
+        csfReturnNo:         parseInt(item.csf_return_no   || d.csfReturnNo   || d.csf_return_no)   || 0,
+        csfReturnAmount:     parseFloat(item.csf_return_amount || d.csfReturnAmount || d.csf_return_amount) || 0,
         netCollection:       parseFloat(d.netCollection  || d.net_collection)  || 0,
         renewalNo:           parseInt(d.renewalNo  || d.renewal_no)   || 0,
         renewalAmount:       parseFloat(d.renewalAmount || d.renewal_amount) || 0,
@@ -81,6 +87,7 @@ const parseRow = (item) => {
         activeBorrowers:     parseInt(d.activeBorrowers  || d.active_borrowers) || 0,
         totalLoanBalance:    parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0,
         mcbuBalance:         parseFloat(d.mcbuBalance  || d.mcbu_balance)  || 0,
+        csfBalance:          parseFloat(item.csf_balance || d.csfBalance || d.csf_balance) || 0,
         pastDueNo:           parseInt(d.pastDueNo   || d.past_due_no)   || 0,
         pastDueAmount:       parseFloat(d.pastDueAmount || d.past_due_amount) || 0,
         mispayCount:         parseInt(d.mispayCount  || d.mispay_count) || 0,
@@ -94,6 +101,7 @@ const calculateTotals = (rows) => {
     const int = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
     return {
         mcbuTarget: num('mcbuTarget'), mcbuActual: num('mcbuActual'),
+        csfCollection: num('csfCollection'),
         regularLoanTarget: num('regularLoanTarget'), regularLoanAdvance: num('regularLoanAdvance'), regularLoanActual: num('regularLoanActual'),
         otherLoanTarget: num('otherLoanTarget'), otherLoanAdvance: num('otherLoanAdvance'), otherLoanActual: num('otherLoanActual'),
         admissionNo: int('admissionNo'), admissionAmount: num('admissionAmount'),
@@ -104,6 +112,8 @@ const calculateTotals = (rows) => {
         totalCollection: num('totalCollection'),
         mcbuWithdrawal: num('mcbuWithdrawal'),
         mcbuReturnNo: int('mcbuReturnNo'), mcbuReturnAmount: num('mcbuReturnAmount'),
+        csfWithdrawal: num('csfWithdrawal'),
+        csfReturnNo: int('csfReturnNo'), csfReturnAmount: num('csfReturnAmount'),
         netCollection: num('netCollection'),
         renewalNo: int('renewalNo'), renewalAmount: num('renewalAmount'),
         offsetNo: int('offsetNo'), offsetAmount: num('offsetAmount'),
@@ -122,19 +132,17 @@ const DailyCollectionSheet = () => {
     const branchList    = useSelector(state => state.branch.list);
 
     const [loading, setLoading]             = useState(true);
-    const [data, setData]                   = useState([]);          // per-LO/group rows
-    const [branchData, setBranchData]       = useState([]);          // admin all-branches rows
+    const [data, setData]                   = useState([]);
+    const [branchData, setBranchData]       = useState([]);
     const [totals, setTotals]               = useState(null);
     const [selectedDate, setSelectedDate]   = useState(moment().format('YYYY-MM-DD'));
     const [selectedLo, setSelectedLo]       = useState(null);
     const [loanOfficers, setLoanOfficers]   = useState([]);
     const [selectedBranch, setSelectedBranch] = useState(null);
 
-    // Summary (cashbook) state — renamed from cashbook
     const [summaryData, setSummaryData]       = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
 
-    // Tabs: 'dcs' | 'morning'
     const [activeTab, setActiveTab] = useState('dcs');
 
     const isAdmin           = currentUser?.role?.rep === 1;
@@ -191,7 +199,7 @@ const DailyCollectionSheet = () => {
         }
     }, [isBranchManager, isAdmin, isLoanOfficer, currentUser?.designatedBranchId, selectedBranch?._id, currentBranch?._id, fetchLoanOfficers]);
 
-    // ── Fetch summary (cashbook) ─────────────────────────────────────────────
+    // ── Fetch summary ────────────────────────────────────────────────────────
     const fetchSummary = useCallback(async (branchId, date, loId = null) => {
         setSummaryLoading(true);
         try {
@@ -200,13 +208,8 @@ const DailyCollectionSheet = () => {
             const response = await fetchWrapper.get(
                 getApiBaseUrl() + 'data/get_daily_collection_summary?' + params.toString()
             );
-            // Hasura native query returns { data: [...] } — no .success field
             const item = Array.isArray(response.data) ? response.data[0] : response.data;
-            if (item) {
-                setSummaryData(item);
-            } else {
-                setSummaryData(null);
-            }
+            setSummaryData(item || null);
         } catch (error) {
             console.error('Error fetching summary data:', error);
             setSummaryData(null);
@@ -228,7 +231,6 @@ const DailyCollectionSheet = () => {
 
             try {
                 if (isAdmin && !selectedBranch && branchList?.length > 0) {
-                    // ── Admin all-branches view (no summary tab) ──
                     const branchResults = [];
                     for (const branch of branchList) {
                         try {
@@ -253,7 +255,6 @@ const DailyCollectionSheet = () => {
                     setTotals(calculateTotals(branchResults));
 
                 } else {
-                    // ── Per-branch / per-LO view ──
                     let branchId = null, loId = null;
                     if (isLoanOfficer) {
                         branchId = currentUser.designatedBranchId;
@@ -280,8 +281,6 @@ const DailyCollectionSheet = () => {
 
                     if (response.data?.length > 0) {
                         const processed = response.data.map(parseRow);
-
-                        // Group by LO for rowspan rendering
                         const loMap = {};
                         processed.forEach(item => {
                             if (!loMap[item.loId]) loMap[item.loId] = { loId: item.loId, loName: item.loName, groups: [] };
@@ -297,8 +296,6 @@ const DailyCollectionSheet = () => {
                         setBranchData([]);
                         setData(flat);
                         setTotals(calculateTotals(flat));
-
-                        // Fetch summary for this branch/LO
                         fetchSummary(branchId, selectedDate, loId);
                     } else {
                         setData([]); setBranchData([]); setTotals(null);
@@ -338,6 +335,40 @@ const DailyCollectionSheet = () => {
     const hasBranchData = branchData?.length > 0;
 
     // ── Excel Export ─────────────────────────────────────────────────────────
+    // Column layout (29 data columns + 3 header cols = AE):
+    //   A  No.
+    //   B  LO
+    //   C  Group
+    //   D  MCBU Target
+    //   E  MCBU Actual
+    //   F  CSF Collection       ← NEW
+    //   G  Reg Loan Target
+    //   H  Reg Loan Adv
+    //   I  Reg Loan Actual
+    //   J  Other Loan Target
+    //   K  Other Loan Adv
+    //   L  Other Loan Actual
+    //   M  Admission No.
+    //   N  Admission Amt
+    //   O  LRF
+    //   P  CBHB No.
+    //   Q  CBHB ₱200
+    //   R  Add Hospi
+    //   S  Other Income
+    //   T  Total Collection
+    //   U  MCBU WD
+    //   V  MCBU Ret No.
+    //   W  MCBU Ret Amt
+    //   X  CSF WD               ← NEW
+    //   Y  CSF Ret No.          ← NEW
+    //   Z  CSF Ret Amt          ← NEW
+    //   AA NET
+    //   AB Renewal No.
+    //   AC Renewal Amt
+    //   AD Offset No.
+    //   AE Offset Amt
+    //   AF Clients
+
     const exportToExcel = async () => {
         const exportRows = hasDetailData ? data : hasBranchData ? branchData : null;
         if (!exportRows?.length) { toast.warning('No data to export'); return; }
@@ -345,7 +376,6 @@ const DailyCollectionSheet = () => {
         try {
             const workbook = new ExcelJS.Workbook();
 
-            // ── Fix 1: File name = branchCode - branchName - date ──
             const branchObj  = isAdmin ? selectedBranch : currentBranch;
             const branchCode = branchObj?.code || 'BRANCH';
             const branchName = branchObj?.name || getBranchName();
@@ -354,30 +384,27 @@ const DailyCollectionSheet = () => {
             const dateStr    = moment(selectedDate).format('YYYYMMDD');
             const fileName   = `${safeCode} - ${safeName} - ${dateStr}.xlsx`;
 
-            // ── Fix 2: Sheet name = DCS - <current month abbreviation> ──
             const monthName = moment(selectedDate).format('MMM').toUpperCase();
             const ws = workbook.addWorksheet(`DCS - ${monthName}`);
 
-            // ── Column widths ──
             ws.columns = [
-                { width: 5 },  // No
-                { width: 22 }, // LO
-                { width: 18 }, // Group
-                { width: 11 }, { width: 11 }, // MCBU
-                { width: 11 }, { width: 11 }, { width: 11 }, // Regular Loan
-                { width: 11 }, { width: 11 }, { width: 11 }, // Other Loan
-                { width: 7  }, { width: 11 }, // Admission
-                { width: 11 }, // LRF
-                { width: 7  }, { width: 11 }, // CBHB
-                { width: 11 }, // Add Hospi
-                { width: 11 }, // Other Income
-                { width: 12 }, // Total
-                { width: 11 }, // MCBU WD
-                { width: 7  }, { width: 11 }, // MCBU Return
-                { width: 12 }, // NET
-                { width: 7  }, { width: 11 }, // Renewal
-                { width: 7  }, { width: 11 }, // Offset
-                { width: 7  }, // Clients
+                { width: 5  }, { width: 22 }, { width: 18 }, // A–C
+                { width: 11 }, { width: 11 }, // D–E  MCBU
+                { width: 11 }, // F  CSF Collection
+                { width: 11 }, { width: 11 }, { width: 11 }, // G–I  Regular Loan
+                { width: 11 }, { width: 11 }, { width: 11 }, // J–L  Other Loan
+                { width: 7  }, { width: 11 }, // M–N  Admission
+                { width: 11 }, // O  LRF
+                { width: 7  }, { width: 11 }, // P–Q  CBHB
+                { width: 11 }, // R  Add Hospi
+                { width: 11 }, // S  Other Income
+                { width: 12 }, // T  Total
+                { width: 11 }, { width: 7  }, { width: 11 }, // U–W  MCBU WD/Ret
+                { width: 11 }, { width: 7  }, { width: 11 }, // X–Z  CSF WD/Ret
+                { width: 12 }, // AA NET
+                { width: 7  }, { width: 11 }, // AB–AC  Renewal
+                { width: 7  }, { width: 11 }, // AD–AE  Offset
+                { width: 7  }, // AF  Clients
             ];
 
             const bold     = { bold: true };
@@ -385,142 +412,197 @@ const DailyCollectionSheet = () => {
             const rightXS  = { horizontal: 'right',  vertical: 'middle' };
             const leftXS   = { horizontal: 'left',   vertical: 'middle' };
             const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
+            const csfFill    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD0E4F7' } }; // light blue for CSF
             const totalFill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF9C4' } };
             const currFmt = '#,##0.00';
             const intFmt  = '#,##0';
 
-            // ── Title ──
-            ws.mergeCells('A1:AC1');
+            // ── Title rows ──────────────────────────────────────────────────
+            ws.mergeCells('A1:AF1');
             ws.getCell('A1').value = 'AmberCash PH Micro Lending Corp.';
             ws.getCell('A1').font = { bold: true, size: 14 };
             ws.getCell('A1').alignment = { horizontal: 'center' };
             ws.getRow(1).height = 20;
 
-            ws.mergeCells('A2:AC2');
+            ws.mergeCells('A2:AF2');
             ws.getCell('A2').value = 'DAILY COLLECTION SHEET';
             ws.getCell('A2').font = { bold: true, size: 12 };
             ws.getCell('A2').alignment = { horizontal: 'center' };
 
             ws.getCell('A3').value = 'Name of Branch:';
             ws.getCell('B3').value = getBranchName();
-            ws.getCell('T3').value = 'DATE:';
-            ws.getCell('U3').value = moment(selectedDate).format('MMMM D, YYYY');
-            ws.getCell('X3').value = 'DAY:';
-            ws.getCell('Y3').value = moment(selectedDate).format('dddd');
+            ws.getCell('U3').value = 'DATE:';
+            ws.getCell('V3').value = moment(selectedDate).format('MMMM D, YYYY');
+            ws.getCell('Y3').value = 'DAY:';
+            ws.getCell('Z3').value = moment(selectedDate).format('dddd');
 
-            // ── Header row 4: top-level groups ──
+            // ── Header row 4 ────────────────────────────────────────────────
             const h4 = [
-                ['A4:A6','No.'], ['B4:B6','Name of LO'], ['C4:C6','Name of Group'],
-                ['D4:E4','MCBU Collection'], ['F4:K4',"CLIENT'S LOAN COLLECTION"],
-                ['L4:M4','Admission Fee'], ['N4:N6','LRF'], ['O4:P4','C.B.H.B'],
-                ['Q4:Q6',"Addt'l Hosp."], ['R4:R6','Other Income (Passbook/Picture)'],
-                ['S4:S6','TOTAL COLLECTION'], ['T4:W4','LESS RETURN & WITHDRAWALS'],
-                ['X4:X6','NET COLLECTION'], ['Y4:AC4','Info on Full Payment'],
+                ['A4:A6', 'No.'],
+                ['B4:B6', 'Name of LO'],
+                ['C4:C6', 'Name of Group'],
+                ['D4:E4', 'MCBU Collection'],
+                ['F4:F6', 'CSF Collection'],    // ← NEW single-col header
+                ['G4:L4', "CLIENT'S LOAN COLLECTION"],
+                ['M4:N4', 'Admission Fee'],
+                ['O4:O6', 'LRF'],
+                ['P4:Q4', 'C.B.H.B'],
+                ['R4:R6', "Addt'l Hosp."],
+                ['S4:S6', 'Other Income (Passbook/Picture)'],
+                ['T4:T6', 'TOTAL COLLECTION'],
+                ['U4:Z4', 'LESS RETURN & WITHDRAWALS'],  // ← now spans to Z (was W)
+                ['AA4:AA6', 'NET COLLECTION'],
+                ['AB4:AF4', 'Info on Full Payment'],
             ];
             h4.forEach(([range, val]) => {
                 ws.mergeCells(range);
                 const c = ws.getCell(range.split(':')[0]);
-                c.value = val; c.font = bold; c.alignment = centerXS; c.fill = headerFill;
+                c.value = val;
+                c.font = bold;
+                c.alignment = centerXS;
+                c.fill = range.startsWith('F') ? csfFill : headerFill;
             });
             ws.getRow(4).height = 28;
 
-            // ── Header row 5 ──
+            // ── Header row 5 ────────────────────────────────────────────────
             const h5 = [
-                ['F5:H5','Regular Loan (60 Days)'], ['I5:K5','Other Loan (Weekly)'],
-                ['T5:T6','MCBU Withdrawals'], ['U5:V5','MCBU Return'],
-                ['Y5:Z5','Renewal (Regular)'], ['AA5:AB5','Offset (Regular)'], ['AC5:AC6','No. of Client'],
+                ['G5:I5', 'Regular Loan (60 Days)'],
+                ['J5:L5', 'Other Loan (Weekly)'],
+                ['U5:U6', 'MCBU Withdrawals'],
+                ['V5:W5', 'MCBU Return'],
+                ['X5:X6', 'CSF Withdrawals'],   // ← NEW
+                ['Y5:Z5', 'CSF Return'],         // ← NEW
+                ['AB5:AC5', 'Renewal (Regular)'],
+                ['AD5:AE5', 'Offset (Regular)'],
+                ['AF5:AF6', 'No. of Client'],
             ];
             h5.forEach(([range, val]) => {
                 ws.mergeCells(range);
                 const c = ws.getCell(range.split(':')[0]);
-                c.value = val; c.font = bold; c.alignment = centerXS; c.fill = headerFill;
-            });
-
-            // ── Header row 6 ──
-            const r6Labels = ['Target','Actual','Target','Adv. Pay','Actual','Target','Adv. Pay','Actual','No.','Amt.','No.','₱200','No.','Amt.','No.','Amt.','No.','Amt.'];
-            const r6Cols   = ['D','E','F','G','H','I','J','K','L','M','O','P','U','V','Y','Z','AA','AB'];
-            r6Labels.forEach((lbl, i) => {
-                const c = ws.getCell(`${r6Cols[i]}6`);
-                c.value = lbl; c.font = bold; c.alignment = centerXS; c.fill = headerFill;
+                c.value = val;
+                c.font = bold;
+                c.alignment = centerXS;
+                c.fill = (range.startsWith('X') || range.startsWith('Y')) ? csfFill : headerFill;
             });
             ws.getRow(5).height = 18;
+
+            // ── Header row 6 ────────────────────────────────────────────────
+            const r6 = [
+                ['D6','Target'], ['E6','Actual'],
+                // F6 merged (rowspan 3 already done)
+                ['G6','Target'], ['H6','Adv. Pay'], ['I6','Actual'],
+                ['J6','Target'], ['K6','Adv. Pay'], ['L6','Actual'],
+                ['M6','No.'],    ['N6','Amt.'],
+                ['P6','No.'],    ['Q6','₱200'],
+                ['V6','No.'],    ['W6','Amt.'],
+                ['Y6','No.'],    ['Z6','Amt.'],  // ← NEW
+                ['AB6','No.'],   ['AC6','Amt.'],
+                ['AD6','No.'],   ['AE6','Amt.'],
+            ];
+            r6.forEach(([cell, val]) => {
+                const c = ws.getCell(cell);
+                c.value = val;
+                c.font = bold;
+                c.alignment = centerXS;
+                c.fill = (cell.startsWith('Y') || cell.startsWith('Z')) ? csfFill : headerFill;
+            });
             ws.getRow(6).height = 18;
 
-            // ── Data rows ──
+            // ── Data rows ───────────────────────────────────────────────────
             let rowNum = 7;
-            const source = hasDetailData ? data : branchData;
-
-            source.forEach((item, idx) => {
+            exportRows.forEach((item, idx) => {
                 const r = ws.getRow(rowNum++);
                 r.height = 16;
-                const v = [
-                    idx + 1,
-                    item.loName || item.branchName || '',
-                    item.groupName || item.branchCode || '',
-                    item.mcbuTarget,         item.mcbuActual,
-                    item.regularLoanTarget,  item.regularLoanAdvance,  item.regularLoanActual,
-                    item.otherLoanTarget,    item.otherLoanAdvance,    item.otherLoanActual,
-                    item.admissionNo,        item.admissionAmount,
-                    item.lrfCollection,
-                    item.cbhbNo,             item.cbhbAmount,
-                    item.addHospitalization,
-                    item.otherIncome,
-                    item.totalCollection,
-                    item.mcbuWithdrawal,
-                    item.mcbuReturnNo,       item.mcbuReturnAmount,
-                    item.netCollection,
-                    item.renewalNo,          item.renewalAmount,
-                    item.offsetNo,           item.offsetAmount,
-                    item.fullPaymentClients,
+                const cols = [
+                    ['A', idx + 1,                    'center'],
+                    ['B', item.loName || item.branchName || '', 'left'],
+                    ['C', item.groupName || item.branchCode || '', 'left'],
+                    ['D', item.mcbuTarget,             'right', currFmt],
+                    ['E', item.mcbuActual,             'right', currFmt],
+                    ['F', item.csfCollection,          'right', currFmt],
+                    ['G', item.regularLoanTarget,      'right', currFmt],
+                    ['H', item.regularLoanAdvance,     'right', currFmt],
+                    ['I', item.regularLoanActual,      'right', currFmt],
+                    ['J', item.otherLoanTarget,        'right', currFmt],
+                    ['K', item.otherLoanAdvance,       'right', currFmt],
+                    ['L', item.otherLoanActual,        'right', currFmt],
+                    ['M', item.admissionNo,            'center'],
+                    ['N', item.admissionAmount,        'right', currFmt],
+                    ['O', item.lrfCollection,          'right', currFmt],
+                    ['P', item.cbhbNo,                 'center'],
+                    ['Q', item.cbhbAmount,             'right', currFmt],
+                    ['R', item.addHospitalization,     'right', currFmt],
+                    ['S', item.otherIncome,            'right', currFmt],
+                    ['T', item.totalCollection,        'right', currFmt],
+                    ['U', item.mcbuWithdrawal,         'right', currFmt],
+                    ['V', item.mcbuReturnNo,           'center'],
+                    ['W', item.mcbuReturnAmount,       'right', currFmt],
+                    ['X', item.csfWithdrawal,          'right', currFmt],
+                    ['Y', item.csfReturnNo,            'center'],
+                    ['Z', item.csfReturnAmount,        'right', currFmt],
+                    ['AA', item.netCollection,         'right', currFmt],
+                    ['AB', item.renewalNo,             'center'],
+                    ['AC', item.renewalAmount,         'right', currFmt],
+                    ['AD', item.offsetNo,              'center'],
+                    ['AE', item.offsetAmount,          'right', currFmt],
+                    ['AF', item.fullPaymentClients,    'center'],
                 ];
-                const cols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZAAABAC'.split('').concat(['AA','AB','AC']);
-                v.forEach((val, ci) => {
-                    const col = ci < 26 ? String.fromCharCode(65 + ci) : ['AA','AB','AC'][ci - 26];
+                cols.forEach(([col, val, align, fmt]) => {
                     const cell = r.getCell(col);
                     cell.value = val;
-                    cell.alignment = typeof val === 'number' && [0,12,14,20,22].includes(ci) ? centerXS : typeof val === 'number' ? rightXS : leftXS;
-                    if (typeof val === 'number' && ![0,12,14,20,22].includes(ci) && ci > 2) {
-                        cell.numFmt = [3,5,6,8,12,14,20,22,24,26,28].includes(ci) ? intFmt : currFmt;
-                    }
+                    cell.alignment = { horizontal: align, vertical: 'middle' };
+                    if (fmt) cell.numFmt = fmt;
                 });
             });
 
-            // ── Totals row ──
+            // ── Totals row ──────────────────────────────────────────────────
             if (totals) {
                 const tr = ws.getRow(rowNum);
                 tr.height = 18;
-                tr.getCell('A').value = ''; tr.fill = totalFill;
-                tr.getCell('B').value = 'TOTAL'; tr.getCell('B').font = bold;
-                tr.getCell('C').value = '';
-                const tVals = [
-                    totals.mcbuTarget, totals.mcbuActual,
-                    totals.regularLoanTarget, totals.regularLoanAdvance, totals.regularLoanActual,
-                    totals.otherLoanTarget,   totals.otherLoanAdvance,   totals.otherLoanActual,
-                    totals.admissionNo,       totals.admissionAmount,
-                    totals.lrfCollection,
-                    totals.cbhbNo,            totals.cbhbAmount,
-                    totals.addHospitalization,
-                    totals.otherIncome,
-                    totals.totalCollection,
-                    totals.mcbuWithdrawal,
-                    totals.mcbuReturnNo,      totals.mcbuReturnAmount,
-                    totals.netCollection,
-                    totals.renewalNo,         totals.renewalAmount,
-                    totals.offsetNo,          totals.offsetAmount,
-                    totals.fullPaymentClients,
+                tr.getCell('B').value = 'TOTAL';
+                tr.getCell('B').font = bold;
+                const tCols = [
+                    ['D', totals.mcbuTarget,          currFmt],
+                    ['E', totals.mcbuActual,          currFmt],
+                    ['F', totals.csfCollection,       currFmt],
+                    ['G', totals.regularLoanTarget,   currFmt],
+                    ['H', totals.regularLoanAdvance,  currFmt],
+                    ['I', totals.regularLoanActual,   currFmt],
+                    ['J', totals.otherLoanTarget,     currFmt],
+                    ['K', totals.otherLoanAdvance,    currFmt],
+                    ['L', totals.otherLoanActual,     currFmt],
+                    ['M', totals.admissionNo,         intFmt],
+                    ['N', totals.admissionAmount,     currFmt],
+                    ['O', totals.lrfCollection,       currFmt],
+                    ['P', totals.cbhbNo,              intFmt],
+                    ['Q', totals.cbhbAmount,          currFmt],
+                    ['R', totals.addHospitalization,  currFmt],
+                    ['S', totals.otherIncome,         currFmt],
+                    ['T', totals.totalCollection,     currFmt],
+                    ['U', totals.mcbuWithdrawal,      currFmt],
+                    ['V', totals.mcbuReturnNo,        intFmt],
+                    ['W', totals.mcbuReturnAmount,    currFmt],
+                    ['X', totals.csfWithdrawal,       currFmt],
+                    ['Y', totals.csfReturnNo,         intFmt],
+                    ['Z', totals.csfReturnAmount,     currFmt],
+                    ['AA', totals.netCollection,      currFmt],
+                    ['AB', totals.renewalNo,          intFmt],
+                    ['AC', totals.renewalAmount,      currFmt],
+                    ['AD', totals.offsetNo,           intFmt],
+                    ['AE', totals.offsetAmount,       currFmt],
+                    ['AF', totals.fullPaymentClients, intFmt],
                 ];
-                const tCols = ['D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','X','Y','Z','AA','AB','AC'];
-                tVals.forEach((val, ci) => {
-                    const c = tr.getCell(tCols[ci]);
-                    c.value = val; c.font = bold;
+                tCols.forEach(([col, val, fmt]) => {
+                    const c = tr.getCell(col);
+                    c.value = val;
+                    c.font = bold;
                     c.fill = totalFill;
-                    c.alignment = typeof val === 'number' ? rightXS : centerXS;
-                    if (typeof val === 'number') c.numFmt = [8,11,17,18,20,22,24].includes(ci) ? intFmt : currFmt;
+                    c.numFmt = fmt;
+                    c.alignment = fmt === intFmt ? centerXS : rightXS;
                 });
             }
 
-
-            // ── Fix 3a: SUMMARY sheet ────────────────────────────────────────────
+            // ── Summary sheet ────────────────────────────────────────────────
             if (summaryData) {
                 const sm = summaryData;
                 const wsSummary = workbook.addWorksheet('Summary');
@@ -534,14 +616,12 @@ const DailyCollectionSheet = () => {
 
                 wsSummary.columns = [{ width: 8 }, { width: 38 }, { width: 18 }];
 
-                // Title
                 wsSummary.mergeCells('A1:C1');
                 const st = wsSummary.getCell('A1');
                 st.value = `CASHBOOK SUMMARY — ${branchName} — ${moment(selectedDate).format('MMMM D, YYYY')}`;
                 st.font = { bold: true, size: 12 }; st.alignment = { horizontal: 'center' };
                 wsSummary.getRow(1).height = 20;
 
-                // Helper: write a section header
                 const sectionHdr = (label, rowNum) => {
                     wsSummary.mergeCells(`A${rowNum}:C${rowNum}`);
                     const c = wsSummary.getCell(`A${rowNum}`);
@@ -549,7 +629,6 @@ const DailyCollectionSheet = () => {
                     c.fill = hdrFill;
                     wsSummary.getRow(rowNum).height = 16;
                 };
-                // Helper: write a data row
                 const dataRow = (no, label, value, rowNum, isTotal = false) => {
                     const r = wsSummary.getRow(rowNum);
                     r.height = 15;
@@ -571,7 +650,6 @@ const DailyCollectionSheet = () => {
 
                 let sr = 2;
 
-                // Beginning Balance
                 const bbRow = wsSummary.getRow(sr);
                 bbRow.height = 16;
                 wsSummary.mergeCells(`A${sr}:B${sr}`);
@@ -582,7 +660,6 @@ const DailyCollectionSheet = () => {
                 ['A','B','C'].forEach(col => bbRow.getCell(col).fill = { type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'} });
                 sr++;
 
-                // Receipts
                 sectionHdr('RECEIPTS', sr++);
                 const receipts = [
                     ['1a','MCBU Collection',              sm.rcpt_mcbu],
@@ -608,7 +685,6 @@ const DailyCollectionSheet = () => {
                 receipts.forEach(([no, label, val]) => dataRow(no, label, val, sr++));
                 dataRow('', 'TOTAL RECEIPTS', sm.total_receipts, sr++, true);
 
-                // Payments
                 sectionHdr('PAYMENTS', sr++);
                 const loReleaseNo = sm.pay_loan_release_no || 0;
                 const payments = [
@@ -629,7 +705,6 @@ const DailyCollectionSheet = () => {
                 payments.forEach(([no, label, val]) => dataRow(no, label, val, sr++));
                 dataRow('', 'TOTAL PAYMENTS', sm.total_payments, sr++, true);
 
-                // Closing Balance
                 sr++;
                 const cbRow = wsSummary.getRow(sr);
                 cbRow.height = 18;
@@ -645,7 +720,6 @@ const DailyCollectionSheet = () => {
                 ['A','B','C'].forEach(col => cbRow.getCell(col).fill = cbFill);
                 sr += 2;
 
-                // Loan Release per LO
                 const loReleases = sm.loan_release_per_lo || [];
                 if (loReleases.length > 0) {
                     sectionHdr('LOAN RELEASE PER LOAN OFFICER', sr++);
@@ -676,7 +750,7 @@ const DailyCollectionSheet = () => {
                 }
             }
 
-            // ── Fix 3b: DENOMINATION / MORNING-AFTERNOON sheet ───────────────────
+            // ── Morning & Afternoon sheet ────────────────────────────────────
             const denomRows = summaryData?.denomination_summary || [];
             if (denomRows.length > 0) {
                 const wsDenom = workbook.addWorksheet('Morning & Afternoon');
@@ -689,14 +763,12 @@ const DailyCollectionSheet = () => {
                 const hdrFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
                 const totFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF9C4' } };
 
-                // Title
                 wsDenom.mergeCells('A1:G1');
                 const dt = wsDenom.getCell('A1');
                 dt.value = `MORNING / AFTERNOON DENOMINATION — ${branchName} — ${moment(selectedDate).format('MMMM D, YYYY')}`;
                 dt.font = { bold: true, size: 12 }; dt.alignment = { horizontal: 'center' };
                 wsDenom.getRow(1).height = 20;
 
-                // Header
                 const dh = wsDenom.getRow(2);
                 dh.height = 16;
                 ['LO No.', 'Loan Officer', 'Total Net Collection', 'Morning Remittance', 'Afternoon Remittance', 'BCC vs Remittances', 'Status']
@@ -724,17 +796,15 @@ const DailyCollectionSheet = () => {
                     tBcc  += lo.bccVsRemittances    || 0;
                 });
 
-                // Totals row
                 const tr = wsDenom.getRow(dr);
                 tr.height = 16;
-                tr.getCell(2).value = 'TOTAL';                    tr.getCell(2).font = boldF; tr.getCell(2).fill = totFill;
+                tr.getCell(2).value = 'TOTAL'; tr.getCell(2).font = boldF; tr.getCell(2).fill = totFill;
                 [[3, tNet],[4, tMorn],[5, tAftn],[6, tBcc]].forEach(([col, val]) => {
                     const c = tr.getCell(col);
                     c.value = val; c.numFmt = currF; c.font = boldF;
                     c.fill = totFill; c.alignment = rightA;
                 });
 
-                // Beginning / Closing balance summary
                 if (summaryData) {
                     dr += 2;
                     const sm = summaryData;
@@ -744,12 +814,12 @@ const DailyCollectionSheet = () => {
                     dr++;
                     const morn_closing = (sm.beginning_balance||0) + tMorn - (sm.pay_loan_release_amount||0);
                     [
-                        ['Beginning Balance',     sm.beginning_balance    || 0],
-                        ['Morning Remittance',     tMorn],
-                        ['Loan Releases',         -(sm.pay_loan_release_amount || 0)],
+                        ['Beginning Balance',      sm.beginning_balance    || 0],
+                        ['Morning Remittance',      tMorn],
+                        ['Loan Releases',          -(sm.pay_loan_release_amount || 0)],
                         ['Morning Closing Balance', morn_closing],
-                        ['Afternoon Remittance',   tAftn],
-                        ['Closing Balance (Day)',  sm.closing_balance     || 0],
+                        ['Afternoon Remittance',    tAftn],
+                        ['Closing Balance (Day)',   sm.closing_balance     || 0],
                     ].forEach(([label, val], i) => {
                         const r = wsDenom.getRow(dr++);
                         r.height = 15;
@@ -798,9 +868,7 @@ const DailyCollectionSheet = () => {
         </button>
     );
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Render ───────────────────────────────────────────────────────────────
     return (
         <Layout header={false} noPad={true}>
             {loading ? <Spinner /> : (
@@ -897,7 +965,6 @@ const DailyCollectionSheet = () => {
                             )}
                         </div>
 
-                        {/* ── Tabs — hidden for admin all-branches view ── */}
                         {!isAdminAllBranches && (
                             <div className="flex space-x-1 mt-3 border-b border-gray-200">
                                 <TabBtn id="dcs"     label="DCS Table"           icon={FileSpreadsheet} />
@@ -909,9 +976,7 @@ const DailyCollectionSheet = () => {
                     {/* ── Content ── */}
                     <div className="flex-1 overflow-auto min-h-0">
                         {activeTab === 'dcs' || isAdminAllBranches ? (
-                            // DCS tab: table on left, summary panel on right
                             <div className="flex h-full">
-                                {/* Left: scrollable DCS table */}
                                 <div className="flex-1 overflow-auto p-6 min-w-0">
                                     <DCSTable
                                         data={data}
@@ -922,7 +987,6 @@ const DailyCollectionSheet = () => {
                                     />
                                 </div>
 
-                                {/* Right: Summary panel — hidden for admin all-branches */}
                                 {!isAdminAllBranches && (
                                     <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
                                         <div className="p-4">
@@ -941,9 +1005,7 @@ const DailyCollectionSheet = () => {
                                     </div>
                                 )}
                             </div>
-
                         ) : (
-                            // Morning/Afternoon tab
                             <div className="p-6">
                                 <div className="mb-3 flex items-center space-x-2">
                                     <Sun className="w-5 h-5 text-amber-500" />
