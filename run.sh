@@ -55,7 +55,7 @@ if [ ! -d ".git" ]; then
   error "Not a git repository. Initialize git or clone the project first."
 fi
 
-git stash --quiet && warn "Local changes stashed." || true
+#git stash --quiet && warn "Local changes stashed." || true
 
 git fetch origin
 git checkout "$BRANCH"
@@ -98,9 +98,9 @@ log "Container status:"
 docker compose ps
 
 # ── Tail logs briefly ────────────────────────────────────────
-echo ""
-log "Recent logs:"
-docker compose logs --tail=20
+# echo ""
+# log "Recent logs:"
+# docker compose logs --tail=20
 
 # ── Done ─────────────────────────────────────────────────────
 echo ""
