@@ -123,7 +123,7 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
             <div 
               key={idx}
               className={`flex items-center px-4 py-3 text-sm cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap
-                ${activePath === subItem.url ? 'bg-teal-50 text-teal-600 border-l-2 border-teal-600' : 'text-gray-800'}
+                ${normUrl(activePath) === normUrl(subItem.url)? 'bg-teal-50 text-teal-600 border-l-2 border-teal-600' : 'text-gray-800'}
               `}
               style={{ pointerEvents: 'auto' }}
               onMouseEnter={() => console.log('Mouse enter:', subItem.label)}
@@ -142,7 +142,7 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
                 }
               }}
             >
-              <subItem.icon.notActive className={`w-4 h-4 mr-3 flex-shrink-0 ${activePath === subItem.url ? 'text-teal-600' : 'text-gray-500'}`} />
+              <subItem.icon.notActive className={`w-4 h-4 mr-3 flex-shrink-0 ${normUrl(activePath) === normUrl(subItem.url)? 'text-teal-600' : 'text-gray-500'}`} />
               <span className="font-medium" style={{ pointerEvents: 'none' }}>{subItem.label}</span>
             </div>
           ))}
@@ -152,6 +152,14 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
   );
 
   return createPortal(dropdownContent, document.body);
+};
+
+const normUrl = (u) => {
+  if (u == null) return '__null__';
+  const s = String(u);
+  // Hash-only URLs are parent menu anchors — keep them unique so they never match a real path
+  if (s.startsWith('#')) return s;
+  return s.split('?')[0].replace(/\/$/, '') || '/';
 };
 
 // Menu configuration
@@ -974,8 +982,8 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
     }
   };
 
-  const IconComponent = activePath === item.url ? item.icon?.active : item.icon?.notActive;
-  const isActive = activePath === item.url;
+  const isActive = normUrl(activePath) === normUrl(item.url);
+  const IconComponent = isActive ? item.icon?.active : item.icon?.notActive;
   const displayLabel = item.displayLabel || item.label;
 
   // Collapsed view
@@ -1064,7 +1072,7 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
                 <Link href={subItem.url}>
                   <div 
                     className={`flex items-center p-2 cursor-pointer transition-all duration-200 relative z-[55]
-                      ${activePath === subItem.url 
+                      ${normUrl(activePath) === normUrl(subItem.url)
                         ? 'bg-teal-500 text-white' 
                         : 'text-gray-300 hover:text-white hover:bg-gray-700'
                       }
@@ -1105,21 +1113,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
   const systemSettings = useSelector(state => state.systemSettings?.data);
 
   const getActivePath = useCallback(() => {
-    const path = router.asPath.replace("#", "");
-    const paths = path.split("/").filter((p) => p);
-
-    let currentPath = '';
-    if (!path && paths.length > 0) {
-      if (paths.length === 1) {
-        currentPath = "/".concat(paths[0]);
-      } else if (paths.length === 2) {
-        currentPath = "/".concat(paths[0]).concat("/").concat(paths[1]);
-      }
-    } else {
-      currentPath = path;
-    }
-
-    return currentPath;
+    return normUrl(router.asPath);
   }, [router.asPath]);
 
   // Filter menu items based on user role
@@ -1239,13 +1233,13 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     localDispatch({ type: 'SET_ACTIVE_PATH', payload: currentPath });
 
     // Find the current page and update Redux
-    let page = MenuItems.find((i) => i.url === currentPath);
+    let page = MenuItems.find((i) => normUrl(i.url) === currentPath);
     let parentMenu = null;
-    
+
     if (!page) {
       MenuItems.forEach(menu => {
         if (menu.subMenuItems) {
-          const currentPage = menu.subMenuItems.find(m => m.url === currentPath);
+          const currentPage = menu.subMenuItems.find(m => normUrl(m.url) === currentPath);
           if (currentPage) {
             page = currentPage;
             parentMenu = menu;

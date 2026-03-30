@@ -7,10 +7,14 @@ import {
   UserIcon,
   ChevronDownIcon,
   PencilSquareIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  LockClosedIcon,
+  LockOpenIcon
 } from '@heroicons/react/24/solid';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useSignedUrl } from 'hooks/useSignedUrl';
+import { getApiBaseUrl } from '@/lib/constants';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
 
 const Avatar = ({ name, src, className }) => {
   // Only pass src to Image if it's a valid absolute URL
@@ -40,6 +44,51 @@ const Avatar = ({ name, src, className }) => {
   return (
     <div className={`h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium ${className}`}>
       {initials}
+    </div>
+  );
+};
+
+const BranchLockBadge = ({ user }) => {
+  const [locked, setLocked] = React.useState(null);
+  const router = useRouter();
+
+  React.useEffect(() => {
+    let mounted = true;
+    const branchId = user?.designatedBranchId;
+    if (!branchId) return;
+
+    const fetchLockStatus = async () => {
+      try {
+        const res = await fetchWrapper.get(
+          `${getApiBaseUrl()}branches?` + new URLSearchParams({ _id: branchId })
+        );
+        if (mounted && res?.branch) {
+          setLocked(!!res.branch.lockTransaction);
+        }
+      } catch (_) {}
+    };
+
+    fetchLockStatus();
+    const interval = setInterval(fetchLockStatus, 30000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [user?.designatedBranchId, router.asPath]);
+
+  if (locked === null) return null;
+
+  return (
+    <div
+      title={locked ? 'Branch transactions are LOCKED' : 'Branch transactions are OPEN'}
+      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
+        locked
+          ? 'bg-red-50 border-red-300 text-red-700'
+          : 'bg-green-50 border-green-300 text-green-700'
+      }`}
+    >
+      {locked
+        ? <LockClosedIcon className="h-3.5 w-3.5" />
+        : <LockOpenIcon className="h-3.5 w-3.5" />
+      }
+      <span className="hidden sm:inline">{locked ? 'Locked' : 'Open'}</span>
     </div>
   );
 };
@@ -93,6 +142,11 @@ const HeaderComponent = () => {
       </div>
       
       <div className="flex items-center gap-4">
+        {/* Branch Lock Status - for Branch Manager, Cashier, Loan Officer */}
+        {(userState?.role?.rep === 3 || userState?.role?.rep === 4) && (
+          <BranchLockBadge user={userState} />
+        )}
+
         {/* Notification Bell - NEW */}
         <NotificationBell />
 
