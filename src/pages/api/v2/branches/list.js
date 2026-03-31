@@ -1,3 +1,4 @@
+import { getCurrentDateV2 } from '@/lib/date-utils';
 import { BRANCH_COH_FIELDS, BRANCH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
@@ -38,7 +39,7 @@ async function list(req, res) {
     const where = codes.length ? { code: { _in: codes } } : { code: { _is_null: false } };
 
     const branches = await graph.query(
-        queryQl(BRANCH_TYPE(date), { 
+        queryQl(BRANCH_TYPE(date ?? getCurrentDateV2()), { 
             where,
             order_by: [{ code: 'asc' }]
         }, )
