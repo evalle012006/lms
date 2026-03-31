@@ -4056,19 +4056,27 @@ const CashCollectionDetailsPage = () => {
                                                 {(currentUser.role.rep == 3 || data.some(r => (r.bmRevertCount || 0) >= 1)) && (
                                                     <th className="p-2 text-center">
                                                         {cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-') && (
-                                                            currentUser.role.rep == 3 && (cc.bmRevertCount || 0) >= 1 ? (
-                                                                <div className="flex items-center justify-center">
-                                                                    <span
-                                                                        title="BM revert already used. Only a higher-level manager can revert this."
-                                                                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 border border-amber-400 cursor-not-allowed"
-                                                                    >
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
-                                                                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                    </span>
-                                                                </div>
+                                                            currentUser.role.rep == 3 ? (
+                                                                // BM: checkbox if not yet reverted, lock icon if used up
+                                                                (cc.bmRevertCount || 0) >= 1 ? (
+                                                                    <div className="flex items-center justify-center">
+                                                                        <span
+                                                                            title="BM revert already used. Only a higher-level manager can revert this."
+                                                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 border border-amber-400 cursor-not-allowed"
+                                                                        >
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                                                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                                                            </svg>
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />
+                                                                )
                                                             ) : (
-                                                                <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />
+                                                                // rep < 3: checkbox ONLY on rows the BM already reverted
+                                                                (cc.bmRevertCount || 0) >= 1 ? (
+                                                                    <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />
+                                                                ) : null
                                                             )
                                                         )}
                                                     </th>

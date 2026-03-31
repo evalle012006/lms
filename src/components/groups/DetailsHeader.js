@@ -292,7 +292,15 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </>
                         )}
 
-                        {(!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && !branchLock && (currentUser.role.rep == 2 || currentUser.role.rep == 3) && !allowMcbuInterest && !allowMcbuWithdrawal) && (
+                        {/* rep=3 (BM): standard revert — only when group is open and not in save mode */}
+                        {(!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && !branchLock && currentUser.role.rep === 3 && !allowMcbuInterest && !allowMcbuWithdrawal) && (
+                            <div className="w-40">
+                                <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
+                            </div>
+                        )}
+
+                        {/* rep<3 (higher roles): revert only when BM has already used their revert on at least one row */}
+                        {(currentUser.role.rep < 3 && data.some(cc => (cc.bmRevertCount || 0) >= 1)) && (
                             <div className="w-40">
                                 <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
                             </div>
