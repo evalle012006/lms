@@ -55,8 +55,6 @@ if [ ! -d ".git" ]; then
   error "Not a git repository. Initialize git or clone the project first."
 fi
 
-#git stash --quiet && warn "Local changes stashed." || true
-
 git fetch origin
 git checkout "$BRANCH"
 git pull origin "$BRANCH"
@@ -89,18 +87,13 @@ success "Containers stopped."
 
 # ── Build and start containers ────────────────────────────────
 log "Starting containers..."
-docker compose up -d
+docker compose up -d --scale lms=10
 success "Containers started."
 
 # ── Show container status ─────────────────────────────────────
 echo ""
 log "Container status:"
 docker compose ps
-
-# ── Tail logs briefly ────────────────────────────────────────
-# echo ""
-# log "Recent logs:"
-# docker compose logs --tail=20
 
 # ── Done ─────────────────────────────────────────────────────
 echo ""
