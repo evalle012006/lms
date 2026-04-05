@@ -60,12 +60,47 @@ import CompanyActivitiesSlider, { ACTIVITY_SLIDES } from './CompanyActivitiesSli
 
 ChartJS.register(...registerables, ChartDataLabels);
 
+/**
+ * Walk backwards day-by-day from `date` until we land on a working day.
+ * A working day is neither a Saturday/Sunday nor a holiday in `holidayList`.
+ *
+ * Holidays are stored in Redux as `{ date: "MM-DD", ... }` (no year).
+ * We match against the MM-DD portion of the candidate date.
+ *
+ * @param {string} date        – YYYY-MM-DD
+ * @param {Array}  holidays    – Redux state.holidays.list
+ * @returns {string}           – YYYY-MM-DD of the last working day
+ */
+const getEffectiveDate = (date, holidays = []) => {
+    // Build a Set of "MM-DD" strings for O(1) lookup
+    const holidaySet = new Set(holidays.map(h => h.date));
+ 
+    let candidate = moment(date);
+    // Walk back at most 14 days (safety valve — handles long holiday stretches)
+    for (let i = 0; i < 14; i++) {
+        const dayOfWeek = candidate.day(); // 0 = Sun, 6 = Sat
+        const monthDay  = candidate.format('MM-DD');
+ 
+        const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+        const isHolidayDay = holidaySet.has(monthDay);
+ 
+        if (!isWeekendDay && !isHolidayDay) {
+            return candidate.format('YYYY-MM-DD'); // found a working day
+        }
+        candidate = candidate.subtract(1, 'day');
+    }
+ 
+    // Fallback: return the original date if no working day found in range
+    return date;
+};
+
 const DashboardPage = () => {
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const holidayList = useSelector(state => state.holidays.list);
     const branch = useSelector(state => state.branch.data);
 
     const [timeFilter, setTimeFilter] = useState('daily');
@@ -85,6 +120,7 @@ const DashboardPage = () => {
     const [selectedFilter, setSelectedFilter] = useState();
     const [selectedYear, setSelectedYear] = useState(moment(currentDate).year());
     const [yearList] = useState(getYears);
+    const fetchTimeoutRef = useRef(null);
 
     // Search/filter visibility
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -98,7 +134,7 @@ const DashboardPage = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
-    const [dateFilter, setDateFilter] = useState(currentDate);
+    const [dateFilter, setDateFilter] = useState(null);
 
     const [activitySlides, setActivitySlides]     = useState([]);
     const [uploadingActivity, setUploadingActivity] = useState(false);
@@ -204,105 +240,9 @@ const DashboardPage = () => {
         }]
     });
 
-    // ── calculateTrend ────────────────────────────────
-    const calculateTrend = (current, previous) => {
-        const currentValue = current || 0;
-        const previousValue = previous || 0;
-        if (previousValue === 0) {
-            if (currentValue === 0) return { change: 0, trend: 'neutral', percentage: 0 };
-            return { change: currentValue, trend: currentValue > 0 ? 'up' : 'down', percentage: 100 };
-        }
-        const change = currentValue - previousValue;
-        const percentage = ((change / Math.abs(previousValue)) * 100);
-        const trend = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
-        return { change, trend, percentage: Math.abs(percentage) };
-    };
-
-    // ── CardItem ──────────────────────────────────────
-    const CardItem = ({ title, value, prevValue, Icon, bgColor = 'bg-blue-50' }) => {
-        const IconComponent = Icon || HelpCircle;
-        const trend = calculateTrend(value, prevValue);
-        const getTrendIcon = () => {
-            switch (trend.trend) {
-                case 'up':   return <TrendingUp className="h-4 w-4" />;
-                case 'down': return <TrendingDown className="h-4 w-4" />;
-                default:     return <Minus className="h-4 w-4" />;
-            }
-        };
-        const getTrendColor = () => {
-            switch (trend.trend) {
-                case 'up':   return 'text-green-600';
-                case 'down': return 'text-red-600';
-                default:     return 'text-gray-500';
-            }
-        };
-        return (
-            <div className={`${bgColor} p-3 rounded-lg shadow-sm relative overflow-hidden mb-2 border border-gray-100`}>
-                <IconComponent className="absolute right-1 bottom-1 h-10 w-10 text-gray-200 opacity-30" />
-                <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-xs font-semibold text-gray-700 truncate">{title}</h3>
-                        {prevValue !== undefined && (
-                            <div className={`flex items-center space-x-1 ${getTrendColor()} shrink-0`}>
-                                {getTrendIcon()}
-                                <span className="text-xs font-medium">{trend.percentage.toFixed(1)}%</span>
-                            </div>
-                        )}
-                    </div>
-                    <p className="text-base font-bold text-gray-800 truncate">{formatNumber(value || 0)}</p>
-                    {prevValue !== undefined && trend.trend !== 'neutral' && (
-                        <div className={`text-xs mt-1 ${getTrendColor()}`}>
-                            {trend.trend === 'up' ? '+' : ''}{formatNumber(trend.change)}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // ── CustomSelect ──────────────────────────────────
-    const CustomSelect = ({ value, onChange, options, placeholder, className = "", icon: Icon }) => {
-        const [isOpen, setIsOpen] = useState(false);
-        const selectedOption = options.find(opt => opt.value === value);
-        return (
-            <div className={`relative ${className}`}>
-                <button
-                    type="button"
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-left shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                            {Icon && <Icon className="w-4 h-4 text-gray-500" />}
-                            <span className="text-sm font-medium text-gray-700">
-                                {selectedOption ? selectedOption.label : placeholder}
-                            </span>
-                        </div>
-                        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                    </div>
-                </button>
-                {isOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {options.map((option, index) => (
-                            <button
-                                key={index}
-                                type="button"
-                                onClick={() => { onChange(option.value); setIsOpen(false); }}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:bg-blue-50"
-                            >
-                                {option.label}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // ── useEffects (all original) ─────────────────────
     useEffect(() => {
         fetchSummaries();
-    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter]);
+    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter, currentDate]);
 
     useEffect(() => {
         switch(timeFilter) {
@@ -348,10 +288,17 @@ const DashboardPage = () => {
 
     const toggleNav = () => setIsNavVisible(!isNavVisible);
 
+    const lastStatusDateRef = useRef(null);
+
     // Fetch status panel data for role 1/2
     const fetchDashboardStatus = useCallback(() => {
         if (!currentDate || !currentUser) return;
         const date = moment(dateFilter ?? currentDate).format('YYYY-MM-DD');
+
+        // Skip if we already fetched for this exact date
+        if (lastStatusDateRef.current === date) return;
+        lastStatusDateRef.current = date;
+
         fetchWrapper.get(getApiBaseUrl() + '/dashboard/status?date=' + date)
             .then(resp => { if (resp.success) setStatusData(resp.data); })
             .catch(err => console.error('fetchDashboardStatus', err));
@@ -396,7 +343,15 @@ const DashboardPage = () => {
         });
     }, [summaryData]);
 
-    useEffect(() => { setDateFilter(currentDate); }, [currentDate]);
+    // Wait for BOTH currentDate and holidayList to be confirmed loaded before
+    // computing the effective date. holidayList === null means "still loading"
+    // (Redux initial state). We never set dateFilter until we have the complete
+    // picture, so fetchSummaries never fires with a wrong date.
+    useEffect(() => {
+        if (!currentDate || !Array.isArray(holidayList)) return;
+        const effective = getEffectiveDate(currentDate, holidayList);
+        setDateFilter(prev => (prev === null ? effective : prev));
+    }, [currentDate, holidayList]);
 
     const formatNumber = (num) => {
         if (num === undefined || num === null) return 'N/A';
@@ -404,17 +359,12 @@ const DashboardPage = () => {
         return num;
     };
 
-    let fetchTimeout;
+    const fetchSummaries = () => {
+        if (!currentDate || !dateFilter) return;
 
-    useEffect(() => {
-        if (!loading) clearTimeout(fetchTimeout);
-    }, [loading]);
+        clearTimeout(fetchTimeoutRef.current); 
 
-    // ── fetchSummaries (original — unchanged) ─────────
-    const fetchSummaries = async () => {
-        if (loading || !currentDate) return;
-
-        fetchTimeout = setTimeout(() => {
+        fetchTimeoutRef.current = setTimeout(() => {
             setLoading(true);
             let selectedDate = null;
             switch(timeFilter) {
@@ -422,30 +372,30 @@ const DashboardPage = () => {
                 case 'monthly':   selectedDate = { value: moment(selectedYear + '-' + (selectedFilter?.value ?? '01') + '-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'quarterly': selectedDate = { value: moment(selectedYear + '-01-01').quarter(selectedFilter?.value ?? 1).format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'yearly':    selectedDate = { value: moment(selectedYear + '-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
-                default:          selectedDate = { value: moment(dateFilter ?? currentDate).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                default:          selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
             }
 
             const queries = [
                 selectedDate,
                 { value: moment(currentDate).format('YYYY-MM-DD'), field: 'currentDate' },
-                { value: timeFilter, field: 'filter' },
-                { value: divisionFilter, field: 'divisionId' },
-                { value: regionFilter, field: 'regionId' },
-                { value: areaFilter, field: 'areaId' },
-                { value: branchFilter, field: 'branchId' },
-                { value: selectedYear, field: 'year' },
+                { value: timeFilter,       field: 'filter' },
+                { value: divisionFilter,   field: 'divisionId' },
+                { value: regionFilter,     field: 'regionId' },
+                { value: areaFilter,       field: 'areaId' },
+                { value: branchFilter,     field: 'branchId' },
+                { value: selectedYear,     field: 'year' },
                 { value: loanOfficerFilter, field: 'loId' },
             ].filter(a => a.value !== 'all' && !!a.value)
-             .map(a => `${a.field}=${a.value}`).join('&');
+            .map(a => `${a.field}=${a.value}`).join('&');
 
             const summaryUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=summary';
 
             setSummaryData({});
-            const summaryPromise = fetchWrapper.get(summaryUrl)
+            fetchWrapper.get(summaryUrl)
                 .then(resp => { setSummaryData(resp.data?.[0] ?? {}); })
-                .catch(error => { console.log(error); });
+                .catch(error => { console.log(error); })
+                .finally(() => { setLoading(false); });
 
-            Promise.all([summaryPromise]).finally(() => { setLoading(false); });
         }, 400);
     };
 
@@ -592,11 +542,13 @@ const DashboardPage = () => {
                             className="w-40"
                         />
 
-                        {timeFilter === 'daily' && dateFilter && (
+                        {/* Guard on currentDate so the picker renders as soon as the system
+                            date is available. dateFilter may still be null while holidays load. */}
+                        {timeFilter === 'daily' && currentDate && (
                             <div className="w-40">
                                 <DatePicker
                                     name="dateFilter"
-                                    value={moment(dateFilter).format('YYYY-MM-DD')}
+                                    value={dateFilter ? moment(dateFilter).format('YYYY-MM-DD') : ''}
                                     maxDate={currentDate}
                                     onChange={handleDateFilter}
                                     height="h-[42px]"
@@ -683,8 +635,14 @@ const DashboardPage = () => {
 
                         {/* ── TOP ROW ── */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-                            {/* 1 — Pending Loan for Approval */}
+ 
+                            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                1 — Pending Loan for Approval (Principal)
+                                Total persons  = new members + reloaners
+                                Amount         = current release amount (principal)
+                                Reloaner rows  = currentReleasePerson_Rel / renewals
+                                New Member rows= currentReleasePerson_New / newMember
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                             <div className="lg:col-span-2">
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                     <h3 className="text-sm font-bold text-gray-800 mb-3">
@@ -692,35 +650,63 @@ const DashboardPage = () => {
                                         <span className="text-gray-400 font-normal text-xs block">(Principal)</span>
                                     </h3>
                                     <div className="space-y-3">
+                                        {/* Total persons = new + reloaner */}
                                         <div>
                                             <p className="text-xs text-gray-500 mb-0.5">Persons</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.newMember || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(
+                                                    (summaryData.currentReleasePerson_New || 0) +
+                                                    (summaryData.currentReleasePerson_Rel || 0)
+                                                )}
+                                            </p>
                                         </div>
+                                        {/* Total principal amount */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.amount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.currentReleaseAmount || 0)}
+                                            </p>
                                         </div>
+                                        {/* Reloaner persons */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Reloaner Persons</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.renewals || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.currentReleasePerson_Rel || 0)}
+                                            </p>
                                         </div>
+                                        {/* Reloaner amount */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.renewalsAmount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.renewalsAmount || 0)}
+                                            </p>
                                         </div>
+                                        {/* New member persons */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">New Member</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.newMember || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.currentReleasePerson_New || 0)}
+                                            </p>
                                         </div>
+                                        {/* New member amount = total principal − reloaner amount */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.amount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(
+                                                    (summaryData.currentReleaseAmount || 0) -
+                                                    (summaryData.renewalsAmount || 0)
+                                                )}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* 2 — Loan Approved */}
+ 
+                            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                2 — Loan Approved (With Service Charge)
+                                Uses totalLoanRelease for total approved amount.
+                                Person counts same as card 1.
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                             <div className="lg:col-span-2">
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                     <h3 className="text-sm font-bold text-gray-800 mb-3">
@@ -728,75 +714,120 @@ const DashboardPage = () => {
                                         <span className="text-gray-400 font-normal text-xs block">(With Service Charge)</span>
                                     </h3>
                                     <div className="space-y-3">
+                                        {/* New member persons */}
                                         <div>
                                             <p className="text-xs text-gray-500 mb-0.5">New Member Persons</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.newMember || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.currentReleasePerson_New || 0)}
+                                            </p>
                                         </div>
+                                        {/* New member approved amount (with SC) */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.amount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.newMemberAmount || 0)}
+                                            </p>
                                         </div>
+                                        {/* Reloaner persons */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Reloaner Persons</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.renewals || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.currentReleasePerson_Rel || 0)}
+                                            </p>
                                         </div>
+                                        {/* Reloaner approved amount (with SC) */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.renewalsAmount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.renewalsAmountWithSC || 0)}
+                                            </p>
                                         </div>
+                                        {/* New member count */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">New Member</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.newMember || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.newMember || 0)}
+                                            </p>
                                         </div>
+                                        {/* Total approved amount (with SC) */}
                                         <div className="border-t border-gray-100 pt-3">
                                             <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                                            <p className="text-lg font-bold text-gray-800">{formatNumber(summaryData.amount || 0)}</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                {formatNumber(summaryData.amount || 0)}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* 3 — MIS Payment Category */}
+ 
+                            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                3 — MIS Payment Category
+                                Labels match constants.js remark values exactly.
+                                Total is computed from all sub-categories.
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                             <div className="lg:col-span-2">
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                     <h3 className="text-sm font-bold text-gray-800 mb-3 text-center">MIS PAYMENT CATEGORY</h3>
-                                    <div className="space-y-1.5">
-                                        {[
-                                            { color: 'blue',   label: 'Delinquent',                 value: summaryData.delinquent },
-                                            { color: 'blue',   label: 'Delinquent for MCBU',         value: summaryData.delinquent },
-                                            { color: 'blue',   label: 'Delinquent Loan Collection',  value: summaryData.delinquent },
-                                            { color: 'orange', label: 'Excused – Calamity',          value: summaryData.excusedPerson },
-                                            { color: 'dark',   label: 'Excused – Hospitalization',   value: summaryData.hospitalization },
-                                            { color: 'sky',    label: 'Excused – Death',             value: summaryData.death },
-                                            { color: 'red',    label: 'Matured Past Due',             value: summaryData.pastDuePerson },
-                                            { color: 'green',  label: 'Total',                       value: summaryData.delinquent },
-                                        ].map((item, i) => (
-                                            <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                                <div className="flex items-center space-x-2">
-                                                    <ColorDot color={item.color} />
-                                                    <span className="text-xs text-gray-700 leading-tight">{item.label}</span>
-                                                </div>
-                                                <span className="text-xs font-bold text-gray-800 shrink-0 ml-2">{formatNumber(item.value || 0)}</span>
+                                    {(() => {
+                                        const delinquent     = summaryData.delinquent         || 0;
+                                        const delinquentMcbu = summaryData.delinquentMcbu      || 0; // remark: delinquent-mcbu
+                                        const delinquentLoan = summaryData.delinquentLoan      || 0; // remark: delinquent-offset
+                                        const calamity       = summaryData.excusedPerson       || 0; // remark: excused-calamity
+                                        const hosp           = summaryData.hospitalization     || 0; // remark: excused-hospital
+                                        const death          = summaryData.death               || 0; // remark: excused-death
+                                        const maturedPD      = summaryData.pastDuePerson       || 0;
+                                        const total          = delinquent + delinquentMcbu + delinquentLoan +
+                                                               calamity + hosp + death + maturedPD;
+ 
+                                        const rows = [
+                                            { color: 'blue',   label: 'Delinquent',                                   value: delinquent     },
+                                            { color: 'blue',   label: 'Delinquent for MCBU',                           value: delinquentMcbu },
+                                            { color: 'blue',   label: 'Delinquent Loan Collection',                    value: delinquentLoan },
+                                            { color: 'orange', label: 'Excused Due to Calamity',                       value: calamity       },
+                                            { color: 'dark',   label: 'Excused Due to Hospitalization',                value: hosp           },
+                                            { color: 'sky',    label: 'Excused Due to Death Clients / Family Members', value: death          },
+                                            { color: 'red',    label: 'Matured Past Due',                              value: maturedPD      },
+                                            { color: 'green',  label: 'Total',                                         value: total          },
+                                        ];
+ 
+                                        return (
+                                            <div className="space-y-1.5">
+                                                {rows.map((item, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                                        <div className="flex items-center space-x-2">
+                                                            <ColorDot color={item.color} />
+                                                            <span className="text-xs text-gray-700 leading-tight">{item.label}</span>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-gray-800 shrink-0 ml-2">
+                                                            {formatNumber(item.value)}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
-
-                            {/* 4 — Client Categories */}
+ 
+                            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                4 — Client Categories  (legend only, no values)
+                                Colors corrected to match screenshot:
+                                  Active Clients   → orange  (was blue)
+                                  Active Borrowers → blue    (was orange)
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                             <div className="lg:col-span-2">
                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                     <h3 className="text-sm font-bold text-gray-800 mb-3">Client Categories</h3>
                                     <div className="space-y-1.5">
                                         {[
-                                            { color: 'blue',   label: 'Active Clients' },
-                                            { color: 'orange', label: 'Active Borrowers' },
-                                            { color: 'green',  label: 'Good Clients' },
+                                            { color: 'orange', label: 'Active Clients'        },
+                                            { color: 'blue',   label: 'Active Borrowers'       },
+                                            { color: 'green',  label: 'Good Clients'           },
                                             { color: 'red',    label: 'All Delinquent Clients' },
-                                            { color: 'pink',   label: 'Mis Payment Clients' },
-                                            { color: 'violet', label: 'Past Due Clients' },
-                                            { color: 'lime',   label: 'ACP Agents' },
-                                            { color: 'yellow', label: 'Terminated Agents' },
+                                            { color: 'pink',   label: 'Mis Payment Clients'    },
+                                            { color: 'violet', label: 'Past Due Clients'       },
+                                            { color: 'lime',   label: 'ACP Agents'             },
+                                            { color: 'yellow', label: 'Terminated Agents'      },
                                         ].map((item, i) => (
                                             <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                                                 <ColorDot color={item.color} />

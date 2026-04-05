@@ -27,7 +27,7 @@ const RevertTransferPage = () => {
     const [showWarningDialog, setShowWarningDialog] = useState(false);
 
     const getList = async () => {
-        const holidays = holidayList.map(holiday => holiday.date);
+        const holidays = (holidayList || []).map(holiday => holiday.date);
         const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidays);
         const endMonthDate = isEndMonthDate(currentDate, holidays);
 

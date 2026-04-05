@@ -119,14 +119,14 @@ const Layout = ({
                 dispatch(setWeekend(false));
             }
             // will need to find a way for this to check if there is an update
-            if (holidayList?.length === 0) {
+            if (!holidayList || holidayList.length === 0) {
                 getListHoliday();
             }
         }
     }, [currentDate]);
 
     useEffect(() => {
-        const holidays = holidayList.map(h => {
+        const holidays = (holidayList || []).map(h => {
             return h.date;
         });
 

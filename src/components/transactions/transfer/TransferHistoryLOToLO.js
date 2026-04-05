@@ -104,7 +104,7 @@ const TransferHistoryDetails = ({ type }) => {
     const [consolidatedTotal, setConsolidatedTotal] = useState();
     
     const getLastDateOfTheMonth = (month, year) => {
-        const holidays = holidayList.map(h => {
+        const holidays = (holidayList || []).map(h => {
             return h.date;
         });
 

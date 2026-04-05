@@ -3,7 +3,7 @@ import { SET_ADD_UPDATE_HOLIDAY, SET_HOLIDAY, SET_HOLIDAY_LIST } from "../action
 const initialHolidayState = {
     data: {},
     addUpdate: {},
-    list: []
+    list: null
 };
 
 const holidayReducer = (state = initialHolidayState, action) => {

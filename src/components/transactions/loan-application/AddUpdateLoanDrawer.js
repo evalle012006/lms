@@ -795,7 +795,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
     }, [mode, currentUser, selectedLo, currentDate]);
     // const ddddate = "2024-12-10";
     useEffect(() => {
-        const holidays = holidayList.map(holiday => holiday.date);
+        const holidays = (holidayList || []).map(holiday => holiday.date);
         if (mode == 'add' && currentDate) {
             const dayName = moment(currentDate).format('dddd');
             if (dayName == 'Friday') {

@@ -364,7 +364,7 @@ const TransactionRemarksPage = () => {
 
     useEffect(() => {
         if (selectedFilterMonth && selectedFilterYear) {
-            const holidays = holidayList.map(holiday => holiday.date);
+            const holidays = (holidayList || []).map(holiday => holiday.date);
             const days = getDaysOfMonth(selectedFilterYear, selectedFilterMonth);
             const dateArr = days.filter(day => {
                 const dayName = moment(day).format('dddd');

@@ -471,7 +471,7 @@ const TransferClientPage = () => {
     };
 
     const getTransferList = async () => {
-        const holidays = holidayList.map(holiday => holiday.date);
+        const holidays = (holidayList || []).map(holiday => holiday.date);
         const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidays);
         const endMonthDate = isEndMonthDate(currentDate, holidays);
         const previousLastMonthDate = endMonthDate ? currentDate : previousMonthEndDate;
@@ -565,7 +565,7 @@ const TransferClientPage = () => {
 
     useEffect(() => {
         if (currentUser.role.rep < 4) {
-            const holidays = holidayList.map(holiday => holiday.date);
+            const holidays = (holidayList || []).map(holiday => holiday.date);
             const lastWorkingDayOfWeek = getLastWorkingDayOfWeek(currentDate, holidays);
 
             if (currentUser.role.rep < 3 && lastWorkingDayOfWeek.format("YYYY-MM-DD") == currentDate && !isHoliday && !isWeekend) {
