@@ -14,7 +14,8 @@ import CheckBox from './ui/checkbox';
 import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
 import { useEffect } from 'react';
-import { useSignedUrl } from 'hooks/useSignedUrl';
+import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
+import { SignedUrlContext, useSignedUrlMap } from '@/lib/SignedUrlContext';
 
 // Helper functions to check transfer status
 const isRecentlyCreated = (insertedDate) => {
@@ -115,9 +116,9 @@ export function AvatarCell({ value, column, row }) {
   const errorMessage = row.original.errorMsg ? row.original.errorMsg : '';
   const email = row.original[column.emailAccessor];
 
-  // ✅ Resolve storage key or legacy URL → temporary signed URL
-  //    useSignedUrl handles: keys, legacy full URLs, blob URLs, null
-  const { signedUrl } = useSignedUrl(rawUrl);
+  // ✅ Read from bulk-resolved context — no individual fetch per row
+  const urlMap = useSignedUrlMap();
+  const signedUrl = rawUrl ? (urlMap[rawUrl] ?? null) : null;
 
   return (
     <div className="flex items-center">
@@ -600,6 +601,25 @@ const TableComponent = React.memo(({
     usePagination
   );
 
+  // Bulk-resolve all profile image keys in one API call instead of N individual calls
+  const profileKeys = useMemo(() => {
+    const imgAccessors = columns
+      .filter((c) => c.imgAccessor)
+      .map((c) => c.imgAccessor);
+
+    if (imgAccessors.length === 0) return [];
+
+    const keys = [];
+    data.forEach((row) => {
+      imgAccessors.forEach((accessor) => {
+        if (row[accessor]) keys.push(row[accessor]);
+      });
+    });
+    return keys;
+  }, [data, columns]);
+
+  const { urlMap } = useBulkSignedUrls(profileKeys);
+
   const {
     getTableProps,
     getTableBodyProps,
@@ -791,201 +811,203 @@ const handleSelectRow = useCallback((row, index) => {
   };
 
   return (
-    <div className="relative w-full shadow-md rounded-lg overflow-hidden">
-      {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
-      
-      <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
-        <div className="overflow-x-auto min-h-[200px]">
-          <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              {renderHeaderGroups()}
-            </thead>
-            <tbody {...getTableBodyProps()}>
-              {page.length > 0 ? (
-                page.map((row, i) => {
-                  prepareRow(row);
-                  const {
-                    root,
-                    delinquent,
-                    totalData,
-                    selected,
-                    disable,
-                    status,
-                    isDraft,
-                    page: pageName,
-                    ldfApproved,
-                    withError: error,
-                    insertedDate,
-                    modifiedDate,
-                    modifiedById
-                  } = row.original;
+    <SignedUrlContext.Provider value={urlMap}>
+      <div className="relative w-full shadow-md rounded-lg overflow-hidden">
+        {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
+        
+        <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
+          <div className="overflow-x-auto min-h-[200px]">
+            <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                {renderHeaderGroups()}
+              </thead>
+              <tbody {...getTableBodyProps()}>
+                {page.length > 0 ? (
+                  page.map((row, i) => {
+                    prepareRow(row);
+                    const {
+                      root,
+                      delinquent,
+                      totalData,
+                      selected,
+                      disable,
+                      status,
+                      isDraft,
+                      page: pageName,
+                      ldfApproved,
+                      withError: error,
+                      insertedDate,
+                      modifiedDate,
+                      modifiedById
+                    } = row.original;
 
-                  const checkBoxDisable = disable || error;
-                  
-                  // Check transfer indicator type for fund transfers
-                  const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
-                  const indicatorType = isFundTransfer && status === 'pending' 
-                    ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById) 
-                    : null;
+                    const checkBoxDisable = disable || error;
+                    
+                    // Check transfer indicator type for fund transfers
+                    const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
+                    const indicatorType = isFundTransfer && status === 'pending' 
+                      ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById) 
+                      : null;
 
-                  // Enhanced row class logic with transfer indicators
-                  let rowClass = 'bg-white border-b hover:bg-gray-50';
-                  
-                  if (delinquent === 'Yes' || error) {
-                    rowClass = 'bg-red-100 border-b hover:bg-red-200';
-                  } else if (status === 'open') {
-                    rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
-                  } else if (ldfApproved) {
-                    rowClass = 'bg-green-100 border-b hover:bg-green-200';
-                  } else if (indicatorType === 'modified') {
-                    // Recently modified fund transfer styling
-                    rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100';
-                  } else if (indicatorType === 'new') {
-                    // Recently created fund transfer styling
-                    rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
-                  }
+                    // Enhanced row class logic with transfer indicators
+                    let rowClass = 'bg-white border-b hover:bg-gray-50';
+                    
+                    if (delinquent === 'Yes' || error) {
+                      rowClass = 'bg-red-100 border-b hover:bg-red-200';
+                    } else if (status === 'open') {
+                      rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
+                    } else if (ldfApproved) {
+                      rowClass = 'bg-green-100 border-b hover:bg-green-200';
+                    } else if (indicatorType === 'modified') {
+                      // Recently modified fund transfer styling
+                      rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100';
+                    } else if (indicatorType === 'new') {
+                      // Recently created fund transfer styling
+                      rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
+                    }
 
-                  const { key, ...rowProps } = row.getRowProps();
-                  return (
-                    <tr
-                      key={`row-${i}`}
-                      {...rowProps}
-                      className={rowClass}
-                      style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
-                    >
-                      {multiSelect && (
-                        <td className="px-4 py-3 w-10">
-                          <CheckBox
-                            name={`select-${i}`}
-                            value={row.original.selected}
-                            onChange={() => handleSelectRow(row.original, i)}
-                            size="md"
-                            disabled={checkBoxDisable}
-                          />
-                        </td>
-                      )}
-                      {row.cells.map((cell, index) => (
-                        <td 
-                          {...cell.getCellProps()}
-                          key={`row-data-${index}`}
-                          className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
-                          onClick={() => rowClick && rowClick(row.original)}
-                        >
-                          <div className="flex items-center space-x-2">
-                            {cell.render('Cell')}
-                            {/* Add badges for recent transfers in the first column (usually transaction code) */}
-                            {indicatorType && index === 0 && (
-                              <>
-                                {indicatorType === 'new' && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                    New
-                                  </span>
-                                )}
-                                {indicatorType === 'modified' && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                                    </svg>
-                                    Updated
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      ))}
-                      {(hasActionButtons || dropDownActions.length > 0) && (
-                        <td className="px-4 py-3 w-24">
-                          <div className="flex items-center justify-center space-x-2">
-                            {hasActionButtons && !root && !row.original.system && (
-                              <ActionButton 
-                                row={row} 
-                                rowActionButtons={rowActionButtons}
-                                currentUser={currentUser}
-                                dropDownActionOrigin={dropDownActionOrigin}
-                                isWeekend={isWeekend}
-                                isHoliday={isHoliday}
-                              />
-                            )}
-                            {dropDownActions.length > 0 && (
-                              <ActionDropDown
-                                key={i}
-                                data={row.original}
-                                options={dropDownActions}
-                                dataOptions={actionDropDownDataOptions}
-                                origin={dropDownActionOrigin}
-                              />
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })
-              ) : (
-                generateEmptyRows(columns.length)
-              )}
-              {/* Add totals row at the end of tbody */}
-              {generateTotalsRow()}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Controls */}
-        {showPagination && data.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700 mr-4">
-                Page <span className="font-medium">{currentPageIndex + 1}</span> of{' '}
-                <span className="font-medium">{pageOptions.length}</span>
-              </span>
-              <button
-                onClick={() => handleGotoPage(0)}
-                disabled={!canPreviousPage}
-                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronDoubleLeftIcon className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handlePreviousPage}
-                disabled={!canPreviousPage}
-                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronLeftIcon className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleNextPage}
-                disabled={!canNextPage}
-                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronRightIcon className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleGotoPage(pageCount - 1)}
-                disabled={!canNextPage}
-                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronDoubleRightIcon className="w-5 h-5" />
-              </button>
-              <select
-                value={state.pageSize}
-                onChange={e => handleSetPageSize(Number(e.target.value))}
-                className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {[10, 20, 30, 40, 50].map(pageSize => (
-                  <option key={pageSize} value={pageSize}>
-                    {pageSize}
-                  </option>
-                ))}
-              </select>
-            </div>
+                    const { key, ...rowProps } = row.getRowProps();
+                    return (
+                      <tr
+                        key={`row-${i}`}
+                        {...rowProps}
+                        className={rowClass}
+                        style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
+                      >
+                        {multiSelect && (
+                          <td className="px-4 py-3 w-10">
+                            <CheckBox
+                              name={`select-${i}`}
+                              value={row.original.selected}
+                              onChange={() => handleSelectRow(row.original, i)}
+                              size="md"
+                              disabled={checkBoxDisable}
+                            />
+                          </td>
+                        )}
+                        {row.cells.map((cell, index) => (
+                          <td 
+                            {...cell.getCellProps()}
+                            key={`row-data-${index}`}
+                            className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
+                            onClick={() => rowClick && rowClick(row.original)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              {cell.render('Cell')}
+                              {/* Add badges for recent transfers in the first column (usually transaction code) */}
+                              {indicatorType && index === 0 && (
+                                <>
+                                  {indicatorType === 'new' && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                      </svg>
+                                      New
+                                    </span>
+                                  )}
+                                  {indicatorType === 'modified' && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                                      </svg>
+                                      Updated
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        ))}
+                        {(hasActionButtons || dropDownActions.length > 0) && (
+                          <td className="px-4 py-3 w-24">
+                            <div className="flex items-center justify-center space-x-2">
+                              {hasActionButtons && !root && !row.original.system && (
+                                <ActionButton 
+                                  row={row} 
+                                  rowActionButtons={rowActionButtons}
+                                  currentUser={currentUser}
+                                  dropDownActionOrigin={dropDownActionOrigin}
+                                  isWeekend={isWeekend}
+                                  isHoliday={isHoliday}
+                                />
+                              )}
+                              {dropDownActions.length > 0 && (
+                                <ActionDropDown
+                                  key={i}
+                                  data={row.original}
+                                  options={dropDownActions}
+                                  dataOptions={actionDropDownDataOptions}
+                                  origin={dropDownActionOrigin}
+                                />
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  generateEmptyRows(columns.length)
+                )}
+                {/* Add totals row at the end of tbody */}
+                {generateTotalsRow()}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {/* Pagination Controls */}
+          {showPagination && data.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-700 mr-4">
+                  Page <span className="font-medium">{currentPageIndex + 1}</span> of{' '}
+                  <span className="font-medium">{pageOptions.length}</span>
+                </span>
+                <button
+                  onClick={() => handleGotoPage(0)}
+                  disabled={!canPreviousPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronDoubleLeftIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={!canPreviousPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronLeftIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleNextPage}
+                  disabled={!canNextPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronRightIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => handleGotoPage(pageCount - 1)}
+                  disabled={!canNextPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronDoubleRightIcon className="w-5 h-5" />
+                </button>
+                <select
+                  value={state.pageSize}
+                  onChange={e => handleSetPageSize(Number(e.target.value))}
+                  className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {[10, 20, 30, 40, 50].map(pageSize => (
+                    <option key={pageSize} value={pageSize}>
+                      {pageSize}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </SignedUrlContext.Provider>
   );
 });
 

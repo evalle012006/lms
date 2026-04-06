@@ -248,6 +248,7 @@ export const checkIfWeekend = (date) => {
 }
 
 export const checkIfHoliday = (date, holidays = []) => {
+    if (!holidays || holidays.length === 0) return false;
     const dateArr = date.split('-');
     const dateStr = dateArr[1] + "-" + dateArr[2];
     return holidays.includes(dateStr);
