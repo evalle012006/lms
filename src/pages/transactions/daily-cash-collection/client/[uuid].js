@@ -1167,7 +1167,7 @@ const CashCollectionDetailsPage = () => {
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
 
-                        if (currentLoan?.current?.length > 0) {
+                        if (currentLoan?.current?.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                             cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
@@ -1255,7 +1255,7 @@ const CashCollectionDetailsPage = () => {
                             csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
-                        if (currentLoan?.current?.length > 0) {
+                        if (currentLoan?.current?.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                             cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
@@ -1350,7 +1350,7 @@ const CashCollectionDetailsPage = () => {
                             csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
-                        if (currentLoan?.current?.length > 0) {
+                        if (currentLoan?.current?.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                         } else if (loan?.current?.length > 0 && loan?.current[0] != null) {

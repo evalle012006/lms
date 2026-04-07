@@ -1178,12 +1178,12 @@ const CashCollectionDetailsPage = () => {
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
 
-                        if (currentLoan?.current?.length > 0) {
+                        if (currentLoan?.current?.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                             cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
                             cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
-                        } else if (loan?.current?.length > 0) {
+                        } else if (loan?.current?.length > 0 && loan.current[0] !== null) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
@@ -1267,12 +1267,12 @@ const CashCollectionDetailsPage = () => {
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
 
-                        if (currentLoan.current.length > 0) {
+                        if (currentLoan.current.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                             cashCollection[index].mcbuInterest = currentLoan.current[0].mcbuInterest;
                             cashCollection[index].mcbuInterestStr = currentLoan.current[0].mcbuInterest > 0 ? formatPricePhp(currentLoan.current[0].mcbuInterest) : '-';
-                        } else if (loan.current.length > 0) {
+                        } else if (loan.current.length > 0 && loan.current[0] !== null) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
@@ -1359,10 +1359,10 @@ const CashCollectionDetailsPage = () => {
                             editHistory: loan.editHistory ? loan.editHistory : [],
                         };
 
-                        if (currentLoan.current.length > 0) {
+                        if (currentLoan.current.length > 0 && currentLoan.current[0] !== null) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
-                        } else if (loan.current.length > 0) {
+                        } else if (loan.current.length > 0 && loan.current[0] !== null) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                         }
