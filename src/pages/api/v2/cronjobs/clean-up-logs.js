@@ -18,7 +18,7 @@ async function updateLoans(req, res) {
     const to_date = moment(currentDate).subtract(3, 'd');
 
     await graph.mutation(
-        deleteQl(createGraphType('lms_logs', '_id')('result'), {
+        deleteQl(createGraphType('lms_logs', 'id')('result'), {
             created_dt: {
                 _lt: moment(to_date).format('YYYY-MM-DD')
             }
