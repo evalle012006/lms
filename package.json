@@ -47,7 +47,7 @@
     "next": "^15.5.15",
     "next-images": "^1.8.4",
     "next-redux-wrapper": "^8.0.0",
-    "nodemailer": "^6.7.8",
+    "nodemailer": "^8.0.5",
     "or": "^0.2.0",
     "postgresql-client": "^2.13.0",
     "puppeteer": "^24.22.3",
