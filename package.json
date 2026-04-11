@@ -33,7 +33,7 @@
     "formidable": "^2.0.1",
     "formik": "^2.2.9",
     "graphql": "^15.8.0",
-    "html2pdf.js": "^0.10.1",
+    "html2pdf.js": "^0.14.0",
     "immutability-helper": "^3.1.1",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.475.0",
