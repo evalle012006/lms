@@ -8,9 +8,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.654.0",
-    "@aws-sdk/lib-storage": "^3.896.0",
-    "@aws-sdk/s3-request-presigner": "^3.1004.0",
+    "@aws-sdk/client-s3": "^3.1029.0",
+    "@aws-sdk/lib-storage": "^3.1029.0",
+    "@aws-sdk/s3-request-presigner": "^3.1029.0",
     "@fortawesome/fontawesome-svg-core": "^6.2.0",
     "@fortawesome/free-solid-svg-icons": "^6.2.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
