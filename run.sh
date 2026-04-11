@@ -72,7 +72,7 @@ success "Environment files found."
 
 # ── Install dependencies ──────────────────────────────────────
 log "Installing dependencies..."
-npm install --legacy-peer-deps
+npm install
 success "Dependencies installed."
 
 # ── Build Next.js app ─────────────────────────────────────────
