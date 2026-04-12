@@ -143,17 +143,6 @@ async function revert(req, res) {
                     prevLoanData.csfWithdrawal = 0;
                 }
 
-                // Update loan with history data
-                mutationQL.push(
-                    updateQl(
-                        LOAN_TYPE(`loan_${mutationQL.length}`),
-                        {
-                            set: { ...prevLoanData },
-                            where: { _id: { _eq: loanId } }
-                        }
-                    )
-                );
-
                 // Delete loan history
                 mutationQL.push(
                     deleteQl(
@@ -190,6 +179,18 @@ async function revert(req, res) {
                         )
                     );
                 }
+
+
+                // Update loan with history data
+                mutationQL.push(
+                    updateQl(
+                        LOAN_TYPE(`loan_${mutationQL.length}`),
+                        {
+                            set: { ...prevLoanData },
+                            where: { _id: { _eq: loanId } }
+                        }
+                    )
+                );
             }
         }
 
