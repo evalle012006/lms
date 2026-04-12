@@ -294,7 +294,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                 const roleShortCode = roleArr[1];
                 const selectedRole = roles.find(role => role.shortCode === roleShortCode);
                 // ✅ Save fileKey (storage path) to DB — not a public URL
-                const updatedData = { ...user, profile: responseData.fileKey, role: JSON.stringify(selectedRole) };
+                const updatedData = { ...user, profile: responseData.fileKey, role: JSON.stringify(selectedRole), _skipLog: true };
                 console.log('file updated', updatedData);
                 const result = await handleUpdateUser(updatedData);
                 if (result.success) {

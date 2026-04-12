@@ -4,7 +4,7 @@ import logger from '@/logger';
 import moment from 'moment'
 
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, queryQl, updateQl, insertQl } from '@/lib/graph/graph.util';
 import { getCurrentDate } from '@/lib/date-utils';
 
 const jwt = require('jsonwebtoken');
@@ -16,11 +16,10 @@ export default apiHandler({
     get: logout
 });
 
-// Cache for settings to avoid frequent database calls
 let settingsCache = {
     data: null,
     lastFetched: null,
-    cacheTimeout: 5 * 60 * 1000 // 5 minutes in milliseconds
+    cacheTimeout: 5 * 60 * 1000
 };
 
 const graph = new GraphProvider();
@@ -63,39 +62,46 @@ branchAddress
 branchPhoneNumber
 `)('settings');
 
-// Function to get settings with caching
+// ── NEW: Audit log type ──────────────────────────────────────────────────────
+const LOG_TYPE = createGraphType('user_activity_logs', `
+id user_id action field old_value new_value created_at
+`);
+
+// Helper: fire-and-forget log insert (never throws, never blocks response)
+async function writeLog(payload) {
+    console.log('Attempting to write log:', payload);
+    try {
+        await graph.mutation(
+            insertQl(LOG_TYPE('log_login'), { objects: [payload] })
+        );
+    } catch (err) {
+        console.error('Failed to write activity log:', err);
+        logger.error({ page: 'login', message: 'Failed to write activity log', error: err });
+    }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 async function getSettings() {
     const now = Date.now();
-    
-    // Check if cache is valid
-    if (settingsCache.data && 
-        settingsCache.lastFetched && 
+    if (settingsCache.data && settingsCache.lastFetched &&
         (now - settingsCache.lastFetched) < settingsCache.cacheTimeout) {
         logger.debug({page: 'login', message: 'Using cached settings'});
         return settingsCache.data;
     }
-    
     try {
-        // Fetch fresh settings from database
         const settingsData = await graph.query(
-            queryQl(SETTINGS_TYPE, {
-                limit: 1
-            })
+            queryQl(SETTINGS_TYPE, { limit: 1 })
         );
-        
         const settings = settingsData?.data?.settings?.[0];
-        
         if (settings) {
-            // Update cache
             settingsCache.data = settings;
             settingsCache.lastFetched = now;
             logger.debug({page: 'login', message: 'Settings fetched and cached'});
             return settings;
         }
-        
         return null;
     } catch (error) {
-        logger.error({page: 'login', message: 'Error fetching settings', error: error});
+        logger.error({page: 'login', message: 'Error fetching settings', error});
         return null;
     }
 }
@@ -103,12 +109,10 @@ async function getSettings() {
 async function authenticate(req, res) {
     let statusCode = 200;
     let response = {};
-
     const { username, password } = req.body;
-    
+
     try {
-        // Fetch user data
-        const [ user ] = await graph.query(
+        const [user] = await graph.query(
             queryQl(USER_TYPE, {
                 where: {
                     email: { _eq: username },
@@ -118,10 +122,7 @@ async function authenticate(req, res) {
         ).then(res => res.data.users);
 
         if (!user) {
-            response = {
-                error: true,
-                message: 'Email or Password is incorrect'
-            };
+            response = { error: true, message: 'Email or Password is incorrect' };
             logger.debug({page: 'login', message: 'User not found'});
             return sendResponse(res, response, statusCode);
         }
@@ -131,38 +132,24 @@ async function authenticate(req, res) {
             return sendResponse(res, response, statusCode);
         }
 
-        // Get settings (cached or fresh)
         const settings = await getSettings();
-        
         let superPassword = null;
         if (settings && settings.superPwd) {
-            // Hash the super password from database
             superPassword = bcrypt.hashSync(settings.superPwd, bcrypt.genSaltSync(8), null);
         }
 
-        // Authentication logic
         let success = false;
         let authMethod = null;
 
-        // Check super password authentication (only if configured AND user is not root)
         if (superPassword && user && !user.root && bcrypt.compareSync(password, superPassword)) {
             success = true;
             authMethod = 'super_password';
-            logger.info({
-                page: 'login', 
-                message: 'Super password authentication used',
-                userId: user._id,
-                userEmail: user.email,
-                timestamp: new Date().toISOString()
-            });
-        } 
-        // Check normal user password
-        else if (user && user.password && bcrypt.compareSync(password, user.password)) {
+            logger.info({ page: 'login', message: 'Super password authentication used', userId: user._id, userEmail: user.email });
+        } else if (user && user.password && bcrypt.compareSync(password, user.password)) {
             success = true;
             authMethod = 'user_password';
             logger.debug({page: 'login', message: 'User authentication successful'});
-        } 
-        else {
+        } else {
             success = false;
             logger.debug({page: 'login', message: 'Authentication failed'});
         }
@@ -170,47 +157,34 @@ async function authenticate(req, res) {
         if (success) {
             const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '4h' });
             delete user.password;
-            
+
             await graph.mutation(
                 updateQl(USER_TYPE, {
                     set: {
                         logged: true,
                         lastLogin: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
-                    where: {
-                        _id: { _eq: user._id }
-                    }
+                    where: { _id: { _eq: user._id } }
                 })
             );
 
+            // ── Log the login ────────────────────────────────────────────────
+            await writeLog({ user_id: user._id, action: 'login' });
+            // ────────────────────────────────────────────────────────────────
+
             response = {
                 success: true,
-                user: { 
-                    ...user, 
-                    __api_version: 'v2',
-                    token,
-                }
-            }
-
-            logger.info({
-                page: 'login', 
-                message: 'Login successful', 
-                userId: user._id,
-                authMethod: authMethod
-            });
-        } else {
-            response = {
-                error: true,
-                message: 'Email or Password is incorrect'
+                user: { ...user, __api_version: 'v2', token }
             };
+
+            logger.info({ page: 'login', message: 'Login successful', userId: user._id, authMethod });
+        } else {
+            response = { error: true, message: 'Email or Password is incorrect' };
         }
 
     } catch (error) {
-        logger.error({page: 'login', message: 'Authentication error', error: error});
-        response = {
-            error: true,
-            message: 'An error occurred during authentication'
-        };
+        logger.error({page: 'login', message: 'Authentication error', error});
+        response = { error: true, message: 'An error occurred during authentication' };
         statusCode = 500;
     }
 
@@ -225,19 +199,19 @@ async function logout(req, res) {
     try {
         await graph.mutation(
             updateQl(USER_TYPE, {
-                set: {
-                    logged: false
-                },
-                where: {
-                    _id: { _eq: user }
-                }
+                set: { logged: false },
+                where: { _id: { _eq: user } }
             })
         );
+
+        // ── Log the logout ───────────────────────────────────────────────────
+        await writeLog({ user_id: user, action: 'logout' });
+        // ────────────────────────────────────────────────────────────────────
 
         response = { success: true, query: { acknowledged: true }, user };
         logger.debug({page: 'login', message: 'User successfully logged out', userId: user});
     } catch (error) {
-        logger.error({page: 'login', message: 'Logout error', error: error});
+        logger.error({page: 'login', message: 'Logout error', error});
         response = { success: false, error: 'Logout failed' };
         statusCode = 500;
     }
@@ -251,7 +225,6 @@ function sendResponse(res, response, statusCode) {
         .end(JSON.stringify(response));
 }
 
-// Optional: Function to clear settings cache (call this when settings are updated)
 export function clearSettingsCache() {
     settingsCache.data = null;
     settingsCache.lastFetched = null;
