@@ -51,9 +51,6 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 loanDetails.loanDisbursementAmountRelease = loan.amountRelease;
                 const loanOfficer = loan.loanOfficer;
                 loanDetails.designatedOfficer = 'LO ' + loanOfficer?.loNo;
-                // const month = moment().month() + 1;
-                // const monthStr = month < 10 ? '0' + month : month;
-                // loanDetails.loanApplicationNo = loanDetails.designatedOfficer + '-' + monthStr + 
                 loanDetails.loNo = loanOfficer?.loNo;
                 loanDetails.ciName = loan.ciName ? loan.ciName : clientData?.ciName;
                 
@@ -124,7 +121,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
         }
     }, [props, currentBranch]);
     return (
-        <div ref={ref} className='media-to-print min-h-screen w-full mt-4 p-8' style={{ fontSize: '9px' }}>
+        <div ref={ref} className='media-to-print w-full mt-4 p-8' style={{ fontSize: '9px' }}>
             <style>{hideComponent()}</style>
             <style>{getPageMargins()}</style>
             <style type="text/css" media="print">{"\
@@ -159,19 +156,22 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Group Name</th>
                                             <th className='border border-gray-900 w-10' rowSpan={2}>Loan Cycle</th>
                                             {/* <th className='border border-gray-900 w-12' rowSpan={2}>Business Type</th> */}
-                                            <th className='border border-gray-900 w-12' colSpan={3}>Loan Disbursement</th>
+                                            {/* CHANGE: removed Date column, colSpan 3→2 */}
+                                            <th className='border border-gray-900 w-12' colSpan={2}>Loan Disbursement</th>
                                             <th className='border border-gray-900 w-52' rowSpan={2}>Client's Signature Over Printed Name</th>
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Loan App. #</th>
-                                            <th className='border border-gray-900 w-12' colSpan={3}>Signatures</th>
-                                            <th className='border border-gray-900 w-8' rowSpan={2}>Designated LO</th>
+                                            {/* CHANGE: label "Signatures"→"SIGNATURE", colSpan 3→4, removed "Designated LO" rowSpan col */}
+                                            <th className='border border-gray-900' colSpan={4}>SIGNATURE</th>
                                         </tr>
                                         <tr>
-                                            <th className='border border-gray-900 w-16'>Date</th>
+                                            {/* CHANGE: removed Date <th> */}
                                             <th className='border border-gray-900 w-15'>Principal Amount</th>
                                             <th className='border border-gray-900 w-15'>Loan w/ Service Charge</th>
-                                            <th className='border border-gray-900 w-12'>LO</th>
-                                            <th className='border border-gray-900 w-12'>Person in-charge in CI</th>
-                                            <th className='border border-gray-900 w-12'>Approved by</th>
+                                            {/* CHANGE: replaced LO / Person in-charge in CI / Approved by / Designated LO with new 4 columns */}
+                                            <th className='border border-gray-900 w-32'>Name of BM & UP Approved (Signature Over Printed Name)</th>
+                                            <th className='border border-gray-900 w-32'>Name of Cashier In Charge (Signature Over Printed Name)</th>
+                                            <th className='border border-gray-900 w-12'>Time</th>
+                                            <th className='border border-gray-900 w-32'>Designated Loan Officer (Signature Over Printed Name)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -185,13 +185,15 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                                     <td className='border border-gray-900'>{ loan.groupName }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.loanCycle }</td>
                                                     {/* <td className='border border-gray-900'>{ loan.businessType }</td> */}
-                                                    <td className='border border-gray-900 text-center'>{ loan.loanDisbursementDate }</td>
+                                                    {/* CHANGE: removed loanDisbursementDate <td> */}
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementPrincipalAmount ? formatPricePhp(loan.loanDisbursementPrincipalAmount) : '' }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementAmountRelease ? formatPricePhp(loan.loanDisbursementAmountRelease) : '' }</td>
+                                                    {/* CHANGE: Client sig + Loan App# empty cells */}
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
+                                                    {/* CHANGE: 4 new signature cells — BM, Cashier, Time, Designated LO */}
                                                     <td className='border border-gray-900'></td>
-                                                    <td className='border border-gray-900'>{ loan?.ciName }</td>
+                                                    <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan.designatedOfficer }</td>
                                                 </tr>
@@ -245,27 +247,37 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     </tbody>
                                 </table>
                             </div>
+                            {/* CHANGE: replaced old 2-col signature table with new 4-signature layout + Reminders */}
                             <div className='flex flex-col justify-between w-full mt-1'>
                                 <table className='table-auto w-full'>
                                     <tbody>
-                                        <tr className='text-center my-4 h-4'>
-                                            <td>Cashier In-Charge Signature</td>
-                                            <td>Cashier In-Charge Signature</td>
+                                        <tr className='text-center h-4'>
+                                            <td className='text-[8px]'>Cashier in Charge Cash Count Consolidation Signature</td>
+                                            <td className='text-[8px]'>Cashier in Charge Release Signature</td>
                                         </tr>
                                         <tr className='h-8'>
                                             <td className='border border-gray-900'></td>
                                             <td className='border border-gray-900'></td>
                                         </tr>
-                                        <tr className='text-center my-4 h-4'>
-                                            <td>BM Signature</td>
-                                            <td>BM Signature</td>
+                                        <tr className='text-center h-4'>
+                                            <td className='text-[8px]'>Branch Head Signature</td>
+                                            <td className='text-[8px]'>Asst. Branch Manager Signature</td>
+                                        </tr>
+                                        <tr className='h-8'>
+                                            <td className='border border-gray-900'></td>
+                                            <td className='border border-gray-900'></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <div className='flex flex-col mt-2'>
                                 <span>NOTE: PRINT IN LEGAL</span>
-                                <span>SIZE "8.5 x 13"</span>
+                                <span>SIZE &quot;8.5 x 13&quot;</span>
+                            </div>
+                            <div className='flex flex-col mt-2 text-[8px]'>
+                                <span className='font-bold'>REMINDERS:</span>
+                                <span>- Under no circumstances should any document be signed by individuals who are not assigned to the transaction.</span>
+                                <span>- I hereby certify that the signature on the above document was executed with my full knowledge, consent, and understanding.</span>
                             </div>
                         </div>
                     </div>
