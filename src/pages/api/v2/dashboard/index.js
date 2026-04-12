@@ -18,8 +18,8 @@ async function getData(req, res) {
     const get_data = async (selectedDate, group) => {
         const [result] = await graph.apollo.query({
             query: gql`
-            query get_dashboard_totals ($args: get_dashboard_totals_arguments!) {
-                get_dashboard_totals(args: $args) {
+            query get_dashboard_totals_v2 ($args: get_dashboard_totals_v2_arguments!) {
+                get_dashboard_totals_v2(args: $args) {
                     data
                 }
             }
@@ -38,7 +38,7 @@ async function getData(req, res) {
                 }
             }
         })
-        .then(res => res.data.get_dashboard_totals.map(c => c.data))
+        .then(res => res.data.get_dashboard_totals_v2.map(c => c.data))
           .then(totals => totals.map(total => ({
             group,
             ... total,
