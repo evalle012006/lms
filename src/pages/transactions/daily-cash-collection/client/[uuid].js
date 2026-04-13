@@ -1967,6 +1967,12 @@ const CashCollectionDetailsPage = () => {
 
                 const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
 
+                const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
+                // console.log(dataArr, 'before revert filter')
+                if (revertedItems.length > 0) {
+                    dataArr = revertedItems;
+                }
+
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
                 // });

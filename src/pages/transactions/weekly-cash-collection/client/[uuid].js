@@ -1536,7 +1536,7 @@ const CashCollectionDetailsPage = () => {
             // RESET
             setTimeout(() => {
                 if (currentTime) {
-                    const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false;
+                    const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : true;
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
@@ -1984,6 +1984,12 @@ const CashCollectionDetailsPage = () => {
                 const selectedGroup = data.length > 0 ? data[0].group : {};
                 if (selectedGroup && selectedGroup.day !== dayName) {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
+                }
+
+                const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
+                // console.log(dataArr, 'before revert filter')
+                if (revertedItems.length > 0) {
+                    dataArr = revertedItems;
                 }
 
                 // const pendings = dataArr.filter(cc => {
