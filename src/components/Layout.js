@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setCurrentDate, setCurrentTime, setHoliday, setLast5DaysOfTheMonth, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
+import { setCurrentDate, setCurrentTime, setHoliday, setLast5DaysOfTheMonth, setLastDayOfTheMonth, setWeekend, setSystemSettings } from '@/redux/actions/systemActions';
 import NavComponent from "./Nav";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
@@ -27,6 +27,8 @@ const Layout = ({
     const dispatch = useDispatch();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const holidayList = useSelector(state => state.holidays.list);
+    const systemSettingsData = useSelector(state => state.systemSettings?.data);
+    const transactionSettingsData = useSelector(state => state.transactionsSettings?.data);
     const isMobile = useIsMobile();
     const [isNavVisible, setIsNavVisible] = useState(!isMobile);
     const [isNavCollapsed, setIsNavCollapsed] = useState(false);
@@ -60,9 +62,61 @@ const Layout = ({
         }
     }
 
+    const getSystemSettings = async () => {
+        const apiURL = `${getApiBaseUrl()}settings/system`;
+        const response = await fetchWrapper.get(apiURL);
+        if (response.success && response.system) {
+            dispatch(setSystemSettings(response.system));
+        }
+    }
+
+    const getListHoliday = async () => {
+        let url = getApiBaseUrl() + 'settings/holidays/list';
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            const holidays = response.holidays.map(h => {
+                let temp = { ...h };
+                const tempDate = moment(currentDate).year() + '-' + temp.date;
+                temp.dateStr = moment(tempDate).format('MMMM DD');
+                return temp;
+            });
+            dispatch(setHolidayList(holidays));
+
+            let holidayToday = false;
+            const currentYear = moment(currentDate).year();
+            holidays.forEach(item => {
+                if (currentYear + '-' + item.date === currentDate) {
+                    holidayToday = true;
+                }
+            });
+            dispatch(setHoliday(holidayToday));
+
+            const dayName = moment(currentDate).format('dddd');
+            dispatch(setWeekend(dayName === 'Saturday' || dayName === 'Sunday'));
+            
+            // these likely already exist in the current code
+            const lastDay = getLastWeekdayOfTheMonth(currentDate);
+            const last5Days = getLastFiveWeekdaysOfMonth(currentDate);
+            dispatch(setLastDayOfTheMonth(lastDay));
+            dispatch(setLast5DaysOfTheMonth(last5Days));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+    };
+
     useEffect(() => {
-        getCurrentDate();
-        getTransactionSettings();
+        // currentDate drives holiday fetching — always needed on refresh
+        if (!currentDate) {
+            getCurrentDate();
+        }
+
+        if (!transactionSettingsData || Object.keys(transactionSettingsData).length === 0) {
+            getTransactionSettings();
+        }
+
+        if (!systemSettingsData || Object.keys(systemSettingsData).length === 0) {
+            getSystemSettings();
+        }
     }, []);
 
     useEffect(() => {
@@ -79,50 +133,34 @@ const Layout = ({
         }
     }, [noVScrollBody, noHScrollBody]);
 
+    // Holidays depend on currentDate being available — keep this effect as-is
+    // but add the loaded check so it doesn't re-fetch on navigation
     useEffect(() => {
-        if (currentDate) {
-            const getListHoliday = async () => {
-                let url = getApiBaseUrl() + 'settings/holidays/list';
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    const holidays = response.holidays.map(h => {
-                        let temp = {...h};
+        if (!currentDate) return;
 
-                        const tempDate = moment(currentDate).year() + '-' + temp.date;
-                        temp.dateStr = moment(tempDate).format('MMMM DD');
-        
-                        return temp;
-                    });
-                    dispatch(setHolidayList(holidays));
-        
-                    let holidayToday = false;
-                    const currentYear = moment(currentDate).year();
-                    holidays.map(item => {
-                        const holidayDate = currentYear + '-' + item.date;
-        
-                        if (holidayDate === currentDate) {
-                            holidayToday = true;
-                        }
-                    });
-        
-                    dispatch(setHoliday(holidayToday));
-                } else if (response.error) {
-                    toast.error(response.message);
-                }
-            }
-        
+        // Skip if holidays already loaded for this session
+        if (holidayList !== null) {
+            // Still need to re-evaluate weekend/holiday flags since currentDate may have changed
             const dayName = moment(currentDate).format('dddd');
-        
             if (dayName === 'Saturday' || dayName === 'Sunday') {
                 dispatch(setWeekend(true));
             } else {
                 dispatch(setWeekend(false));
             }
-            // will need to find a way for this to check if there is an update
-            if (!holidayList || holidayList.length === 0) {
-                getListHoliday();
-            }
+
+            const currentYear = moment(currentDate).year();
+            let holidayToday = false;
+            holidayList.forEach(item => {
+                if (currentYear + '-' + item.date === currentDate) {
+                    holidayToday = true;
+                }
+            });
+            dispatch(setHoliday(holidayToday));
+            return; // Skip the API call
         }
+
+        // Only fetch if holidays not yet loaded
+        getListHoliday();
     }, [currentDate]);
 
     useEffect(() => {

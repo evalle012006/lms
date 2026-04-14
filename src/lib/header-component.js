@@ -69,9 +69,9 @@ const BranchLockBadge = ({ user }) => {
     };
 
     fetchLockStatus();
-    const interval = setInterval(fetchLockStatus, 30000);
-    return () => { mounted = false; clearInterval(interval); };
-  }, [user?.designatedBranchId, router.asPath]);
+    // const interval = setInterval(fetchLockStatus, 30000);
+    return () => { mounted = false; /* clearInterval(interval); */ };
+  }, [user?.designatedBranchId]);
 
   if (locked === null) return null;
 
