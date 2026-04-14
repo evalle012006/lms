@@ -49,6 +49,7 @@ import { useMemo } from 'react';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
+    const isStaging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
@@ -1525,11 +1526,10 @@ const CashCollectionDetailsPage = () => {
             // RESET
             setTimeout(() => {
                 if (currentTime) {
-                    const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false;
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
-                    if (hour < 8 && !staging) {
+                    if (hour < 8 && !isStaging) {
                         setEditMode(false);
                         setGroupSummaryIsClose(true);
                     }
@@ -1817,7 +1817,7 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                const dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty ).map(cc => {
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty ).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     temp.mcbuCol = temp.mcbuCol ? temp.mcbuCol : 0;
                     if (temp.reverted && !draft) {
@@ -3946,7 +3946,7 @@ const CashCollectionDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader 
                         page={'transaction'} 
-                        showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch?.lockTransaction) ? false : editMode : false}
+                        showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || (currentBranch?.lockTransaction && !isStaging)) ? false : editMode : false}
                         handleSaveUpdate={handleSaveUpdate} 
                         data={allData} 
                         setData={setFilteredData} 
@@ -3963,7 +3963,7 @@ const CashCollectionDetailsPage = () => {
                         changeRemarks={changeRemarks} 
                         handleShowWarningDialog={handleShowWarningDialog} 
                         loading={loading} 
-                        branchLock={currentBranch?.lockTransaction}
+                        branchLock={currentBranch?.lockTransaction && !isStaging}
                         allowMcbuInterest={allowMcbuInterest}
                         exportComponent={
                             <CashCollectionDetailsExcelExport
@@ -4179,7 +4179,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && cc?.groupLeader && editMode
+                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc?.groupLeader && editMode
                                                         && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
                                                         <React.Fragment>
@@ -4203,7 +4203,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
+                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
                                                         || cc?.reverted || cc.draft) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                             <React.Fragment>
                                                                 <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount')}
@@ -4317,7 +4317,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
                                                 </td>
-                                                { (!isWeekend && !isHoliday && !currentBranch?.lockTransaction && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
+                                                { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
                                                     && (cc.draft || editMode
                                                         || (!cc?._id || cc?.reverted) 
                                                         || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
@@ -4357,7 +4357,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && !currentBranch?.lockTransaction && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
+                                                        {(!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2 justify-end'>
                                                                 {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth, currentDate: currentDate, last5DaysOfTheMonth: last5DaysOfTheMonth, mcbuInterestLoading: mcbuInterestLoading }} />}
                                                             </div>

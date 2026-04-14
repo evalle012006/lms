@@ -49,6 +49,7 @@ import { useMemo } from 'react';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
+    const isStaging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
@@ -1536,11 +1537,10 @@ const CashCollectionDetailsPage = () => {
             // RESET
             setTimeout(() => {
                 if (currentTime) {
-                    const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false;
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
-                    if (hour < 8 && !staging) {
+                    if (hour < 8 && !isStaging) {
                         setEditMode(false);
                         setGroupSummaryIsClose(true);
                     }
@@ -3980,11 +3980,11 @@ const CashCollectionDetailsPage = () => {
             ) : (
                 <div className="overflow-x-auto">
                     {/* {console.log("Edit mode: ", editMode)} */}
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || currentBranch.lockTransaction) ? false : editMode : false}  hasDraft={hasDraft}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday || (currentBranch.lockTransaction && !isStaging)) ? false : editMode : false}  hasDraft={hasDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
-                        changeRemarks={changeRemarks} allowMcbuInterest={allowMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} branchLock={currentBranch.lockTransaction} 
+                        changeRemarks={changeRemarks} allowMcbuInterest={allowMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} branchLock={currentBranch.lockTransaction && !isStaging} 
                         exportComponent={
                                             <CashCollectionDetailsExcelExport
                                                 data={groupClients}
@@ -4168,7 +4168,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     {/* { cc.mcbuColStr } */}
-                                                    { (!isWeekend && !isHoliday && !currentBranch.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (
@@ -4191,7 +4191,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                  <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && !currentBranch.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (
@@ -4216,7 +4216,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && !currentBranch.lockTransaction && currentUser.role.rep > 2 && cc.status === 'active' 
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' 
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
@@ -4329,7 +4329,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
-                                                { ( !isWeekend && !isHoliday && !currentBranch.lockTransaction && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
+                                                { ( !isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
                                                     && (cc.draft || editMode
                                                         || ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted) 
                                                         || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
@@ -4370,7 +4370,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && !currentBranch.lockTransaction && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
+                                                        {(!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
                                                                 {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentDate: currentDate, currentMonth: currentMonth, last5DaysOfTheMonth: last5DaysOfTheMonth, mcbuInterestLoading: mcbuInterestLoading }} />}
                                                             </div>
