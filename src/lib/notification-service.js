@@ -44,7 +44,9 @@ export const NOTIFICATION_TYPES = {
     // Collection Events
     CASH_COLLECTION_SAVED: 'cash_collection_saved',
     TRANSACTION_CLOSED: 'transaction_closed',
-    BRANCH_TRANSACTION_APPROVED: 'branch_transaction_approved'
+    BRANCH_TRANSACTION_APPROVED: 'branch_transaction_approved',
+    SUCCESSIVE_DELINQUENT_TRANSACTION: 'successive_delinquent_transaction',
+    DELINQUENT_CLIENT_AS_RELOANER: 'delinquent_client_as_reloaner',
 };
 
 /**
@@ -62,16 +64,15 @@ export async function isNotificationEnabled() {
         );
 
         const settings = result?.data?.systemSettings?.[0];
-        
         // Default to true if setting doesn't exist (backward compatibility)
         if (!settings || settings.enableNotifications === undefined || settings.enableNotifications === null) {
-            return true;
+            return false;
         }
 
         return settings.enableNotifications === true;
     } catch (error) {
         console.error('Error checking notification enabled status:', error);
-        return true; // Default to enabled on error
+        return false; // Default to enabled on error
     }
 }
 
@@ -168,8 +169,27 @@ const NOTIFICATION_TEMPLATES = {
     [NOTIFICATION_TYPES.BRANCH_TRANSACTION_APPROVED]: {
         title: 'Branch Transaction Approved',
         getMessage: (data) => `All branch transactions for ${data.branchName || 'branch'} have been approved for ${data.date || 'today'}.`
-    }
+    },
+    [NOTIFICATION_TYPES.SUCCESSIVE_DELINQUENT_TRANSACTION]: {
+        title: '⚠️ Successive Delinquent Transaction',
+        getMessage: (data) =>
+            `${data.clientName} has been marked delinquent ${data.mispaymentCount} time(s). ` +
+            `Transacted by ${data.loName || 'Loan Officer'} — Branch: ${data.branchName || ''}, ` +
+            `Group: ${data.groupName || ''}.`
+    },
+    [NOTIFICATION_TYPES.DELINQUENT_CLIENT_AS_RELOANER]: {
+        title: '🚨 Delinquent Client Processed as Reloaner',
+        getMessage: (data) =>
+            `${data.clientName} is flagged delinquent but was processed as a reloaner by ` +
+            `${data.loName || 'Loan Officer'} — Branch: ${data.branchName || ''}, Group: ${data.groupName || ''}.`
+    },
 };
+
+// Compliance alert types that always fire regardless of notification settings
+const COMPLIANCE_ALERT_TYPES = new Set([
+    NOTIFICATION_TYPES.SUCCESSIVE_DELINQUENT_TRANSACTION,
+    NOTIFICATION_TYPES.DELINQUENT_CLIENT_AS_RELOANER,
+]);
 
 /**
  * Create a notification
@@ -191,13 +211,15 @@ export async function createNotification({
     createdByName
 }) {
     try {
-        // Check if notifications are enabled in system settings
-        const enabled = await isNotificationEnabled();
-        if (!enabled) {
-            console.log('Notifications disabled in system settings, skipping:', type);
-            return null;
+        // Compliance alerts always fire — skip the settings check
+        if (!COMPLIANCE_ALERT_TYPES.has(type)) {
+            const enabled = await isNotificationEnabled();
+            if (!enabled) {
+                console.log('Notifications disabled in system settings, skipping:', type);
+                return null;
+            }
         }
-
+        console.log('Creating notification of type:', type);
         const template = NOTIFICATION_TEMPLATES[type];
         if (!template) {
             console.error(`Unknown notification type: ${type}`);
@@ -471,6 +493,33 @@ export async function notifyBranchTransactionApproved(params) {
         data: {
             branchName: params.branchName,
             date: params.date
+        },
+        ...params
+    });
+}
+
+export async function notifySuccessiveDelinquent(params) {
+    return createNotification({
+        type: NOTIFICATION_TYPES.SUCCESSIVE_DELINQUENT_TRANSACTION,
+        data: {
+            clientName: params.clientName,
+            mispaymentCount: params.mispaymentCount,
+            loName: params.loName,
+            branchName: params.branchName,
+            groupName: params.groupName
+        },
+        ...params
+    });
+}
+
+export async function notifyDelinquentAsReloaner(params) {
+    return createNotification({
+        type: NOTIFICATION_TYPES.DELINQUENT_CLIENT_AS_RELOANER,
+        data: {
+            clientName: params.clientName,
+            loName: params.loName,
+            branchName: params.branchName,
+            groupName: params.groupName
         },
         ...params
     });

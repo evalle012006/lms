@@ -137,6 +137,14 @@ const NotificationBell = () => {
             case 'branch_transaction_approved':
                 router.push('/transactions/cash-collection');
                 break;
+            case 'successive_delinquent_transaction':
+            case 'delinquent_client_as_reloaner':
+                if (notification.client_id) {
+                    router.push(`/clients/${notification.client_id}`);
+                } else {
+                    router.push('/notifications');
+                }
+                break;
             default:
                 router.push('/notifications');
         }

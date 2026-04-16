@@ -18,7 +18,7 @@ import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
-import { notifyLoanOffset } from '@/lib/notification-service';
+import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloaner, isNotificationEnabled } from '@/lib/notification-service';
 import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
 
@@ -65,6 +65,51 @@ function validateDate(requestDate) {
         };
     }
     return { valid: true };
+}
+
+/**
+ * Fire delinquent-related alerts when saving a cash collection.
+ * Called per-collection AFTER the loan snapshot is fetched.
+ */
+async function createDelinquentAlerts(collection, loan, client, branch, user) {
+    console.log("Create delinquent alerts")
+    if (!branch) return;
+    console.log('Checking delinquent alerts for collection:', { collectionId: collection._id, loanId: collection.loanId, clientId: collection.clientId });
+    const loName     = user   ? `${user.firstName} ${user.lastName}` : 'Loan Officer';
+    const branchName = branch.name || '';
+    const groupName  = collection.groupName || '';
+    const clientName = client
+        ? `${client.firstName} ${client.lastName}`
+        : (collection.fullName || 'Client');
+
+    const sharedParams = {
+        clientId:      collection.clientId,
+        loanId:        collection.loanId,
+        groupId:       collection.groupId,
+        branchId:      collection.branchId,
+        areaId:        branch.areaId,
+        regionId:      branch.regionId,
+        divisionId:    branch.divisionId,
+        loId:          collection.loId,
+        createdBy:     user?._id,
+        createdByName: loName,
+        clientName, loName, branchName, groupName
+    };
+
+    const remarksValue = collection.remarks?.value || '';
+
+    if (remarksValue.startsWith('delinquent')) {
+        const mispaymentCount = (loan?.mispayment || 0) + 1;
+        if (mispaymentCount >= 2) {
+            await notifySuccessiveDelinquent({ ...sharedParams, mispaymentCount });
+        }
+    }
+
+    if (remarksValue.startsWith('reloaner')) {
+        if (client?.delinquent === true) {
+            await notifyDelinquentAsReloaner({ ...sharedParams });
+        }
+    }
 }
 
 // ============================================
@@ -273,10 +318,35 @@ async function executeSave(req, user_id, transactionId) {
                 if (loan) {
                     collection.bmRevertCount = loan.bmRevertCount || 0;
                 }
-                
+
                 if (!loan) {
                     logger.warn({user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Loan not found', loanId: collection.loanId});
-                    return; // Skip this collection if loan not found
+                    return;
+                }
+
+                // ── Delinquent alerts — runs after loan is confirmed valid ──
+                try {
+                    const remarksValue = collection.remarks?.value || '';
+                    const isDelinquent = remarksValue.startsWith('delinquent');
+                    const isReloaner   = remarksValue.startsWith('reloaner');
+
+                    if (isDelinquent || isReloaner) {
+                        console.log('Collection is delinquent or reloaner, checking alerts...', { collectionId: collection._id, loanId: collection.loanId, clientId: collection.clientId });
+                        // Use unique alias per client to avoid collision in concurrent Promise.all
+                        const clientAlias = `clientAlert_${collection.clientId.replace(/-/g, '_')}`;
+
+                        const [clientData] = await graph.query(
+                            queryQl(CLIENT_TYPE(clientAlias), { where: { _id: { _eq: collection.clientId } } })
+                        ).then(res => res.data?.[clientAlias] || []);
+
+                        const branches = await findBranches({ _id: { _eq: collection.branchId } });
+                        const branch   = branches?.[0];
+                        const user     = await findUserById(user_id);
+
+                        await createDelinquentAlerts(collection, loan, clientData, branch, user);
+                    }
+                } catch (alertErr) {
+                    logger.error({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Delinquent alert failed', error: alertErr.message });
                 }
 
                 const loan_history = {
