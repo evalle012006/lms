@@ -151,8 +151,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const handleSaveUpdate = useCallback(async (values, actions) => {
         const age = values.birthdate ? calculateAge(values.birthdate) : 0;
-        if (age > 75) {
-            toast.error('Client age is over 75 years old.');
+        if (age > transactionSettings?.clientAgeThreshold) {
+            toast.error(`Client age is over ${transactionSettings.clientAgeThreshold} years old.`);
             return;
         }
 

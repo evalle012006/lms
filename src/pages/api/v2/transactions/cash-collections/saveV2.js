@@ -67,14 +67,28 @@ function validateDate(requestDate) {
     return { valid: true };
 }
 
+async function getDelinquentAlertThreshold() {
+    try {
+        const SETTINGS_TYPE = createGraphType('transactionSettings', 'delinquentAlertThreshold');
+        const result = await graph.query(
+            queryQl(SETTINGS_TYPE('txSettings'), { limit: 1 })
+        );
+        const threshold = result?.data?.txSettings?.[0]?.delinquentAlertThreshold;
+        // Default to 1 (fire on every delinquent) if not configured
+        return (typeof threshold === 'number' && threshold > 0) ? threshold : 1;
+    } catch (e) {
+        logger.warn({ page: 'saveV2', message: 'Could not fetch delinquentAlertThreshold, defaulting to 1', error: e.message });
+        return 1;
+    }
+}
+
 /**
  * Fire delinquent-related alerts when saving a cash collection.
  * Called per-collection AFTER the loan snapshot is fetched.
  */
-async function createDelinquentAlerts(collection, loan, client, branch, user) {
-    console.log("Create delinquent alerts")
+async function createDelinquentAlerts(collection, loan, client, branch, user, threshold = 2) {
     if (!branch) return;
-    console.log('Checking delinquent alerts for collection:', { collectionId: collection._id, loanId: collection.loanId, clientId: collection.clientId });
+
     const loName     = user   ? `${user.firstName} ${user.lastName}` : 'Loan Officer';
     const branchName = branch.name || '';
     const groupName  = collection.groupName || '';
@@ -98,13 +112,15 @@ async function createDelinquentAlerts(collection, loan, client, branch, user) {
 
     const remarksValue = collection.remarks?.value || '';
 
+    // ALERT 1: Delinquent — fires when mispaymentCount reaches threshold
     if (remarksValue.startsWith('delinquent')) {
         const mispaymentCount = (loan?.mispayment || 0) + 1;
-        if (mispaymentCount >= 2) {
+        if (mispaymentCount >= threshold) {
             await notifySuccessiveDelinquent({ ...sharedParams, mispaymentCount });
         }
     }
 
+    // ALERT 2: Delinquent client processed as reloaner — always fires
     if (remarksValue.startsWith('reloaner')) {
         if (client?.delinquent === true) {
             await notifyDelinquentAsReloaner({ ...sharedParams });
@@ -299,6 +315,8 @@ async function executeSave(req, user_id, transactionId) {
     const mutationQl = [];
     const offsetCollections = []; // Track offsets for notifications
 
+    const delinquentAlertThreshold = await getDelinquentAlertThreshold();
+
     if (data.collection.length > 0) {
         let existCC = [];
         let newCC = [];
@@ -343,7 +361,7 @@ async function executeSave(req, user_id, transactionId) {
                         const branch   = branches?.[0];
                         const user     = await findUserById(user_id);
 
-                        await createDelinquentAlerts(collection, loan, clientData, branch, user);
+                        await createDelinquentAlerts(collection, loan, clientData, branch, user, delinquentAlertThreshold);
                     }
                 } catch (alertErr) {
                     logger.error({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Delinquent alert failed', error: alertErr.message });

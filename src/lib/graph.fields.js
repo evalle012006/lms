@@ -237,6 +237,8 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   mcbuCsfMinimumBalance
   addHospitalization
   mcbuInterestRate
+  delinquentAlertThreshold
+  clientAgeThreshold
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

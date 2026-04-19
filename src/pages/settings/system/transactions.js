@@ -19,7 +19,9 @@ import {
   DocumentCurrencyDollarIcon,
   TrophyIcon,
   ChartBarIcon,
-  HeartIcon
+  HeartIcon,
+  ShieldExclamationIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 const ModernInput = ({ 
@@ -32,7 +34,11 @@ const ModernInput = ({
   required = false,
   onChange,
   setFieldValue,
-  errors
+  errors,
+  step,
+  min,
+  max,
+  onWheel,
 }) => (
   <div className="group">
     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -54,6 +60,10 @@ const ModernInput = ({
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck="false"
+        step={step}
+        min={min}
+        max={max}
+        onWheel={onWheel}
         className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md focus:shadow-lg ${
           errors 
             ? 'border-red-300 focus:ring-red-500' 
@@ -94,24 +104,17 @@ const ModernToggle = ({ name, value, label, description, onChange, setFieldValue
 
 const TransactionsSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
-    
-    // Use the correct Redux state path from the screenshot: transactionsSettings.data
     const transactionState = useSelector(state => state.transactionsSettings?.data || {});
-    
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
 
-    // Function to fetch transaction settings from API
     const fetchTransactionSettings = async () => {
         try {
             const apiURL = `${getApiBaseUrl()}settings/transactions`;
             const response = await fetchWrapper.get(apiURL);
-            
             if (response.success && response.transactions) {
                 dispatch(setTransactionSettings(response.transactions));
-            } else {
-                console.log('No transaction data received from API');
             }
         } catch (error) {
             console.error('Error fetching transaction settings:', error);
@@ -127,7 +130,7 @@ const TransactionsSettingsPage = (props) => {
         serviceChargeRate: transactionState.serviceChargeRate || '',
         mcbuRate: transactionState.mcbuRate || '',
         lrfRate: transactionState.lrfRate || '',
-        mcbuInterestRate: transactionState.mcbuInterestRate || '',  // ADD THIS
+        mcbuInterestRate: transactionState.mcbuInterestRate || '',
         
         // MCBU/CSF Settings
         minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
@@ -145,7 +148,13 @@ const TransactionsSettingsPage = (props) => {
         cbhbFee: transactionState.cbhbFee || '',
         otherPassbookFee: transactionState.otherPassbookFee || '',
         otherPictureFee: transactionState.otherPictureFee || '',
-        addHospitalization: transactionState.addHospitalization || ''
+        addHospitalization: transactionState.addHospitalization || '',
+
+        // ── Compliance & Risk Settings ───────────────────────────────────
+        // Number of delinquent transactions before an alert fires (1 = every delinquent)
+        delinquentAlertThreshold: transactionState.delinquentAlertThreshold ?? 1,
+        // Maximum client age allowed for loan application
+        clientAgeThreshold: transactionState.clientAgeThreshold ?? 65,
     }
 
     const validationSchema = yup.object().shape({
@@ -157,7 +166,7 @@ const TransactionsSettingsPage = (props) => {
         serviceChargeRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('Service charge rate is required'),
         mcbuRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('MCBU rate is required'),
         lrfRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('LRF rate is required'),
-        mcbuInterestRate: yup.number().min(0, 'Cannot be negative').required('MCBU Interest Rate is required'),  // ADD THIS
+        mcbuInterestRate: yup.number().min(0, 'Cannot be negative').required('MCBU Interest Rate is required'),
         
         // MCBU/CSF Settings
         minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
@@ -174,7 +183,19 @@ const TransactionsSettingsPage = (props) => {
         cbhbFee: yup.number().min(0, 'Cannot be negative').required('CBHB fee is required'),
         otherPassbookFee: yup.number().min(0, 'Cannot be negative').required('Passbook fee is required'),
         otherPictureFee: yup.number().min(0, 'Cannot be negative').required('Picture fee is required'),
-        addHospitalization: yup.number().min(0, 'Cannot be negative').required('Hospitalization fee is required')
+        addHospitalization: yup.number().min(0, 'Cannot be negative').required('Hospitalization fee is required'),
+
+        // Compliance & Risk
+        delinquentAlertThreshold: yup.number()
+            .integer('Must be a whole number')
+            .min(1, 'Minimum value is 1')
+            .max(20, 'Maximum value is 20')
+            .required('Delinquent alert threshold is required'),
+        clientAgeThreshold: yup.number()
+            .integer('Must be a whole number')
+            .min(18, 'Minimum age is 18')
+            .max(100, 'Maximum age is 100')
+            .required('Client age threshold is required'),
     });
 
     const handleUpdate = async (values, action) => {
@@ -189,15 +210,10 @@ const TransactionsSettingsPage = (props) => {
             const response = await fetchWrapper.post(apiURL, updatedValues);
 
             if (response.success) {
-                // Show success immediately
                 setSaved(true);
                 toast.success('Transaction Settings updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
-                
-                // Refresh data from API to ensure Redux state is updated
-                console.log('Refreshing transaction data from API...');
                 await fetchTransactionSettings();
-                
             } else {
                 toast.error(response.message || 'Failed to update transaction settings');
             }
@@ -214,8 +230,6 @@ const TransactionsSettingsPage = (props) => {
             router.push('/');
             return;
         }
-        
-        // If transaction state is empty, try to fetch it
         if (!transactionState || Object.keys(transactionState).length === 0) {
             fetchTransactionSettings();
         }
@@ -224,10 +238,7 @@ const TransactionsSettingsPage = (props) => {
     useEffect(() => {
         let mounted = true;
         setLoading(false);
-
-        return () => {
-            mounted = false;
-        };
+        return () => { mounted = false; };
     }, [transactionState]);
 
     return (
@@ -242,7 +253,7 @@ const TransactionsSettingsPage = (props) => {
                     validationSchema={validationSchema}
                     onSubmit={handleUpdate}
                     enableReinitialize={true}
-                    key={JSON.stringify(initialValues)} // Force re-render when data changes
+                    key={JSON.stringify(initialValues)}
                 >
                     {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
                         <form onSubmit={handleSubmit} autoComplete="off" autoCorrect="off" spellCheck="false">
@@ -268,6 +279,7 @@ const TransactionsSettingsPage = (props) => {
 
                             <div className="max-w-7xl mx-auto px-6 py-8">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
                                     {/* Loan Limits Card */}
                                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                         <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
@@ -276,7 +288,6 @@ const TransactionsSettingsPage = (props) => {
                                                 <h2 className="text-xl font-semibold text-white">Loan Limits</h2>
                                             </div>
                                         </div>
-                                        
                                         <div className="p-6 space-y-6">
                                             <ModernInput
                                                 name="loanDailyLimit"
@@ -291,7 +302,6 @@ const TransactionsSettingsPage = (props) => {
                                                 onWheel={(e) => e.target.blur()}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="loanWeeklyLimit"
                                                 value={values.loanWeeklyLimit}
@@ -316,7 +326,6 @@ const TransactionsSettingsPage = (props) => {
                                                 <h2 className="text-xl font-semibold text-white">Rate Settings (%)</h2>
                                             </div>
                                         </div>
-                                        
                                         <div className="p-6 space-y-6">
                                             <ModernInput
                                                 name="serviceChargeRate"
@@ -331,7 +340,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.serviceChargeRate && errors.serviceChargeRate}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="mcbuRate"
                                                 value={values.mcbuRate}
@@ -345,7 +353,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.mcbuRate && errors.mcbuRate}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="lrfRate"
                                                 value={values.lrfRate}
@@ -359,7 +366,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.lrfRate && errors.lrfRate}
                                                 required
                                             />
-
                                             <ModernInput
                                                 name="mcbuInterestRate"
                                                 value={values.mcbuInterestRate}
@@ -367,7 +373,7 @@ const TransactionsSettingsPage = (props) => {
                                                 placeholder="e.g., 0.00083"
                                                 icon={CalculatorIcon}
                                                 type="number"
-                                                step="0.00001"  // Allow 5 decimal places
+                                                step="0.00001"
                                                 onWheel={(e) => e.target.blur()}
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
@@ -385,7 +391,6 @@ const TransactionsSettingsPage = (props) => {
                                                 <h2 className="text-xl font-semibold text-white">Transaction Rules</h2>
                                             </div>
                                         </div>
-                                        
                                         <div className="p-6 space-y-6">
                                             <ModernInput
                                                 name="startTransactionTime"
@@ -398,7 +403,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.startTransactionTime && errors.startTransactionTime}
                                                 required
                                             />
-                                            
                                             <div className="p-4 bg-gray-50 rounded-xl">
                                                 <ModernToggle
                                                     name="allowWeekendTransaction"
@@ -411,6 +415,86 @@ const TransactionsSettingsPage = (props) => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* ── Compliance & Risk Card ── NEW ── */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <ShieldExclamationIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Compliance &amp; Risk</h2>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 space-y-6">
+
+                                            {/* Delinquent Alert Threshold */}
+                                            <div>
+                                                <ModernInput
+                                                    name="delinquentAlertThreshold"
+                                                    value={values.delinquentAlertThreshold}
+                                                    label="Delinquent Alert Threshold"
+                                                    placeholder="e.g., 1"
+                                                    icon={ShieldExclamationIcon}
+                                                    type="number"
+                                                    min={1}
+                                                    max={20}
+                                                    onWheel={(e) => e.target.blur()}
+                                                    onChange={handleChange}
+                                                    setFieldValue={setFieldValue}
+                                                    errors={touched.delinquentAlertThreshold && errors.delinquentAlertThreshold}
+                                                    required
+                                                />
+                                                <p className="text-xs text-gray-500 mt-2 pl-1">
+                                                    Number of delinquent transactions before a BM alert is triggered.
+                                                    Set to <span className="font-semibold text-gray-700">1</span> to alert on every delinquent transaction.
+                                                </p>
+                                                {/* Visual hint showing current behaviour */}
+                                                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
+                                                    <ShieldExclamationIcon className="h-4 w-4 text-red-500 shrink-0" />
+                                                    <p className="text-xs text-red-700">
+                                                        Currently alerts after{' '}
+                                                        <span className="font-bold">
+                                                            {values.delinquentAlertThreshold === 1
+                                                                ? 'every'
+                                                                : `${values.delinquentAlertThreshold}`}
+                                                        </span>
+                                                        {values.delinquentAlertThreshold !== 1 && ' or more'} delinquent transaction{values.delinquentAlertThreshold !== 1 ? 's' : ''}.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Client Age Threshold */}
+                                            <div>
+                                                <ModernInput
+                                                    name="clientAgeThreshold"
+                                                    value={values.clientAgeThreshold}
+                                                    label="Maximum Client Age"
+                                                    placeholder="e.g., 65"
+                                                    icon={UserGroupIcon}
+                                                    type="number"
+                                                    min={18}
+                                                    max={100}
+                                                    onWheel={(e) => e.target.blur()}
+                                                    onChange={handleChange}
+                                                    setFieldValue={setFieldValue}
+                                                    errors={touched.clientAgeThreshold && errors.clientAgeThreshold}
+                                                    required
+                                                />
+                                                <p className="text-xs text-gray-500 mt-2 pl-1">
+                                                    Maximum age (in years) allowed for a client to be eligible for a loan.
+                                                    Clients at or above this age will be flagged or blocked during onboarding.
+                                                </p>
+                                                {/* Visual hint */}
+                                                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-lg">
+                                                    <UserGroupIcon className="h-4 w-4 text-orange-500 shrink-0" />
+                                                    <p className="text-xs text-orange-700">
+                                                        Clients aged <span className="font-bold">{values.clientAgeThreshold} years or older</span> will be flagged.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
                                 </div>
 
                                 {/* MCBU/CSF Settings Card - Full Width */}
@@ -421,7 +505,6 @@ const TransactionsSettingsPage = (props) => {
                                             <h2 className="text-xl font-semibold text-white">MCBU/CSF Settings</h2>
                                         </div>
                                     </div>
-                                    
                                     <div className="p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             <ModernInput
@@ -437,7 +520,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minDailyMcbuCollection && errors.minDailyMcbuCollection}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="minWeeklyMcbuCollection"
                                                 value={values.minWeeklyMcbuCollection}
@@ -451,7 +533,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="minCsfCollection"
                                                 value={values.minCsfCollection}
@@ -465,7 +546,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minCsfCollection && errors.minCsfCollection}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="mcbuCsfMCBUForNM"
                                                 value={values.mcbuCsfMCBUForNM}
@@ -479,7 +559,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.mcbuCsfMCBUForNM && errors.mcbuCsfMCBUForNM}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="mcbuCsfMinimumBalance"
                                                 value={values.mcbuCsfMinimumBalance}
@@ -505,7 +584,6 @@ const TransactionsSettingsPage = (props) => {
                                             <h2 className="text-xl font-semibold text-white">Fee Settings</h2>
                                         </div>
                                     </div>
-                                    
                                     <div className="p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                                             <ModernInput
@@ -521,7 +599,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.admissionFee && errors.admissionFee}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="cbhbFee"
                                                 value={values.cbhbFee}
@@ -535,7 +612,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.cbhbFee && errors.cbhbFee}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="otherPassbookFee"
                                                 value={values.otherPassbookFee}
@@ -549,7 +625,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.otherPassbookFee && errors.otherPassbookFee}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="otherPictureFee"
                                                 value={values.otherPictureFee}
@@ -563,7 +638,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.otherPictureFee && errors.otherPictureFee}
                                                 required
                                             />
-                                            
                                             <ModernInput
                                                 name="addHospitalization"
                                                 value={values.addHospitalization}
@@ -589,7 +663,6 @@ const TransactionsSettingsPage = (props) => {
                                     >
                                         Reset
                                     </button>
-                                    
                                     <button
                                         type="submit"
                                         disabled={loading}
