@@ -93,6 +93,7 @@ const CashCollectionDetailsPage = () => {
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
     const [hasDraft, setHasDraft] = useState(false);
+    const [draftsCollection, setDraftsCollection] = useState([]);
 
     const [selectedSlot, setSelectedSlot] = useState();
     const [showWaningDialog, setShowWarningDialog] = useState(false);
@@ -1505,6 +1506,7 @@ const CashCollectionDetailsPage = () => {
             if (hasDraft.length > 0) {
                 setEditMode(true);
                 setHasDraft(true);
+                setDraftsCollection(hasDraft);
                 console.log('Drafts Collection found: ', hasDraft)
             }
 
@@ -1987,9 +1989,17 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
-                // console.log(dataArr, 'before revert filter')
+                console.log(dataArr, 'before revert filter')
                 if (revertedItems.length > 0) {
                     dataArr = revertedItems;
+                }
+
+                if (!draft) {
+                    const draftIds = new Set(draftsCollection.map(d => d.client._id));
+                    const matchingItems = dataArr.filter(item => draftIds.has(item.clientId));
+                    if (matchingItems.length > 0) {
+                        dataArr = matchingItems;
+                    }
                 }
 
                 // const pendings = dataArr.filter(cc => {
