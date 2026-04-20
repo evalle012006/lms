@@ -1994,7 +1994,7 @@ const CashCollectionDetailsPage = () => {
                     dataArr = revertedItems;
                 }
 
-                if (!draft) {
+                if (!draft && draftsCollection.length > 0) {
                     const draftIds = new Set(draftsCollection.map(d => d.client._id));
                     const matchingItems = dataArr.filter(item => draftIds.has(item.clientId));
                     if (matchingItems.length > 0) {
