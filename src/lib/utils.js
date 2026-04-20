@@ -346,3 +346,7 @@ export const isCoMakerSlotValid = (coMakerSlotNo, dataArray) => {
     
     return true;
 };
+
+export const isValidId = (value) => {
+    return typeof value === 'string' && value.trim().length > 0;
+};
