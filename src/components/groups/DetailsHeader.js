@@ -281,7 +281,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
 
                         {((showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction || allowMcbuInterest) && groupTransactionStatus != 'close') && (
                             <>
-                                {((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) || !allowMcbuInterest || !allowMcbuWithdrawal) && (
+                                {( !revertMode && ((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) || !allowMcbuInterest || !allowMcbuWithdrawal)) && (
                                     <div className="w-40">
                                         <ButtonOutline label="Save Draft" type="button" className="p-2" onClick={() => handleSaveUpdate(true)} disabled={loading} />
                                     </div>

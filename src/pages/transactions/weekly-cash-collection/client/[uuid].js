@@ -1989,7 +1989,6 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
-                console.log(dataArr, 'before revert filter')
                 if (revertedItems.length > 0) {
                     dataArr = revertedItems;
                 }
