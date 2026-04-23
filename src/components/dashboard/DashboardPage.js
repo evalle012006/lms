@@ -26,6 +26,7 @@ import CollapsiblePanel    from './CollapsiblePanel';
 import CustomSelect        from './CustomSelect';
 import CardItem, { formatNumber } from './CardItem';
 import CompanyActivitiesSlider, { ACTIVITY_SLIDES } from './CompanyActivitiesSlider';
+import DelinquentAlertsModal from './DelinquentAlertsModal';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -39,176 +40,6 @@ const getEffectiveDate = (date, holidays = []) => {
         candidate = candidate.subtract(1, 'day');
     }
     return date;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DELINQUENT ALERTS MODAL
-// ─────────────────────────────────────────────────────────────────────────────
-const ALERT_TABS = [
-    { key: 'successive_delinquent_transaction', label: 'Successive Delinquent', icon: '⚠️', color: 'orange' },
-    { key: 'delinquent_client_as_reloaner',     label: 'Delinquent as Reloaner', icon: '🚨', color: 'red'    },
-];
-
-const DelinquentAlertsModal = ({ alerts, loading, onClose, onNavigate }) => {
-    const [activeTab, setActiveTab] = useState('successive_delinquent_transaction');
-
-    const filtered = alerts.filter(a => a.type === activeTab);
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose} />
-
-            {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[85vh]">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                    <div className="flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5 text-red-500" />
-                        <h2 className="text-base font-bold text-gray-800">Delinquent Alerts</h2>
-                        {alerts.filter(a => !a.is_read).length > 0 && (
-                            <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-red-100 text-red-600 rounded-full">
-                                {alerts.filter(a => !a.is_read).length} new
-                            </span>
-                        )}
-                    </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200 px-5 bg-gray-50">
-                    {ALERT_TABS.map(tab => {
-                        const count = alerts.filter(a => a.type === tab.key).length;
-                        const unread = alerts.filter(a => a.type === tab.key && !a.is_read).length;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap
-                                    ${activeTab === tab.key
-                                        ? tab.color === 'red'
-                                            ? 'border-red-500 text-red-600'
-                                            : 'border-orange-500 text-orange-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <span>{tab.icon}</span>
-                                {tab.label}
-                                <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold
-                                    ${activeTab === tab.key
-                                        ? tab.color === 'red' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
-                                        : 'bg-gray-200 text-gray-600'
-                                    }`}>
-                                    {count}
-                                </span>
-                                {unread > 0 && (
-                                    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Tab description */}
-                <div className={`px-5 py-2 text-xs ${activeTab === 'delinquent_client_as_reloaner' ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
-                    {activeTab === 'successive_delinquent_transaction'
-                        ? 'Clients who have been marked delinquent 2 or more consecutive times — potential bad debt risk.'
-                        : 'Clients flagged as delinquent who are being processed for a new loan cycle — requires immediate review.'}
-                </div>
-
-                {/* Table */}
-                <div className="flex-1 overflow-y-auto">
-                    {loading ? (
-                        <div className="flex justify-center items-center py-16">
-                            <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                    ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                            <CheckCircle2 className="w-10 h-10 mb-3 text-green-300" />
-                            <p className="text-sm font-medium">No alerts for this category</p>
-                        </div>
-                    ) : (
-                        <table className="w-full text-xs">
-                            <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600 w-6"></th>
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Client</th>
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Group</th>
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Branch</th>
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Transacted By</th>
-                                    {activeTab === 'successive_delinquent_transaction' && (
-                                        <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Mispay #</th>
-                                    )}
-                                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filtered.map((alert, i) => {
-                                    const d = typeof alert.data === 'string' ? JSON.parse(alert.data || '{}') : (alert.data || {});
-                                    const isUnread = !alert.is_read;
-                                    return (
-                                        <tr
-                                            key={alert._id}
-                                            onClick={() => onNavigate(alert)}
-                                            className={`cursor-pointer transition-colors hover:bg-gray-50
-                                                ${isUnread
-                                                    ? activeTab === 'delinquent_client_as_reloaner'
-                                                        ? 'bg-red-50'
-                                                        : 'bg-orange-50'
-                                                    : 'bg-white'
-                                                }`}
-                                        >
-                                            <td className="px-4 py-3">
-                                                {isUnread && (
-                                                    <span className="block w-2 h-2 rounded-full bg-red-500" />
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 font-medium text-gray-800">
-                                                {d.clientName || '—'}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-600">
-                                                {d.groupName || '—'}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-600">
-                                                {d.branchName || '—'}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-600">
-                                                {d.loName || alert.created_by_name || '—'}
-                                            </td>
-                                            {activeTab === 'successive_delinquent_transaction' && (
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className={`inline-block px-2 py-0.5 rounded-full font-bold text-xs
-                                                        ${(d.mispaymentCount || 0) >= 5 ? 'bg-red-100 text-red-700' :
-                                                          (d.mispaymentCount || 0) >= 3 ? 'bg-orange-100 text-orange-700' :
-                                                          'bg-yellow-100 text-yellow-700'}`}>
-                                                        {d.mispaymentCount || '—'}
-                                                    </span>
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                                                {alert.date_added ? moment(alert.date_added).format('MMM D, YYYY h:mm A') : '—'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center bg-gray-50 rounded-b-xl">
-                    <p className="text-xs text-gray-400">{filtered.length} alert{filtered.length !== 1 ? 's' : ''} shown</p>
-                    <button onClick={onClose} className="px-4 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,8 +106,10 @@ const DashboardPage = () => {
     const fetchDelinquentAlerts = async () => {
         setDelinquentAlertsLoading(true);
         try {
+            const today = moment(currentDate).format('YYYY-MM-DD');
             const res = await fetchWrapper.get(
-                getApiBaseUrl() + 'notifications/list?limit=50&offset=0&types=successive_delinquent_transaction,delinquent_client_as_reloaner'
+                getApiBaseUrl() + 
+                `notifications/list?limit=50&offset=0&types=successive_delinquent_transaction,delinquent_client_as_reloaner&date=${today}`
             );
             if (res.success) {
                 setDelinquentAlerts(res.notifications || []);
@@ -289,10 +122,10 @@ const DashboardPage = () => {
     };
 
     useEffect(() => {
-        if (canSeeDelinquentAlerts) {
+        if (canSeeDelinquentAlerts && currentDate) {
             fetchDelinquentAlerts();
         }
-    }, [currentUser]);
+    }, [currentUser, currentDate]);
 
     const handleDelinquentNavigate = (alert) => {
         return;
@@ -533,15 +366,13 @@ const DashboardPage = () => {
                             >
                                 <ShieldAlert className={`w-4 h-4 ${totalAlertCount > 0 ? 'text-red-500' : 'text-gray-400'}`} />
                                 <span>Delinquent Alerts</span>
-                                {/* Total count badge */}
+
+                                {/* Single badge — unread count if any, else total */}
                                 {totalAlertCount > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
-                                        {totalAlertCount}
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold text-white
+                                        ${delinquentAlertCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}>
+                                        {delinquentAlertCount > 0 ? delinquentAlertCount : totalAlertCount}
                                     </span>
-                                )}
-                                {/* Unread dot */}
-                                {delinquentAlertCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
                                 )}
                             </button>
                         )}

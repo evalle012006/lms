@@ -4,15 +4,17 @@ import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
 import { NOTIFICATION_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
+import moment from 'moment-timezone';
 
 const graph = new GraphProvider();
 const NOTIFICATION_TYPE = createGraphType('notifications', NOTIFICATION_FIELDS);
 
-// These types always show regardless of notification settings
 const COMPLIANCE_TYPES = new Set([
     'successive_delinquent_transaction',
     'delinquent_client_as_reloaner',
 ]);
+
+const TIMEZONE = 'Asia/Manila';
 
 export default apiHandler({
     get: list
@@ -29,9 +31,12 @@ async function list(req, res) {
             offset = 0, 
             unreadOnly = false,
             types,
+            date,
+            branchId:  filterBranchId,
+            loId:      filterLoId,
+            groupId:   filterGroupId,
         } = req.query;
 
-        // ── Derive user context from JWT, not query params ──────────────
         const currentUser = await findUserById(user_id);
         if (!currentUser) {
             return res.status(200).json({ success: true, notifications: [], total: 0, unreadCount: 0 });
@@ -39,12 +44,10 @@ async function list(req, res) {
 
         const role = currentUser.role;
 
-        // ── Check if notifications enabled (skip for compliance types) ──
         const requestedTypes = types ? types.split(',').map(t => t.trim()) : [];
         const allCompliance  = requestedTypes.length > 0 && requestedTypes.every(t => COMPLIANCE_TYPES.has(t));
 
         if (!allCompliance) {
-            // Check settings for non-compliance notification requests
             try {
                 const settingsResult = await graph.query(
                     queryQl(createGraphType('settings', 'enableNotifications')('systemSettings'), { limit: 1 })
@@ -58,12 +61,10 @@ async function list(req, res) {
                     return res.status(200).json({ success: true, notifications: [], total: 0, unreadCount: 0 });
                 }
             } catch (e) {
-                // If settings check fails, proceed (fail open)
                 logger.warn({ user_id, page: 'Notifications List', message: 'Could not check notification settings', error: e.message });
             }
         }
 
-        // ── Build where clause from JWT user ─────────────────────────────
         const where = buildWhereClause({
             role,
             userId:     currentUser._id,
@@ -74,10 +75,22 @@ async function list(req, res) {
             unreadOnly: unreadOnly === 'true' || unreadOnly === true
         });
 
-        // ── Filter by types if provided ──────────────────────────────────
         if (requestedTypes.length > 0) {
             where.type = { _in: requestedTypes };
         }
+
+        if (date) {
+            const startOfDay = moment.tz(date, TIMEZONE).startOf('day').format('YYYY-MM-DD HH:mm:ss');
+            const endOfDay   = moment.tz(date, TIMEZONE).endOf('day').format('YYYY-MM-DD HH:mm:ss');
+            where.date_added = { _gte: startOfDay, _lte: endOfDay };
+        }
+
+        // ── Additional filters from modal (override/narrow role-based scope) ─
+        // Only apply if within the user's allowed scope (they can't filter
+        // outside what buildWhereClause already restricts them to)
+        if (filterBranchId) where.branch_id = { _eq: filterBranchId };
+        if (filterLoId)     where.lo_id     = { _eq: filterLoId };
+        if (filterGroupId)  where.group_id  = { _eq: filterGroupId };
 
         logger.debug({ user_id, page: 'Notifications List', message: 'Fetching notifications', where, limit, offset });
 
