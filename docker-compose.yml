@@ -9,8 +9,8 @@ services:
   lms:
     image: node:18
     platform: linux/amd64
-    deploy:
-      replicas: 3
+    # deploy:
+    #   replicas: 3
     command: sh -c "cd /app/ && npm start"
     restart: unless-stopped
     expose:
