@@ -2,9 +2,7 @@
 
 # ============================================================
 #  lms-staging-v2 — Auto Deploy Script
-#  Usage: ./run.sh [branch]
-#  Example: ./run.sh main
-#  Default branch: migration
+#  Updated for Host Networking & Port 3001
 # ============================================================
 
 set -e  # Exit immediately on any error
@@ -19,10 +17,10 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m' 
 
 # ── Helpers ──────────────────────────────────────────────────
-log()     { echo -e "${CYAN}[${TIMESTAMP}]${NC} $1"; }
+log()     { echo -e "${CYAN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"; }
 success() { echo -e "${GREEN}✔ $1${NC}"; }
 warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 error()   { echo -e "${RED}✘ $1${NC}"; exit 1; }
@@ -36,69 +34,59 @@ echo ""
 
 # ── Check project directory ──────────────────────────────────
 log "Checking project directory..."
-if [ ! -d "$APP_DIR" ]; then
-  error "Project directory $APP_DIR not found. Please set up the project first."
-fi
-
-cd "$APP_DIR"
+cd "$APP_DIR" || error "Project directory $APP_DIR not found."
 success "Project directory found: $APP_DIR"
 
-# ── Check docker-compose.yml exists ──────────────────────────
-if [ ! -f "docker-compose.yml" ]; then
-  error "docker-compose.yml not found in $APP_DIR"
-fi
-
-# ── Git pull latest code ──────────────────────────────────────
+# ── Git Operations ──────────────────────────────────────────
 log "Fetching latest code from branch: ${YELLOW}$BRANCH${NC}..."
-
-if [ ! -d ".git" ]; then
-  error "Not a git repository. Initialize git or clone the project first."
-fi
-
 git fetch origin
 git checkout "$BRANCH"
 git pull origin "$BRANCH"
-
 success "Code updated to latest on branch: $BRANCH"
 
-# ── Verify .env files exist ───────────────────────────────────
-log "Checking environment files..."
+# ── Verify Files ───────────────────────────────────────────
+log "Checking environment and config files..."
+[ -f ".env" ] || error ".env missing!"
+[ -f "docker-compose.yml" ] || error "docker-compose.yml missing!"
+success "Configuration files verified."
 
-if [ ! -f "$APP_DIR/.env" ]; then
-  error ".env not found at $APP_DIR/.env — create it from .env.example first."
-fi
-
-success "Environment files found."
-
-# ── Install dependencies ──────────────────────────────────────
+# ── Install dependencies & Build ────────────────────────────
 log "Installing dependencies..."
-npm install
+npm install --quiet
 success "Dependencies installed."
 
-# ── Build Next.js app ─────────────────────────────────────────
 log "Building Next.js application..."
 npm run build
 success "Build completed."
 
-# ── Stop existing containers ──────────────────────────────────
-log "Stopping running containers..."
+# ── Container Management ────────────────────────────────────
+log "Stopping existing containers..."
+# Note: Host mode doesn't support scaling, so we ensure a clean slate
 docker compose down --remove-orphans
 success "Containers stopped."
 
-# ── Build and start containers ────────────────────────────────
-log "Starting containers..."
-docker compose up -d --scale lms=5
+log "Starting containers in Host Mode..."
+# Removed --scale because Host Networking only allows 1 process per port
+docker compose up -d 
 success "Containers started."
 
-# ── Show container status ─────────────────────────────────────
+# ── Cleanup ──────────────────────────────────────────────────
+log "Cleaning up old Docker images..."
+docker image prune -f
+success "Cleanup done."
+
+# ── Show Status ──────────────────────────────────────────────
 echo ""
 log "Container status:"
 docker compose ps
+echo ""
+log "Port Status (LMS on 3001, Nginx on 3000):"
+sudo lsof -i :3000,3001 || warn "Could not verify ports. Check logs."
 
-# ── Done ─────────────────────────────────────────────────────
+# ── Final Message ────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║         Deployment complete! 🚀          ║${NC}"
-echo -e "${GREEN}║      https://lmsv2.ambercashph.com         ║${NC}"
+echo -e "${GREEN}║      https://lmsv2.ambercashph.com       ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
