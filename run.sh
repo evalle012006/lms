@@ -11,7 +11,7 @@ set -e  # Exit immediately on any error
 
 # ── Config ───────────────────────────────────────────────────
 APP_DIR=~/apps/lms-v2
-BRANCH=${1:-migration}
+BRANCH=${1:-production}
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 # ── Colors ───────────────────────────────────────────────────

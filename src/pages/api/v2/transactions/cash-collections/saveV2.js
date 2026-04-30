@@ -142,13 +142,18 @@ async function saveWithProtection(req, res) {
         const data = req.body;
         const currentDate = data.currentDate;
 
+        // Parse once here — retries reuse the already-parsed array
+        if (typeof data.collection === 'string') {
+            data.collection = JSON.parse(data.collection);
+        }
+
         // Log start
         logger.debug({
             user_id,
             transactionId,
             page: 'Cash Collection SaveV2',
             message: 'Starting save',
-            groupId: JSON.parse(data.collection || '[]')[0]?.groupId
+            groupId: data.collection[0]?.groupId
         });
 
         // Step 1: Validate date
@@ -309,7 +314,7 @@ async function executeSave(req, user_id, transactionId) {
     let data = req.body;
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
-    data.collection = JSON.parse(data.collection);
+    // collection already parsed in saveWithProtection before the retry loop
     const overallTotalNetCollection = data.overallTotalNetCollection || 0;
 
     const mutationQl = [];
@@ -573,6 +578,12 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
     
     if (loan.length > 0) {
         loan = loan[0];
+
+        // loans.remarks is varchar — parse it back to object for downstream checks
+        if (loan.remarks && typeof loan.remarks === 'string') {
+            try { loan.remarks = JSON.parse(loan.remarks); } catch (e) { loan.remarks = null; }
+        }
+
         delete loan.groupStatus;
         loan.loanBalance = collection.loanBalance;
         loan.modifiedDateTime = new Date();
@@ -685,6 +696,12 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
         }
 
         loan.lastUpdated = currentDate;
+
+        // serialize back to string — loans.remarks column is varchar not jsonb
+        if (loan.remarks && typeof loan.remarks === 'object') {
+            loan.remarks = JSON.stringify(loan.remarks);
+        }
+
         logger.debug({user_id, page: `Saving Cash Collection - Updating Loan`, data: loan});
         const loanId = loan._id;
         delete loan._id;
@@ -745,6 +762,11 @@ async function updateClient(user_id, mutationQl, loan) {
         client = client[0];
         client.status = loan.clientStatus;
 
+        // loan.remarks may still be a varchar string at this point — parse safely
+        const loanRemarks = (loan.remarks && typeof loan.remarks === 'string')
+            ? (() => { try { return JSON.parse(loan.remarks); } catch (e) { return null; } })()
+            : loan.remarks;
+
         if (client.status === 'offset') {
             client.oldLoId = client.loId;
             client.oldGroupId = client.groupId;
@@ -752,7 +774,7 @@ async function updateClient(user_id, mutationQl, loan) {
             client.loId = null;
         }
 
-        if ((loan.remarks && loan.remarks.value?.startsWith('delinquent') && loan.delinquent)) {
+        if ((loanRemarks && loanRemarks.value?.startsWith('delinquent') && loan.delinquent)) {
             client.delinquent = true;
         }
 
@@ -767,7 +789,7 @@ async function updateClient(user_id, mutationQl, loan) {
             })
         );
         
-        if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
+        if (loanRemarks && loanRemarks.value?.startsWith('offset')) {
             await updateGroup(user_id, mutationQl, loan);
         }
     }

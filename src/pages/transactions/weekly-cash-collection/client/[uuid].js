@@ -361,6 +361,11 @@ const CashCollectionDetailsPage = () => {
             }
             
             dataCollection.map(cc => {
+                // Parse loan-level remarks if it comes back as a string
+                if (cc.remarks && typeof cc.remarks === 'string') {
+                    try { cc.remarks = JSON.parse(cc.remarks); } catch (e) { cc.remarks = null; }
+                }
+
                 let collection;
                 let transferStr = '-';
                 if ((cc?.transferred == true && cc.transferredDate == currentDate) || ((cc?.transfer == true && cc.transferDate == currentDate) && cc?.current?.length == 0)) {
@@ -953,6 +958,9 @@ const CashCollectionDetailsPage = () => {
                                     collection.origin = current.origin;
                                     if (collection.origin !== 'pre-save') {
                                         setEditMode(false);
+                                    } else {
+                                        // pre-save rows are always editable — mark dirty so they're included on save
+                                        collection._dirty = true;
                                     }
                                 } else if (current.draft) {
                                     collection.error = current.error;
@@ -1734,9 +1742,13 @@ const CashCollectionDetailsPage = () => {
                 
                 if (cc.groupDay === dayName || cc.offsetTransFlag) {
                     if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < transactionSettings.minWeeklyMcbuCollection) {
-                        if (!cc.remarks || (cc.remarks 
-                            && (cc.remarks.value !== 'past due' && cc.remarks.value?.startsWith('excused-')
-                            && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
+                        const remarksValue = cc.remarks?.value;
+                        const isExemptFromMcbu = remarksValue === 'past due'
+                            || remarksValue === 'past due collection'
+                            || remarksValue?.startsWith('excused-')
+                            || remarksValue?.startsWith('delinquent');
+
+                        if (!cc.remarks || !isExemptFromMcbu) {
                             errorMsg.add('Error occured. Invalid MCBU Collection.');
                         }
                     } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
@@ -2858,7 +2870,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.error = true;
                                             toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
                                         } else {
-                                            if (temp.remarks.value == 'delinquent') {
+                                            if (temp.remarks?.value == 'delinquent') {
                                                 if (temp.paymentCollection > 0) {
                                                     temp.loanBalance += temp.paymentCollection;
                                                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
