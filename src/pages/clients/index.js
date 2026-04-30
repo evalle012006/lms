@@ -223,23 +223,19 @@ const ClientsProspectPage = () => {
         }
     }
 
-    const handleShowAddDrawer = () => {
-        setShowAddDrawer(true);
-    }
+    // const handleShowAddDrawer = () => {
+    //     setShowAddDrawer(true);
+    // }
+
+    const handleShowAddDrawer = () => router.push('/clients/add');
+
+    const handleEditClient = (client) => router.push(`/clients/edit/${client._id}`);
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
         setMode('add');
         setClient({});
         window.location.reload();
-    }
-
-    const handleShowSearchModal = () => {
-        setShowSearchModal(true);
-    }
-
-    const handleCloseSearchModal = () => {
-        setShowSearchModal(false);
     }
 
     const handleShowCoMakerDrawer = () => {
@@ -252,7 +248,13 @@ const ClientsProspectPage = () => {
 
 
     const actionButtons = [
-        <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowSearchModal} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid 
+            label="Add Client" 
+            type="button" 
+            className="p-2 mr-3" 
+            onClick={() => router.push('/clients/add')}
+            icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
+        />
     ];
 
 
@@ -282,7 +284,6 @@ const ClientsProspectPage = () => {
             ) : (
                 <React.Fragment>
                     <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
-                    <ClientSearchV2 origin="client_list" show={showSearchModal} onClose={handleCloseSearchModal} handleShowAddDrawer={handleShowAddDrawer} mode={mode} showAddDrawer={showAddDrawer} setShowAddDrawer={setShowAddDrawer} handleCloseAddDrawer={handleCloseAddDrawer} client={client} />
                     {/* <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} /> */}
                     <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} setMode={setMode} onClose={handleCloseCoMakerDrawer} />
                 </React.Fragment>

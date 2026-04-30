@@ -25,8 +25,15 @@ import {
     Search 
 } from 'lucide-react';
 import ClientSearchV2 from "./ClientSearchV2";
+import { useRouter } from "next/router";
 
-const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
+const ViewClientsByGroupPage = ({
+    groupId, status, client, setClientParent, setMode,
+    handleShowAddDrawer,
+    handleEditClient, 
+    handleShowCoMakerDrawer
+}) => {
+    const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -442,11 +449,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const [duplicateColumns, setDuplicateColumns] = useState([]);
 
     const handleEditAction = (row) => {
-        setMode("edit");
-        let clientData = row;
-        setClientParent(clientData);
-        handleShowAddDrawer();
-    }
+        router.push(`/clients/edit/${row._id}`);
+    };
 
     const handleCoMakerAction = (row) => {
         let clientData = row;

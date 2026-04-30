@@ -247,8 +247,20 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: ["admin", "branch_manager", "loan_officer"],
+        roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager", "loan_officer"],
         subMenuItems: [
+            {
+                label: "CI Investigation",
+                url: "/transactions/ci-investigation",
+                icon: {
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+            },
             {
                 label: "Prospect Clients",
                 url: "/clients?status=pending",

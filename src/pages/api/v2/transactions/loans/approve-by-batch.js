@@ -21,7 +21,7 @@ import {
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 import moment from "moment";
-import { getCurrentDate, getEndDate } from "@/lib/date-utils";
+import { getCurrentDate, getCurrentDateV2, getEndDate } from "@/lib/date-utils";
 import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-service';
 import { findUserById, findBranches } from '@/lib/graph.functions';
 
@@ -99,6 +99,7 @@ async function processData(req, res) {
       const response = await Promise.all(
         loanData.map(async (loan) => {
           const loanId = loan._id;
+          const currentDate = loan.currentDate || moment(getCurrentDateV2()).format("YYYY-MM-DD");
           logger.debug({ page: `LDF Approved Loan: ${loanId}` });
           delete loan._id;
           delete loan.loanOfficer;
@@ -117,10 +118,13 @@ async function processData(req, res) {
           });
 
           if (active.length > 0) {
-            const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
-            errorMsg.push(error);
+              const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
+              errorMsg.push(error);
           } else {
-            await updateLoan(loanId, loan, addToMutationList);
+              // Set LDF approval fields
+              loan.ldfApproved     = true;
+              loan.ldfApprovedDate = currentDate;
+              await updateLoan(loanId, loan, addToMutationList);
           }
         })
       );
@@ -170,6 +174,26 @@ async function processData(req, res) {
           delete loan.pendings;
           delete loan.origin;
           delete loan.hasActiveLoan;
+          delete loan.hasTdaLoan;
+          delete loan.transactionClosed;
+          delete loan.selected;
+          delete loan.profile;
+          delete loan.clientName;
+          delete loan.branch;
+          delete loan.client;
+          delete loan.loanOfficer;
+          delete loan.group;
+          delete loan.selected;
+          delete loan.profile;
+          delete loan.principalLoanStr;
+          delete loan.mcbuStr;
+          delete loan.activeLoanStr;
+          delete loan.loanBalanceStr;
+          delete loan.loanReleaseStr;
+          delete loan.allowApproved;
+          delete loan.hasActiveLoan;
+          delete loan.hasTdaLoan;
+          delete loan.transactionClosed;
 
           let groupData = await checkGroupStatus(loan.groupId);
           if (groupData.length > 0) {
@@ -258,7 +282,7 @@ async function updateLoan(loanId, loan, addToMutationList) {
   addToMutationList(alias => updateQl(loanType(alias), {
     set: filterGraphFields(LOAN_FIELDS, { 
       ...loan, 
-      coMaker: loan.coMaker + "",
+      coMaker: loan.coMaker ? loan.coMaker.toString() : null,
       ldfApprovedDate: loan.ldfApprovedDate || null,
     }),
     where: { _id: { _eq: loanId } },

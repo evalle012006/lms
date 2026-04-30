@@ -36,6 +36,8 @@ export const BRANCH_FIELDS = `
   regionId
   divisionId
   lockTransaction
+  qrToken
+  qrGeneratedAt
   `;
 
 export const CLIENT_FIELDS = `
@@ -174,6 +176,14 @@ export const LOAN_FIELDS = `
   preApprovedDate
   editHistory
   bmRevertCount
+  guarantorDuplicate
+  guarantorDuplicateReason
+  coMakerPending
+  coMakerPendingName
+  coMakerDuplicate
+  disbursementPhotoKey
+  disbursementPhotoAt
+  ldfApprovedBy
   `;
 
 export const GROUP_FIELDS = `
@@ -694,4 +704,52 @@ export const UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS = `
   inserted_date
   modified_by
   modified_date
+`;
+
+export const TEMP_LOAN_APP_FIELDS = `
+  _id
+  ciReferenceCode
+  branchId
+  firstName
+  lastName
+  middleName
+  birthdate
+  contactNumber
+  address
+  addressStreetNo
+  addressBarangayDistrict
+  addressMunicipalityCity
+  addressProvince
+  addressZipCode
+  loanAmount
+  loanPurpose
+  guarantorFirstName
+  guarantorLastName
+  guarantorRelationship
+  guarantorContactNumber
+  lafPhotoKey
+  status
+  promotedClientId
+  submittedAt
+  expiresAt
+  dateAdded
+`;
+
+export const CI_INVESTIGATION_FIELDS = `
+  _id
+  tempApplicationId
+  ciReferenceCode
+  findings
+  businessVerified
+  addressVerified
+  decision
+  declineReason
+  selfieKey
+  picUserId
+  picUserName
+  offlinePayload
+  syncedAt
+  investigatedAt
+  dateAdded
+  insertedBy
 `;

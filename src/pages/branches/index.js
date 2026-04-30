@@ -15,6 +15,8 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from "@/lib/constants";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setAreaList } from "@/redux/actions/areaActions";
+import { QrCodeIcon } from '@heroicons/react/24/outline';
+import QRCode from 'qrcode';
 
 const BranchesPage = () => {
     const dispatch = useDispatch();
@@ -31,6 +33,64 @@ const BranchesPage = () => {
     const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
+
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [qrBranch, setQRBranch] = useState(null);
+    const [qrGenerating, setQRGenerating] = useState(false);
+    const [qrDataUrl, setQRDataUrl] = useState(null);
+
+    const handleQRAction = (row) => {
+        // Only admin (rep === 1) can access this
+        if (currentUser.role.rep !== 1 && !currentUser.root) return;
+        setQRBranch(row.original);
+        setQRDataUrl(null);
+        setShowQRModal(true);
+
+        // If branch already has a QR token, render the QR immediately
+        if (row.original.qrToken) {
+            const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${row.original.qrToken}`;
+            QRCode.toDataURL(publicUrl, { width: 300, margin: 2 })
+                .then(setQRDataUrl)
+                .catch(() => {});
+        }
+    };
+
+    const handleGenerateQR = async () => {
+        if (!qrBranch) return;
+        setQRGenerating(true);
+        try {
+            const res = await fetchWrapper.post(
+                getApiBaseUrl() + 'laf/qr/generate',
+                { branchId: qrBranch._id }
+            );
+            if (!res.success) {
+                toast.error(res.message || 'Failed to generate QR code.');
+                return;
+            }
+            toast.success(`QR code generated for ${qrBranch.name}`);
+            
+            // Render the QR image
+            const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${res.qrToken}`;
+            const dataUrl   = await QRCode.toDataURL(publicUrl, { width: 300, margin: 2 });
+            setQRDataUrl(dataUrl);
+
+            // Update the branch in the local list so status shows immediately
+            setQRBranch(prev => ({ ...prev, qrToken: res.qrToken }));
+            getListBranch(); // refresh table
+        } catch {
+            toast.error('An error occurred generating the QR code.');
+        } finally {
+            setQRGenerating(false);
+        }
+    };
+
+    const handleDownloadQR = () => {
+        if (!qrDataUrl || !qrBranch) return;
+        const link      = document.createElement('a');
+        link.download   = `QR-${qrBranch.name}-${qrBranch.code}.png`;
+        link.href       = qrDataUrl;
+        link.click();
+    };
 
     const handleLockBranchTransaction = async (row) => {
         const branch = { ...row.original };
@@ -118,7 +178,31 @@ const BranchesPage = () => {
             accessor: 'email',
             Filter: SelectColumnFilter,
             filter: 'includes'
-        }
+        },
+        {
+            Header: "QR Status",
+            accessor: 'qrToken',
+            Cell: ({ value }) => value ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                    text-xs font-medium bg-green-100 text-green-700">
+                    <QrCodeIcon className="w-3 h-3" /> Active
+                </span>
+            ) : (
+                <span className="inline-flex px-2 py-0.5 rounded-full text-xs
+                    font-medium bg-gray-100 text-gray-500">
+                    No QR
+                </span>
+            )
+        },
+        {
+            Header: "QR Generated",
+            accessor: 'qrGeneratedAt',
+            Cell: ({ value }) => value
+                ? new Date(value).toLocaleDateString('en-PH', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                })
+                : '—'
+        },
     ]);
 
     const handleShowAddDrawer = () => {
@@ -149,8 +233,11 @@ const BranchesPage = () => {
 
     const rowActionButtons = [
         { label: 'Edit', action: handleEditAction },
-        // { label: 'Delete', action: handleDeleteAction },
-        { label: 'Lock', action: handleLockBranchTransaction }
+        { label: 'Lock', action: handleLockBranchTransaction },
+        // Only rendered for admin — guard is inside handleQRAction
+        ...(currentUser.role.rep === 1 || currentUser.root
+            ? [{ label: 'Manage QR', action: handleQRAction }]
+            : [])
     ];
 
     const handleDelete = () => {
@@ -233,6 +320,108 @@ const BranchesPage = () => {
                     <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
                 </div>
             </Dialog>
+            {/* QR Code Modal */}
+            {showQRModal && qrBranch && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center 
+                    justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    Branch QR Code
+                                </h2>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {qrBranch.name} — {qrBranch.code}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowQRModal(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 
+                                    hover:text-gray-600"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-6 py-5 flex flex-col items-center gap-4">
+
+                            {/* QR display */}
+                            {qrDataUrl ? (
+                                <div className="flex flex-col items-center gap-2">
+                                    <img
+                                        src={qrDataUrl}
+                                        alt={`QR for ${qrBranch.name}`}
+                                        className="w-64 h-64 rounded-lg border border-gray-200"
+                                    />
+                                    <p className="text-xs text-gray-400 text-center">
+                                        Scan to open the loan application form for{' '}
+                                        <strong>{qrBranch.name}</strong>
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="w-64 h-64 rounded-lg border-2 border-dashed 
+                                    border-gray-300 flex flex-col items-center justify-center 
+                                    gap-3 text-gray-400">
+                                    <QrCodeIcon className="w-16 h-16" />
+                                    <p className="text-sm text-center px-4">
+                                        {qrBranch.qrToken
+                                            ? 'Loading QR code…'
+                                            : 'No QR code generated yet'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Warning when regenerating */}
+                            {qrBranch.qrToken && (
+                                <div className="w-full p-3 bg-amber-50 border border-amber-200 
+                                    rounded-lg text-xs text-amber-700">
+                                    ⚠️ Regenerating will invalidate the previous QR code. 
+                                    Any printed QR codes will stop working.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer actions */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                onClick={handleGenerateQR}
+                                disabled={qrGenerating}
+                                className="flex-1 py-2.5 text-sm font-medium border border-blue-300 
+                                    text-blue-600 rounded-lg hover:bg-blue-50 
+                                    disabled:opacity-50 disabled:cursor-not-allowed
+                                    flex items-center justify-center gap-2"
+                            >
+                                {qrGenerating ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4" fill="none" 
+                                            viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" 
+                                                r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                        </svg>
+                                        Generating…
+                                    </>
+                                ) : qrBranch.qrToken ? 'Regenerate QR' : 'Generate QR'}
+                            </button>
+
+                            {qrDataUrl && (
+                                <button
+                                    onClick={handleDownloadQR}
+                                    className="flex-1 py-2.5 text-sm font-medium bg-blue-600 
+                                        text-white rounded-lg hover:bg-blue-700
+                                        flex items-center justify-center gap-2"
+                                >
+                                    ⬇ Download PNG
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 }

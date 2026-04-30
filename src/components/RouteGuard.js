@@ -16,17 +16,21 @@ function RouteGuard({ children }) {
 
     useEffect(() => {
         mounted.current = true;
+
         function authCheck(url) {
             const publicPaths = process.env.NEXT_PUBLIC_PATHS.split(',');
             const path = url.split('?')[0];
             const user = userService.userValue;
 
-            if (!user && !publicPaths.includes(path)) {
+            // ── NEW: also allow any path that STARTS WITH a public prefix ──
+            const publicPrefixes = ['/apply/']; // add more here as needed
+
+            const isPublicPath = publicPaths.includes(path) ||
+                publicPrefixes.some(prefix => path.startsWith(prefix));
+
+            if (!user && !isPublicPath) {
                 setAuthorized(false);
-                router.push({
-                    pathname: '/login',
-                    // query: { returnUrl: router.asPath }
-                });
+                router.push({ pathname: '/login' });
             } else {
                 setAuthorized(true);
             }
@@ -34,7 +38,9 @@ function RouteGuard({ children }) {
 
         function setUserState() {
             if (userService.userValue) {
-                const userData = Object.keys(userState).length > 0 ? userState : userService.userValue;
+                const userData = Object.keys(userState).length > 0
+                    ? userState
+                    : userService.userValue;
                 dispatch(setUser(userData));
             }
         }
@@ -50,9 +56,8 @@ function RouteGuard({ children }) {
             router.events.off('routeChangeStart', hideContent);
             router.events.off('routeChangeComplete', authCheck);
             mounted.current = false;
-        }
+        };
     }, [userState]);
-
 
     return (authorized && children);
 }

@@ -9,7 +9,7 @@ import {
   LockClosedIcon, LockOpenIcon, XCircleIcon, ArrowPathIcon, 
   KeyIcon, DocumentIcon, ArrowUturnLeftIcon, ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
-import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { ExclamationCircleIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import CheckBox from './ui/checkbox';
 import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
@@ -546,6 +546,11 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
               {item.label === 'Lock' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Lock">
                   { row.original?.lockTransaction ? <LockClosedIcon className="cursor-pointer h-5" /> : <LockOpenIcon className="cursor-pointer h-5" />}
+                </div>
+              )}
+              {(item.label === 'Manage QR') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Manage QR Code">
+                  <QrCodeIcon className="cursor-pointer h-5 text-indigo-600" />
                 </div>
               )}
             </React.Fragment>
