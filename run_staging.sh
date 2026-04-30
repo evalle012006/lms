@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================
-#  lms-v2 — Auto Deploy Script
+#  lms-staging-v2 — Auto Deploy Script
 #  Usage: ./run.sh [branch]
 #  Example: ./run.sh main
 #  Default branch: migration
@@ -10,7 +10,7 @@
 set -e  # Exit immediately on any error
 
 # ── Config ───────────────────────────────────────────────────
-APP_DIR=~/apps/lms-v2
+APP_DIR=~/lms-app
 BRANCH=${1:-migration}
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -30,7 +30,7 @@ error()   { echo -e "${RED}✘ $1${NC}"; exit 1; }
 # ── Banner ───────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║        lms-v2 — Auto Deployment          ║${NC}"
+echo -e "${CYAN}║        lms-staging-v2 — Auto Deployment          ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
