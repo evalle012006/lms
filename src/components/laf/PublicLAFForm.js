@@ -1,3 +1,4 @@
+// src/components/laf/PublicLAFForm.js
 import React, { useState, useRef, useCallback } from 'react';
 import { Formik } from 'formik';
 import * as yup from 'yup';
@@ -130,16 +131,26 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
         if (!file) { setLafPhotoKey(null); return; }
         setPhotoUploading(true);
         try {
+            // Sanitize uuid — only alphanumeric (no hyphens or specials)
+            // that match the multer key sanitizer in upload.js
+            const uuid = `laf${Date.now()}`;
+
             const formData = new FormData();
             formData.append('file', file);
             formData.append('origin', 'laf-photos');
-            formData.append('uuid', `temp-${Date.now()}`);
+            formData.append('uuid', uuid);
+
             const res  = await fetch('/api/upload', { method: 'POST', body: formData });
             const data = await res.json();
-            if (!data.fileKey) throw new Error('Upload failed');
+
+            if (!data.fileKey) {
+                const reason = data.error || data.details || 'Upload failed';
+                throw new Error(reason);
+            }
             setLafPhotoKey(data.fileKey);
-        } catch {
-            toast.error('Photo upload failed. Please try again.');
+        } catch (err) {
+            console.error('LAF photo upload error:', err);
+            toast.error(`Photo upload failed: ${err.message || 'Please try again.'}`);
             setLafPhotoKey(null);
         } finally {
             setPhotoUploading(false);

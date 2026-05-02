@@ -104,6 +104,8 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Upload error:', error);
-        res.status(500).json({ error: 'Failed to upload file', details: error.message });
+        // Return 200 so fetchWrapper/fetch doesn't throw on status
+        // Client checks for absence of fileKey to detect failure
+        res.status(200).json({ error: 'Failed to upload file', details: error.message });
     }
 }
