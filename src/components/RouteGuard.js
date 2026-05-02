@@ -20,7 +20,7 @@ function RouteGuard({ children }) {
         function authCheck(url) {
             const publicPaths    = process.env.NEXT_PUBLIC_PATHS.split(',');
             const path           = url.split('?')[0];
-            const publicPrefixes = ['/apply/'];
+            const publicPrefixes = ['/apply/', '/biometric-verify/'];
 
             const isPublicPath = publicPaths.includes(path) ||
                 publicPrefixes.some(prefix => path.startsWith(prefix));
