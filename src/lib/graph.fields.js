@@ -22,6 +22,13 @@ export const USER_FIELDS = `
   areaId
   regionId
   divisionId
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
+  loginAttempts
+  lockedUntil
   `;
 
 export const BRANCH_FIELDS = `
@@ -67,13 +74,18 @@ export const CLIENT_FIELDS = `
   addressProvince
   addressStreetNo
   addressZipCode
-  ciName,
-  groupLeader,
-  duplicate,
-  similarityScore,
-  archived,
-  archivedBy,
-  archivedDate,
+  ciName
+  groupLeader
+  duplicate
+  similarityScore
+  archived
+  archivedBy
+  archivedDate
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
   `;
 
 export const LOAN_FIELDS = `
@@ -184,6 +196,8 @@ export const LOAN_FIELDS = `
   disbursementPhotoKey
   disbursementPhotoAt
   ldfApprovedBy
+  clientBiometricVerified
+  clientBiometricVerifiedAt
   `;
 
 export const GROUP_FIELDS = `
@@ -733,6 +747,11 @@ export const TEMP_LOAN_APP_FIELDS = `
   submittedAt
   expiresAt
   dateAdded
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

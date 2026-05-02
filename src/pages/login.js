@@ -8,6 +8,7 @@ import { useDispatch } from 'react-redux';
 import { setUser } from '@/redux/actions/userActions';
 import { applyMaskedInput } from '@krozamdev/masked-password';
 import { EyeIcon, EyeSlashIcon, UserIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import BiometricLoginButton from '@/components/auth/BiometricLoginButton';
 
 const LoginPage = () => {
     const router = useRouter();
@@ -387,6 +388,18 @@ const LoginPage = () => {
             }, 10);
         }
     };
+
+    const handleLoginSuccess = (user) => {
+        dispatch(setUser(user));
+        userService.loginDirect(user);
+        const hasBiometric = !!user?.biometricCredentialId;
+        const isRoot = user?.root === true;
+        if (!hasBiometric && !isRoot) {
+            router.push('/biometric-setup');
+        } else {
+            router.push('/');
+        }
+    };
     
     // Handle form submission
     const handleSubmit = async (e) => {
@@ -412,12 +425,15 @@ const LoginPage = () => {
             const response = await userService.login(email, password);
             
             if (response.error) {
-                toast.error(`Error during Authentication. ${response.message}`);
+                if (response.locked) {
+                    toast.error(response.message, { autoClose: 8000, icon: '🔒' });
+                } else {
+                    toast.error(`Error during Authentication. ${response.message}`);
+                }
             }
             
             if (response.success) {
-                dispatch(setUser(response.user));
-                router.push('/');
+                handleLoginSuccess(response.user);
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -605,6 +621,17 @@ const LoginPage = () => {
                                         </>
                                     )}
                                 </button>
+
+                                <BiometricLoginButton
+                                    email={formData.email}
+                                    onSuccess={handleLoginSuccess}
+                                    onFallback={() => {
+                                        // Focus password field — directs user to system password input
+                                        setTimeout(() => {
+                                            passwordRef.current?.focus();
+                                        }, 300); // small delay so toast appears first
+                                    }}
+                                />
                             </div>
                         </form>
                     </div>

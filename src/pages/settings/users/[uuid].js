@@ -14,8 +14,9 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import placeholder from '/public/images/image-placeholder.png';
 import { checkFileSize } from "@/lib/utils";
 import { getApiBaseUrl } from '@/lib/constants';
-// ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
+// ── Biometric setup ────────────────────────────────────────────────────────
+import BiometricSetup from "@/components/auth/BiometricSetup";
 
 const UserDetailsPage = () => {
     const router = useRouter();
@@ -23,9 +24,6 @@ const UserDetailsPage = () => {
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-
-    // ✅ photo: stores key (e.g. "lms/profiles/uuid/file.jpg") or blob URL for instant preview
-    //    PrivateImage + useSignedUrl handle both automatically
     const [photo, setPhoto] = useState('');
     const [image, setImage] = useState('');
     const hiddenInput = useRef(null);
@@ -37,13 +35,10 @@ const UserDetailsPage = () => {
 
     const handleFileChange = async (e) => {
         const fileUploaded = e.target.files[0];
-
         const fileSizeMsg = checkFileSize(fileUploaded?.size);
         if (fileSizeMsg) {
             toast.error(fileSizeMsg);
         } else {
-            // ✅ Show blob URL immediately for instant preview
-            //    useSignedUrl inside PrivateImage returns blob URLs as-is (no API call)
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
 
@@ -58,18 +53,11 @@ const UserDetailsPage = () => {
                     method: 'POST',
                     body: formData,
                 });
-
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-
+                if (!response.ok) throw new Error('Upload failed');
                 const responseData = await response.json();
-                // ✅ Save fileKey (storage path) to DB — not a public URL
                 const updatedData = { ...data, profile: responseData.fileKey, role: JSON.stringify(data.role) };
                 setData(updatedData);
                 await triggerSaveUpdate(updatedData);
-                // ✅ Switch from blob URL to the storage key
-                //    PrivateImage will fetch the signed URL automatically
                 setPhoto(responseData.fileKey);
                 toast.success('File uploaded successfully.');
             } catch (error) {
@@ -86,9 +74,7 @@ const UserDetailsPage = () => {
         setPhoto('');
         setImage('');
         setData(prevData => ({ ...prevData, profile: '' }));
-        if (hiddenInput.current) {
-            hiddenInput.current.value = '';
-        }
+        if (hiddenInput.current) hiddenInput.current.value = '';
     }
 
     const handleSaveUpdate = async (e) => {
@@ -118,7 +104,6 @@ const UserDetailsPage = () => {
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
                 const user = { ...response.user };
-                // ✅ user.profile is now a key — PrivateImage will fetch the signed URL
                 setPhoto(user.profile);
                 dispatch(setUser(user));
                 setData(user);
@@ -132,12 +117,10 @@ const UserDetailsPage = () => {
             setLoading(false);
         }
     }
-    
+
     useEffect(() => {
         dispatch(setCurrentPageTitle('Edit User Details'));
-        if (uuid) {
-            getCurrentUser(uuid);
-        }
+        if (uuid) getCurrentUser(uuid);
     }, [uuid]);
 
     return (
@@ -153,8 +136,6 @@ const UserDetailsPage = () => {
                                 <div className="photo-row mt-4 flex space-x-4">
                                     <div className="photo-container rounded-lg">
                                         <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
-                                            {/* ✅ PrivateImage handles both blob URLs (instant preview)
-                                                and storage keys (fetches signed URL automatically) */}
                                             <PrivateImage
                                                 src={photo || null}
                                                 className="overflow-hidden object-cover"
@@ -213,6 +194,15 @@ const UserDetailsPage = () => {
                                     placeholder="Enter Phone Number"
                                 />
                             </div>
+
+                            {/* ── Biometric Login Setup ─────────────────────────── */}
+                            <div className="mt-4">
+                                <BiometricSetup
+                                    user={data}
+                                    onUpdate={(updates) => setData(prev => ({ ...prev, ...updates }))}
+                                />
+                            </div>
+
                             <div className="flex flex-row mt-5 pb-6 justify-end">
                                 <ButtonSolid label="Submit" type="submit" width="w-64" disabled={uploading}/>
                             </div>

@@ -15,6 +15,7 @@ const USER_TYPE = createGraphType('users', `
     divisionId
     designatedBranchId
     designatedBranch
+    biometricCredentialId
 `)('users');
 
 const BRANCH_TYPE = createGraphType('branches', `
@@ -108,11 +109,13 @@ async function getApprovers(req, res) {
             return true;
         })
         .map(u => ({
-            _id:       u._id,
-            firstName: u.firstName,
-            lastName:  u.lastName,
-            role:      u.role,
-            value:     u._id,
+            _id:                  u._id,
+            firstName:            u.firstName,
+            lastName:             u.lastName,
+            role:                 u.role,
+            value:                u._id,
+            hasBiometric:         !!u.biometricCredentialId,
+            biometricCredentialId: u.biometricCredentialId || null,
         }));
 
     return res.status(200).json({ success: true, users });

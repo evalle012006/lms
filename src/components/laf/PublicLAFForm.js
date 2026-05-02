@@ -1,10 +1,10 @@
-// src/components/laf/PublicLAFForm.js
 import React, { useState, useRef, useCallback } from 'react';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { toast } from 'react-toastify';
 import LAFPhotoStep from './LAFPhotoStep';
 import LAFSuccessScreen from './LAFSuccessScreen';
+import LAFBiometricStep from './LAFBiometricStep';
 
 // ── Per-step schemas for Next button validation only ──────────────────────
 const step1Schema = yup.object().shape({
@@ -52,7 +52,10 @@ const fullSchema = yup.object().shape({
 
 const stepSchemas = { 1: step1Schema, 2: step2Schema, 3: step3Schema };
 
-const STEPS = ['Photo', 'Personal', 'Address', 'Loan & Guarantor'];
+// Step 0 = Photo, Steps 1-3 = Formik form, Step 4 = Biometric
+const STEPS = ['Photo', 'Personal', 'Address', 'Loan & Guarantor', 'Biometric'];
+const BIOMETRIC_STEP = 4;
+const LAST_FORMIK_STEP = 3;
 
 // ── Step indicator ────────────────────────────────────────────────────────
 const StepBar = ({ current, total, labels }) => (
@@ -113,12 +116,14 @@ const Input = ({ name, value, onChange, onBlur, placeholder, type = 'text', erro
 // ── Main component ────────────────────────────────────────────────────────
 const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
     const formikRef = useRef();
-    const [step, setStep]                     = useState(0);
-    const [lafPhotoKey, setLafPhotoKey]       = useState(null);
-    const [photoUploading, setPhotoUploading] = useState(false);
-    const [submitting, setSubmitting]         = useState(false);
-    const [submitted, setSubmitted]           = useState(false);
-    const [ciCode, setCiCode]                 = useState('');
+    const [step, setStep]                           = useState(0);
+    const [lafPhotoKey, setLafPhotoKey]             = useState(null);
+    const [photoUploading, setPhotoUploading]       = useState(false);
+    const [submitting, setSubmitting]               = useState(false);
+    const [submitted, setSubmitted]                 = useState(false);
+    const [ciCode, setCiCode]                       = useState('');
+    const [biometricData, setBiometricData]         = useState(null);
+    const [biometricVerified, setBiometricVerified] = useState(false);
 
     // ── Photo upload ──────────────────────────────────────────────────────
     const handlePhotoReady = useCallback(async (file) => {
@@ -141,8 +146,9 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
         }
     }, []);
 
-    // ── Step navigation with per-step validation ──────────────────────────
+    // ── Step navigation ───────────────────────────────────────────────────
     const goNext = useCallback(async () => {
+        // Step 0: Photo validation
         if (step === 0) {
             if (!lafPhotoKey) {
                 toast.error('Please capture your photo before continuing.');
@@ -152,6 +158,10 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
             return;
         }
 
+        // Step 4: Biometric — no Next (has its own Submit button)
+        if (step === BIOMETRIC_STEP) return;
+
+        // Steps 1-3: Formik validation
         const formik = formikRef.current;
         if (!formik) return;
 
@@ -159,12 +169,8 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
         if (schema) {
             try {
                 await schema.validate(formik.values, { abortEarly: false });
-                
-                // ── Clear ALL errors and touched when moving forward ──
-                // This prevents previous step errors from bleeding into next step
                 formik.setErrors({});
                 formik.setTouched({}, false);
-                
                 setStep(s => s + 1);
             } catch (err) {
                 const touched = {};
@@ -191,10 +197,14 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
             toast.error('Client photo is required.');
             return;
         }
+        if (!biometricVerified || !biometricData) {
+            toast.error('Biometric verification is required before submitting.');
+            return;
+        }
         setSubmitting(true);
         try {
             const res = await fetch('/api/public/laf/submit', {
-                method: 'POST',
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     branchId,
@@ -202,6 +212,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                     ...values,
                     loanAmount: parseFloat(values.loanAmount) || 0,
                     lafPhotoKey,
+                    ...biometricData, // biometricCredentialId, publicKey, counter, etc.
                 }),
             });
             const data = await res.json();
@@ -213,11 +224,14 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
         } finally {
             setSubmitting(false);
         }
-    }, [branchId, qrToken, lafPhotoKey]);
+    }, [branchId, qrToken, lafPhotoKey, biometricVerified, biometricData]);
 
     if (submitted) {
         return <LAFSuccessScreen ciReferenceCode={ciCode} branchName={branchName} />;
     }
+
+    // Whether the Formik section should be visible
+    const showFormik = step >= 1 && step <= LAST_FORMIK_STEP;
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -232,7 +246,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <StepBar current={step} total={STEPS.length} labels={STEPS} />
 
-                    {/* ── Step 0: Photo — outside Formik ─────────────────── */}
+                    {/* ── Step 0: Photo ─────────────────────────────────── */}
                     {step === 0 && (
                         <div>
                             <h2 className="text-lg font-semibold text-gray-800 mb-4">
@@ -257,29 +271,78 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                         </div>
                     )}
 
-                    {/* ── Steps 1-3: Single Formik instance, never unmounts ─ */}
-                    {/*   Use display:none to hide steps instead of unmounting  */}
-                    <Formik
-                        innerRef={formikRef}
-                        initialValues={{
-                            firstName: '', lastName: '', middleName: '',
-                            birthdate: '', contactNumber: '',
-                            addressStreetNo: '', addressBarangayDistrict: '',
-                            addressMunicipalityCity: '', addressProvince: '',
-                            addressZipCode: '',
-                            loanAmount: '', loanPurpose: '',
-                            guarantorFirstName: '', guarantorLastName: '',
-                            guarantorRelationship: '', guarantorContactNumber: '',
-                        }}
-                        validationSchema={fullSchema}
-                        onSubmit={handleSubmit}
-                        validateOnChange={true}
-                        validateOnBlur={false}
-                        validateOnMount={false}
-                    >
-                        {({ values, errors, touched, handleChange, handleBlur, handleSubmit: fSubmit }) => (
-                            // Hide entire form on step 0 but keep it mounted
-                            <div style={{ display: step === 0 ? 'none' : 'block' }}>
+                    {/* ── Step 4: Biometric ─────────────────────────────── */}
+                    {step === BIOMETRIC_STEP && (
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                                Identity Verification
+                            </h2>
+                            <LAFBiometricStep
+                                onVerified={(data) => {
+                                    setBiometricData(data);
+                                    setBiometricVerified(true);
+                                }}
+                                verified={biometricVerified}
+                            />
+                            <div className="mt-6 flex justify-between">
+                                <button
+                                    type="button"
+                                    onClick={goPrev}
+                                    disabled={submitting}
+                                    className="px-5 py-2.5 border border-gray-300
+                                        text-gray-700 text-sm font-medium rounded-lg
+                                        hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => formikRef.current?.submitForm()}
+                                    disabled={!biometricVerified || submitting}
+                                    className="px-6 py-2.5 bg-green-600 text-white text-sm
+                                        font-medium rounded-lg hover:bg-green-700
+                                        disabled:opacity-50 disabled:cursor-not-allowed
+                                        flex items-center gap-2"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12"
+                                                    r="10" stroke="currentColor" strokeWidth="4"/>
+                                                <path className="opacity-75" fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                            </svg>
+                                            Submitting…
+                                        </>
+                                    ) : 'Submit Application'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Steps 1–3: Formik form — kept mounted, hidden via display ── */}
+                    {/* Using display:none instead of unmounting preserves form state  */}
+                    <div style={{ display: showFormik ? 'block' : 'none' }}>
+                        <Formik
+                            innerRef={formikRef}
+                            initialValues={{
+                                firstName: '', lastName: '', middleName: '',
+                                birthdate: '', contactNumber: '',
+                                addressStreetNo: '', addressBarangayDistrict: '',
+                                addressMunicipalityCity: '', addressProvince: '',
+                                addressZipCode: '',
+                                loanAmount: '', loanPurpose: '',
+                                guarantorFirstName: '', guarantorLastName: '',
+                                guarantorRelationship: '', guarantorContactNumber: '',
+                            }}
+                            validationSchema={fullSchema}
+                            onSubmit={handleSubmit}
+                            validateOnChange={true}
+                            validateOnBlur={false}
+                            validateOnMount={false}
+                        >
+                            {({ values, errors, touched, handleChange, handleBlur, handleSubmit: fSubmit }) => (
                                 <form onSubmit={fSubmit} autoComplete="off" noValidate>
 
                                     {/* ── Step 1: Personal ─────────────────── */}
@@ -447,7 +510,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                                         </div>
                                     </div>
 
-                                    {/* ── Navigation buttons ────────────────── */}
+                                    {/* ── Navigation — only shown on steps 1-3 ─── */}
                                     <div className="mt-6 flex justify-between">
                                         <button
                                             type="button"
@@ -458,47 +521,22 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                                         >
                                             Back
                                         </button>
-
-                                        {step < STEPS.length - 1 ? (
-                                            <button
-                                                type="button"
-                                                onClick={goNext}
-                                                className="px-6 py-2.5 bg-blue-600 text-white
-                                                    text-sm font-medium rounded-lg hover:bg-blue-700"
-                                            >
-                                                Next
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="submit"
-                                                disabled={submitting}
-                                                className="px-6 py-2.5 bg-green-600 text-white
-                                                    text-sm font-medium rounded-lg hover:bg-green-700
-                                                    disabled:opacity-50 disabled:cursor-not-allowed
-                                                    flex items-center gap-2"
-                                            >
-                                                {submitting ? (
-                                                    <>
-                                                        <svg className="animate-spin h-4 w-4"
-                                                            fill="none" viewBox="0 0 24 24">
-                                                            <circle className="opacity-25" cx="12"
-                                                                cy="12" r="10"
-                                                                stroke="currentColor" strokeWidth="4"/>
-                                                            <path className="opacity-75"
-                                                                fill="currentColor"
-                                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                                                        </svg>
-                                                        Submitting…
-                                                    </>
-                                                ) : 'Submit Application'}
-                                            </button>
-                                        )}
+                                        {/* Always show Next for steps 1-3 — step 4 has its own Submit */}
+                                        <button
+                                            type="button"
+                                            onClick={goNext}
+                                            className="px-6 py-2.5 bg-blue-600 text-white
+                                                text-sm font-medium rounded-lg hover:bg-blue-700"
+                                        >
+                                            Next
+                                        </button>
                                     </div>
 
                                 </form>
-                            </div>
-                        )}
-                    </Formik>
+                            )}
+                        </Formik>
+                    </div>
+
                 </div>
             </div>
         </div>

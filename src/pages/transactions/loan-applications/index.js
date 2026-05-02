@@ -36,6 +36,7 @@ import ExcelExportModal from "@/components/modals/ExcelExportModal";
 import LAFModal from "@/components/transactions/loan-application/LAFModal";
 import { useRouter } from "next/router";
 import DisbursementPhotoModal from '@/components/transactions/loan-application/DisbursementPhotoModal';
+import LDFApprovalDetailsModal from "@/components/transactions/loan-application/LDFApprovalDetailsModal";
 
 const LoanApplicationPage = () => {
     const router = useRouter();
@@ -132,6 +133,13 @@ const LoanApplicationPage = () => {
 
     const [showDisbursementModal, setShowDisbursementModal] = useState(false);
     const [pendingLdfLoans, setPendingLdfLoans]             = useState([]);
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [selectedApprovalLoan, setSelectedApprovalLoan] = useState(null);
+
+    const handleViewApprovalDetails = (row) => {
+        setSelectedApprovalLoan(row.original);
+        setShowApprovalModal(true);
+    };
 
     const handleShowLAF = (row) => {
         setSelectedLoanForLAF(row.original);
@@ -1723,13 +1731,15 @@ const LoanApplicationPage = () => {
                         { label: 'Reject', action: handleShowWarningModal},
                         // { label: 'Delete Loan', action: handleDeleteAction},
                         { label: 'View Disclosure', action: handleShowNDSAction},
-                        { label: 'View LAF', action: handleShowLAF}
+                        { label: 'View LAF', action: handleShowLAF},
+                        { label: 'View Approval Details', action: handleViewApprovalDetails },
                     ];
                 } else {
                     rowActionBtn = [
                         { label: 'Edit Loan', action: handleEditAction},
                         { label: 'View Disclosure', action: handleShowNDSAction},
-                        { label: 'View LAF', action: handleShowLAF}
+                        { label: 'View LAF', action: handleShowLAF},
+                        { label: 'View Approval Details', action: handleViewApprovalDetails },
                     ];
                 }
             } else if (currentUser?.role?.rep === 4) {
@@ -1737,7 +1747,8 @@ const LoanApplicationPage = () => {
                     { label: 'Edit Loan', action: handleEditAction},
                     // { label: 'Delete Loan', action: handleDeleteAction}
                     { label: 'View Disclosure', action: handleShowNDSAction},
-                    { label: 'View LAF', action: handleShowLAF}
+                    { label: 'View LAF', action: handleShowLAF},
+                    { label: 'View Approval Details', action: handleViewApprovalDetails },
                 ];
             }
 
@@ -2359,6 +2370,14 @@ const LoanApplicationPage = () => {
                 onCancel={() => {
                     setShowDisbursementModal(false);
                     setPendingLdfLoans([]);
+                }}
+            />
+            <LDFApprovalDetailsModal
+                show={showApprovalModal}
+                loan={selectedApprovalLoan}
+                onClose={() => {
+                    setShowApprovalModal(false);
+                    setSelectedApprovalLoan(null);
                 }}
             />
         </Layout>
