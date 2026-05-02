@@ -115,8 +115,12 @@ const DisbursementPhotoModal = ({
                         .sort((a, b) => (a.role?.rep || 99) - (b.role?.rep || 99));
                     setApproverList(admins);
 
-                    // Default to current user
-                    setApproverId(currentUser._id || '');
+                    // Default to current user and immediately evaluate biometric requirement
+                    // handleApproverSelect won't fire for the pre-selected default so do it here
+                    const defaultId = currentUser._id || '';
+                    setApproverId(defaultId);
+                    const me = admins.find(u => u._id === defaultId);
+                    setBiometricRequired(!!(me?.hasBiometric));
                 }
             })
             .catch(() => {})

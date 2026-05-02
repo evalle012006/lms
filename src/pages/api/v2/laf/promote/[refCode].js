@@ -136,6 +136,11 @@ async function getForPromotion(req, res) {
             guarantorRelationship:   application.guarantorRelationship,
             guarantorContactNumber:  application.guarantorContactNumber,
             lafPhotoKey:             application.lafPhotoKey || null,
+            biometricCredentialId: application.biometricCredentialId || null,
+            biometricPublicKey:    application.biometricPublicKey    || null,
+            biometricCounter:      application.biometricCounter      || 0,
+            biometricRegisteredAt: application.biometricRegisteredAt || null,
+            biometricDeviceName:   application.biometricDeviceName   || null,
         },
         loanData: {
             loanAmount:  application.loanAmount,
