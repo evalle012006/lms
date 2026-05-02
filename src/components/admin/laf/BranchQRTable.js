@@ -48,7 +48,7 @@ const BranchQRTable = () => {
             return;
         }
         try {
-            const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${branch.qrToken}`;
+            const publicUrl = `${window.location.origin}/apply/${branch.qrToken}`;
             const dataUrl   = await QRCode.toDataURL(publicUrl, {
                 width: 512,
                 margin: 2,

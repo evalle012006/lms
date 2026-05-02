@@ -48,7 +48,7 @@ const BranchesPage = () => {
 
         // If branch already has a QR token, render the QR immediately
         if (row.original.qrToken) {
-            const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${row.original.qrToken}`;
+            const publicUrl = `${window.location.origin}/apply/${row.original.qrToken}`;
             QRCode.toDataURL(publicUrl, { width: 300, margin: 2 })
                 .then(setQRDataUrl)
                 .catch(() => {});
@@ -70,7 +70,7 @@ const BranchesPage = () => {
             toast.success(`QR code generated for ${qrBranch.name}`);
             
             // Render the QR image
-            const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${res.qrToken}`;
+            const publicUrl = `${window.location.origin}/apply/${res.qrToken}`;
             const dataUrl   = await QRCode.toDataURL(publicUrl, { width: 300, margin: 2 });
             setQRDataUrl(dataUrl);
 
