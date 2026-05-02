@@ -20,6 +20,19 @@ function arrayBufferToBase64url(buffer) {
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
+// Safe JSON parse — guards against Nginx returning HTML on proxy errors
+async function safeJson(res) {
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+        throw new Error(
+            res.status === 502 || res.status === 504
+                ? 'Server temporarily unavailable. Please try again.'
+                : `Server error (${res.status}). Please try again.`
+        );
+    }
+    return res.json();
+}
+
 /**
  * /biometric-verify/[loanId]
  *
@@ -49,7 +62,7 @@ const ClientBiometricVerifyPage = () => {
         if (!loanId) return;
 
         fetch(`/api/public/laf/client-biometric-challenge?loanId=${loanId}`)
-            .then(r => r.json())
+            .then(safeJson)
             .then(data => {
                 if (!data.success) {
                     if (data.noBiometric) {
@@ -82,7 +95,7 @@ const ClientBiometricVerifyPage = () => {
             // Step 1 — Get challenge
             const challengeRes = await fetch(
                 `/api/public/laf/client-biometric-challenge?loanId=${loanId}`
-            ).then(r => r.json());
+            ).then(safeJson);
 
             if (!challengeRes.success) {
                 setStatus('error');
@@ -125,7 +138,7 @@ const ClientBiometricVerifyPage = () => {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ loanId, credential: credentialForServer, challengeToken }),
-            }).then(r => r.json());
+            }).then(safeJson);
 
             if (verifyRes.success) {
                 setStatus('success');

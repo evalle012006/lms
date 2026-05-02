@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
-// Base64url ↔ Uint8Array helpers (same as useBiometric.js)
+// ── Helpers ───────────────────────────────────────────────────────────────
 function base64urlToUint8Array(base64url) {
     const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
     const binary  = atob(base64);
@@ -17,22 +17,24 @@ function arrayBufferToBase64url(buffer) {
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-/**
- * LAFBiometricStep
- *
- * Final step of the LAF form. Client scans fingerprint/Face ID on their phone.
- * Hard requirement — cannot proceed without biometric.
- *
- * Props:
- *   onVerified(biometricData) — called with credential data when scan succeeds
- *   verified                  — boolean, controlled from parent
- */
-const LAFBiometricStep = ({ onVerified, verified }) => {
-    const [loading, setLoading]       = useState(false);
-    const [supported, setSupported]   = useState(null); // null = not checked yet
-    const registeringRef              = useRef(false);
+// Safe JSON parse — guards against Nginx returning HTML on proxy errors
+async function safeJson(res) {
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+        throw new Error(
+            res.status === 413 ? 'Request too large.'
+            : res.status === 502 || res.status === 504 ? 'Server temporarily unavailable. Please try again.'
+            : `Server error (${res.status}). Please try again.`
+        );
+    }
+    return res.json();
+}
 
-    // Check platform support on first render
+const LAFBiometricStep = ({ onVerified, verified }) => {
+    const [loading, setLoading]     = useState(false);
+    const [supported, setSupported] = useState(null);
+    const registeringRef            = useRef(false);
+
     React.useEffect(() => {
         if (typeof window === 'undefined' || !window.PublicKeyCredential) {
             setSupported(false);
@@ -40,7 +42,7 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
         }
         window.PublicKeyCredential
             .isUserVerifyingPlatformAuthenticatorAvailable()
-            .then(v => setSupported(v))
+            .then(v  => setSupported(v))
             .catch(() => setSupported(false));
     }, []);
 
@@ -50,19 +52,18 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
         setLoading(true);
 
         try {
-            // Use a session ID based on timestamp — no user account needed
             const sessionId = `laf-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
             // Step 1 — Get challenge
             const challengeRes = await fetch(
                 `/api/public/laf/biometric-challenge?sessionId=${encodeURIComponent(sessionId)}`
-            ).then(r => r.json());
+            ).then(safeJson);
 
-            if (!challengeRes.success) throw new Error(challengeRes.message);
+            if (!challengeRes.success) throw new Error(challengeRes.message || 'Failed to get challenge');
 
             const { options, challengeToken } = challengeRes;
 
-            // Step 2 — Browser triggers fingerprint/Face ID
+            // Step 2 — Trigger fingerprint / Face ID
             const credential = await navigator.credentials.create({
                 publicKey: {
                     ...options,
@@ -91,16 +92,15 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
                 },
             };
 
-            // Step 4 — Verify on server
+            // Step 4 — Verify
             const verifyRes = await fetch('/api/public/laf/biometric-verify', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ sessionId, credential: credentialForServer, challengeToken }),
-            }).then(r => r.json());
+            }).then(safeJson);
 
-            if (!verifyRes.success) throw new Error(verifyRes.message);
+            if (!verifyRes.success) throw new Error(verifyRes.message || 'Verification failed');
 
-            // Step 5 — Pass credential data to parent for inclusion in LAF payload
             onVerified({
                 biometricCredentialId: verifyRes.biometricCredentialId,
                 biometricPublicKey:    verifyRes.biometricPublicKey,
@@ -142,7 +142,6 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
             </div>
 
             {verified ? (
-                /* ── Success state ───────────────────────────────────── */
                 <div className="flex flex-col items-center py-6 gap-3">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                         <svg className="w-8 h-8 text-green-600" fill="none"
@@ -157,7 +156,6 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
                     </p>
                 </div>
             ) : supported === false ? (
-                /* ── Not supported ───────────────────────────────────── */
                 <div className="flex flex-col items-center py-6 gap-3">
                     <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
                         <svg className="w-8 h-8 text-amber-600" fill="none"
@@ -171,12 +169,10 @@ const LAFBiometricStep = ({ onVerified, verified }) => {
                     </p>
                     <p className="text-xs text-gray-500 text-center leading-relaxed px-4">
                         This device does not support fingerprint login.
-                        Please ask a staff member to provide a supported device
-                        (Android phone or iPhone) to complete this step.
+                        Please ask a staff member to provide a supported device to complete this step.
                     </p>
                 </div>
             ) : (
-                /* ── Scan button ─────────────────────────────────────── */
                 <div className="flex flex-col items-center py-4 gap-4">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
                         <svg className="w-10 h-10 text-gray-400" fill="none"
