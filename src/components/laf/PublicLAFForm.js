@@ -114,11 +114,44 @@ const Input = ({ name, value, onChange, onBlur, placeholder, type = 'text', erro
     />
 );
 
+// ── Compress image before upload ─────────────────────────────────────────
+// Mobile cameras produce 3-8MB images. Compress to under 1MB for upload.
+async function compressImage(file, maxWidthPx = 1200, qualityJpeg = 0.82) {
+    return new Promise((resolve) => {
+        const img = new window.Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            // Scale down if wider than maxWidthPx
+            const scale  = Math.min(1, maxWidthPx / img.width);
+            const canvas = document.createElement('canvas');
+            canvas.width  = Math.round(img.width  * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(
+                blob => {
+                    if (!blob) { resolve(file); return; } // fallback to original
+                    resolve(new File([blob], file.name.replace(/\.heic$/i, '.jpg'), {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                    }));
+                },
+                'image/jpeg',
+                qualityJpeg,
+            );
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+    });
+}
+
 // ── Main component ────────────────────────────────────────────────────────
 const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
     const formikRef = useRef();
     const [step, setStep]                           = useState(0);
-    const [lafPhotoKey, setLafPhotoKey]             = useState(null);
+    const [lafPhotoFile, setLafPhotoFile]           = useState(null);    // raw File object
+    const [lafPhotoPreview, setLafPhotoPreview]     = useState(null);    // local preview URL
+    const [lafPhotoKey, setLafPhotoKey]             = useState(null);    // S3 key — set on submit
     const [photoUploading, setPhotoUploading]       = useState(false);
     const [submitting, setSubmitting]               = useState(false);
     const [submitted, setSubmitted]                 = useState(false);
@@ -126,45 +159,57 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
     const [biometricData, setBiometricData]         = useState(null);
     const [biometricVerified, setBiometricVerified] = useState(false);
 
-    // ── Photo upload ──────────────────────────────────────────────────────
-    const handlePhotoReady = useCallback(async (file) => {
-        if (!file) { setLafPhotoKey(null); return; }
-        setPhotoUploading(true);
-        try {
-            // Sanitize uuid — only alphanumeric (no hyphens or specials)
-            // that match the multer key sanitizer in upload.js
-            const uuid = `laf${Date.now()}`;
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('origin', 'laf-photos');
-            formData.append('uuid', uuid);
-
-            const res  = await fetch('/api/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (!data.fileKey) {
-                const reason = data.error || data.details || 'Upload failed';
-                throw new Error(reason);
-            }
-            setLafPhotoKey(data.fileKey);
-        } catch (err) {
-            console.error('LAF photo upload error:', err);
-            toast.error(`Photo upload failed: ${err.message || 'Please try again.'}`);
+    // ── Photo selection — store file locally, upload on submit ─────────────
+    const handlePhotoReady = useCallback((file) => {
+        if (!file) {
+            setLafPhotoFile(null);
+            setLafPhotoPreview(null);
             setLafPhotoKey(null);
-        } finally {
-            setPhotoUploading(false);
+            return;
         }
+        setLafPhotoFile(file);
+        // Generate local preview URL so user sees their photo immediately
+        setLafPhotoPreview(URL.createObjectURL(file));
+        setLafPhotoKey(null); // reset any previous key
+    }, []);
+
+    // ── Upload photo — called only during handleSubmit ────────────────────
+    const uploadPhoto = useCallback(async (file) => {
+        // Compress before upload — mobile cameras produce 3-8MB images
+        // Also converts HEIC (iPhone) to JPEG
+        const compressed = await compressImage(file);
+        const uuid = `laf${Date.now()}`;
+
+        const formData = new FormData();
+        formData.append('file', compressed);
+        formData.append('origin', 'laf-photos');
+        formData.append('uuid', uuid);
+
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+
+        // Guard: Nginx may return HTML (e.g. 413 Too Large) instead of JSON
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            throw new Error(
+                res.status === 413
+                    ? 'Photo is too large. Please use a smaller image.'
+                    : `Server error (${res.status}). Please try again.`
+            );
+        }
+
+        const data = await res.json();
+        if (!data.fileKey) throw new Error(data.error || data.details || 'Upload failed');
+        return data.fileKey;
     }, []);
 
     // ── Step navigation ───────────────────────────────────────────────────
     const goNext = useCallback(async () => {
         // Step 0: Photo validation
         if (step === 0) {
-            if (!lafPhotoKey) {
-                toast.error('Please capture your photo before continuing.');
-                return;
-            }
+            // if (!lafPhotoFile) {
+            //     toast.error('Please capture or upload your photo before continuing.');
+            //     return;
+            // }
             setStep(1);
             return;
         }
@@ -204,7 +249,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
 
     // ── Final submit ──────────────────────────────────────────────────────
     const handleSubmit = useCallback(async (values) => {
-        if (!lafPhotoKey) {
+        if (!lafPhotoFile) {
             toast.error('Client photo is required.');
             return;
         }
@@ -213,7 +258,11 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
             return;
         }
         setSubmitting(true);
+        setPhotoUploading(true);
         try {
+            const photoKey = await uploadPhoto(lafPhotoFile);
+            setPhotoUploading(false);
+
             const res = await fetch('/api/public/laf/submit', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -222,8 +271,8 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                     qrToken,
                     ...values,
                     loanAmount: parseFloat(values.loanAmount) || 0,
-                    lafPhotoKey,
-                    ...biometricData, // biometricCredentialId, publicKey, counter, etc.
+                    lafPhotoKey: photoKey,
+                    ...biometricData,
                 }),
             });
             const data = await res.json();
@@ -231,11 +280,12 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
             setCiCode(data.ciReferenceCode);
             setSubmitted(true);
         } catch (err) {
+            setPhotoUploading(false);
             toast.error(err.message || 'An error occurred. Please try again.');
         } finally {
             setSubmitting(false);
         }
-    }, [branchId, qrToken, lafPhotoKey, biometricVerified, biometricData]);
+    }, [branchId, qrToken, lafPhotoFile, biometricVerified, biometricData, uploadPhoto]);
 
     if (submitted) {
         return <LAFSuccessScreen ciReferenceCode={ciCode} branchName={branchName} />;
@@ -266,12 +316,13 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                             <LAFPhotoStep
                                 onPhotoReady={handlePhotoReady}
                                 uploading={photoUploading}
+                                preview={lafPhotoPreview}
                             />
                             <div className="mt-6 flex justify-end">
                                 <button
                                     type="button"
                                     onClick={goNext}
-                                    disabled={!lafPhotoKey || photoUploading}
+                                    disabled={!lafPhotoFile || photoUploading}
                                     className="px-6 py-2.5 bg-blue-600 text-white text-sm
                                         font-medium rounded-lg hover:bg-blue-700
                                         disabled:opacity-50 disabled:cursor-not-allowed"

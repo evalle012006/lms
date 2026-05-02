@@ -2,7 +2,7 @@ import React from 'react';
 import PhotoCapture from '@/components/clients/PhotoCapture';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 
-const LAFPhotoStep = ({ onPhotoReady, uploading }) => (
+const LAFPhotoStep = ({ onPhotoReady, uploading, preview }) => (
     <div className="space-y-5">
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex gap-3">
             <ShieldCheckIcon className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -11,8 +11,8 @@ const LAFPhotoStep = ({ onPhotoReady, uploading }) => (
                     Identity photo required
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                    Please take a clear photo of yourself facing the camera. 
-                    This photo will be used to verify your identity throughout 
+                    Please take a clear photo of yourself facing the camera.
+                    This photo will be used to verify your identity throughout
                     the application process.
                 </p>
             </div>
@@ -23,6 +23,7 @@ const LAFPhotoStep = ({ onPhotoReady, uploading }) => (
             label="Take a photo of yourself"
             facingMode="user"
             maxMB={10}
+            preview={preview}
         />
 
         {uploading && (
