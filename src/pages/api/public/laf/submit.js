@@ -27,6 +27,12 @@ async function submitLAF(req, res) {
         guarantorFirstName, guarantorLastName,
         guarantorRelationship, guarantorContactNumber,
         lafPhotoKey,
+        // ── Biometric fields from LAFBiometricStep ────────────────────────
+        biometricCredentialId,
+        biometricPublicKey,
+        biometricCounter,
+        biometricRegisteredAt,
+        biometricDeviceName,
     } = req.body;
 
     // Basic presence check
@@ -103,6 +109,12 @@ async function submitLAF(req, res) {
                 dateAdded:   moment().format('YYYY-MM-DD'),
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
+                // ── Biometric — captured during LAFBiometricStep ──────────
+                biometricCredentialId: biometricCredentialId || null,
+                biometricPublicKey:    biometricPublicKey    || null,
+                biometricCounter:      biometricCounter      || 0,
+                biometricRegisteredAt: biometricRegisteredAt || null,
+                biometricDeviceName:   biometricDeviceName   || null,
             }]
         })
     ).then(r => r.data?.temporaryLoanApplications?.returning ?? []);

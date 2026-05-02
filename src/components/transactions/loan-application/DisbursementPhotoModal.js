@@ -137,8 +137,8 @@ const DisbursementPhotoModal = ({
         setBiometricRequired(isCurrentUser && hasBiometric);
     };
 
-    // ── Photo upload ──────────────────────────────────────────────────────
-    const handleFileChange = useCallback(async (e) => {
+    // ── Photo selection — store file locally, upload only on Confirm ────────
+    const handleFileChange = useCallback((e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) {
@@ -147,25 +147,23 @@ const DisbursementPhotoModal = ({
         }
         setPhoto(URL.createObjectURL(file));
         setPhotoFile(file);
-        setPhotoKey(null);
-        setUploading(true);
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('origin', 'disbursement');
-            formData.append('uuid', loans[0]?._id || 'disbursement');
-            const res  = await fetch('/api/upload', { method: 'POST', body: formData });
-            if (!res.ok) throw new Error('Upload failed');
-            const data = await res.json();
-            setPhotoKey(data.fileKey);
-            toast.success('Photo uploaded.');
-        } catch {
-            toast.error('Failed to upload photo. Please try again.');
-            setPhoto(null);
-            setPhotoFile(null);
-        } finally {
-            setUploading(false);
+        setPhotoKey(null); // reset any previous key
+    }, []);
+
+    // ── Upload — called inside handleConfirm only ─────────────────────────
+    const uploadPhoto = useCallback(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('origin', 'disbursement');
+        formData.append('uuid', loans[0]?._id || `disbursement${Date.now()}`);
+        const res  = await fetch('/api/upload', { method: 'POST', body: formData });
+        const ct   = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            throw new Error(res.status === 413 ? 'Photo is too large.' : `Upload error (${res.status}).`);
         }
+        const data = await res.json();
+        if (!data.fileKey) throw new Error(data.error || 'Upload failed.');
+        return data.fileKey;
     }, [loans]);
 
     // ── Biometric scan ────────────────────────────────────────────────────
@@ -181,10 +179,10 @@ const DisbursementPhotoModal = ({
         }
     };
 
-    // ── Confirm ───────────────────────────────────────────────────────────
+    // ── Confirm — upload happens here, not on file select ────────────────
     const handleConfirm = async () => {
-        if (!photoKey) {
-            toast.error('Please upload a disbursement photo before approving.');
+        if (!photoFile) {
+            toast.error('Please take a disbursement photo before approving.');
             return;
         }
         if (!approverId) {
@@ -196,8 +194,15 @@ const DisbursementPhotoModal = ({
             return;
         }
         setConfirming(true);
+        setUploading(true);
         try {
-            await onConfirm(photoKey, approverId);
+            const key = await uploadPhoto(photoFile);
+            setPhotoKey(key);
+            setUploading(false);
+            await onConfirm(key, approverId);
+        } catch (err) {
+            setUploading(false);
+            toast.error(err.message || 'Failed to upload photo. Please try again.');
         } finally {
             setConfirming(false);
         }
@@ -207,7 +212,7 @@ const DisbursementPhotoModal = ({
 
     const loanCount    = loans.length;
     const selectedUser = approverList.find(u => u._id === approverId);
-    const canConfirm   = photoKey && approverId &&
+    const canConfirm   = photoFile && approverId &&
         (!biometricRequired || biometricVerified) &&
         clientVerified &&
         !uploading && !confirming;
