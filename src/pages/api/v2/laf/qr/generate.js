@@ -21,7 +21,7 @@ async function generateQR(req, res) {
     }
 
     const qrToken = crypto.randomBytes(16).toString('hex');
-    const publicUrl = `${process.env.NEXT_PUBLIC_LOCAL_HOST}/apply/${qrToken}`;
+    const publicUrl = `${process.env.NEXT_PUBLIC_WEBAUTHN_ORIGIN}/apply/${qrToken}`;
 
     await graph.mutation(
         updateQl(BRANCH_TYPE, {
