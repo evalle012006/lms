@@ -765,6 +765,15 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
             values.coMakerPendingName = null;
         }
 
+        // ── Co-maker validation ───────────────────────────────────────────
+        // Must either: select a co-maker OR check the "not yet encoded" checkbox
+        // This applies to both add and edit mode
+        if (!values.coMakerId && !coMakerPending) {
+            setLoading(false);
+            toast.error('Co-maker is required. Please select a co-maker or check "Co-maker not yet encoded".');
+            return;
+        }
+
         const loanLimit = values.occurence === 'daily'
             ? transactionSettings.loanDailyLimit
             : transactionSettings.loanWeeklyLimit;
