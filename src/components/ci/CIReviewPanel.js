@@ -19,6 +19,31 @@ function fileToBase64(file) {
     });
 }
 
+// Compress image before storing as base64 offline
+// Mobile selfies can be 5-8MB — compressing to ~300KB keeps localStorage safe
+function compressToBase64(file, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const img = new window.Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const scale  = Math.min(1, maxWidth / img.width);
+            const canvas = document.createElement('canvas');
+            canvas.width  = Math.round(img.width  * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(dataUrl);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            // Fallback to uncompressed
+            fileToBase64(file).then(resolve).catch(reject);
+        };
+        img.src = url;
+    });
+}
+
 const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const currentUser = useSelector(state => state.user.data);
     const isOnline    = useOnlineStatus();
@@ -75,16 +100,22 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             if (!isOnline) {
                 let selfieBase64 = null;
                 if (selfieFile) {
-                    // Convert file to base64 so it can be stored in localStorage
-                    // and uploaded to S3 when the device comes back online
-                    selfieBase64 = await fileToBase64(selfieFile);
+                    // Compress before storing — mobile selfies are 5-8MB
+                    // Compressed to ~300KB so localStorage (5MB limit) isn't exceeded
+                    selfieBase64 = await compressToBase64(selfieFile);
                 }
 
-                saveDraft({
-                    ...buildPayload(null), // selfieKey is null — will be set after upload on sync
-                    selfieBase64,          // raw image data stored locally
+                const saveResult = saveDraft({
+                    ...buildPayload(null),
+                    selfieBase64,
                     savedOfflineAt: Date.now(),
                 });
+
+                if (saveResult?.success === false) {
+                    // localStorage quota exceeded — selfie too large even after compression
+                    toast.error('Could not save offline: device storage full. Please free up space and try again.');
+                    return;
+                }
 
                 toast.success('Saved offline. Will sync when back online.');
                 onSaved?.({ offline: true });

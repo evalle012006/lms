@@ -417,10 +417,17 @@ const CIInvestigationPage = () => {
             }
 
             // ── Step 2: Only sync drafts where selfie uploaded successfully ─
-            // Skip approved drafts that still have selfieBase64 (upload failed)
+            // ALWAYS strip selfieBase64 — never send raw image to offline-sync
+            // Approved drafts with failed selfie upload are held back for retry
             const draftsToSync = preparedDrafts
                 .filter(d => !d._selfieUploadFailed)
                 .map(({ selfieBase64: _b, _selfieUploadFailed: _f, _selfieUploadError: _e, ...rest }) => rest);
+
+            if (selfieFailures.length > 0 && draftsToSync.length === 0) {
+                // All drafts failed selfie upload — stop here, let user retry
+                setSyncing(false);
+                return;
+            }
 
             if (draftsToSync.length === 0) {
                 setSyncing(false);

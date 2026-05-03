@@ -25,9 +25,14 @@ export function useCIDraftStorage({ onDraftChange } = {}) {
             const updated  = existing.filter(d => d.ciReferenceCode !== draft.ciReferenceCode);
             updated.push({ ...draft, savedAt: Date.now() });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(updated));
-            // Notify parent immediately — no polling needed
             onChangeRef.current?.(updated.length);
-        } catch {}
+            return { success: true };
+        } catch (err) {
+            // QuotaExceededError means the data is too large for localStorage
+            // Caller should handle this — usually means selfieBase64 is too large
+            console.error('[useCIDraftStorage] saveDraft failed:', err.name, err.message);
+            return { success: false, error: err.name, message: err.message };
+        }
     }, []);
 
     const removeDraft = useCallback((ciReferenceCode) => {
