@@ -227,7 +227,9 @@ const CIInvestigationPage = () => {
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
     const isOnline = useOnlineStatus();
-    const { getDrafts, removeDraft } = useCIDraftStorage();
+    const { getDrafts, removeDraft } = useCIDraftStorage({
+        onDraftChange: (count) => setDraftCount(count),
+    });
     const { getCache, clearCache, getCacheInfo } = useCIOfflineCache();
 
     const [searchResult,   setSearchResult]   = useState(null);
@@ -243,12 +245,20 @@ const CIInvestigationPage = () => {
     const [pendingCount,   setPendingCount]   = useState(0);
 
     useEffect(() => {
+        // Initial read — subsequent updates come from onDraftChange callback
         setDraftCount(getDrafts().length);
         const info = getCacheInfo();
         setCacheInfo(info);
         if (info) {
             const cache = getCache();
-            setOfflineApps(cache?.applications || []);
+            const apps  = cache?.applications || [];
+            setOfflineApps(apps);
+            // Auto-select first app when offline after page refresh
+            if (!isOnline && apps.length > 0 && !selectedCode) {
+                const first = apps[0];
+                setSelectedCode(first.ciReferenceCode);
+                setSearchResult({ success: true, application: first, investigation: null });
+            }
         }
     }, [getDrafts, getCacheInfo, getCache, isOnline]);
 
@@ -460,6 +470,7 @@ const CIInvestigationPage = () => {
                                             </div>
                                         )}
                                         <CIReviewPanel
+                                            key={selectedCode}
                                             applicationData={searchResult}
                                             investigationData={searchResult.investigation}
                                             onSaved={handleSaved}

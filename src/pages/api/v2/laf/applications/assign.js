@@ -75,6 +75,24 @@ async function assignApplications(req, res) {
         );
 
         // Return full application data for caching
+        // Fetch branch info to include branchCode and branchName in cache
+        const BRANCH_FIELDS = createGraphType('branches', '_id code name')('branches');
+        const tempApps      = await graph.query(
+            queryQl(
+                createGraphType('temporaryLoanApplications', '_id branchId')('temporaryLoanApplications'),
+                { where: { _id: { _in: applicationIds } } }
+            )
+        ).then(r => r.data?.temporaryLoanApplications ?? []);
+        const allBranchIds  = [...new Set(tempApps.map(a => a.branchId))];
+
+        const branchMap = {};
+        if (allBranchIds.length > 0) {
+            const branches = await graph.query(
+                queryQl(BRANCH_FIELDS, { where: { _id: { _in: allBranchIds } } })
+            ).then(r => r.data?.branches ?? []);
+            branches.forEach(b => { branchMap[b._id] = b; });
+        }
+
         const applications = await graph.query(
             queryQl(
                 createGraphType('temporaryLoanApplications', `
@@ -90,10 +108,17 @@ async function assignApplications(req, res) {
             )
         ).then(r => r.data?.temporaryLoanApplications ?? []);
 
+        // Enrich with branch info for offline display
+        const enriched = applications.map(a => ({
+            ...a,
+            branchCode: branchMap[a.branchId]?.code || '',
+            branchName: branchMap[a.branchId]?.name || '',
+        }));
+
         return res.status(200).json({
             success:      true,
-            applications, // returned for localStorage caching
-            message:      `${applications.length} application(s) claimed successfully.`,
+            applications: enriched,
+            message:      `${enriched.length} application(s) claimed successfully.`,
         });
     }
 
