@@ -54,7 +54,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             toast.error('Please select Approve or Decline.');
             return;
         }
-        if (decision === 'approved' && !selfieFile && !investigationData?.selfieKey) {
+        if (decision === 'approved' && !selfieFile
+            && !investigationData?.selfieKey
+            && !investigationData?.selfieUrl) {
+            // selfieUrl covers both signed URLs (synced) and base64 (draft)
             toast.error('A selfie photo is required to approve an application.');
             return;
         }

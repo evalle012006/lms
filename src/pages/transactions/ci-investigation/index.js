@@ -304,10 +304,13 @@ const CIInvestigationPage = () => {
                     decision:         draft.decision,
                     declineReason:    draft.declineReason,
                     selfieKey:        draft.selfieKey || null,
-                    selfieUrl:        null, // no signed URL offline
-                    picUserName:      null,
+                    // base64 data URL renders directly in <img> without needing S3
+                    selfieUrl:        draft.selfieBase64 || null,
+                    picUserName:      currentUser
+                        ? `${currentUser.firstName} ${currentUser.lastName}`
+                        : null,
                     investigatedAt:   draft.investigatedAt,
-                    isDraft:          true, // flag so UI can show "draft" label
+                    isDraft:          true,
                 } : null,
             });
             return;
@@ -331,8 +334,13 @@ const CIInvestigationPage = () => {
                         decision:         draft.decision,
                         declineReason:    draft.declineReason,
                         selfieKey:        draft.selfieKey || null,
-                        selfieUrl:        null,
-                        picUserName:      null,
+                        // Use base64 as selfieUrl so the preview renders immediately
+                        // without needing a signed URL
+                        selfieUrl:        draft.selfieBase64 || null,
+                        // Show current user name since they saved this draft
+                        picUserName:      currentUser
+                            ? `${currentUser.firstName} ${currentUser.lastName}`
+                            : null,
                         investigatedAt:   draft.investigatedAt,
                         isDraft:          true,
                     };
