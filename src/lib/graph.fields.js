@@ -239,6 +239,7 @@ export const SETTINGS_FIELDS = `
   companyPhoneNumber
   superPwd
   enableNotifications
+  allowLoCI
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -752,6 +753,9 @@ export const TEMP_LOAN_APP_FIELDS = `
   biometricCounter
   biometricRegisteredAt
   biometricDeviceName
+  assignedTo
+  assignedAt
+  assignedByName
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

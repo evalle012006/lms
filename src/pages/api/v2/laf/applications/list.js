@@ -27,6 +27,9 @@ async function listApplications(req, res) {
         ).then(r => r.data?.branches ?? []);
         const branchIds = branches.map(b => b._id);
         branchWhere = { branchId: { _in: branchIds } };
+    } else if (currentUser.role.rep === 4) {
+        // LO can only see applications for their branch (if allowLoCI is enabled)
+        branchWhere = { branchId: { _eq: currentUser.designatedBranchId } };
     }
 
     const where = {

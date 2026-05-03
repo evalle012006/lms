@@ -193,6 +193,69 @@ const FeatureEnablementCard = ({ values, setFieldValue }) => (
                     </div>
                 )}
             </div>
+
+            {/* Allow LO CI Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-teal-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-teal-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Allow LO to Conduct CI Investigations
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, Loan Officers can access the CI Investigation page
+                                and conduct field investigations. By default, only Branch Managers
+                                and above are allowed.
+                            </p>
+                            {values.allowLoCI && (
+                                <div className="mt-2 flex items-start gap-2 text-amber-600
+                                    bg-amber-50 p-2 rounded-lg text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        LOs will only see applications for their assigned branch.
+                                        Ensure this is agreed upon with management before enabling.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Root-only toggle */}
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('allowLoCI', !values.allowLoCI)}
+                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-600
+                                focus:ring-offset-2 ${values.allowLoCI ? 'bg-teal-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.allowLoCI ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.allowLoCI
+                                ? 'bg-teal-100 text-teal-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.allowLoCI ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
             
             {/* Placeholder for future features */}
             <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 opacity-60">
@@ -237,6 +300,7 @@ const ProfileSettingsPage = (props) => {
         branchPhoneNumber: state.branchPhoneNumber || '',
         superPwd: state.superPwd || '',
         enableNotifications: state.enableNotifications ?? false,
+        allowLoCI: state.allowLoCI ?? false,
     }
 
     const validationSchema = yup.object().shape({

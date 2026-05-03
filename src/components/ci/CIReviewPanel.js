@@ -8,25 +8,36 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
+// ── Helper: convert File to base64 data URL ──────────────────────────────
+// Used when offline — stores selfie locally instead of uploading to S3
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror  = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+}
+
 const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const currentUser = useSelector(state => state.user.data);
-    const isOnline = useOnlineStatus();
+    const isOnline    = useOnlineStatus();
     const { saveDraft } = useCIDraftStorage();
 
     const { application, lafPhotoUrl } = applicationData;
 
-    const [findings,         setFindings]         = useState(investigationData?.findings || '');
+    const [findings,         setFindings]         = useState(investigationData?.findings        || '');
     const [businessVerified, setBusinessVerified] = useState(investigationData?.businessVerified || false);
     const [addressVerified,  setAddressVerified]  = useState(investigationData?.addressVerified  || false);
-    const [decision,         setDecision]         = useState(investigationData?.decision || '');
-    const [declineReason,    setDeclineReason]    = useState(investigationData?.declineReason || '');
+    const [decision,         setDecision]         = useState(investigationData?.decision         || '');
+    const [declineReason,    setDeclineReason]    = useState(investigationData?.declineReason    || '');
     const [selfieFile,       setSelfieFile]       = useState(null);
     const [saving,           setSaving]           = useState(false);
-    const [previewOpen, setPreviewOpen] = useState(false);
-    const [previewUrl, setPreviewUrl]   = useState(null);
+    const [previewOpen,      setPreviewOpen]      = useState(false);
+    const [previewUrl,       setPreviewUrl]       = useState(null);
 
     const buildPayload = useCallback((selfieKey = null) => ({
-        ciReferenceCode:  application.ciReferenceCode,
+        ciReferenceCode:   application.ciReferenceCode,
         tempApplicationId: application._id,
         findings,
         businessVerified,
@@ -35,10 +46,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         declineReason: decision === 'declined' ? declineReason : null,
         selfieKey,
         investigatedAt: new Date().toISOString(),
-    }), [application, findings, businessVerified, addressVerified,
-        decision, declineReason]);
+    }), [application, findings, businessVerified, addressVerified, decision, declineReason]);
 
     const handleSave = useCallback(async () => {
+        // ── Validation ────────────────────────────────────────────────────
         if (!decision) {
             toast.error('Please select Approve or Decline.');
             return;
@@ -55,41 +66,56 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         setSaving(true);
 
         try {
+            // ── OFFLINE PATH ──────────────────────────────────────────────
+            // Check online status BEFORE attempting any network calls.
+            // Store selfie as base64 in localStorage — upload during sync.
+            if (!isOnline) {
+                let selfieBase64 = null;
+                if (selfieFile) {
+                    // Convert file to base64 so it can be stored in localStorage
+                    // and uploaded to S3 when the device comes back online
+                    selfieBase64 = await fileToBase64(selfieFile);
+                }
+
+                saveDraft({
+                    ...buildPayload(null), // selfieKey is null — will be set after upload on sync
+                    selfieBase64,          // raw image data stored locally
+                    savedOfflineAt: Date.now(),
+                });
+
+                toast.success('Saved offline. Will sync when back online.');
+                onSaved?.({ offline: true });
+                return;
+            }
+
+            // ── ONLINE PATH ───────────────────────────────────────────────
             let selfieKey = investigationData?.selfieKey || null;
 
-            // Upload selfie if new file selected
+            // Upload selfie to S3 if a new file was selected
             if (selfieFile) {
                 const fd = new FormData();
                 fd.append('file', selfieFile);
                 fd.append('origin', 'ci-selfies');
                 fd.append('uuid', application._id);
                 const uploadRes  = await fetch('/api/upload', { method: 'POST', body: fd });
+                const ct         = uploadRes.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    throw new Error(`Upload error (${uploadRes.status}). Please try again.`);
+                }
                 const uploadData = await uploadRes.json();
                 if (!uploadData.fileKey) throw new Error('Selfie upload failed.');
                 selfieKey = uploadData.fileKey;
             }
 
-            const payload = buildPayload(selfieKey);
-
-            if (!isOnline) {
-                // Save to localStorage draft
-                saveDraft({
-                    ...payload,
-                    savedOfflineAt: Date.now(),
-                });
-                toast.success('Saved offline. Will sync when back online.');
-                onSaved?.({ offline: true });
-                return;
-            }
-
             const res = await fetchWrapper.post(
                 getApiBaseUrl() + 'laf/ci/investigate',
-                payload
+                buildPayload(selfieKey)
             );
 
             if (!res.success) throw new Error(res.message || 'Save failed.');
             toast.success('Investigation saved successfully.');
             onSaved?.({ offline: false, investigation: res.investigation });
+
         } catch (err) {
             toast.error(err.message || 'An error occurred.');
         } finally {
@@ -100,11 +126,13 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
 
     return (
         <div className="space-y-6">
+
             {/* LAF photo display */}
             {lafPhotoUrl && (
                 <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase 
-                        tracking-wide mb-2">Application Photo (LAF)</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        Application Photo (LAF)
+                    </p>
                     <img
                         src={lafPhotoUrl}
                         alt="Client LAF photo"
@@ -155,10 +183,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                             rounded-xl border-2 text-sm font-medium transition-colors ${
                             decision === 'approved'
                                 ? 'border-green-500 bg-green-50 text-green-700'
-                                : 'border-gray-200 text-gray-500 hover:border-green-300'
+                                : 'border-gray-200 text-gray-600 hover:border-green-300'
                         }`}
                     >
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-4 h-4" />
                         Approve
                     </button>
                     <button
@@ -168,10 +196,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                             rounded-xl border-2 text-sm font-medium transition-colors ${
                             decision === 'declined'
                                 ? 'border-red-500 bg-red-50 text-red-700'
-                                : 'border-gray-200 text-gray-500 hover:border-red-300'
+                                : 'border-gray-200 text-gray-600 hover:border-red-300'
                         }`}
                     >
-                        <XCircle className="w-5 h-5" />
+                        <XCircle className="w-4 h-4" />
                         Decline
                     </button>
                 </div>
@@ -187,38 +215,40 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                         rows={3}
                         value={declineReason}
                         onChange={e => setDeclineReason(e.target.value)}
-                        placeholder="State the reason for declining..."
-                        className="w-full px-3 py-2.5 border border-red-300 rounded-lg
-                            text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+                        placeholder="Explain why this application is being declined..."
+                        className="w-full px-3 py-2.5 border border-red-300 rounded-lg text-sm
+                            focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
                     />
                 </div>
             )}
 
-            {/* Selfie — only shown when approving */}
+            {/* Selfie section */}
             {decision === 'approved' && (
                 <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                        Visit Selfie * <span className="text-xs text-gray-400 font-normal">
-                            (Must show CI, client, and physical form)
-                        </span>
-                    </p>
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3">
-                        <div className="flex gap-2 items-start">
-                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-700">
-                                Photo must clearly show: <strong>you (CI)</strong>, 
-                                the <strong>client</strong>, and the 
-                                <strong> filled-out physical form</strong>. 
-                                Your name ({currentUser?.firstName} {currentUser?.lastName}) 
-                                will be automatically recorded.
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200
+                        rounded-xl mb-3">
+                        <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-xs font-semibold text-blue-800">
+                                Selfie required for approval
+                            </p>
+                            <p className="text-xs text-blue-600 mt-0.5">
+                                Take a selfie together with the client holding their application form.
+                                Your name ({currentUser?.firstName} {currentUser?.lastName}) will be
+                                automatically recorded.
+                                {!isOnline && (
+                                    <span className="block mt-1 font-medium text-amber-700">
+                                        ⚠ Offline — selfie will be stored locally and uploaded when you reconnect.
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </div>
+
+                    {/* Previously uploaded selfie */}
                     {investigationData?.selfieUrl && !selfieFile && (
                         <div className="mb-3">
                             <p className="text-xs text-gray-500 mb-2">Previously uploaded selfie:</p>
-                            
-                            {/* Clickable thumbnail */}
                             <button
                                 type="button"
                                 onClick={() => {
@@ -233,54 +263,51 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                                     alt="CI selfie"
                                     className="w-28 h-28 object-cover"
                                 />
-                                {/* Hover overlay */}
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30
                                     transition-all flex items-center justify-center">
                                     <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100
-                                        transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                        transition-opacity" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
                                     </svg>
                                 </div>
                             </button>
-                            <p className="text-xs text-gray-400 mt-1">Click to view full image</p>
                         </div>
                     )}
 
-                    {/* Full image preview lightbox */}
+                    {/* Full-screen selfie preview */}
                     {previewOpen && previewUrl && (
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center
-                                justify-center p-4"
+                            className="fixed inset-0 z-[9999] bg-black bg-opacity-90
+                                flex items-center justify-center p-4"
                             onClick={() => setPreviewOpen(false)}
                         >
-                            {/* Close button */}
                             <button
+                                type="button"
                                 onClick={() => setPreviewOpen(false)}
-                                className="absolute top-4 right-4 p-2 text-white hover:text-gray-300
-                                    bg-white bg-opacity-10 rounded-full hover:bg-opacity-20 transition-colors"
+                                className="absolute top-4 right-4 text-white bg-black bg-opacity-50
+                                    rounded-full p-2 hover:bg-opacity-70"
                             >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12" />
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round"
+                                        strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
-
-                            {/* Image — click outside to close */}
                             <img
                                 src={previewUrl}
                                 alt="CI selfie full view"
                                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                                onClick={e => e.stopPropagation()} // don't close when clicking image itself
+                                onClick={e => e.stopPropagation()}
                             />
-
-                            {/* Tap anywhere to close hint */}
                             <p className="absolute bottom-4 left-0 right-0 text-center text-white
                                 text-xs opacity-50">
                                 Tap anywhere outside to close
                             </p>
                         </div>
                     )}
+
                     <PhotoCapture
                         onFileReady={setSelfieFile}
                         label="Take selfie with client and form"
@@ -296,7 +323,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 onClick={handleSave}
                 disabled={saving || !decision}
                 className="w-full py-3 bg-blue-600 text-white text-sm font-semibold
-                    rounded-xl hover:bg-blue-700 disabled:opacity-50 
+                    rounded-xl hover:bg-blue-700 disabled:opacity-50
                     disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
                 {saving ? (
@@ -307,7 +334,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                             <path className="opacity-75" fill="currentColor"
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                        Saving…
+                        {isOnline ? 'Saving…' : 'Saving draft…'}
                     </>
                 ) : isOnline ? 'Save Investigation' : 'Save Draft (Offline)'}
             </button>

@@ -61,7 +61,7 @@ lockedUntil
 
 const SETTINGS_TYPE = createGraphType('settings', `
 _id superPwd companyName companyEmail companyAddress
-companyPhoneNumber branchCode branchName branchAddress branchPhoneNumber
+companyPhoneNumber branchCode branchName branchAddress branchPhoneNumber allowLoCI
 `)('settings');
 
 const LOG_TYPE = createGraphType('user_activity_logs', `
