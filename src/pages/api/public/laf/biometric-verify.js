@@ -56,8 +56,8 @@ export default async function handler(req, res) {
         }
 
         const { credential: cred } = verification.registrationInfo;
-        const credIdB64  = Buffer.from(cred.id).toString('base64');
-        const pubKeyB64  = Buffer.from(cred.publicKey).toString('base64');
+        const credIdB64 = Buffer.from(cred.id).toString('base64url');
+        const pubKeyB64 = Buffer.from(cred.publicKey).toString('base64');
 
         // Return credential data to client — will be included in LAF submission payload
         return res.status(200).json({
