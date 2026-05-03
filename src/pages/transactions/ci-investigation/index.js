@@ -358,24 +358,37 @@ const CIInvestigationPage = () => {
         setSyncing(true);
         try {
             // ── Step 1: Upload selfie images separately ────────────────────
-            // selfieBase64 can be 5-8MB per image — sending them all in one
-            // POST body would exceed Nginx's client_max_body_size limit.
-            // Upload each one individually first, swap in the S3 key.
+            // selfieBase64 can be 5-8MB — must upload individually first
+            // Get auth token for the upload request
+            let authToken = null;
+            try {
+                const stored = localStorage.getItem('acuser');
+                const parsed = stored ? JSON.parse(stored) : null;
+                authToken = parsed?.token || parsed?.user?.token || null;
+            } catch { /* ignore */ }
+
             const preparedDrafts = await Promise.all(drafts.map(async (draft) => {
-                if (!draft.selfieBase64 || draft.selfieKey) return draft; // already uploaded
+                if (!draft.selfieBase64 || draft.selfieKey) return draft; // already uploaded or no selfie
                 try {
                     // Convert base64 data URL to Blob
-                    const res = await fetch(draft.selfieBase64);
-                    const blob = await res.blob();
-                    const ext  = blob.type.split('/')[1] || 'jpg';
-                    const file = new File([blob], `offline-selfie.${ext}`, { type: blob.type });
+                    const blobRes = await fetch(draft.selfieBase64);
+                    const blob    = await blobRes.blob();
+                    const ext     = blob.type.split('/')[1] || 'jpg';
+                    const file    = new File([blob], `offline-selfie.${ext}`, { type: blob.type });
 
                     const fd = new FormData();
                     fd.append('file', file);
                     fd.append('origin', 'ci-selfies');
                     fd.append('uuid', draft.tempApplicationId);
 
-                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                    // Include auth header — /api/upload requires authentication
+                    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+                    const uploadRes = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers,
+                        body: fd,
+                    });
+
                     const ct = uploadRes.headers.get('content-type') || '';
                     if (!ct.includes('application/json')) {
                         throw new Error(`Selfie upload failed (${uploadRes.status})`);
@@ -387,14 +400,29 @@ const CIInvestigationPage = () => {
                     const { selfieBase64: _, ...rest } = draft;
                     return { ...rest, selfieKey: uploadData.fileKey };
                 } catch (uploadErr) {
-                    // Keep original draft — offline-sync will retry or report failure
-                    console.error('[sync] selfie upload failed:', uploadErr);
-                    return draft;
+                    console.error('[sync] selfie upload failed:', uploadErr.message);
+                    // Mark as failed so we can report it — don't silently swallow
+                    return { ...draft, _selfieUploadFailed: true, _selfieUploadError: uploadErr.message };
                 }
             }));
 
-            // ── Step 2: Sync text data only — no base64 in payload ────────
-            const draftsToSync = preparedDrafts.map(({ selfieBase64: _, ...rest }) => rest);
+            // ── Report any selfie upload failures before attempting sync ──
+            const selfieFailures = preparedDrafts.filter(d => d._selfieUploadFailed);
+            if (selfieFailures.length > 0) {
+                const names = selfieFailures.map(d => d.ciReferenceCode).join(', ');
+                toast.warning(`Selfie upload failed for: ${names}. Check connection and try again.`);
+            }
+
+            // ── Step 2: Only sync drafts where selfie uploaded successfully ─
+            // Skip approved drafts that still have selfieBase64 (upload failed)
+            const draftsToSync = preparedDrafts
+                .filter(d => !d._selfieUploadFailed)
+                .map(({ selfieBase64: _b, _selfieUploadFailed: _f, _selfieUploadError: _e, ...rest }) => rest);
+
+            if (draftsToSync.length === 0) {
+                setSyncing(false);
+                return;
+            }
 
             const res = await fetchWrapper.post(
                 getApiBaseUrl() + 'laf/ci/offline-sync',
