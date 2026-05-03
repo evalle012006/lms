@@ -159,3 +159,12 @@ async function syncOfflineDrafts(req, res) {
         },
     });
 }
+
+// Increase Next.js body parser limit — selfieBase64 images can be 5-8MB each
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '50mb',
+        },
+    },
+};

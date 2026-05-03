@@ -357,18 +357,71 @@ const CIInvestigationPage = () => {
         if (!drafts.length) return;
         setSyncing(true);
         try {
-            const res = await fetchWrapper.post(getApiBaseUrl() + 'laf/ci/offline-sync', { drafts });
+            // ── Step 1: Upload selfie images separately ────────────────────
+            // selfieBase64 can be 5-8MB per image — sending them all in one
+            // POST body would exceed Nginx's client_max_body_size limit.
+            // Upload each one individually first, swap in the S3 key.
+            const preparedDrafts = await Promise.all(drafts.map(async (draft) => {
+                if (!draft.selfieBase64 || draft.selfieKey) return draft; // already uploaded
+                try {
+                    // Convert base64 data URL to Blob
+                    const res = await fetch(draft.selfieBase64);
+                    const blob = await res.blob();
+                    const ext  = blob.type.split('/')[1] || 'jpg';
+                    const file = new File([blob], `offline-selfie.${ext}`, { type: blob.type });
+
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    fd.append('origin', 'ci-selfies');
+                    fd.append('uuid', draft.tempApplicationId);
+
+                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                    const ct = uploadRes.headers.get('content-type') || '';
+                    if (!ct.includes('application/json')) {
+                        throw new Error(`Selfie upload failed (${uploadRes.status})`);
+                    }
+                    const uploadData = await uploadRes.json();
+                    if (!uploadData.fileKey) throw new Error('Selfie upload returned no key');
+
+                    // Return draft with selfieKey set, selfieBase64 stripped
+                    const { selfieBase64: _, ...rest } = draft;
+                    return { ...rest, selfieKey: uploadData.fileKey };
+                } catch (uploadErr) {
+                    // Keep original draft — offline-sync will retry or report failure
+                    console.error('[sync] selfie upload failed:', uploadErr);
+                    return draft;
+                }
+            }));
+
+            // ── Step 2: Sync text data only — no base64 in payload ────────
+            const draftsToSync = preparedDrafts.map(({ selfieBase64: _, ...rest }) => rest);
+
+            const res = await fetchWrapper.post(
+                getApiBaseUrl() + 'laf/ci/offline-sync',
+                { drafts: draftsToSync }
+            );
+
             if (res.success) {
                 res.results.forEach(r => { if (r.success) removeDraft(r.ciReferenceCode); });
                 const failed = res.results.filter(r => !r.success).length;
-                toast.success(failed === 0 ? `${drafts.length} draft(s) synced.` : `${drafts.length - failed} synced, ${failed} failed.`);
+                toast.success(failed === 0
+                    ? `${drafts.length} draft(s) synced.`
+                    : `${drafts.length - failed} synced, ${failed} failed.`
+                );
                 const remaining = getDrafts().length;
                 setDraftCount(remaining);
                 if (remaining === 0) { clearCache(); setCacheInfo(null); setOfflineApps([]); }
                 setListRefreshKey(k => k + 1);
-            } else { toast.error('Sync failed.'); }
-        } catch (err) { const msg = err?.message || 'Unknown error'; toast.error(`Sync error: ${msg}`); console.error('[sync]', err); }
-        finally { setSyncing(false); }
+            } else {
+                toast.error(`Sync failed: ${res.message || 'Unknown error'}`);
+            }
+        } catch (err) {
+            const msg = err?.message || 'Unknown error';
+            toast.error(`Sync error: ${msg}`);
+            console.error('[sync]', err);
+        } finally {
+            setSyncing(false);
+        }
     }, [getDrafts, removeDraft, clearCache]);
 
     const handleSaved = useCallback(({ offline }) => {
