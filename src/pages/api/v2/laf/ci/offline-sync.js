@@ -48,7 +48,17 @@ async function syncOfflineDrafts(req, res) {
         return res.status(200).json({ success: false, message: 'No drafts provided.' });
     }
 
-    const user = await findUserById(req.auth.sub);
+    // Guard against req.auth being undefined — can happen when JWT middleware
+    // fails to parse the token (stale token, container rotation, etc.)
+    const userId = req?.auth?.sub;
+    if (!userId) {
+        return res.status(200).json({
+            success: false,
+            message: 'Authentication required. Please log in and try again.',
+        });
+    }
+
+    const user = await findUserById(userId);
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
@@ -93,14 +103,14 @@ async function syncOfflineDrafts(req, res) {
                         decision,
                         declineReason:   decision === 'declined' ? declineReason : null,
                         selfieKey:       decision === 'approved'  ? selfieKey    : null,
-                        picUserId:       decision === 'approved'  ? req.auth.sub : null,
+                        picUserId:       decision === 'approved'  ? userId : null,
                         picUserName:     decision === 'approved'
                             ? `${user.firstName} ${user.lastName}` : null,
                         offlinePayload:  draft,
                         syncedAt:        new Date().toISOString(),
                         investigatedAt:  draft.investigatedAt || new Date().toISOString(),
                         dateAdded:       moment().format('YYYY-MM-DD'),
-                        insertedBy:      req.auth.sub,
+                        insertedBy:      userId,
                     }],
                     on_conflict: {
                         constraint: 'ix_ciInv__ciRef_unique',

@@ -286,22 +286,63 @@ const CIInvestigationPage = () => {
 
     const loadApplication = useCallback(async (ciCode) => {
         setSelectedCode(ciCode);
+
+        // Offline — load from localStorage cache
         if (!isOnline) {
             const cache = getCache();
             const app   = cache?.applications?.find(a => a.ciReferenceCode === ciCode);
-            if (app) setSearchResult({ success: true, application: app, investigation: null });
-            else toast.error('Application not found in offline cache.');
+            if (!app) { toast.error('Application not found in offline cache.'); return; }
+            // Pre-fill investigation form from draft if one exists
+            const draft = getDrafts().find(d => d.ciReferenceCode === ciCode);
+            setSearchResult({
+                success:       true,
+                application:   app,
+                investigation: draft ? {
+                    findings:         draft.findings,
+                    businessVerified: draft.businessVerified,
+                    addressVerified:  draft.addressVerified,
+                    decision:         draft.decision,
+                    declineReason:    draft.declineReason,
+                    selfieKey:        draft.selfieKey || null,
+                    selfieUrl:        null, // no signed URL offline
+                    picUserName:      null,
+                    investigatedAt:   draft.investigatedAt,
+                    isDraft:          true, // flag so UI can show "draft" label
+                } : null,
+            });
             return;
         }
+
         setLoadingDetail(true);
         setSearchResult(null);
         try {
             const res = await fetchWrapper.get(getApiBaseUrl() + `laf/ci/${encodeURIComponent(ciCode)}`);
             if (!res.success) { toast.error(res.message || 'Application not found.'); return; }
+
+            // If the server has no investigation yet but we have a local draft,
+            // pre-fill the form so the investigator doesn't lose their offline work
+            if (!res.investigation) {
+                const draft = getDrafts().find(d => d.ciReferenceCode === ciCode);
+                if (draft) {
+                    res.investigation = {
+                        findings:         draft.findings,
+                        businessVerified: draft.businessVerified,
+                        addressVerified:  draft.addressVerified,
+                        decision:         draft.decision,
+                        declineReason:    draft.declineReason,
+                        selfieKey:        draft.selfieKey || null,
+                        selfieUrl:        null,
+                        picUserName:      null,
+                        investigatedAt:   draft.investigatedAt,
+                        isDraft:          true,
+                    };
+                }
+            }
+
             setSearchResult(res);
         } catch { toast.error('Failed to load application.'); }
         finally { setLoadingDetail(false); }
-    }, [isOnline, getCache]);
+    }, [isOnline, getCache, getDrafts]);
 
     const handleSync = useCallback(async () => {
         const drafts = getDrafts();
@@ -318,7 +359,7 @@ const CIInvestigationPage = () => {
                 if (remaining === 0) { clearCache(); setCacheInfo(null); setOfflineApps([]); }
                 setListRefreshKey(k => k + 1);
             } else { toast.error('Sync failed.'); }
-        } catch { toast.error('Sync error. Check connection.'); }
+        } catch (err) { const msg = err?.message || 'Unknown error'; toast.error(`Sync error: ${msg}`); console.error('[sync]', err); }
         finally { setSyncing(false); }
     }, [getDrafts, removeDraft, clearCache]);
 
@@ -336,14 +377,6 @@ const CIInvestigationPage = () => {
         setCacheInfo(info);
         const cache = getCache();
         setOfflineApps(cache?.applications || []);
-        // Remind investigator not to refresh while offline
-        setTimeout(() => {
-            toast.info(
-                '⚠ Important: Do NOT refresh the page while offline. ' +
-                'Refreshing will disconnect you and you will need to reconnect to continue.',
-                { autoClose: 8000 }
-            );
-        }, 1000); // slight delay so it appears after the success toast
     }, [getCacheInfo, getCache]);
 
     const isLO      = currentUser?.role?.rep === 4;
@@ -423,6 +456,20 @@ const CIInvestigationPage = () => {
                     </div>
                 )}
 
+                {/* Do not refresh warning — shown when cache exists */}
+                {cacheInfo && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5">
+                        <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <p className="text-xs text-red-700 leading-relaxed">
+                            <strong>Do not refresh this page while offline.</strong>{' '}
+                            Refreshing will show a blank page and lose your cached data.
+                            If you accidentally refresh, reconnect to internet first, then reload.
+                        </p>
+                    </div>
+                )}
+
                 {/* Offline draft sync banner */}
                 <OfflineDraftBanner isOnline={isOnline} draftCount={draftCount} onSync={handleSync} syncing={syncing} />
 
@@ -486,8 +533,10 @@ const CIInvestigationPage = () => {
                                     <div className="bg-white rounded-xl border border-gray-200 p-5">
                                         <h3 className="text-sm font-semibold text-gray-900 mb-4">Investigation Form</h3>
                                         {searchResult.investigation && (
-                                            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-600">
-                                                <p className="font-semibold text-gray-700 mb-1">Previous investigation on file</p>
+                                            <div className={`mb-4 p-3 rounded-lg border text-xs ${searchResult.investigation.isDraft ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+                                                <p className="font-semibold mb-1">
+                                                    {searchResult.investigation.isDraft ? '⚠ Unsaved draft — not yet synced' : 'Previous investigation on file'}
+                                                </p>
                                                 <p>By: {searchResult.investigation.picUserName || '—'}</p>
                                                 <p>{searchResult.investigation.investigatedAt ? moment(searchResult.investigation.investigatedAt).format('MMM DD, YYYY h:mm A') : '—'}</p>
                                                 <p className="mt-1 italic text-gray-400">Submitting below will update this record.</p>
@@ -518,6 +567,7 @@ const CIInvestigationPage = () => {
                 onClose={() => setFieldModalOpen(false)}
                 currentUser={currentUser}
                 onCached={handleCached}
+                cachedIds={(getCache()?.applications || []).map(a => a._id)}
             />
         </Layout>
     );

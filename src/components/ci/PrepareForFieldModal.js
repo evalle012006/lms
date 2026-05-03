@@ -23,8 +23,9 @@ const BATCH_LIMIT = 30;
  *   currentUser   — Redux user object
  *   onCached      — (count) => void — called after successful cache
  */
-const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
+const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached, cachedIds = [] }) => {
     const { saveCache } = useCIOfflineCache();
+    const cachedSet = new Set(cachedIds);
 
     const [applications, setApplications] = useState([]);
     const [loading, setLoading]           = useState(false);
@@ -62,7 +63,8 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
     };
 
     const toggleSelect = useCallback((appId, app) => {
-        // Cannot select apps claimed by others
+        // Cannot select apps already in cache or claimed by others
+        if (cachedSet.has(appId)) return;
         if (app.assignedTo && app.assignedTo !== currentUser._id) return;
 
         setSelected(prev => {
@@ -247,11 +249,11 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
                                             <button
                                                 key={app._id}
                                                 type="button"
-                                                disabled={isClaimedByOther}
+                                                disabled={isClaimedByOther || cachedSet.has(app._id)}
                                                 onClick={() => toggleSelect(app._id, app)}
                                                 className={`w-full flex items-center gap-3 p-3
                                                     rounded-xl border text-left transition-all
-                                                    ${isClaimedByOther
+                                                    ${isClaimedByOther || cachedSet.has(app._id)
                                                         ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
                                                         : isSelected
                                                             ? 'border-blue-400 bg-blue-50'
@@ -283,7 +285,14 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
                                                 </div>
 
                                                 {/* Claimed by badge */}
-                                                {isClaimedByOther && (
+                                                {cachedSet.has(app._id) && (
+                                                    <span className="flex-shrink-0 px-2 py-1
+                                                        bg-teal-100 text-teal-600 text-xs
+                                                        rounded-lg whitespace-nowrap font-medium">
+                                                        Cached
+                                                    </span>
+                                                )}
+                                                {isClaimedByOther && !cachedSet.has(app._id) && (
                                                     <span className="flex-shrink-0 px-2 py-1
                                                         bg-gray-100 text-gray-500 text-xs
                                                         rounded-lg whitespace-nowrap">
