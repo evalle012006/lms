@@ -359,33 +359,30 @@ const CIInvestigationPage = () => {
         try {
             // ── Step 1: Upload selfie images separately ────────────────────
             // selfieBase64 can be 5-8MB — must upload individually first
-            // Get auth token for the upload request
-            let authToken = null;
-            try {
-                const stored = localStorage.getItem('acuser');
-                const parsed = stored ? JSON.parse(stored) : null;
-                authToken = parsed?.token || parsed?.user?.token || null;
-            } catch { /* ignore */ }
-
             const preparedDrafts = await Promise.all(drafts.map(async (draft) => {
                 if (!draft.selfieBase64 || draft.selfieKey) return draft; // already uploaded or no selfie
                 try {
-                    // Convert base64 data URL to Blob
-                    const blobRes = await fetch(draft.selfieBase64);
-                    const blob    = await blobRes.blob();
-                    const ext     = blob.type.split('/')[1] || 'jpg';
-                    const file    = new File([blob], `offline-selfie.${ext}`, { type: blob.type });
+                    // Convert base64 data URL to Blob using atob()
+                    // fetch('data:...') is unreliable on some mobile browsers
+                    const dataUrl  = draft.selfieBase64;
+                    const [header, b64] = dataUrl.split(',');
+                    const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                    const ext      = mimeType.split('/')[1] || 'jpg';
+                    const binary   = atob(b64);
+                    const bytes    = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    const blob = new Blob([bytes], { type: mimeType });
+                    const file = new File([blob], `offline-selfie.${ext}`, { type: mimeType });
 
                     const fd = new FormData();
                     fd.append('file', file);
                     fd.append('origin', 'ci-selfies');
                     fd.append('uuid', draft.tempApplicationId);
 
-                    // Include auth header — /api/upload requires authentication
-                    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
                     const uploadRes = await fetch('/api/upload', {
                         method: 'POST',
-                        headers,
                         body: fd,
                     });
 
