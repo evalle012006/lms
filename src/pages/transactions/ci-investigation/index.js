@@ -362,43 +362,49 @@ const CIInvestigationPage = () => {
             const preparedDrafts = await Promise.all(drafts.map(async (draft) => {
                 if (!draft.selfieBase64 || draft.selfieKey) return draft; // already uploaded or no selfie
                 try {
+                    const dataUrl = draft.selfieBase64;
+                    console.log('[sync] selfieBase64 exists:', !!dataUrl, 'length:', dataUrl?.length);
+
+                    if (!dataUrl || !dataUrl.includes(',')) {
+                        throw new Error('selfieBase64 is missing or malformed');
+                    }
+
                     // Convert base64 data URL to Blob using atob()
-                    // fetch('data:...') is unreliable on some mobile browsers
-                    const dataUrl  = draft.selfieBase64;
                     const [header, b64] = dataUrl.split(',');
                     const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
                     const ext      = mimeType.split('/')[1] || 'jpg';
-                    const binary   = atob(b64);
-                    const bytes    = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) {
-                        bytes[i] = binary.charCodeAt(i);
-                    }
+                    console.log('[sync] mimeType:', mimeType, 'b64 length:', b64?.length);
+
+                    const binary = atob(b64);
+                    const bytes  = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
                     const blob = new Blob([bytes], { type: mimeType });
                     const file = new File([blob], `offline-selfie.${ext}`, { type: mimeType });
+                    console.log('[sync] blob size:', blob.size, 'file name:', file.name);
 
                     const fd = new FormData();
                     fd.append('file', file);
                     fd.append('origin', 'ci-selfies');
                     fd.append('uuid', draft.tempApplicationId);
 
-                    const uploadRes = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: fd,
-                    });
+                    console.log('[sync] uploading selfie for:', draft.ciReferenceCode);
+                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                    console.log('[sync] upload status:', uploadRes.status, 'content-type:', uploadRes.headers.get('content-type'));
 
                     const ct = uploadRes.headers.get('content-type') || '';
                     if (!ct.includes('application/json')) {
-                        throw new Error(`Selfie upload failed (${uploadRes.status})`);
+                        const text = await uploadRes.text();
+                        throw new Error(`Selfie upload failed (${uploadRes.status}): ${text.slice(0, 100)}`);
                     }
                     const uploadData = await uploadRes.json();
+                    console.log('[sync] upload result:', uploadData);
                     if (!uploadData.fileKey) throw new Error('Selfie upload returned no key');
 
-                    // Return draft with selfieKey set, selfieBase64 stripped
                     const { selfieBase64: _, ...rest } = draft;
                     return { ...rest, selfieKey: uploadData.fileKey };
                 } catch (uploadErr) {
                     console.error('[sync] selfie upload failed:', uploadErr.message);
-                    // Mark as failed so we can report it — don't silently swallow
+                    toast.error(`Debug — selfie error: ${uploadErr.message}`);
                     return { ...draft, _selfieUploadFailed: true, _selfieUploadError: uploadErr.message };
                 }
             }));
