@@ -140,9 +140,20 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
     if (!isOpen) return null;
 
     // Partition: mine, unclaimed, claimed by others
-    const mine       = applications.filter(a => a.assignedTo === currentUser._id);
-    const unclaimed  = applications.filter(a => !a.assignedTo);
-    const others     = applications.filter(a => a.assignedTo && a.assignedTo !== currentUser._id);
+    // Treat claims older than 24hrs as expired (available to anyone)
+    const CLAIM_TTL_MS = 24 * 60 * 60 * 1000;
+    const isExpiredClaim = (app) =>
+        app.assignedTo &&
+        app.assignedAt &&
+        (Date.now() - new Date(app.assignedAt).getTime()) > CLAIM_TTL_MS;
+
+    const mine      = applications.filter(a => a.assignedTo === currentUser._id);
+    const unclaimed = applications.filter(a => !a.assignedTo || isExpiredClaim(a));
+    const others    = applications.filter(a =>
+        a.assignedTo &&
+        a.assignedTo !== currentUser._id &&
+        !isExpiredClaim(a)
+    );
 
     const sections = [
         { title: 'My Claimed Applications', items: mine,      badge: 'teal' },
@@ -228,7 +239,8 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached }) => {
                                 <div className="space-y-2">
                                     {section.items.map(app => {
                                         const isClaimedByOther = app.assignedTo &&
-                                            app.assignedTo !== currentUser._id;
+                                            app.assignedTo !== currentUser._id &&
+                                            !isExpiredClaim(app);
                                         const isSelected = selected.has(app._id);
 
                                         return (

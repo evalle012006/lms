@@ -92,7 +92,7 @@ const LAFPhotoCard = ({ lafPhotoUrl }) => {
     );
 };
 
-const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isOnline }) => {
+const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isOnline, getDrafts }) => {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading]           = useState(true);
     const [search, setSearch]             = useState('');
@@ -100,6 +100,12 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
 
     const photoKeys = applications.map(a => a.lafPhotoKey).filter(Boolean);
     const { urlMap } = useBulkSignedUrls(photoKeys);
+
+    // Build a Set of ciReferenceCodes that have pending offline drafts
+    // so we can show a visual indicator on those items in the list
+    const draftCodes = new Set(
+        (getDrafts?.() || []).map(d => d.ciReferenceCode)
+    );
 
     const fetchList = useCallback(async () => {
         if (!isOnline) {
@@ -203,6 +209,12 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
                                 </div>
                                 <div className="flex-shrink-0 flex flex-col items-end gap-1">
                                     <StatusBadge status={app.status} />
+                                    {draftCodes.has(app.ciReferenceCode) && (
+                                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700
+                                            text-xs rounded-full font-medium">
+                                            Draft
+                                        </span>
+                                    )}
                                     <span className="text-xs text-gray-400">{moment(app.submittedAt).format('MMM DD')}</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-400 flex-shrink-0" />
@@ -413,6 +425,7 @@ const CIInvestigationPage = () => {
                             refreshKey={listRefreshKey}
                             offlineApps={offlineApps}
                             isOnline={isOnline}
+                            getDrafts={getDrafts}
                         />
                     </div>
 
