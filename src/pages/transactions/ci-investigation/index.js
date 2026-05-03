@@ -107,9 +107,12 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
         (getDrafts?.() || []).map(d => d.ciReferenceCode)
     );
 
+    const offlineAppsRef = React.useRef(offlineApps);
+    React.useEffect(() => { offlineAppsRef.current = offlineApps; }, [offlineApps]);
+
     const fetchList = useCallback(async () => {
         if (!isOnline) {
-            setApplications(offlineApps || []);
+            setApplications(offlineAppsRef.current || []);
             setLoading(false);
             return;
         }
@@ -121,7 +124,7 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
             else toast.error('Failed to load applications.');
         } catch { toast.error('Error loading applications.'); }
         finally { setLoading(false); }
-    }, [statusFilter, isOnline, offlineApps]);
+    }, [statusFilter, isOnline]);
 
     useEffect(() => { fetchList(); }, [fetchList, refreshKey]);
 
@@ -333,6 +336,14 @@ const CIInvestigationPage = () => {
         setCacheInfo(info);
         const cache = getCache();
         setOfflineApps(cache?.applications || []);
+        // Remind investigator not to refresh while offline
+        setTimeout(() => {
+            toast.info(
+                '⚠ Important: Do NOT refresh the page while offline. ' +
+                'Refreshing will disconnect you and you will need to reconnect to continue.',
+                { autoClose: 8000 }
+            );
+        }, 1000); // slight delay so it appears after the success toast
     }, [getCacheInfo, getCache]);
 
     const isLO      = currentUser?.role?.rep === 4;
