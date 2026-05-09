@@ -512,7 +512,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.companyEmail && errors.companyEmail}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -524,7 +523,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.companyPhoneNumber && errors.companyPhoneNumber}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -560,7 +558,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.branchCode && errors.branchCode}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -572,7 +569,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.branchName && errors.branchName}
-                                                required
                                             />
                                             
                                             <ModernInput
