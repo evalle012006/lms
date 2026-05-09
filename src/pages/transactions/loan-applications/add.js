@@ -17,8 +17,8 @@ const AddLoanApplicationPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <AddLoanPage
-                onBack={() => router.push('/transactions/loan-applications')}
-                onSuccess={() => router.push('/transactions/loan-applications')}
+                onBack={() => router.push('/clients')}
+                onSuccess={() => router.push('/clients')}
             />
         </Layout>
     );

@@ -1182,6 +1182,14 @@ const LoanApplicationPage = () => {
             if (loan.coMakerPending) {
                 errorMsg.add(`${clientName} in group ${groupName} has no co-maker assigned yet. Edit the loan to assign a co-maker before approving.`);
             }
+
+            if (!loan.client?.biometricCredentialId) {
+                errorMsg.add(`${clientName} in group ${groupName} has no biometric registered. Please register client biometric before LDF approval.`);
+            }
+
+            if (!loan.ciName || !loan.ciName.trim()) {
+                errorMsg.add(`${clientName} in group ${groupName} has no CI name recorded. Please complete CI investigation before LDF approval.`);
+            }
         });
 
         return Array.from(errorMsg);

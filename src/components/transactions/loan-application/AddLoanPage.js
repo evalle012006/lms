@@ -166,9 +166,10 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         const group = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
         if (group?.availableSlots?.length) {
             let slots = [...group.availableSlots];
-            // In edit mode, the loan's own slotNo is already occupied (removed from availableSlots)
+            // In edit mode OR active/advance client type, the slot is already occupied
             // so we must add it back so the dropdown has a valid selected option
-            if (isEdit && slotNo && !slots.includes(parseInt(slotNo))) {
+            if ((isEdit || clientType === 'active' || clientType === 'advance')
+                && slotNo && !slots.includes(parseInt(slotNo))) {
                 slots.push(parseInt(slotNo));
             }
             setSlotNumber(

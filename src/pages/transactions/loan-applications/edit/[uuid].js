@@ -19,8 +19,8 @@ const EditLoanApplicationPage = () => {
             <AddLoanPage
                 mode="edit"
                 loanId={uuid}
-                onBack={() => router.push('/transactions/loan-applications')}
-                onSuccess={() => router.push('/transactions/loan-applications')}
+                onBack={() => router.replace('/transactions/loan-applications')}
+                onSuccess={() => router.replace('/transactions/loan-applications')}
             />
         </Layout>
     );

@@ -17,8 +17,8 @@ const EditClientPage = () => {
             <AddUpdateClientPage
                 mode="edit"
                 clientId={clientId}
-                onBack={() => router.back()}
-                onSuccess={() => router.back()}
+                onBack={() => router.push('/clients')}
+                onSuccess={() => router.push('/clients')}
             />
         </Layout>
     );
