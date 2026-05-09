@@ -86,6 +86,10 @@ export const CLIENT_FIELDS = `
   biometricCounter
   biometricRegisteredAt
   biometricDeviceName
+  biometricUpdateRequestedAt
+  biometricUpdateRequestedBy
+  biometricUpdateApprovedAt
+  biometricUpdateApprovedBy
   `;
 
 export const LOAN_FIELDS = `
@@ -240,6 +244,7 @@ export const SETTINGS_FIELDS = `
   superPwd
   enableNotifications
   allowLoCI
+  requireClientBiometric
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -756,6 +761,8 @@ export const TEMP_LOAN_APP_FIELDS = `
   assignedTo
   assignedAt
   assignedByName
+  landmark
+  distanceFromBranch
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

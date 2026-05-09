@@ -27,6 +27,9 @@ async function submitLAF(req, res) {
         guarantorFirstName, guarantorLastName,
         guarantorRelationship, guarantorContactNumber,
         lafPhotoKey,
+        // ── Address extras ────────────────────────────────────────────────
+        landmark,
+        distanceFromBranch,
         // ── Biometric fields from LAFBiometricStep ────────────────────────
         biometricCredentialId,
         biometricPublicKey,
@@ -110,6 +113,8 @@ async function submitLAF(req, res) {
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
                 // ── Biometric — captured during LAFBiometricStep ──────────
+                landmark:              landmark              || null,
+                distanceFromBranch:    distanceFromBranch    || null,
                 biometricCredentialId: biometricCredentialId || null,
                 biometricPublicKey:    biometricPublicKey    || null,
                 biometricCounter:      biometricCounter      || 0,

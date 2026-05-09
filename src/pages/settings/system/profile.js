@@ -84,7 +84,7 @@ const ModernInput = ({
   );
 };
 
-const FeatureEnablementCard = ({ values, setFieldValue }) => (
+const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         {/* Card Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-700 px-6 py-4">
@@ -256,6 +256,68 @@ const FeatureEnablementCard = ({ values, setFieldValue }) => (
                     )}
                 </div>
             </div>
+
+            {/* Require Client Biometric Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-purple-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Require Client Biometric Verification
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, clients must register their fingerprint or Face ID
+                                during the loan application process, and verify at disbursement.
+                                Disable for branches where client devices do not support biometrics.
+                            </p>
+                            {!values.requireClientBiometric && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Biometric step will be hidden in LAF form and skipped
+                                        during disbursement confirmation.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('requireClientBiometric', !values.requireClientBiometric)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-600
+                                focus:ring-offset-2 ${values.requireClientBiometric ? 'bg-purple-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.requireClientBiometric ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.requireClientBiometric
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.requireClientBiometric ? 'Required' : 'Optional'}
+                        </span>
+                    )}
+                </div>
+            </div>
             
             {/* Placeholder for future features */}
             <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 opacity-60">
@@ -301,6 +363,7 @@ const ProfileSettingsPage = (props) => {
         superPwd: state.superPwd || '',
         enableNotifications: state.enableNotifications ?? false,
         allowLoCI: state.allowLoCI ?? false,
+        requireClientBiometric:  state.requireClientBiometric  ?? true,
     }
 
     const validationSchema = yup.object().shape({
@@ -548,7 +611,7 @@ const ProfileSettingsPage = (props) => {
                                 </div>
 
                                 <div className="mt-8">
-                                    <FeatureEnablementCard values={values} setFieldValue={setFieldValue} />
+                                    <FeatureEnablementCard values={values} setFieldValue={setFieldValue} currentUser={currentUser} />
                                 </div>
 
                                 {/* Action Buttons */}

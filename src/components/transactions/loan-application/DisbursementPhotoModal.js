@@ -16,7 +16,10 @@ const DisbursementPhotoModal = ({
     onConfirm,  // (photoKey, approverId) => void
     onCancel,
 }) => {
-    const currentUser = useSelector(s => s.user.data);
+    const currentUser            = useSelector(s => s.user.data);
+    const requireClientBiometric = useSelector(
+        s => s.systemSettings?.data?.requireClientBiometric ?? true
+    );
     const { authenticateWithBiometric, loading: biometricLoading } = useBiometric();
 
     const fileInputRef = useRef();
@@ -78,9 +81,9 @@ const DisbursementPhotoModal = ({
             .catch(() => {});
     }, [show, loans]);
 
-    // Poll for client biometric verification
+    // Poll for client biometric verification — only when required
     useEffect(() => {
-        if (!show || !loans?.length || clientVerified) return;
+        if (!show || !loans?.length || clientVerified || !requireClientBiometric) return;
         // Start polling every 3 seconds
         setPolling(true);
         pollRef.current = setInterval(async () => {
@@ -218,7 +221,7 @@ const DisbursementPhotoModal = ({
     const selectedUser = approverList.find(u => u._id === approverId);
     const canConfirm   = photoFile && approverId &&
         (!biometricRequired || biometricVerified) &&
-        clientVerified &&
+        (!requireClientBiometric || clientVerified) &&
         !uploading && !confirming;
 
     return (
@@ -438,62 +441,63 @@ const DisbursementPhotoModal = ({
                         </div>
                     )}
 
-                    {/* ── Step 4: Client Biometric via QR ──────────────── */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
-                                ${clientVerified ? 'bg-green-500 text-white' : 'bg-blue-400 text-white'}`}>
-                                {clientVerified ? '✓' : biometricRequired ? '4' : '3'}
+                    {/* ── Step 4: Client Biometric via QR — only when required ── */}
+                    {requireClientBiometric && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
+                                    ${clientVerified ? 'bg-green-500 text-white' : 'bg-blue-400 text-white'}`}>
+                                    {clientVerified ? '✓' : biometricRequired ? '4' : '3'}
+                                </div>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    Client Identity Verification <span className="text-red-500">*</span>
+                                </p>
                             </div>
-                            <p className="text-sm font-semibold text-gray-700">
-                                Client Identity Verification <span className="text-red-500">*</span>
-                            </p>
-                        </div>
 
-                        <div className="ml-7">
-                            {clientVerified ? (
-                                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                                    <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-green-800">Client Verified</p>
-                                        <p className="text-xs text-green-600 mt-0.5">
-                                            Client fingerprint confirmed on their device
-                                        </p>
+                            <div className="ml-7">
+                                {clientVerified ? (
+                                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                                        <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-medium text-green-800">Client Verified</p>
+                                            <p className="text-xs text-green-600 mt-0.5">
+                                                Client fingerprint confirmed on their device
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
-                                    <p className="text-xs text-blue-700 leading-relaxed">
-                                        Ask the client to scan this QR code with their phone.
-                                        They will be prompted to verify using their fingerprint or Face ID.
-                                    </p>
-                                    {qrDataUrl ? (
-                                        <div className="flex flex-col items-center gap-2">
-                                            <img src={qrDataUrl} alt="Client verification QR"
-                                                className="w-40 h-40 rounded-xl border border-blue-200" />
-                                            <div className="flex items-center gap-2 text-xs text-blue-500">
-                                                {polling && (
-                                                    <svg className="w-3 h-3 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                                    </svg>
-                                                )}
-                                                Waiting for client to scan...
+                                ) : (
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
+                                        <p className="text-xs text-blue-700 leading-relaxed">
+                                            Ask the client to scan this QR code with their phone.
+                                            They will be prompted to verify using their fingerprint or Face ID.
+                                        </p>
+                                        {qrDataUrl ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <img src={qrDataUrl} alt="Client verification QR"
+                                                    className="w-40 h-40 rounded-xl border border-blue-200" />
+                                                <div className="flex items-center gap-2 text-xs text-blue-500">
+                                                    {polling && (
+                                                        <svg className="w-3 h-3 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                                        </svg>
+                                                    )}
+                                                    Waiting for client to scan...
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-center py-4">
-                                            <svg className="w-6 h-6 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        ) : (
+                                            <div className="flex justify-center py-4">
+                                                <svg className="w-6 h-6 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-
+                    )}
                 </div>
 
                 {/* Footer */}

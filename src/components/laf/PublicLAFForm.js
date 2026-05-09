@@ -54,7 +54,8 @@ const fullSchema = yup.object().shape({
 const stepSchemas = { 1: step1Schema, 2: step2Schema, 3: step3Schema };
 
 // Step 0 = Photo, Steps 1-3 = Formik form, Step 4 = Biometric
-const STEPS = ['Photo', 'Personal', 'Address', 'Loan & Guarantor', 'Biometric'];
+// Steps depend on requireClientBiometric — passed as prop from apply page
+// We compute this inside the component since prop is dynamic
 const BIOMETRIC_STEP = 4;
 const LAST_FORMIK_STEP = 3;
 
@@ -146,8 +147,11 @@ async function compressImage(file, maxWidthPx = 1200, qualityJpeg = 0.82) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────
-const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
+const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken, requireClientBiometric = true }) => {
     const formikRef = useRef();
+    const STEPS = requireClientBiometric
+        ? ['Photo', 'Personal', 'Address', 'Loan & Guarantor', 'Biometric']
+        : ['Photo', 'Personal', 'Address', 'Loan & Guarantor'];
     const [step, setStep]                           = useState(0);
     const [lafPhotoFile, setLafPhotoFile]           = useState(null);    // raw File object
     const [lafPhotoPreview, setLafPhotoPreview]     = useState(null);    // local preview URL
@@ -206,10 +210,10 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
     const goNext = useCallback(async () => {
         // Step 0: Photo validation
         if (step === 0) {
-            // if (!lafPhotoFile) {
-            //     toast.error('Please capture or upload your photo before continuing.');
-            //     return;
-            // }
+            if (!lafPhotoFile) {
+                toast.error('Please capture or upload your photo before continuing.');
+                return;
+            }
             setStep(1);
             return;
         }
@@ -253,7 +257,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
             toast.error('Client photo is required.');
             return;
         }
-        if (!biometricVerified || !biometricData) {
+        if (requireClientBiometric && (!biometricVerified || !biometricData)) {
             toast.error('Biometric verification is required before submitting.');
             return;
         }
@@ -270,9 +274,11 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                     branchId,
                     qrToken,
                     ...values,
-                    loanAmount: parseFloat(values.loanAmount) || 0,
-                    lafPhotoKey: photoKey,
-                    ...biometricData,
+                    loanAmount:          parseFloat(values.loanAmount) || 0,
+                    lafPhotoKey:         photoKey,
+                    landmark:            values.landmark            || null,
+                    distanceFromBranch:  values.distanceFromBranch  || null,
+                    ...(requireClientBiometric && biometricData ? biometricData : {}),
                 }),
             });
             const data = await res.json();
@@ -334,7 +340,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                     )}
 
                     {/* ── Step 4: Biometric ─────────────────────────────── */}
-                    {step === BIOMETRIC_STEP && (
+                    {requireClientBiometric && step === BIOMETRIC_STEP && (
                         <div>
                             <h2 className="text-lg font-semibold text-gray-800 mb-4">
                                 Identity Verification
@@ -394,6 +400,8 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                                 addressStreetNo: '', addressBarangayDistrict: '',
                                 addressMunicipalityCity: '', addressProvince: '',
                                 addressZipCode: '',
+                                landmark: '',
+                                distanceFromBranch: '',
                                 loanAmount: '', loanPurpose: '',
                                 guarantorFirstName: '', guarantorLastName: '',
                                 guarantorRelationship: '', guarantorContactNumber: '',
@@ -496,6 +504,22 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken }) => {
                                                     onChange={handleChange} onBlur={handleBlur}
                                                     placeholder="1100"
                                                     error={touched.addressZipCode && errors.addressZipCode} />
+                                            </Field>
+                                            <Field label="Landmark (optional)"
+                                                error={touched.landmark && errors.landmark}>
+                                                <Input name="landmark"
+                                                    value={values.landmark}
+                                                    onChange={handleChange} onBlur={handleBlur}
+                                                    placeholder="Near Jollibee, beside Barangay Hall..."
+                                                    error={touched.landmark && errors.landmark} />
+                                            </Field>
+                                            <Field label="Approximate Distance from Branch Office (optional)"
+                                                error={touched.distanceFromBranch && errors.distanceFromBranch}>
+                                                <Input name="distanceFromBranch"
+                                                    value={values.distanceFromBranch}
+                                                    onChange={handleChange} onBlur={handleBlur}
+                                                    placeholder="e.g. 2 km, 30 minutes by tricycle"
+                                                    error={touched.distanceFromBranch && errors.distanceFromBranch} />
                                             </Field>
                                         </div>
                                     </div>
