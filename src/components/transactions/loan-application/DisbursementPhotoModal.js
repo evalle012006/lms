@@ -231,7 +231,7 @@ const DisbursementPhotoModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900">LDF Disbursement Confirmation</h2>
+                        <h2 className="text-base font-semibold text-gray-900">Disbursement Confirmation</h2>
                         <p className="text-xs text-gray-400 mt-0.5">
                             {loanCount} loan{loanCount !== 1 ? 's' : ''} selected for release
                         </p>

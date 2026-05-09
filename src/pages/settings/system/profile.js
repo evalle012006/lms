@@ -404,8 +404,7 @@ const ProfileSettingsPage = (props) => {
             const response = await fetchWrapper.post(apiURL, updatedValues);
 
             if (response.success) {
-                // Update Redux with the new values
-                dispatch(setSystemSettings(response.system || {...state, ...values}));
+                dispatch(setSystemSettings(response.system || { ...state, ...values }));
                 setSaved(true);
                 toast.success('System Profile updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
@@ -431,15 +430,6 @@ const ProfileSettingsPage = (props) => {
         // Always fetch system settings since Redux state shows empty data
         fetchSystemSettings();
     }, []);
-
-    useEffect(() => {
-        let mounted = true;
-        setLoading(false);
-
-        return () => {
-            mounted = false;
-        };
-    }, [state]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">

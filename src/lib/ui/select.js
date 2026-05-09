@@ -37,7 +37,9 @@ const SelectDropdown = ({
       {table ? (
         <Select
           options={options}
-          value={value && options.filter(o => o.value === value)}
+          value={value !== undefined && value !== null && value !== '' && Array.isArray(options)
+            ? options.filter(o => String(o.value) === String(value))
+            : null}
           placeholder={placeholder}
           styles={styles}
           isSearchable={isSearchable}

@@ -1216,6 +1216,13 @@ const LoanApplicationPage = () => {
             if (validation.length > 0) {
                 selectedLoanList = [];
             }
+
+            // Open disbursement modal before final approval
+            if (validation.length === 0 && selectedLoanList.length > 0) {
+                setPendingLdfLoans(selectedLoanList);
+                setShowDisbursementModal(true);
+                return;
+            }
         } else if (origin == 'duplicate') {
             selectedLoanList = duplicateList && duplicateList.filter(loan => loan.selected === true);
             validation = validate(selectedLoanList, origin);
@@ -1383,22 +1390,6 @@ const LoanApplicationPage = () => {
         }
 
         setPendingLdfLoans([]);
-    };
-
-    const handleDisburseSelected = () => {
-        const selected = pendingList.filter(loan => loan.selected === true);
-        if (selected.length === 0) {
-            toast.error('No loans selected for disbursement.');
-            return;
-        }
-        // Only allow ldfApproved loans
-        const notApproved = selected.filter(l => !l.ldfApproved);
-        if (notApproved.length > 0) {
-            toast.error('All selected loans must be LDF Approved before disbursement.');
-            return;
-        }
-        setPendingLdfLoans(selected);
-        setShowDisbursementModal(true);
     };
 
     const [actionButtons, setActionButtons] = useState();
@@ -1830,10 +1821,6 @@ const LoanApplicationPage = () => {
                 if (selectedTab == 'application') {
                     actBtns.unshift(
                         <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('application')} />,
-                    );
-                    // Disburse button — opens modal for ldfApproved loans
-                    actBtns.push(
-                        <ButtonSolid label="Disburse Selected" type="button" className="p-2 mr-3 !bg-teal-600 hover:!bg-teal-700" onClick={handleDisburseSelected} />,
                     );
                 }
             }

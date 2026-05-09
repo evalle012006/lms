@@ -397,7 +397,7 @@ const SlotCycleCard = ({
     <SectionCard icon={CreditCardIcon} title="Slot &amp; Cycle">
         <div className="grid grid-cols-2 gap-4">
             <SelectDropdown
-                name="slotNo" field="slotNo" value={slotNo}
+                name="slotNo" field="slotNo" value={slotNo ? Number(slotNo) : slotNo}
                 label="Slot No. (Required)" options={slotNumber}
                 onChange={handleSlotNoChange} onBlur={setFieldTouched}
                 placeholder="Select Slot"
