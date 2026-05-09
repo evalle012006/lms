@@ -367,11 +367,11 @@ const ProfileSettingsPage = (props) => {
     }
 
     const validationSchema = yup.object().shape({
-        companyName: yup.string().required('Company name is required'),
-        companyEmail: yup.string().email('Invalid email format').required('Company email is required'),
-        companyPhoneNumber: yup.string().required('Company phone number is required'),
-        branchCode: yup.string().required('Branch code is required'),
-        branchName: yup.string().required('Branch name is required'),
+        // companyName: yup.string().required('Company name is required'),
+        // companyEmail: yup.string().email('Invalid email format').required('Company email is required'),
+        // companyPhoneNumber: yup.string().required('Company phone number is required'),
+        // branchCode: yup.string().required('Branch code is required'),
+        // branchName: yup.string().required('Branch name is required'),
         superPwd: yup.string()
     });
 
