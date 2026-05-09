@@ -405,7 +405,7 @@ const ProfileSettingsPage = (props) => {
 
             if (response.success) {
                 // Update Redux with the new values
-                dispatch(setSystemSettings({...values}));
+                dispatch(setSystemSettings(response.system || {...state, ...values}));
                 setSaved(true);
                 toast.success('System Profile updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
@@ -453,7 +453,7 @@ const ProfileSettingsPage = (props) => {
                     validationSchema={validationSchema}
                     onSubmit={handleUpdate}
                     enableReinitialize={true}
-                    key={JSON.stringify(initialValues)} // Force re-render when data changes
+                    //key={JSON.stringify(initialValues)} // Force re-render when data changes
                 >
                     {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
                         <form onSubmit={handleSubmit} autoComplete="off" autoCorrect="off" spellCheck="false">

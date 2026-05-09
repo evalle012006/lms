@@ -19,6 +19,7 @@ import PrivateImage from '@/components/common/PrivateImage';
 import ClientEntryPanel from './ClientEntryPanel';
 import placeholder from '/public/images/image-placeholder.png';
 import { calculateAge } from '@/lib/date-utils';
+import ClientBiometricSection from './ClientBiometricSection';
 
 // ── Section card wrapper ──────────────────────────────────────────────────
 const SectionCard = ({ icon: Icon, title, subtitle, children }) => (
@@ -818,6 +819,19 @@ const AddUpdateClientPage = ({
                                                         </p>
                                                     )}
                                                 </SectionCard>
+
+                                                {mode === 'edit' && (
+                                                    <SectionCard icon={ShieldCheckIcon} title="Biometric Verification">
+                                                        <ClientBiometricSection
+                                                            client={values}
+                                                            onUpdated={() => {
+                                                                toast.success('Client updated.');
+                                                                // reload client data
+                                                                router.replace(router.asPath);
+                                                            }}
+                                                        />
+                                                    </SectionCard>
+                                                )}
 
                                                 {/* Save button */}
                                                 <div className="flex justify-end gap-3 pt-2">

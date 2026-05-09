@@ -1203,11 +1203,11 @@ const LoanApplicationPage = () => {
                 selectedLoanList = [];
             }
 
-            if (origin == 'ldf' && validation.length === 0 && selectedLoanList.length > 0) {
-                setPendingLdfLoans(selectedLoanList);
-                setShowDisbursementModal(true);
-                return;   // stop here — modal's onConfirm will continue the approval
-            }
+            // if (origin == 'ldf' && validation.length === 0 && selectedLoanList.length > 0) {
+            //     setPendingLdfLoans(selectedLoanList);
+            //     setShowDisbursementModal(true);
+            //     return;   // stop here — modal's onConfirm will continue the approval
+            // }
         } else if (origin == 'application') {
             selectedLoanList = pendingList && pendingList.filter(loan => loan.selected === true);
 
@@ -1383,6 +1383,22 @@ const LoanApplicationPage = () => {
         }
 
         setPendingLdfLoans([]);
+    };
+
+    const handleDisburseSelected = () => {
+        const selected = pendingList.filter(loan => loan.selected === true);
+        if (selected.length === 0) {
+            toast.error('No loans selected for disbursement.');
+            return;
+        }
+        // Only allow ldfApproved loans
+        const notApproved = selected.filter(l => !l.ldfApproved);
+        if (notApproved.length > 0) {
+            toast.error('All selected loans must be LDF Approved before disbursement.');
+            return;
+        }
+        setPendingLdfLoans(selected);
+        setShowDisbursementModal(true);
     };
 
     const [actionButtons, setActionButtons] = useState();
@@ -1810,11 +1826,14 @@ const LoanApplicationPage = () => {
             }
 
             if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction) {
-                // actBtns.splice(0, 1);
                 actBtns.splice(0, 2);
                 if (selectedTab == 'application') {
                     actBtns.unshift(
                         <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('application')} />,
+                    );
+                    // Disburse button — opens modal for ldfApproved loans
+                    actBtns.push(
+                        <ButtonSolid label="Disburse Selected" type="button" className="p-2 mr-3 !bg-teal-600 hover:!bg-teal-700" onClick={handleDisburseSelected} />,
                     );
                 }
             }
