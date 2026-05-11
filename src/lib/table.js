@@ -3,13 +3,26 @@
 /* eslint-disable react/jsx-key */
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTable, useFilters, useGlobalFilter, useSortBy, usePagination } from 'react-table';
-import { 
-  ChevronLeftIcon, ChevronRightIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon,
-  PencilIcon, TrashIcon, CheckIcon, XMarkIcon, 
-  LockClosedIcon, LockOpenIcon, XCircleIcon, ArrowPathIcon, 
-  KeyIcon, DocumentIcon, ArrowUturnLeftIcon, ArrowsRightLeftIcon
-} from '@heroicons/react/24/solid';
-import { ExclamationCircleIcon, QrCodeIcon } from '@heroicons/react/24/outline';
+import {
+  AlertCircle,
+  ArrowLeftRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  FileText,
+  Key,
+  Lock,
+  LockOpen,
+  Pencil,
+  QrCode,
+  RefreshCw,
+  Trash2,
+  Undo2,
+  X,
+  XCircle,
+} from 'lucide-react';
 import CheckBox from './ui/checkbox';
 import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
@@ -22,22 +35,16 @@ const isRecentlyCreated = (insertedDate) => {
   const now = new Date();
   const createdDate = new Date(insertedDate);
   const hoursDiff = (now - createdDate) / (1000 * 60 * 60);
-  return hoursDiff <= 24; // Consider new if created within last 24 hours
+  return hoursDiff <= 24;
 };
 
 const isRecentlyModified = (insertedDate, modifiedDate) => {
   if (!modifiedDate) return false;
-  
   const now = new Date();
   const createdDate = new Date(insertedDate);
   const lastModifiedDate = new Date(modifiedDate);
-  
-  // Check if modifiedDate is actually newer than insertedDate (was actually modified)
   const wasActuallyModified = lastModifiedDate > createdDate;
-  
   if (!wasActuallyModified) return false;
-  
-  // Check if modification was within last 24 hours
   const hoursSinceModified = (now - lastModifiedDate) / (1000 * 60 * 60);
   return hoursSinceModified <= 24;
 };
@@ -46,27 +53,20 @@ const getTransferIndicatorType = (insertedDate, modifiedDate, modifiedById) => {
   if (modifiedDate && modifiedDate !== insertedDate && modifiedById) {
     return 'modified';
   }
-
   return 'new';
 };
 
-// This is a custom filter UI for selecting
-// a unique option from a list
 export function SelectColumnFilter({
   column: { filterValue, setFilter, preFilteredRows, id, render },
 }) {
-  // Calculate the options for filtering
-  // using the preFilteredRows
   const options = React.useMemo(() => {
     const options = new Set();
     preFilteredRows.forEach((row) => {
       options.add(row.values[id]);
     });
-
     return [...options.values()];
   }, [id, preFilteredRows]);
 
-  // Render a multi-select box
   return (
     <label className="flex gap-x-2 items-baseline">
       <select
@@ -79,7 +79,6 @@ export function SelectColumnFilter({
         }}
       >
         <option value="">{render("Header")}</option>
-        {/* <option value="">All</option> */}
         {options.map((option, i) => (
           <option key={i} value={option}>
             {option}
@@ -93,7 +92,6 @@ export function SelectColumnFilter({
 export function StatusPill({ value }) {
   if (value && value !== '-') {
     const status = value ? value.toLowerCase() : "unknown";
-
     return (
       <span
         className={classNames(
@@ -115,19 +113,17 @@ export function AvatarCell({ value, column, row }) {
   const rawUrl = row.original[column.imgAccessor];
   const errorMessage = row.original.errorMsg ? row.original.errorMsg : '';
   const email = row.original[column.emailAccessor];
-
-  // ✅ Read from bulk-resolved context — no individual fetch per row
   const urlMap = useSignedUrlMap();
   const signedUrl = rawUrl ? (urlMap[rawUrl] ?? null) : null;
 
   return (
     <div className="flex items-center">
-      {errorMessage && ( 
-        <ExclamationCircleIcon className="cursor-pointer h-5 mr-1 text-red-500" title={errorMessage} /> 
+      {errorMessage && (
+        <AlertCircle className="cursor-pointer h-5 w-5 mr-1 text-red-500" title={errorMessage} />
       )}
       <div className="image-container mr-3">
-        <Avatar 
-          name={value} 
+        <Avatar
+          name={value}
           src={signedUrl || undefined}
           size={28}
           className="flex-shrink-0"
@@ -179,10 +175,10 @@ export function InputCell({ value, column, row }) {
   const handleOnBlur = (e) => {
     const type = inputType === 'number' ? 'amount' : 'remarks';
     onBlur && onBlur(e, index, type);
-  }
+  };
 
   return (
-    <input 
+    <input
       type={inputType}
       name="input"
       defaultValue={defaultValue}
@@ -191,7 +187,7 @@ export function InputCell({ value, column, row }) {
       onBlur={(e) => handleOnBlur(e)}
       disabled={disabledColumn <= 0 ? true : false}
     />
-  )
+  );
 }
 
 export function classNames(...classes) {
@@ -200,16 +196,8 @@ export function classNames(...classes) {
 
 export function SortIcon({ className }) {
   return (
-    <svg
-      className={className}
-      stroke="currentColor"
-      fill="currentColor"
-      strokeWidth="0"
-      viewBox="0 0 320 512"
-      height="1em"
-      width="1em"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0"
+      viewBox="0 0 320 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
       <path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1-25.9 17-41z"></path>
     </svg>
   );
@@ -217,16 +205,8 @@ export function SortIcon({ className }) {
 
 export function SortUpIcon({ className }) {
   return (
-    <svg
-      className={className}
-      stroke="currentColor"
-      fill="currentColor"
-      strokeWidth="0"
-      viewBox="0 0 320 512"
-      height="1em"
-      width="1em"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0"
+      viewBox="0 0 320 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
       <path d="M279 224H41c-21.4 0-32.1-25.9-17-41L143 64c9.4-9.4 24.6-9.4 33.9 0l119 119c15.2 15.1 4.5 41-16.9 41z"></path>
     </svg>
   );
@@ -234,16 +214,8 @@ export function SortUpIcon({ className }) {
 
 export function SortDownIcon({ className }) {
   return (
-    <svg
-      className={className}
-      stroke="currentColor"
-      fill="currentColor"
-      strokeWidth="0"
-      viewBox="0 0 320 512"
-      height="1em"
-      width="1em"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0"
+      viewBox="0 0 320 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
       <path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41z"></path>
     </svg>
   );
@@ -284,32 +256,22 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
   const page = row.original.hasOwnProperty('page') ? row.original.page : '';
   const data = row.original;
 
-  // Fund Transfer specific logic
   const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
 
-  // Fund Transfer action visibility logic - UPDATED: Ignore branch for rep=2
   const getFundTransferActionVisibility = (actionLabel) => {
-    if (!isFundTransfer || !currentUser) return true; // Default to show for non-fund-transfer
+    if (!isFundTransfer || !currentUser) return true;
+    if (!data || typeof data !== 'object') return true;
 
-    // Add safety checks for data properties
-    if (!data || typeof data !== 'object') {
-      console.log(`Action ${actionLabel}: No data available, showing button`);
-      return true; // Show buttons if data is not available yet
-    }
-
-    // Branch logic only applies to rep=3 and rep=4, NOT rep=2 (area_admin)
     let userBranchId = null;
     let isGiverBranch = false;
     let isReceiverBranch = false;
-    
+
     if (currentUser.role?.rep === 3 || currentUser.role?.rep === 4) {
-      // Handle designatedBranchId for branch-specific roles
       userBranchId = currentUser.designatedBranchId;
       if (!userBranchId && currentUser.designatedBranch) {
         try {
-          // Parse the designatedBranch array string
           const branchArray = JSON.parse(currentUser.designatedBranch);
-          userBranchId = branchArray[0]; // Take the first branch
+          userBranchId = branchArray[0];
         } catch (e) {
           console.warn('Could not parse designatedBranch:', currentUser.designatedBranch);
         }
@@ -319,88 +281,54 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     }
 
     const isCreator = data.insertedById === currentUser._id;
-    const isAreaAdmin = currentUser.role?.shortCode === 'area_admin'; // rep=2
-    const isBranchManager = currentUser.role?.rep === 3; // Branch managers with rep = 3
+    const isAreaAdmin = currentUser.role?.shortCode === 'area_admin';
+    const isBranchManager = currentUser.role?.rep === 3;
     const isFinance = currentUser.role?.shortCode === 'finance';
     const isRegionalManager = currentUser.role?.shortCode === 'regional_manager';
     const isDeputyDirector = currentUser.role?.shortCode === 'deputy_director';
 
-    // Add safety checks for status and approval statuses
     const transferStatus = data.status || 'pending';
     const giverApprovalStatus = data.giverApprovalStatus || 'pending';
     const receiverApprovalStatus = data.receiverApprovalStatus || 'pending';
 
     switch (actionLabel) {
-      case 'Edit Transfer':
-        // Check if weekend or holiday first - these affect ALL users
-        if ((isWeekend || isHoliday) && !isFinance) {
-          return false;
-        }
-        
-        // Base condition: Only the creator (area_admin with rep=2), finance, or regional_manager can edit when transfer is pending
+      case 'Edit Transfer': {
+        if ((isWeekend || isHoliday) && !isFinance) return false;
         const baseCanEdit = (transferStatus === 'pending') && ((isCreator && isAreaAdmin) || isFinance || isRegionalManager || isDeputyDirector);
-        
-        // Additional restriction: Don't allow edit if any branch has already approved
-        // Once any approval is given, the transfer should not be editable
         const hasAnyApproval = (giverApprovalStatus === 'approved') || (receiverApprovalStatus === 'approved');
-        
-        //  can edit regardless of status or approval
-        const canEdit = isFinance || (baseCanEdit && !hasAnyApproval);
-        
-        return canEdit;
-
-      case 'Approve Transfer':
-        // Check if weekend or holiday first - these affect ALL users
-        // if (isWeekend || isHoliday) {
-        //   return false;
-        // }
-
+        return isFinance || (baseCanEdit && !hasAnyApproval);
+      }
+      case 'Approve Transfer': {
         const canApprove = (transferStatus === 'pending') && (
-          // Branch managers (rep=3) can approve if they're from involved branch
-          (isBranchManager && (isGiverBranch || isReceiverBranch) && 
-           ((isGiverBranch && giverApprovalStatus === 'pending') || 
+          (isBranchManager && (isGiverBranch || isReceiverBranch) &&
+           ((isGiverBranch && giverApprovalStatus === 'pending') ||
             (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
-          // Rep=4 can also approve if they're from involved branch
-          (currentUser.role?.rep === 4 && (isGiverBranch || isReceiverBranch) && 
-           ((isGiverBranch && giverApprovalStatus === 'pending') || 
+          (currentUser.role?.rep === 4 && (isGiverBranch || isReceiverBranch) &&
+           ((isGiverBranch && giverApprovalStatus === 'pending') ||
             (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
-          // Finance can approve if both branches have approved (final approval)
           (isFinance && giverApprovalStatus === 'approved' && receiverApprovalStatus === 'approved')
         );
-        
         return canApprove;
-
-      case 'Reject Transfer':
-        // Check if weekend or holiday first - these affect ALL users
-        // if (isWeekend || isHoliday) {
-        //   return false;
-        // }
-
+      }
+      case 'Reject Transfer': {
         const canReject = (transferStatus === 'pending') && (
-          // Branch managers (rep=3) can reject if they're from involved branch
-          (isBranchManager && (isGiverBranch || isReceiverBranch)) || 
-          // Rep=4 can also reject if they're from involved branch
+          (isBranchManager && (isGiverBranch || isReceiverBranch)) ||
           (currentUser.role?.rep === 4 && (isGiverBranch || isReceiverBranch)) ||
-          // Finance can reject any time when status is pending
           isFinance
         );
-        
         return canReject;
-
-      case 'Delete Transfer':
-        // Only creator (area_admin with rep=2) OR giver branch (rep=3/4) can delete if no approvals yet
-        const canDelete = (transferStatus === 'pending') && 
-          (giverApprovalStatus === 'pending' && receiverApprovalStatus === 'pending') && // No approvals yet
+      }
+      case 'Delete Transfer': {
+        const canDelete = (transferStatus === 'pending') &&
+          (giverApprovalStatus === 'pending' && receiverApprovalStatus === 'pending') &&
           ((isCreator && (isAreaAdmin || isFinance || isRegionalManager || isDeputyDirector)));
-        
         return canDelete;
-
+      }
       default:
-        return true; // Default to show for other actions
+        return true;
     }
   };
 
-  // Safety check function to ensure action is callable
   const safeCallAction = (item, row) => {
     if (item && typeof item.action === 'function') {
       item.action(row);
@@ -409,142 +337,141 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     }
   };
 
-  // Use normal business logic for action button visibility
-  const showAllFundTransferButtons = false;
+  // Shared icon class — lucide icons need explicit w + h
+  const ic = 'cursor-pointer h-5 w-5';
 
   return (
     <React.Fragment>
       <div className="flex flex-row justify-center">
         {rowActionButtons && rowActionButtons.map((item, index) => {
-          // Check visibility for fund transfer actions
-          if (isFundTransfer && !showAllFundTransferButtons && !getFundTransferActionVisibility(item.label)) {
-            return null; // Don't render if not visible
+          if (isFundTransfer && !getFundTransferActionVisibility(item.label)) {
+            return null;
           }
 
           return (
             <React.Fragment key={index}>
-              {/* Fund Transfer Actions */}
+              {/* ── Fund Transfer Actions ────────────────────────── */}
               {item.label === 'Edit Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Edit Transfer">
-                  <PencilIcon className="h-5 text-blue-600" />
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => safeCallAction(item, row)} title="Edit Transfer">
+                  <Pencil className={`${ic} text-blue-600`} />
                 </div>
               )}
               {item.label === 'Approve Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Approve Transfer">
-                  <CheckIcon className="h-5 text-green-600" />
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => safeCallAction(item, row)} title="Approve Transfer">
+                  <Check className={`${ic} text-green-600`} />
                 </div>
               )}
               {item.label === 'Reject Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Reject Transfer">
-                  <XMarkIcon className="h-5 text-red-600" />
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => safeCallAction(item, row)} title="Reject Transfer">
+                  <X className={`${ic} text-red-600`} />
                 </div>
               )}
               {item.label === 'Delete Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Delete Transfer">
-                  <TrashIcon className="h-5 text-gray-600" />
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => safeCallAction(item, row)} title="Delete Transfer">
+                  <Trash2 className={`${ic} text-gray-600`} />
                 </div>
               )}
 
-              {/* Original Actions */}
+              {/* ── Original Actions ─────────────────────────────── */}
               {item.label === 'Approve' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Approve">
-                  <CheckIcon className="cursor-pointer h-5" />
+                  <Check className={ic} />
                 </div>
               )}
               {item.label === 'Reject' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reject">
-                  <XMarkIcon className="cursor-pointer h-5" />
+                  <X className={ic} />
                 </div>
               )}
               {(item.label === 'Edit Loan' && status !== 'active') && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
-                  <PencilIcon className="cursor-pointer h-5" />
+                  <Pencil className={ic} />
                 </div>
               )}
               {(item.label === 'Delete Loan' && status !== 'active') && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
-                  <TrashIcon className="cursor-pointer h-5" />
+                  <Trash2 className={ic} />
                 </div>
               )}
               {(item.label === 'View Disclosure' && status !== 'active') && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Disclosure">
-                  <DocumentIcon className="cursor-pointer h-5" />
+                  <FileText className={ic} />
                 </div>
               )}
-              {(item.label === 'View LAF') && (
+              {item.label === 'View LAF' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Loan Application Form">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 24 24" 
-                    fill="currentColor" 
-                    className="cursor-pointer h-5 text-indigo-600"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                    className={`${ic} text-indigo-600`}>
                     <path fillRule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0118 9.375v9.375a3 3 0 003-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 00-.673-.05A3 3 0 0015 1.5h-1.5a3 3 0 00-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6zM13.5 3A1.5 1.5 0 0012 4.5h4.5A1.5 1.5 0 0015 3h-1.5z" clipRule="evenodd" />
                     <path fillRule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 013 20.625V9.375zm9.586 4.594a.75.75 0 00-1.172-.938l-2.476 3.096-.908-.907a.75.75 0 00-1.06 1.06l1.5 1.5a.75.75 0 001.116-.062l3-3.75z" clipRule="evenodd" />
                   </svg>
                 </div>
               )}
               {(item.label === 'View Approval Details' && row.original.ldfApproved) && (
-                  <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Approval Details">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                          className="cursor-pointer h-5 text-green-600">
-                          <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
-                      </svg>
-                  </div>
-              )}
-              {(item.label === 'Edit') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
-                  <PencilIcon className="cursor-pointer h-5" />
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Approval Details">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                    className={`${ic} text-green-600`}>
+                    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                  </svg>
                 </div>
               )}
-              {(item.label === 'Delete') && (
+              {item.label === 'Edit' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
+                  <Pencil className={ic} />
+                </div>
+              )}
+              {item.label === 'Delete' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
-                  <TrashIcon className="cursor-pointer h-5" />
+                  <Trash2 className={ic} />
                 </div>
               )}
               {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Open Transaction">
-                  <LockClosedIcon className="cursor-pointer h-5" />
+                  <Lock className={ic} />
                 </div>
               )}
               {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Transaction">
-                  <LockOpenIcon className="cursor-pointer h-5" />
+                  <LockOpen className={ic} />
                 </div>
               )}
-              {(item.label === 'Reloan') && (
+              {item.label === 'Reloan' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reloan">
-                  <ArrowPathIcon className="cursor-pointer h-5" />
+                  <RefreshCw className={ic} />
                 </div>
               )}
-              {(item.label === 'Close Account') && (
+              {item.label === 'Close Account' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Account">
-                  <XCircleIcon className="cursor-pointer h-5" />
+                  <XCircle className={ic} />
                 </div>
               )}
               {item.label === 'Reset Password' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reset Password">
-                  <KeyIcon className="cursor-pointer h-5" />
+                  <Key className={ic} />
                 </div>
               )}
               {item.label === 'Update' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
-                  <ArrowPathIcon className="cursor-pointer h-5" />
+                  <RefreshCw className={ic} />
                 </div>
               )}
               {item.label === 'Revert' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
-                  <ArrowUturnLeftIcon className="cursor-pointer h-5" />
+                  <Undo2 className={ic} />
                 </div>
               )}
               {item.label === 'Transfer' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
-                  <ArrowsRightLeftIcon className="cursor-pointer h-5" />
+                  <ArrowLeftRight className={ic} />
                 </div>
               )}
               {item.label === 'Unmark as Duplicate' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="cursor-pointer h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={ic}>
                     <rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
                     <rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
                     <line x1="2" y1="2" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/>
@@ -553,12 +480,14 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
               )}
               {item.label === 'Lock' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Lock">
-                  { row.original?.lockTransaction ? <LockClosedIcon className="cursor-pointer h-5" /> : <LockOpenIcon className="cursor-pointer h-5" />}
+                  {row.original?.lockTransaction
+                    ? <Lock className={ic} />
+                    : <LockOpen className={ic} />}
                 </div>
               )}
-              {(item.label === 'Manage QR') && (
+              {item.label === 'Generate QR' && (
                 <div className="px-2" onClick={() => safeCallAction(item, row)} title="Manage QR Code">
-                  <QrCodeIcon className="cursor-pointer h-5 text-indigo-600" />
+                  <QrCode className={`${ic} text-indigo-600`} />
                 </div>
               )}
             </React.Fragment>
@@ -591,22 +520,20 @@ const TableComponent = React.memo(({
   currentUser = null,
   isWeekend = false,
   isHoliday = false,
-  showTotals = false, // New prop for showing totals
+  showTotals = false,
 }) => {
-  // Add state for current page
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [selectAll, setSelectAll] = useState(false);
-  
+
   const tableInstance = useTable(
     {
       columns,
       data,
-      initialState: { 
-        pageIndex: currentPageIndex, 
-        pageSize: initialPageSize 
+      initialState: {
+        pageIndex: currentPageIndex,
+        pageSize: initialPageSize,
       },
-      // Remove manualPagination to let react-table handle the pagination
-      autoResetPage: false, // Prevent page reset on data changes
+      autoResetPage: false,
     },
     useFilters,
     useGlobalFilter,
@@ -614,14 +541,11 @@ const TableComponent = React.memo(({
     usePagination
   );
 
-  // Bulk-resolve all profile image keys in one API call instead of N individual calls
   const profileKeys = useMemo(() => {
     const imgAccessors = columns
       .filter((c) => c.imgAccessor)
       .map((c) => c.imgAccessor);
-
     if (imgAccessors.length === 0) return [];
-
     const keys = [];
     data.forEach((row) => {
       imgAccessors.forEach((accessor) => {
@@ -652,50 +576,32 @@ const TableComponent = React.memo(({
     setGlobalFilter,
   } = tableInstance;
 
-  const generateEmptyRows = (columnCount) => {
-    return (
-      <>
-        <tr>
-          <td 
-            colSpan={columnCount + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} 
-            className="px-4 py-6 text-center"
-          >
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <ExclamationCircleIcon className="h-8 w-8 text-gray-400" />
-              <span className="text-gray-500 text-lg font-medium">No data collections</span>
-            </div>
-          </td>
-        </tr>
-      </>
-    )
-  };
+  const generateEmptyRows = (columnCount) => (
+    <tr>
+      <td
+        colSpan={columnCount + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)}
+        className="px-4 py-6 text-center"
+      >
+        <div className="flex flex-col items-center justify-center space-y-2">
+          <AlertCircle className="h-8 w-8 text-gray-400" />
+          <span className="text-gray-500 text-lg font-medium">No data collections</span>
+        </div>
+      </td>
+    </tr>
+  );
 
-  // Generate totals row
   const generateTotalsRow = () => {
     if (!showTotals || data.length === 0) return null;
-
     return (
       <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold text-red-600">
-        {multiSelect && (
-          <td className="px-4 py-3 w-10"></td>
-        )}
+        {multiSelect && <td className="px-4 py-3 w-10"></td>}
         {columns.map((column, index) => {
           const { totalType, totalValue } = column;
-          
           let content = '';
-          if (totalType === 'sum' && totalValue) {
-            content = totalValue;
-          } else if (totalType === 'none' || !totalType) {
-            content = '';
-          }
-
-          // For the first column, always show "TOTAL"
-          if (index === 0) {
-            content = 'TOTAL';
-          }
-
+          if (totalType === 'sum' && totalValue) content = totalValue;
+          if (index === 0) content = 'TOTAL';
           return (
-            <td 
+            <td
               key={`total-${index}`}
               className={`px-4 py-3 ${column.width || 'w-auto'} ${index === 0 ? 'text-left' : 'text-right'}`}
             >
@@ -710,71 +616,54 @@ const TableComponent = React.memo(({
     );
   };
 
-  // And update the TableComponent's select all handler:
-const handleSelectAll = useCallback(() => {
-  const newSelectAll = !selectAll;
-  setSelectAll(newSelectAll);
-  
-  if (multiSelectActionFn) {
+  const handleSelectAll = useCallback(() => {
+    const newSelectAll = !selectAll;
+    setSelectAll(newSelectAll);
+    if (multiSelectActionFn) {
       multiSelectActionFn('all', newSelectAll, null, currentPageIndex);
-  }
-}, [selectAll, currentPageIndex, multiSelectActionFn]);
+    }
+  }, [selectAll, currentPageIndex, multiSelectActionFn]);
 
-// Also update the individual row selection handler:
-const handleSelectRow = useCallback((row, index) => {
-  if (multiSelectActionFn) {
-      const rowWithIndex = {
-          ...row,
-          index: index
-      };
-      multiSelectActionFn('row', null, rowWithIndex, currentPageIndex);
-  }
-}, [multiSelectActionFn, currentPageIndex]);
+  const handleSelectRow = useCallback((row, index) => {
+    if (multiSelectActionFn) {
+      multiSelectActionFn('row', null, { ...row, index }, currentPageIndex);
+    }
+  }, [multiSelectActionFn, currentPageIndex]);
 
-  // Calculate if any items on current page are selected
   const updateSelectAllState = useCallback(() => {
     if (page && page.length > 0) {
-      const currentPageSelected = page.every(row => row.original.selected);
-      setSelectAll(currentPageSelected);
+      setSelectAll(page.every(row => row.original.selected));
     }
   }, [page]);
 
-  // Update select all state when page changes
   useEffect(() => {
     updateSelectAllState();
   }, [currentPageIndex, data, updateSelectAllState]);
 
-  // Enhanced pagination handlers with state updates
   const handleGotoPage = useCallback((pageIndex) => {
     setCurrentPageIndex(pageIndex);
     gotoPage(pageIndex);
-    setSelectAll(false); // Reset select all when changing pages
+    setSelectAll(false);
   }, [gotoPage]);
 
   const handleNextPage = useCallback(() => {
-    const nextPageIndex = currentPageIndex + 1;
-    setCurrentPageIndex(nextPageIndex);
+    setCurrentPageIndex(currentPageIndex + 1);
     nextPage();
-    setSelectAll(false); // Reset select all when changing pages
+    setSelectAll(false);
   }, [nextPage, currentPageIndex]);
 
   const handlePreviousPage = useCallback(() => {
-    const prevPageIndex = currentPageIndex - 1;
-    setCurrentPageIndex(prevPageIndex);
+    setCurrentPageIndex(currentPageIndex - 1);
     previousPage();
-    setSelectAll(false); // Reset select all when changing pages
+    setSelectAll(false);
   }, [previousPage, currentPageIndex]);
 
   const handleSetPageSize = useCallback((size) => {
     setPageSize(size);
     setCurrentPageIndex(0);
-    setSelectAll(false); // Reset select all when changing page size
+    setSelectAll(false);
   }, [setPageSize]);
 
-  // Calculate pagination details
-  const startIndex = currentPageIndex * state.pageSize;
-  const endIndex = Math.min(startIndex + state.pageSize, data.length);
-  
   const renderHeaderGroups = () => {
     return headerGroups.map((headerGroup, groupIndex) => {
       const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
@@ -803,11 +692,7 @@ const handleSelectRow = useCallback((row, index) => {
                 <div className="flex items-center">
                   {column.render('Header')}
                   <span>
-                    {column.isSorted
-                      ? column.isSortedDesc
-                        ? ' 🔽'
-                        : ' 🔼'
-                      : ''}
+                    {column.isSorted ? (column.isSortedDesc ? ' 🔽' : ' 🔼') : ''}
                   </span>
                 </div>
               </th>
@@ -827,7 +712,6 @@ const handleSelectRow = useCallback((row, index) => {
     <SignedUrlContext.Provider value={urlMap}>
       <div className="relative w-full shadow-md rounded-lg overflow-hidden">
         {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
-        
         <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
           <div className="overflow-x-auto min-h-[200px]">
             <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
@@ -839,32 +723,18 @@ const handleSelectRow = useCallback((row, index) => {
                   page.map((row, i) => {
                     prepareRow(row);
                     const {
-                      root,
-                      delinquent,
-                      totalData,
-                      selected,
-                      disable,
-                      status,
-                      isDraft,
-                      page: pageName,
-                      ldfApproved,
-                      withError: error,
-                      insertedDate,
-                      modifiedDate,
-                      modifiedById
+                      root, delinquent, totalData, selected, disable, status,
+                      isDraft, page: pageName, ldfApproved,
+                      withError: error, insertedDate, modifiedDate, modifiedById,
                     } = row.original;
 
                     const checkBoxDisable = disable || error;
-                    
-                    // Check transfer indicator type for fund transfers
                     const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
-                    const indicatorType = isFundTransfer && status === 'pending' 
-                      ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById) 
+                    const indicatorType = isFundTransfer && status === 'pending'
+                      ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById)
                       : null;
 
-                    // Enhanced row class logic with transfer indicators
                     let rowClass = 'bg-white border-b hover:bg-gray-50';
-                    
                     if (delinquent === 'Yes' || error) {
                       rowClass = 'bg-red-100 border-b hover:bg-red-200';
                     } else if (status === 'open') {
@@ -872,10 +742,8 @@ const handleSelectRow = useCallback((row, index) => {
                     } else if (ldfApproved) {
                       rowClass = 'bg-green-100 border-b hover:bg-green-200';
                     } else if (indicatorType === 'modified') {
-                      // Recently modified fund transfer styling
                       rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100';
                     } else if (indicatorType === 'new') {
-                      // Recently created fund transfer styling
                       rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
                     }
 
@@ -899,7 +767,7 @@ const handleSelectRow = useCallback((row, index) => {
                           </td>
                         )}
                         {row.cells.map((cell, index) => (
-                          <td 
+                          <td
                             {...cell.getCellProps()}
                             key={`row-data-${index}`}
                             className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
@@ -907,7 +775,6 @@ const handleSelectRow = useCallback((row, index) => {
                           >
                             <div className="flex items-center space-x-2">
                               {cell.render('Cell')}
-                              {/* Add badges for recent transfers in the first column (usually transaction code) */}
                               {indicatorType && index === 0 && (
                                 <>
                                   {indicatorType === 'new' && (
@@ -935,8 +802,8 @@ const handleSelectRow = useCallback((row, index) => {
                           <td className="px-4 py-3 w-24">
                             <div className="flex items-center justify-center space-x-2">
                               {hasActionButtons && !root && !row.original.system && (
-                                <ActionButton 
-                                  row={row} 
+                                <ActionButton
+                                  row={row}
                                   rowActionButtons={rowActionButtons}
                                   currentUser={currentUser}
                                   dropDownActionOrigin={dropDownActionOrigin}
@@ -962,13 +829,12 @@ const handleSelectRow = useCallback((row, index) => {
                 ) : (
                   generateEmptyRows(columns.length)
                 )}
-                {/* Add totals row at the end of tbody */}
                 {generateTotalsRow()}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination Controls */}
+          {/* Pagination */}
           {showPagination && data.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
               <div className="flex items-center space-x-2">
@@ -976,33 +842,21 @@ const handleSelectRow = useCallback((row, index) => {
                   Page <span className="font-medium">{currentPageIndex + 1}</span> of{' '}
                   <span className="font-medium">{pageOptions.length}</span>
                 </span>
-                <button
-                  onClick={() => handleGotoPage(0)}
-                  disabled={!canPreviousPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronDoubleLeftIcon className="w-5 h-5" />
+                <button onClick={() => handleGotoPage(0)} disabled={!canPreviousPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
+                  <ChevronsLeft className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={handlePreviousPage}
-                  disabled={!canPreviousPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronLeftIcon className="w-5 h-5" />
+                <button onClick={handlePreviousPage} disabled={!canPreviousPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={handleNextPage}
-                  disabled={!canNextPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronRightIcon className="w-5 h-5" />
+                <button onClick={handleNextPage} disabled={!canNextPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
+                  <ChevronRight className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={() => handleGotoPage(pageCount - 1)}
-                  disabled={!canNextPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronDoubleRightIcon className="w-5 h-5" />
+                <button onClick={() => handleGotoPage(pageCount - 1)} disabled={!canNextPage}
+                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
+                  <ChevronsRight className="w-5 h-5" />
                 </button>
                 <select
                   value={state.pageSize}
@@ -1010,9 +864,7 @@ const handleSelectRow = useCallback((row, index) => {
                   className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   {[10, 20, 30, 40, 50].map(pageSize => (
-                    <option key={pageSize} value={pageSize}>
-                      {pageSize}
-                    </option>
+                    <option key={pageSize} value={pageSize}>{pageSize}</option>
                   ))}
                 </select>
               </div>

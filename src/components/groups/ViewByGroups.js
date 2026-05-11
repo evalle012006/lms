@@ -16,6 +16,7 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
 import { getApiBaseUrl } from "@/lib/constants";
+import GroupQRModal from "./GroupQRModal";
 
 const ViewByGroupsPage = () => {
     const dispatch = useDispatch();
@@ -30,6 +31,9 @@ const ViewByGroupsPage = () => {
     const [group, setGroup] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    const [qrModalOpen, setQrModalOpen] = useState(false);
+    const [qrData, setQrData]           = useState(null);
 
     const router = useRouter();
     const { uuid } = router.query;
@@ -229,6 +233,19 @@ const ViewByGroupsPage = () => {
         handleShowAddDrawer();
     }
 
+    const handleGenerateGroupQR = async (row) => {
+        const group = row.original;
+        const res   = await fetchWrapper.post(getApiBaseUrl() + 'groups/generate-qr', {
+            groupId: group._id,
+        });
+        if (res.success) {
+            setQrData(res.qr);
+            setQrModalOpen(true);
+        } else {
+            toast.error(res.message);
+        }
+    };
+
     const handleDeleteAction = (row) => {
         setGroup(row.original);
         setShowDeleteDialog(true);
@@ -236,9 +253,11 @@ const ViewByGroupsPage = () => {
 
     const rowActionButtons = currentUser.role.rep == 1 ? [
         { label: 'Edit', action: handleEditAction },
+        { label: 'Generate QR', action: handleGenerateGroupQR },
         { label: 'Delete', action: handleDeleteAction }
     ] : [
-        { label: 'Edit', action: handleEditAction }
+        { label: 'Edit', action: handleEditAction },
+        { label: 'Generate QR', action: handleGenerateGroupQR }
     ];
 
     const handleDelete = () => {
@@ -341,6 +360,20 @@ const ViewByGroupsPage = () => {
                             <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
                         </div>
                     </Dialog>
+
+                    <GroupQRModal
+                        isOpen={qrModalOpen}
+                        onClose={() => setQrModalOpen(false)}
+                        qrData={qrData}
+                        onRegenerate={async () => {
+                            const res = await fetchWrapper.post(
+                                getApiBaseUrl() + 'groups/generate-qr',
+                                { groupId: qrData?.groupId }
+                            );
+                            if (res.success) setQrData(res.qr);
+                            else toast.error(res.message);
+                        }}
+                    />
                 </Layout>
             )}
         </React.Fragment>

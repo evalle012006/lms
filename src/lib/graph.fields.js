@@ -90,6 +90,12 @@ export const CLIENT_FIELDS = `
   biometricUpdateRequestedBy
   biometricUpdateApprovedAt
   biometricUpdateApprovedBy
+  governmentIdType
+  governmentIdNumber
+  governmentIdPhotoKey
+  selfieWithIdPhotoKey
+  landmark
+  distanceFromBranch
   `;
 
 export const LOAN_FIELDS = `
@@ -221,6 +227,10 @@ export const GROUP_FIELDS = `
   time
   dayNo
   loanOfficerName
+  qrToken
+  qrGeneratedAt
+  qrExpiresAt
+  qrGeneratedBy
   `;
 
 export const HOLIDAY_FIELDS = `
@@ -245,6 +255,8 @@ export const SETTINGS_FIELDS = `
   enableNotifications
   allowLoCI
   requireClientBiometric
+  requireGovernmentId
+  requireSelfieWithId
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -761,8 +773,20 @@ export const TEMP_LOAN_APP_FIELDS = `
   assignedTo
   assignedAt
   assignedByName
+  governmentIdType
+  governmentIdNumber
+  governmentIdPhotoKey
+  selfieWithIdPhotoKey
   landmark
   distanceFromBranch
+  clientType
+  existingClientId
+  existingLoanId
+  groupId
+  loId
+  isOffline
+  syncedAt
+  idVerified
 `;
 
 export const CI_INVESTIGATION_FIELDS = `
@@ -782,4 +806,38 @@ export const CI_INVESTIGATION_FIELDS = `
   investigatedAt
   dateAdded
   insertedBy
+`;
+
+export const AUDIT_LOG_FIELDS = `
+  _id
+  timestamp
+  userId
+  userName
+  userRole
+  branchId
+  branchName
+  action
+  category
+  severity
+  entityType
+  entityId
+  description
+  beforeData
+  afterData
+  metadata
+  success
+  failReason
+  ipAddress
+  userAgent
+`;
+
+export const BIOMETRIC_REGISTRATION_TOKENS_FIELDS = `
+  _id
+  clientId
+  loanId
+  token
+  usedAt
+  expiresAt
+  createdAt
+  createdBy
 `;
