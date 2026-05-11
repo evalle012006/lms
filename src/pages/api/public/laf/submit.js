@@ -9,9 +9,10 @@ import crypto from 'crypto';
 
 const graph = new GraphProvider();
 
-const BRANCH_TYPE = createGraphType('branches', `
-    _id code name qrToken
-`)('branches');
+const GROUP_TYPE = createGraphType('groups', `
+    _id name branchId loanOfficerId loanOfficerName qrToken qrExpiresAt
+    branch { _id name code }
+`)('groups');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 
@@ -19,7 +20,7 @@ export default publicApiHandler({ post: submitLAF });
 
 async function submitLAF(req, res) {
     const {
-        branchId, qrToken,
+        groupId, qrToken,
         firstName, lastName, middleName, birthdate, contactNumber,
         addressStreetNo, addressBarangayDistrict, addressMunicipalityCity,
         addressProvince, addressZipCode,
@@ -46,27 +47,32 @@ async function submitLAF(req, res) {
         });
     }
 
-    // ── Step 1: Find branch by ID only first ──────────────────────────────
-    const [branch] = await graph.query(
-        queryQl(BRANCH_TYPE, {
-            where: { _id: { _eq: branchId } }
+    // ── Step 1: Find group by qrToken directly ──────────────────────────
+    const [group] = await graph.query(
+        queryQl(GROUP_TYPE, {
+            where: { qrToken: { _eq: qrToken } }
         })
-    ).then(r => r.data?.branches ?? []);
+    ).then(r => r.data?.groups ?? []);
 
-    if (!branch) {
-        return res.status(200).json({
-            success: false,
-            message: 'Branch not found.',
-        });
-    }
-
-    // ── Step 2: Validate the qrToken matches ──────────────────────────────
-    if (branch.qrToken !== qrToken) {
+    if (!group) {
         return res.status(200).json({
             success: false,
             message: 'QR code is invalid or has been regenerated. Please scan the latest QR code.',
         });
     }
+
+    // ── Step 2: Validate QR not expired ──────────────────────────────────
+    const { default: moment } = await import('moment');
+    if (group.qrExpiresAt && moment().isAfter(moment(group.qrExpiresAt))) {
+        return res.status(200).json({
+            success: false,
+            message: 'This QR code has expired. Please ask your Loan Officer for a new QR code.',
+        });
+    }
+
+    // Use group context for branchId, loId
+    const branchId = group.branchId;
+    const loId     = group.loanOfficerId;
 
     if (!lafPhotoKey) {
         return res.status(200).json({
@@ -86,7 +92,9 @@ async function submitLAF(req, res) {
             objects: [{
                 _id: generateUUID(),
                 ciReferenceCode,
-                branchId: branch._id,
+                branchId,
+                groupId: group._id,
+                loId: group.loanOfficerId,
                 firstName:  firstName?.trim().toUpperCase(),
                 lastName:   lastName?.trim().toUpperCase(),
                 middleName: middleName?.trim().toUpperCase() || '',
