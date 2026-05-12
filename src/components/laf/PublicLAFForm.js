@@ -1,3 +1,5 @@
+// src/components/laf/PublicLAFForm.js — Phase 2
+// Client type selection, Government ID, updated step flows per type
 import React, { useState, useRef, useCallback } from 'react';
 import { Formik }     from 'formik';
 import * as yup       from 'yup';
@@ -6,6 +8,32 @@ import LAFPhotoStep   from './LAFPhotoStep';
 import LAFSuccessScreen from './LAFSuccessScreen';
 import LAFBiometricStep from './LAFBiometricStep';
 import PhotoCapture   from '@/components/clients/PhotoCapture';
+
+// ID number format validation — regex + friendly hint per type
+const ID_FORMAT_RULES = {
+    philsys:    { pattern: /^\d{4}-\d{4}-\d{4}$/, hint: 'Format: 1234-5678-9012' },
+    passport:   { pattern: /^[A-Z]{1,2}\d{6,8}[A-Z0-9]?$/, hint: 'Format: A1234567 or AA1234567' },
+    drivers:    { pattern: /^[A-Z]\d{2}-\d{2}-\d{6}$/, hint: 'Format: A01-23-456789' },
+    sss:        { pattern: /^\d{2}-\d{7}-\d{1}$/, hint: 'Format: 12-3456789-0' },
+    gsis:       { pattern: /^\d{11}$/, hint: '11-digit GSIS number' },
+    philhealth: { pattern: /^\d{2}-\d{9}-\d{1}$/, hint: 'Format: 12-345678901-2' },
+    voters:     { pattern: /^\d{13}$/, hint: '13-digit voter ID number' },
+    umid:       { pattern: /^\d{4}-\d{7}-\d{1}$/, hint: 'Format: 1234-5678901-2' },
+    tin:        { pattern: /^\d{3}-\d{3}-\d{3}(-\d{3})?$/, hint: 'Format: 123-456-789 or 123-456-789-000' },
+    prc:        { pattern: /^\d{7}$/, hint: '7-digit PRC number' },
+    // Types with no strict format — accept any non-empty value
+    postal:  null, senior: null, pwd: null, barangay: null,
+};
+
+function validateIdNumber(idType, idNumber) {
+    if (!idType || !idNumber?.trim()) return null;
+    const rule = ID_FORMAT_RULES[idType];
+    if (!rule) return null; // no format rule — accept anything
+    if (!rule.pattern.test(idNumber.trim())) {
+        return rule.hint;
+    }
+    return null;
+}
 
 const PH_ID_TYPES = [
     { value: 'philsys',    label: 'PhilSys / National ID' },
@@ -151,6 +179,7 @@ const PublicLAFForm = ({
     const [idType, setIdType] = useState('');
     const [idNumber, setIdNumber] = useState('');
     const [idPhotoFile, setIdPhotoFile] = useState(null);
+    const [idPhotoPreview, setIdPhotoPreview] = useState(null);
     const [selfieWithIdFile, setSelfieWithIdFile] = useState(null);
     const [idErrors, setIdErrors] = useState({});
     const [lookupLastName, setLookupLastName] = useState('');
@@ -211,7 +240,13 @@ const PublicLAFForm = ({
         if (cur === si('ID')) {
             const errs = {};
             if (!idType) errs.idType = 'Required';
-            if (!idNumber.trim()) errs.idNumber = 'Required';
+            if (!idNumber.trim()) {
+                errs.idNumber = 'Required';
+            } else {
+                // Validate format against selected ID type
+                const fmtError = validateIdNumber(idType, idNumber);
+                if (fmtError) errs.idNumber = fmtError;
+            }
             if (!idPhotoFile) errs.idPhoto = 'Required';
             if (requireSelfieWithId && !selfieWithIdFile) errs.selfieWithId = 'Required';
             if (Object.keys(errs).length) { setIdErrors(errs); return; }
@@ -346,7 +381,11 @@ const PublicLAFForm = ({
                                 </Field>
                                 <Field label="Photo of ID" required error={idErrors.idPhoto}>
                                     <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
-                                    <PhotoCapture onFileReady={setIdPhotoFile} label="Take/upload ID photo" facingMode="environment" maxMB={10} />
+                                    <PhotoCapture
+                                        onFileReady={file => { setIdPhotoFile(file); setIdPhotoPreview(file ? URL.createObjectURL(file) : null); }}
+                                        label="Take/upload ID photo" facingMode="environment" maxMB={10}
+                                        preview={idPhotoPreview}
+                                    />
                                     {idPhotoFile && <p className="text-xs text-green-600 mt-1">✓ ID photo captured</p>}
                                 </Field>
                                 {requireSelfieWithId && (
@@ -420,9 +459,9 @@ const PublicLAFForm = ({
                         </div>
                     )}
 
-                    {/* Formik steps: Personal, Address, Loan */}
-                    {(step === si('Personal') || step === si('Address') || step === si('Loan')) && (
-                        <Formik initialValues={initialValues} validationSchema={yup.object()} onSubmit={handleSubmit} innerRef={formikRef} enableReinitialize={!!foundClient}>
+                    {/* Formik — ALWAYS mounted so ref + values persist across steps */}
+                    <div style={{ display: (step === si('Personal') || step === si('Address') || step === si('Loan')) ? 'block' : 'none' }}>
+                    <Formik initialValues={initialValues} validationSchema={yup.object()} onSubmit={handleSubmit} innerRef={formikRef} enableReinitialize={!!foundClient}>
                             {({ values, touched, errors, handleChange, handleBlur, submitForm }) => (
                                 <form autoComplete="off">
                                     {step === si('Personal') && (
@@ -483,7 +522,7 @@ const PublicLAFForm = ({
                                 </form>
                             )}
                         </Formik>
-                    )}
+                    </div>
 
                     {/* Biometric */}
                     {bioIdx !== -1 && step === bioIdx && (
@@ -499,10 +538,13 @@ const PublicLAFForm = ({
                                 <button type="button" onClick={goPrev} disabled={submitting} className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50">Back</button>
                                 <div className="flex gap-2">
                                     {isExistingClient && !biometricVerified && (
-                                        <button type="button" onClick={() => formikRef.current?.submitForm()} disabled={submitting}
-                                            className="px-4 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50">Skip & Submit</button>
+                                        <button type="button"
+                                        onClick={() => handleSubmit(formikRef.current?.values || {})}
+                                        disabled={submitting}
+                                        className="px-4 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50">Skip & Submit</button>
                                     )}
-                                    <button type="button" onClick={() => formikRef.current?.submitForm()}
+                                    <button type="button"
+                                        onClick={() => handleSubmit(formikRef.current?.values || {})}
                                         disabled={submitting || (isProspectOrBalik && !biometricVerified)}
                                         className="px-6 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
                                         {submitting ? (<><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Submitting…</>) : (biometricVerified ? 'Submit Application' : (isProspectOrBalik ? 'Verify Biometric First' : 'Submit Application'))}
