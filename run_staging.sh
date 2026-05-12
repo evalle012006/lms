@@ -71,8 +71,11 @@ docker compose up -d
 success "Containers started."
 
 # ── Cleanup ──────────────────────────────────────────────────
-log "Cleaning up old Docker images..."
-docker image prune -f
+log "Cleaning up old Docker images for this project..."
+
+# Option A: Targeted cleanup using the project name
+# This removes dangling images that belong specifically to this compose project
+docker image prune -f --filter "label=com.docker.compose.project=lms-app"
 success "Cleanup done."
 
 # ── Show Status ──────────────────────────────────────────────
