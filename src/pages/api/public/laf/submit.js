@@ -37,6 +37,16 @@ async function submitLAF(req, res) {
         biometricCounter,
         biometricRegisteredAt,
         biometricDeviceName,
+        // Government ID
+        governmentIdType,
+        governmentIdNumber,
+        governmentIdPhotoKey,
+        selfieWithIdPhotoKey,
+        // Client type
+        clientType,
+        existingClientId,
+        existingLoanId,
+        detailFlags,
     } = req.body;
 
     // Basic presence check
@@ -62,7 +72,6 @@ async function submitLAF(req, res) {
     }
 
     // ── Step 2: Validate QR not expired ──────────────────────────────────
-    const { default: moment } = await import('moment');
     if (group.qrExpiresAt && moment().isAfter(moment(group.qrExpiresAt))) {
         return res.status(200).json({
             success: false,
@@ -70,9 +79,9 @@ async function submitLAF(req, res) {
         });
     }
 
-    // Use group context for branchId, loId
-    const branchId = group.branchId;
-    const loId     = group.loanOfficerId;
+    // branchId comes from req.body — validate it matches group
+    // loId resolved from group record
+    const resolvedLoId = group.loanOfficerId;
 
     if (!lafPhotoKey) {
         return res.status(200).json({
@@ -84,7 +93,8 @@ async function submitLAF(req, res) {
     // ── Generate CI reference code ────────────────────────────────────────
     const dateStr = moment().format('YYYYMMDD');
     const suffix  = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const ciReferenceCode = `CI-${branch.code}-${dateStr}-${suffix}`;
+    const branchCode = group.branch?.code || branchId.slice(-4).toUpperCase();
+    const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
 
     // ── Insert into temporaryLoanApplications ─────────────────────────────
     const [application] = await graph.mutation(
@@ -94,7 +104,7 @@ async function submitLAF(req, res) {
                 ciReferenceCode,
                 branchId,
                 groupId: group._id,
-                loId: group.loanOfficerId,
+                loId: resolvedLoId,
                 firstName:  firstName?.trim().toUpperCase(),
                 lastName:   lastName?.trim().toUpperCase(),
                 middleName: middleName?.trim().toUpperCase() || '',
@@ -128,6 +138,17 @@ async function submitLAF(req, res) {
                 biometricCounter:      biometricCounter      || 0,
                 biometricRegisteredAt: biometricRegisteredAt || null,
                 biometricDeviceName:   biometricDeviceName   || null,
+                // Government ID
+                governmentIdType:      governmentIdType      || null,
+                governmentIdNumber:    governmentIdNumber    || null,
+                governmentIdPhotoKey:  governmentIdPhotoKey  || null,
+                selfieWithIdPhotoKey:  selfieWithIdPhotoKey  || null,
+                // Client type metadata
+                clientType:            clientType            || 'prospect',
+                existingClientId:      existingClientId      || null,
+                existingLoanId:        existingLoanId        || null,
+                detailFlags:           detailFlags           || [],
+                isOffline:             false,
             }]
         })
     ).then(r => r.data?.temporaryLoanApplications?.returning ?? []);

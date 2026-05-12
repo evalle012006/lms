@@ -69,14 +69,24 @@ const Field = ({ label, error, required, children }) => (
     </div>
 );
 
-const Input = ({ name, value, onChange, onBlur, placeholder, type = 'text', error, readOnly }) => (
-    <input name={name} type={type} value={value}
-        onChange={onChange} onBlur={onBlur} placeholder={placeholder} readOnly={readOnly}
-        className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-            readOnly ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
-                : error ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
-    />
-);
+const Input = ({ name, value, onChange, onBlur, placeholder, type = 'text', error, readOnly, noUppercase }) => {
+    // Auto-uppercase text inputs — numeric and date fields are excluded
+    const handleChange = (e) => {
+        if (!noUppercase && type === 'text' && e.target.value) {
+            e.target.value = e.target.value.toUpperCase();
+        }
+        onChange?.(e);
+    };
+    return (
+        <input name={name} type={type} value={value}
+            onChange={handleChange} onBlur={onBlur} placeholder={placeholder} readOnly={readOnly}
+            style={!noUppercase && type === 'text' ? { textTransform: 'uppercase' } : {}}
+            className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                readOnly ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
+                    : error ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
+        />
+    );
+};
 
 async function compressImage(file, maxW = 1200, q = 0.82) {
     return new Promise(resolve => {
@@ -377,7 +387,7 @@ const PublicLAFForm = ({
                                     </select>
                                 </Field>
                                 <Field label="ID Number" required error={idErrors.idNumber}>
-                                    <Input name="idNumber" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" error={idErrors.idNumber} />
+                                    <Input name="idNumber" noUppercase value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" error={idErrors.idNumber} />
                                 </Field>
                                 <Field label="Photo of ID" required error={idErrors.idPhoto}>
                                     <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
@@ -407,7 +417,7 @@ const PublicLAFForm = ({
                             <div className="space-y-4">
                                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">Enter your last name and slot number to find your existing member record.</div>
                                 <Field label="Last Name" required>
-                                    <Input name="ln" value={lookupLastName} onChange={e => setLookupLastName(e.target.value)} placeholder="Enter your last name" />
+                                    <Input name="ln" noUppercase value={lookupLastName} onChange={e => setLookupLastName(e.target.value)} placeholder="Enter your last name" />
                                 </Field>
                                 <Field label="Slot Number" required>
                                     <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
@@ -472,7 +482,7 @@ const PublicLAFForm = ({
                                                 <Field label="Last Name" required error={touched.lastName && errors.lastName}><Input name="lastName" value={values.lastName} onChange={handleChange} onBlur={handleBlur} placeholder="dela Cruz" error={touched.lastName && errors.lastName} readOnly={roFields} /></Field>
                                                 <Field label="Middle Name" required error={touched.middleName && errors.middleName}><Input name="middleName" value={values.middleName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.middleName && errors.middleName} readOnly={roFields} /></Field>
                                                 <Field label="Birthdate" required error={touched.birthdate && errors.birthdate}><Input name="birthdate" value={values.birthdate} onChange={handleChange} onBlur={handleBlur} type="date" error={touched.birthdate && errors.birthdate} readOnly={roFields} /></Field>
-                                                <Field label="Contact Number" required error={touched.contactNumber && errors.contactNumber}><Input name="contactNumber" value={values.contactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.contactNumber && errors.contactNumber} /></Field>
+                                                <Field label="Contact Number" required error={touched.contactNumber && errors.contactNumber}><Input name="contactNumber" noUppercase value={values.contactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.contactNumber && errors.contactNumber} /></Field>
                                             </div>
                                         </div>
                                     )}
@@ -484,9 +494,9 @@ const PublicLAFForm = ({
                                                 <Field label="Barangay" required error={touched.addressBarangayDistrict && errors.addressBarangayDistrict}><Input name="addressBarangayDistrict" value={values.addressBarangayDistrict} onChange={handleChange} onBlur={handleBlur} placeholder="Brgy. San Jose" error={touched.addressBarangayDistrict && errors.addressBarangayDistrict} readOnly={roFields} /></Field>
                                                 <Field label="Municipality / City" required error={touched.addressMunicipalityCity && errors.addressMunicipalityCity}><Input name="addressMunicipalityCity" value={values.addressMunicipalityCity} onChange={handleChange} onBlur={handleBlur} placeholder="Caloocan City" error={touched.addressMunicipalityCity && errors.addressMunicipalityCity} readOnly={roFields} /></Field>
                                                 <Field label="Province" required error={touched.addressProvince && errors.addressProvince}><Input name="addressProvince" value={values.addressProvince} onChange={handleChange} onBlur={handleBlur} placeholder="Metro Manila" error={touched.addressProvince && errors.addressProvince} readOnly={roFields} /></Field>
-                                                <Field label="ZIP Code"><Input name="addressZipCode" value={values.addressZipCode} onChange={handleChange} onBlur={handleBlur} placeholder="1400" /></Field>
-                                                <Field label="Landmark (optional)"><Input name="landmark" value={values.landmark} onChange={handleChange} onBlur={handleBlur} placeholder="Near Jollibee, beside Barangay Hall..." /></Field>
-                                                <Field label="Distance from Branch (optional)"><Input name="distanceFromBranch" value={values.distanceFromBranch} onChange={handleChange} onBlur={handleBlur} placeholder="e.g. 2 km, 30 min by tricycle" /></Field>
+                                                <Field label="ZIP Code"><Input name="addressZipCode" noUppercase value={values.addressZipCode} onChange={handleChange} onBlur={handleBlur} placeholder="1400" /></Field>
+                                                <Field label="Landmark (optional)"><Input name="landmark" noUppercase value={values.landmark} onChange={handleChange} onBlur={handleBlur} placeholder="Near Jollibee, beside Barangay Hall..." /></Field>
+                                                <Field label="Distance from Branch (optional)"><Input name="distanceFromBranch" noUppercase value={values.distanceFromBranch} onChange={handleChange} onBlur={handleBlur} placeholder="e.g. 2 km, 30 min by tricycle" /></Field>
                                             </div>
                                         </div>
                                     )}
@@ -495,14 +505,14 @@ const PublicLAFForm = ({
                                             <h2 className="text-base font-semibold text-gray-800 mb-4">Loan & Guarantor</h2>
                                             <div className="space-y-4">
                                                 <Field label="Loan Amount (₱)" required error={touched.loanAmount && errors.loanAmount}><Input name="loanAmount" value={values.loanAmount} onChange={handleChange} onBlur={handleBlur} type="number" placeholder="5000" error={touched.loanAmount && errors.loanAmount} /></Field>
-                                                <Field label="Loan Purpose" required error={touched.loanPurpose && errors.loanPurpose}><Input name="loanPurpose" value={values.loanPurpose} onChange={handleChange} onBlur={handleBlur} placeholder="Livelihood, education..." error={touched.loanPurpose && errors.loanPurpose} /></Field>
+                                                <Field label="Loan Purpose" required error={touched.loanPurpose && errors.loanPurpose}><Input name="loanPurpose" noUppercase value={values.loanPurpose} onChange={handleChange} onBlur={handleBlur} placeholder="Livelihood, education..." error={touched.loanPurpose && errors.loanPurpose} /></Field>
                                                 <div className="pt-2 border-t border-gray-100">
                                                     <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor / Co-maker</p>
                                                     <div className="space-y-3">
                                                         <Field label="First Name" required error={touched.guarantorFirstName && errors.guarantorFirstName}><Input name="guarantorFirstName" value={values.guarantorFirstName} onChange={handleChange} onBlur={handleBlur} placeholder="Maria" error={touched.guarantorFirstName && errors.guarantorFirstName} /></Field>
                                                         <Field label="Last Name" required error={touched.guarantorLastName && errors.guarantorLastName}><Input name="guarantorLastName" value={values.guarantorLastName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.guarantorLastName && errors.guarantorLastName} /></Field>
-                                                        <Field label="Relationship" required error={touched.guarantorRelationship && errors.guarantorRelationship}><Input name="guarantorRelationship" value={values.guarantorRelationship} onChange={handleChange} onBlur={handleBlur} placeholder="Spouse, sibling..." error={touched.guarantorRelationship && errors.guarantorRelationship} /></Field>
-                                                        <Field label="Contact Number" required error={touched.guarantorContactNumber && errors.guarantorContactNumber}><Input name="guarantorContactNumber" value={values.guarantorContactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.guarantorContactNumber && errors.guarantorContactNumber} /></Field>
+                                                        <Field label="Relationship" required error={touched.guarantorRelationship && errors.guarantorRelationship}><Input name="guarantorRelationship" noUppercase value={values.guarantorRelationship} onChange={handleChange} onBlur={handleBlur} placeholder="Spouse, sibling..." error={touched.guarantorRelationship && errors.guarantorRelationship} /></Field>
+                                                        <Field label="Contact Number" required error={touched.guarantorContactNumber && errors.guarantorContactNumber}><Input name="guarantorContactNumber" noUppercase value={values.guarantorContactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.guarantorContactNumber && errors.guarantorContactNumber} /></Field>
                                                     </div>
                                                 </div>
                                             </div>
