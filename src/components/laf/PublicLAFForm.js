@@ -245,7 +245,7 @@ const PublicLAFForm = ({ branchId, branchName, branchCode, qrToken, requireClien
         } else {
             setStep(s => s + 1);
         }
-    }, [step, lafPhotoKey]);
+    }, [step, lafPhotoFile]);
 
     const goPrev = useCallback(() => {
         setStep(s => Math.max(s - 1, 0));
