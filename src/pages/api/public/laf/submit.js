@@ -20,7 +20,7 @@ export default publicApiHandler({ post: submitLAF });
 
 async function submitLAF(req, res) {
     const {
-        groupId, qrToken,
+        groupId, branchId, qrToken,
         firstName, lastName, middleName, birthdate, contactNumber,
         addressStreetNo, addressBarangayDistrict, addressMunicipalityCity,
         addressProvince, addressZipCode,
@@ -50,10 +50,10 @@ async function submitLAF(req, res) {
     } = req.body;
 
     // Basic presence check
-    if (!branchId || !qrToken) {
+    if (!groupId || !qrToken) {
         return res.status(200).json({
             success: false,
-            message: 'Missing branchId or qrToken.',
+            message: 'Missing groupId or qrToken.',
         });
     }
 
