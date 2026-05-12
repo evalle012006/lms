@@ -787,6 +787,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   isOffline
   syncedAt
   idVerified
+  detailFlags
 `;
 
 export const CI_INVESTIGATION_FIELDS = `
