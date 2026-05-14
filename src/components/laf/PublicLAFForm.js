@@ -1,13 +1,17 @@
 // src/components/laf/PublicLAFForm.js — Phase 2
 // Client type selection, Government ID, updated step flows per type
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Formik }     from 'formik';
 import * as yup       from 'yup';
 import { toast }      from 'react-toastify';
-import LAFPhotoStep   from './LAFPhotoStep';
-import LAFSuccessScreen from './LAFSuccessScreen';
-import LAFBiometricStep from './LAFBiometricStep';
-import PhotoCapture   from '@/components/clients/PhotoCapture';
+import LAFPhotoStep        from './LAFPhotoStep';
+import LAFSuccessScreen    from './LAFSuccessScreen';
+import LAFBiometricStep    from './LAFBiometricStep';
+import LAFOfflineConfirmation from './LAFOfflineConfirmation';
+import LAFQueuePanel       from './LAFQueuePanel';
+import PhotoCapture        from '@/components/clients/PhotoCapture';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useLAFOfflineQueue, MAX_ENTRIES } from '@/hooks/useLAFOfflineQueue';
 
 // ID number format validation — regex + friendly hint per type
 const ID_FORMAT_RULES = {
@@ -168,16 +172,18 @@ const PublicLAFForm = ({
     const STEPS = (() => {
         if (!clientType) return ['Type'];
         const isExisting = clientType === 'reloan' || clientType === 'pending';
+        // Biometric is skipped in offline mode — captured at disbursement
+        const addBiometric = requireClientBiometric && isOnline;
         if (isExisting) {
             const s = ['Type', 'Photo', 'Lookup', 'Confirm', 'Loan'];
-            if (requireClientBiometric) s.push('Biometric');
+            if (addBiometric) s.push('Biometric');
             return s;
         }
         // prospect or balik
         const s = ['Type', 'Photo'];
         if (requireGovernmentId) s.push('ID');
         s.push('Personal', 'Address', 'Loan');
-        if (requireClientBiometric) s.push('Biometric');
+        if (addBiometric) s.push('Biometric');
         return s;
     })();
 
@@ -200,8 +206,22 @@ const PublicLAFForm = ({
     const [biometricData, setBiometricData] = useState(null);
     const [biometricVerified, setBiometricVerified] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
-    const [ciCode, setCiCode] = useState('');
+    const [submitted,  setSubmitted]  = useState(false);
+    const [ciCode,     setCiCode]     = useState('');
+
+    // ── Offline mode ──────────────────────────────────────────────────────
+    const { isOnline, wasOffline }    = useOnlineStatus();
+    const {
+        queue, stats, addEntry, removeEntry,
+        markSynced, markFailed, clearSynced, getAll,
+    } = useLAFOfflineQueue(qrToken);
+
+    const [showQueue,        setShowQueue]        = useState(false);
+    const [lastQueuedEntry,  setLastQueuedEntry]  = useState(null);
+    const [offlineConfirmed, setOfflineConfirmed] = useState(false);
+    const [syncing,          setSyncing]          = useState(false);
+    const [syncProgress,     setSyncProgress]     = useState(null);
+    const [syncResults,      setSyncResults]      = useState([]);
 
     const isExistingClient  = clientType === 'reloan' || clientType === 'pending';
     const isProspectOrBalik = clientType === 'prospect' || clientType === 'balik';
@@ -217,6 +237,75 @@ const PublicLAFForm = ({
         if (!data.fileKey) throw new Error('Upload failed');
         return data.fileKey;
     }, []);
+
+    // ── Blob → base64 helper ─────────────────────────────────────────────
+    const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+        if (!blob) { resolve(null); return; }
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+
+    // ── Sync offline queue ────────────────────────────────────────────────
+    const syncQueue = useCallback(async () => {
+        if (syncing) return;
+        const token = typeof window !== 'undefined'
+            ? localStorage.getItem('jwt') || sessionStorage.getItem('jwt')
+            : null;
+        if (!token) {
+            toast.error('You must be logged in to sync. Please log in and try again.');
+            return;
+        }
+        const pending = queue.filter(e => e.status === 'pending');
+        if (pending.length === 0) { toast.info('Nothing to sync.'); return; }
+        setSyncing(true);
+        setSyncProgress({ current: 0, total: pending.length });
+        const results = [];
+        for (let i = 0; i < pending.length; i++) {
+            const entry = pending[i];
+            setSyncProgress({ current: i + 1, total: pending.length });
+            try {
+                const [lafB64, idB64, selfieB64] = await Promise.all([
+                    blobToBase64(entry.lafPhotoBlob),
+                    blobToBase64(entry.idPhotoBlob),
+                    blobToBase64(entry.selfieBlob),
+                ]);
+                const res = await fetch('/api/v2/laf/sync', {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        ...entry.formData,
+                        offlineId:      entry.id,
+                        lafPhotoBase64: lafB64,
+                        idPhotoBase64:  idB64,
+                        selfieBase64:   selfieB64,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await markSynced(entry.id, data.ciReferenceCode);
+                    results.push({ id: entry.id, success: true, ciCode: data.ciReferenceCode });
+                } else {
+                    await markFailed(entry.id, data.message || 'Sync failed');
+                    results.push({ id: entry.id, success: false, error: data.message });
+                }
+            } catch (err) {
+                await markFailed(entry.id, err.message || 'Network error');
+                results.push({ id: entry.id, success: false, error: err.message });
+            }
+        }
+        setSyncing(false);
+        setSyncProgress(null);
+        setSyncResults(results);
+        const ok  = results.filter(r => r.success).length;
+        const bad = results.filter(r => !r.success).length;
+        if (ok > 0)  toast.success(`${ok} application${ok > 1 ? 's' : ''} synced successfully.`);
+        if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
+    }, [syncing, queue, markSynced, markFailed]);
 
     const validateAndNext = async (schema, values, form) => {
         try {
@@ -273,6 +362,42 @@ const PublicLAFForm = ({
     const goPrev = () => setStep(s => Math.max(s - 1, 0));
 
     const handleSubmit = useCallback(async (values) => {
+        // ── Offline mode: save to queue instead of submitting ─────────────
+        if (!isOnline) {
+            if (stats.isFull) {
+                toast.error('Queue is full (30 clients). Please sync before adding more.');
+                return;
+            }
+            if (!lafPhotoFile) { toast.error('Photo required.'); return; }
+            const entryId = await addEntry(
+                {
+                    ...values,
+                    qrToken, groupId, loId, branchId,
+                    clientType,
+                    existingClientId: foundClient?._id   || null,
+                    existingLoanId:   foundClient?.loanId || null,
+                    detailFlags:      Object.keys(detailFlags).filter(k => detailFlags[k]),
+                    governmentIdType:   idType   || null,
+                    governmentIdNumber: idNumber || null,
+                    loanAmount: parseFloat(values.loanAmount) || 0,
+                },
+                {
+                    lafPhoto:     lafPhotoFile,
+                    idPhoto:      idPhotoFile,
+                    selfieWithId: selfieWithIdFile,
+                }
+            );
+            if (!entryId) {
+                toast.error('Failed to save to queue. Please try again.');
+                return;
+            }
+            const saved = queue.find(e => e.id === entryId) || { id: entryId, formData: values };
+            setLastQueuedEntry({ id: entryId, formData: { ...values, firstName: values.firstName, lastName: values.lastName } });
+            setOfflineConfirmed(true);
+            return;
+        }
+
+        // ── Online mode: normal submit ────────────────────────────────────
         if (!lafPhotoFile) { toast.error('Photo required.'); return; }
         if (requireClientBiometric && isProspectOrBalik && !biometricVerified) { toast.error('Biometric verification required.'); return; }
         setSubmitting(true);
@@ -307,7 +432,62 @@ const PublicLAFForm = ({
         foundClient, detailFlags, requireClientBiometric, requireGovernmentId,
         requireSelfieWithId, isProspectOrBalik, uploadFile]);
 
+    // ── Reset form for "Add Another Client" ──────────────────────────────
+    const resetForNextClient = useCallback(() => {
+        setStep(0);
+        setClientType(null);
+        setLafPhotoFile(null);
+        setLafPhotoPreview(null);
+        setIdType('');
+        setIdNumber('');
+        setIdPhotoFile(null);
+        setIdPhotoPreview(null);
+        setSelfieWithIdFile(null);
+        setIdErrors({});
+        setLookupLastName('');
+        setLookupSlotNo('');
+        setLookupLooking(false);
+        setFoundClient(null);
+        setDetailFlags({});
+        setBiometricData(null);
+        setBiometricVerified(false);
+        setOfflineConfirmed(false);
+        setLastQueuedEntry(null);
+        formikRef.current?.resetForm();
+    }, []);
+
     if (submitted) return <LAFSuccessScreen ciReferenceCode={ciCode} groupName={groupName} branchName={branchName} />;
+
+    // Offline confirmation screen
+    if (offlineConfirmed && lastQueuedEntry) {
+        return (
+            <div className="min-h-screen bg-gray-50 py-6 px-4">
+                <div className="max-w-lg mx-auto">
+                    <div className="text-center mb-5">
+                        <h1 className="text-xl font-bold text-gray-900">Loan Application</h1>
+                        <p className="text-xs text-gray-500 mt-0.5">{groupName} · {branchName}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <LAFOfflineConfirmation
+                            entry={lastQueuedEntry}
+                            stats={stats}
+                            onAddAnother={resetForNextClient}
+                            onViewQueue={() => setShowQueue(true)}
+                            MAX_ENTRIES={MAX_ENTRIES}
+                        />
+                    </div>
+                </div>
+                <LAFQueuePanel
+                    isOpen={showQueue}
+                    onClose={() => setShowQueue(false)}
+                    queue={queue}
+                    onRemove={removeEntry}
+                    isSyncing={syncing}
+                    syncProgress={syncProgress}
+                />
+            </div>
+        );
+    }
 
     const preFilledValues = foundClient ? {
         firstName: foundClient.firstName || '', lastName: foundClient.lastName || '',
@@ -340,6 +520,59 @@ const PublicLAFForm = ({
                     <p className="text-xs text-gray-500 mt-0.5">{groupName} · {branchName}</p>
                     {loName && <p className="text-xs text-gray-400 mt-0.5">Loan Officer: {loName}</p>}
                 </div>
+
+                {/* ── Offline banner ───────────────────────────────────── */}
+                {!isOnline && (
+                    <div className="mb-4 p-3 bg-red-600 text-white rounded-xl text-sm font-semibold flex items-start gap-2">
+                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <div>
+                            <p>⚠ Offline Mode — Do NOT refresh or close this page.</p>
+                            <p className="text-xs font-normal mt-0.5 text-red-100">
+                                Submissions will be saved to this device and synced when internet returns.
+                                Biometric capture is skipped — will be done at disbursement.
+                                {stats.pending > 0 && ` · ${stats.pending} client${stats.pending > 1 ? 's' : ''} queued`}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Back online — sync banner ─────────────────────────── */}
+                {isOnline && wasOffline && stats.pending > 0 && (
+                    <div className="mb-4 p-3 bg-green-600 text-white rounded-xl text-sm flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <div>
+                                <p className="font-semibold">Back Online</p>
+                                <p className="text-xs text-green-100">{stats.pending} application{stats.pending > 1 ? 's' : ''} ready to sync</p>
+                            </div>
+                        </div>
+                        <button type="button" onClick={syncQueue}
+                            disabled={syncing}
+                            className="px-4 py-2 bg-white text-green-700 text-xs font-bold rounded-lg
+                                hover:bg-green-50 disabled:opacity-50 flex items-center gap-1.5">
+                            {syncing ? (
+                                <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Syncing…</>
+                            ) : 'Sync Now'}
+                        </button>
+                    </div>
+                )}
+
+                {/* ── View queue button (visible when entries exist) ─────── */}
+                {stats.total > 0 && (
+                    <button type="button" onClick={() => setShowQueue(true)}
+                        className="w-full mb-4 py-2 border border-gray-200 text-gray-600 text-xs
+                            font-medium rounded-xl hover:bg-gray-50 flex items-center justify-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        View Queue ({stats.pending} pending{stats.synced > 0 ? `, ${stats.synced} synced` : ''})
+                    </button>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                     <StepBar current={step} total={STEPS.length} labels={STEPS} />
 
@@ -534,8 +767,8 @@ const PublicLAFForm = ({
                         </Formik>
                     </div>
 
-                    {/* Biometric */}
-                    {bioIdx !== -1 && step === bioIdx && (
+                    {/* Biometric — skipped entirely in offline mode */}
+                    {bioIdx !== -1 && step === bioIdx && isOnline && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Identity Verification</h2>
                             {isExistingClient && (
@@ -565,6 +798,15 @@ const PublicLAFForm = ({
                     )}
                 </div>
             </div>
+
+            <LAFQueuePanel
+                isOpen={showQueue}
+                onClose={() => setShowQueue(false)}
+                queue={queue}
+                onRemove={removeEntry}
+                isSyncing={syncing}
+                syncProgress={syncProgress}
+            />
         </div>
     );
 };
