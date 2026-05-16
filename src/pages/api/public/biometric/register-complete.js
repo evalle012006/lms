@@ -10,11 +10,8 @@ import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CLIENT_FIELDS }               from '@/lib/graph.fields';
 import { logAuditPublic }              from '@/lib/audit';
 import getConfig                       from 'next/config';
-import jwt                             from 'jsonwebtoken';
-import moment                          from 'moment';
-import { createClient }                from 'ioredis';
-
-const redis = new createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+import jwt    from 'jsonwebtoken';
+import moment from 'moment';
 
 const { serverRuntimeConfig } = getConfig();
 const graph = new GraphProvider();
@@ -55,15 +52,28 @@ export default async function handler(req, res) {
         // The challenge was generated in register-challenge.js and the client sends it back
         // via the credential. We verify using the credential directly.
         // The expected challenge is stored in the clientDataJSON — WebAuthn library handles this.
-        // Retrieve challenge from Redis (set by register-challenge.js)
-        const expectedChallenge = await redis.get(`bio_challenge:${decoded.tokenId}`);
-        if (!expectedChallenge) {
+        // Extract challenge from challengeToken JWT (sent by client during registration)
+        // The challenge was embedded in challengeToken by register-challenge.js
+        const { challengeToken } = req.body;
+        if (!challengeToken) {
+            return res.status(200).json({ success: false, message: 'Challenge token missing.' });
+        }
+        let expectedChallenge;
+        try {
+            const challengeDecoded = jwt.verify(challengeToken, serverRuntimeConfig.secret);
+            expectedChallenge = challengeDecoded.challenge;
+            // Verify the tokenId matches — prevents cross-token attacks
+            if (challengeDecoded.tokenId !== decoded.tokenId) {
+                return res.status(200).json({ success: false, message: 'Token mismatch.' });
+            }
+        } catch (e) {
             return res.status(200).json({
                 success: false,
-                message: 'Challenge expired. Please ask the Branch Manager to generate a new QR code.',
+                message: e.name === 'TokenExpiredError'
+                    ? 'Challenge expired. Please ask the Branch Manager to generate a new QR code.'
+                    : 'Invalid challenge token.',
             });
         }
-        await redis.del(`bio_challenge:${decoded.tokenId}`);
 
         const verification = await verifyRegistrationResponse({
             response:                credential,

@@ -14,7 +14,7 @@ import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
 import Spinner from '@/components/Spinner';
-import { useSignedUrl } from '@/hooks/useSignedUrl';
+import { useSignedUrl } from 'hooks/useSignedUrl';
 import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';

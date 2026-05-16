@@ -64,7 +64,7 @@ export default function BiometricRegisterPage({ token, valid, error: serverError
                 return;
             }
 
-            const { options } = challengeData;
+            const { options, challengeToken } = challengeData;
 
             // Trigger platform biometric
             const credential = await navigator.credentials.create({
@@ -95,6 +95,7 @@ export default function BiometricRegisterPage({ token, valid, error: serverError
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     token,
+                    challengeToken,
                     credential: {
                         id:    credential.id,
                         rawId: arrayBufferToBase64url(credential.rawId),

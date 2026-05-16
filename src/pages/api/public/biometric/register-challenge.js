@@ -7,11 +7,8 @@ import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { GraphProvider }               from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl }    from '@/lib/graph/graph.util';
 import getConfig                       from 'next/config';
-import jwt                             from 'jsonwebtoken';
-import crypto                          from 'crypto';
-import { createClient }                from 'ioredis';
-
-const redis = new createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+import jwt    from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const { serverRuntimeConfig } = getConfig();
 const graph = new GraphProvider();
@@ -81,9 +78,8 @@ export default async function handler(req, res) {
             { expiresIn: '10m' }
         );
 
-        // Store challenge in Redis for 10 min — retrieved in register-complete.js
-        await redis.set(`bio_challenge:${decoded.tokenId}`, options.challenge, 'EX', 600);
-
+        // Embed challenge directly in challengeToken JWT (10 min expiry)
+        // register-complete.js will extract it from there — no Redis needed
         return res.status(200).json({ success: true, options, challengeToken });
     } catch (err) {
         const isExpired = err.name === 'TokenExpiredError';
