@@ -367,11 +367,19 @@ const AddUpdateClientPage = ({
                     biometricCounter:      cd.biometricCounter      || 0,
                     biometricRegisteredAt: cd.biometricRegisteredAt || null,
                     biometricDeviceName:   cd.biometricDeviceName   || null,
+                    // ── Phase 2 fields ─────────────────────────────────────
+                    governmentIdType:      cd.governmentIdType      || null,
+                    governmentIdNumber:    cd.governmentIdNumber    || null,
+                    governmentIdPhotoKey:  cd.governmentIdPhotoKey  || null,
+                    selfieWithIdPhotoKey:  cd.selfieWithIdPhotoKey  || null,
+                    landmark:              cd.landmark              || null,
+                    distanceFromBranch:    cd.distanceFromBranch   || null,
+                    clientType:            cd.clientType            || 'prospect',
                     status:     'pending',
                     delinquent: false,
-                    groupId:    values.groupId,
-                    loId:       values.loId,
-                    groupName:  groupList.find(g => g._id === values.groupId)?.name || '',
+                    groupId:    values.groupId || cd.groupId || '',
+                    loId:       values.loId    || cd.loId    || '',
+                    groupName:  groupList.find(g => g._id === (values.groupId || cd.groupId))?.name || '',
                 });
             } else {
                 // Edit mode — use form values

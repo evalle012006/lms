@@ -86,9 +86,12 @@ export function useLAFOfflineQueue(qrToken) {
     };
 
     const addEntry = useCallback(async (formData, photoFiles = {}) => {
-        if (stats.isFull) return null;
+        // Check count directly from DB — avoids stale stats closure
         try {
             const db = await openDB();
+            const all = await getAllFromStore(db);
+            const pendingCount = all.filter(e => e.qrToken === qrToken && e.status === 'pending').length;
+            if (pendingCount >= MAX_ENTRIES) return null;
             const id = `laf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             const [lafPhotoBlob, idPhotoBlob, selfieBlob] = await Promise.all([
                 compressToBlob(photoFiles.lafPhoto,     1000, 0.78),

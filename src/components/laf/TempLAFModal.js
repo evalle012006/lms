@@ -1,18 +1,20 @@
+// src/components/laf/TempLAFModal.js
+// Updated Phase 2 — includes all new fields in the loanData/client objects
+// shown on the CI Investigation page when "View LAF" is clicked.
+
 import React from 'react';
 import LAFModal from '@/components/transactions/loan-application/LAFModal';
 
 /**
  * Wraps LAFModal for temporaryLoanApplication data.
- * Key difference: LAFModal uses a plain <img> for the profile photo,
+ * LAFModal uses a plain <img> for the profile photo,
  * so we must pass a pre-signed URL (lafPhotoUrl), not the storage key.
  */
 const TempLAFModal = ({ isOpen, onClose, application }) => {
     if (!isOpen || !application) return null;
 
-    // LAFModal reads: client.profile OR loanData.profile for the photo
-    // It uses a plain <img src={profilePicture}> — needs a real URL, not a key
-    const photoUrl = application.lafPhotoUrl  // pre-signed URL from CI endpoint
-        || application.lafPhotoKey            // fallback: key (won't display but won't break)
+    const photoUrl = application.lafPhotoUrl
+        || application.lafPhotoKey
         || '';
 
     const loanData = {
@@ -42,8 +44,7 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         // ── CI name ───────────────────────────────────────────────────────
         ciName: application.ciName || '',
 
-        // ── Photo — passed at top level so LAFModal can find it ───────────
-        // LAFModal: const profilePicture = client.profile || loanData.profile
+        // ── Photo ─────────────────────────────────────────────────────────
         profile: photoUrl,
 
         // ── Nested client object ──────────────────────────────────────────
@@ -61,11 +62,26 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
             addressMunicipalityCity: application.addressMunicipalityCity || '',
             addressProvince:         application.addressProvince         || '',
             addressZipCode:          application.addressZipCode          || '',
-            // ── Photo: use pre-signed URL here too ────────────────────────
             profile:  photoUrl,
             ciName:   application.ciName || '',
             yearsOfStay: '',
             business:    '',
+
+            // ── Phase 2: Address extras ───────────────────────────────────
+            landmark:            application.landmark           || '',
+            distanceFromBranch:  application.distanceFromBranch || '',
+
+            // ── Phase 2: Government ID ────────────────────────────────────
+            governmentIdType:    application.governmentIdType   || '',
+            governmentIdNumber:  application.governmentIdNumber  || '',
+
+            // ── Phase 2: Client type ──────────────────────────────────────
+            clientType:          application.clientType         || 'prospect',
+
+            // ── Biometric ─────────────────────────────────────────────────
+            biometricCredentialId: application.biometricCredentialId || null,
+            biometricDeviceName:   application.biometricDeviceName   || null,
+            biometricRegisteredAt: application.biometricRegisteredAt || null,
         },
 
         // ── Branch ────────────────────────────────────────────────────────
@@ -75,22 +91,16 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
             code: application.branchCode || '',
         }],
 
-        // ── Group (not assigned yet) ──────────────────────────────────────
-        group: { name: '' },
-        groupName: '',
+        // ── Group / LO ───────────────────────────────────────────────────
+        group: { name: application.groupName || '' },
+        groupName:      application.groupName || '',
+        loId:           application.loId      || '',
 
-        // ── Loan Officer (not assigned yet) ───────────────────────────────
-        loanOfficer: {
-            firstName: '',
-            lastName:  '',
-            loNo:      '',
-        },
-
-        // ── Other fields ──────────────────────────────────────────────────
-        prevLoanId:      null,
-        passbookNo:      '',
-        admissionDate:   '',
+        // ── Submission info ───────────────────────────────────────────────
+        isOffline:      application.isOffline      || false,
+        submittedAt:    application.submittedAt    || null,
         loanOfficerName: '',
+        loanOfficer: { firstName: '', lastName: '', loNo: '' },
     };
 
     return (

@@ -14,7 +14,7 @@ import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
 import Spinner from '@/components/Spinner';
-import { useSignedUrl } from 'hooks/useSignedUrl';
+import { useSignedUrl } from '@/hooks/useSignedUrl';
 import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';
@@ -70,8 +70,8 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     const [oldLOList, setOldLOList]                 = useState([]);
     const [oldGroupList, setOldGroupList]           = useState([]);
     const [offsetClient, setOffsetClient]           = useState(null);
-    const [ciStatus,   setCiStatus]   = useState(null);
-    const [ciChecking, setCiChecking] = useState(false);
+    const [ciStatus, setCiStatus]                   = useState(null);  // null | { hasCI, latestCI, isBalik }
+    const [ciChecking, setCiChecking]               = useState(false);
 
     // ── Edit mode state ────────────────────────────────────
     const [loanData, setLoanData]       = useState(null);
@@ -83,17 +83,6 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
-
-    const checkClientCI = async (id, isBalik = false) => {
-        setCiChecking(true);
-        try {
-            const res = await fetchWrapper.get(
-                getApiBaseUrl() + `laf/ci/latest?clientId=${id}`
-            );
-            if (res.success) setCiStatus({ hasCI: res.hasCI, latestCI: res.latestCI, isBalik });
-        } catch { /* non-fatal */ }
-        finally { setCiChecking(false); }
-    };
 
     // ── Load LO list for BM ────────────────────────────────────
     useEffect(() => {
@@ -166,10 +155,9 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         const group = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
         if (group?.availableSlots?.length) {
             let slots = [...group.availableSlots];
-            // In edit mode OR active/advance client type, the slot is already occupied
+            // In edit mode, the loan's own slotNo is already occupied (removed from availableSlots)
             // so we must add it back so the dropdown has a valid selected option
-            if ((isEdit || clientType === 'active' || clientType === 'advance')
-                && slotNo && !slots.includes(parseInt(slotNo))) {
+            if (isEdit && slotNo && !slots.includes(parseInt(slotNo))) {
                 slots.push(parseInt(slotNo));
             }
             setSlotNumber(
@@ -538,17 +526,32 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         // co-maker list loaded via useEffect watching selectedGroup + currentDate
     };
 
+    const checkClientCI = async (clientId, isBalik = false) => {
+        setCiChecking(true);
+        try {
+            const res = await fetchWrapper.get(
+                getApiBaseUrl() + `laf/ci/latest?clientId=${clientId}`
+            );
+            if (res.success) {
+                setCiStatus({ hasCI: res.hasCI, latestCI: res.latestCI, isBalik });
+            }
+        } catch { /* non-fatal */ }
+        finally { setCiChecking(false); }
+    };
+
     const handleClientIdChange = (field, value, resolvedPhotoUrl = null) => {
         const form = formikRef.current;
         setClientId(value);
-        setCiStatus(null); 
-        setClientId(value);
+        setCiStatus(null);
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
         // Attach the already-resolved signed URL so the read-only card can display it
         setSelectedClientObj({ ...c, resolvedPhotoUrl });
+        // Check CI for existing clients — reloan, pending, balik all need recent CI
+        if (clientType !== 'pending') {
+            checkClientCI(value, clientType === 'offset');
+        }
         setGroupLeader(c.groupLeader || false);
-        if (clientType !== 'pending') checkClientCI(value, clientType === 'offset');
         if (clientType === 'active' || clientType === 'advance') {
             const sl = c.loans?.[0]?.slotNo;
             const lc = c.loans?.[0]?.loanCycle;
@@ -659,8 +662,9 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         setOffsetClient(client);
         setClientId(client._id);
         setCiStatus(null);
-        checkClientCI(client._id, true);
         formikRef.current?.setFieldValue('clientId', client._id);
+        // Balik clients always need new CI
+        checkClientCI(client._id, true);
     };
 
     const handleClearClient = () => {
@@ -673,6 +677,32 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     // Save — exact mirror of AddUpdateLoanDrawer
     // ─────────────────────────────────────────────────────────
     const handleSaveUpdate = (values, action) => {
+        // ── Phase 7: Block loan creation without valid CI ─────────────────
+        // Applies to all existing client types (reloan/pending/balik).
+        // Prospect (clientType='pending') is excluded — they have no CI yet.
+        const needsCICheck = clientType !== 'pending';
+        if (needsCICheck) {
+            if (!ciStatus) {
+                // CI check hasn't completed yet (still loading)
+                toast.error('Please wait — checking CI investigation status...');
+                return;
+            }
+            if (!ciStatus.hasCI) {
+                toast.error(
+                    'Cannot add loan: no approved CI investigation found for this client. ' +
+                    'A CI investigation must be completed before adding a loan.'
+                );
+                return;
+            }
+            if (ciStatus.latestCI?.isOld) {
+                toast.error(
+                    `Cannot add loan: CI investigation is outdated (${ciStatus.latestCI.monthsAgo} months ago). ` +
+                    'A new CI investigation must be completed before adding a loan.'
+                );
+                return;
+            }
+        }
+
         setLoading(true);
         values.currentDate   = currentDate;
         values.clientId      = clientId;
@@ -782,15 +812,6 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         if (values.coMakerId) {
             values.coMakerPending     = false;
             values.coMakerPendingName = null;
-        }
-
-        // ── Co-maker validation ───────────────────────────────────────────
-        // Must either: select a co-maker OR check the "not yet encoded" checkbox
-        // This applies to both add and edit mode
-        if (!values.coMakerId && !coMakerPending) {
-            setLoading(false);
-            toast.error('Co-maker is required. Please select a co-maker or check "Co-maker not yet encoded".');
-            return;
         }
 
         const loanLimit = values.occurence === 'daily'
@@ -1077,150 +1098,174 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
             )}
 
             {!loanFetching && (
-                <Formik
-                    enableReinitialize
-                    initialValues={initialValues}
-                    validationSchema={validationSchema}
-                    onSubmit={handleSaveUpdate}
-                    innerRef={formikRef}
-                >
-                    {({ values, touched, errors, handleChange, handleSubmit, setFieldValue, setFieldTouched, isSubmitting, isValidating }) => (
-                        <form onSubmit={handleSubmit} autoComplete="off">
-                            <div className="px-6 py-6 grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6">
-                                {/* ── CI Status Banner ─────────────────────── */}
-                                {(ciChecking || ciStatus) && clientType !== 'pending' && (
-                                    <div className={`col-span-full px-4 py-3 rounded-xl border flex items-start gap-3 ${
-                                        ciChecking ? 'bg-gray-50 border-gray-200'
-                                        : !ciStatus?.hasCI ? 'bg-red-50 border-red-300'
-                                        : ciStatus?.latestCI?.isOld ? 'bg-amber-50 border-amber-300'
-                                        : 'bg-green-50 border-green-300'
-                                    }`}>
-                                        {ciChecking ? (
-                                            <>
-                                                <svg className="w-4 h-4 animate-spin text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                                </svg>
-                                                <p className="text-sm text-gray-500">Checking CI investigation status...</p>
-                                            </>
-                                        ) : ciStatus?.isBalik && !ciStatus?.hasCI ? (
-                                            <>
-                                                <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-red-700">CI Required — Balik Client</p>
-                                                    <p className="text-xs text-red-600 mt-0.5">This client is returning after a loan offset. A new CI investigation is required before processing their reloan.</p>
-                                                </div>
-                                            </>
-                                        ) : !ciStatus?.hasCI ? (
-                                            <>
-                                                <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-red-700">No CI Investigation Found</p>
-                                                    <p className="text-xs text-red-600 mt-0.5">This client has no approved CI investigation on record. Please conduct a CI before processing this reloan.</p>
-                                                </div>
-                                            </>
-                                        ) : ciStatus?.latestCI?.isOld ? (
-                                            <>
-                                                <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-amber-700">CI Investigation is Old</p>
-                                                    <p className="text-xs text-amber-600 mt-0.5">Last CI was {ciStatus.latestCI.monthsAgo} month(s) ago{ciStatus.latestCI.picUserName ? ` by ${ciStatus.latestCI.picUserName}` : ''}. Consider a new CI.</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-green-700">CI Investigation Complete</p>
-                                                    <p className="text-xs text-green-600 mt-0.5">CI approved {ciStatus.latestCI.monthsAgo === 0 ? 'this month' : `${ciStatus.latestCI.monthsAgo} month(s) ago`}{ciStatus.latestCI.picUserName ? ` by ${ciStatus.latestCI.picUserName}` : ''}.</p>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+            <Formik
+                enableReinitialize
+                initialValues={initialValues}
+                validationSchema={validationSchema}
+                onSubmit={handleSaveUpdate}
+                innerRef={formikRef}
+            >
+                {({ values, touched, errors, handleChange, handleSubmit, setFieldValue, setFieldTouched, isSubmitting, isValidating }) => (
+                    <form onSubmit={handleSubmit} autoComplete="off">
+                        <div className="px-6 py-6 grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6">
 
-                                {/* LEFT — client selection */}
-                                <SelectClientPanel
-                                    rep={rep}
-                                    currentUser={currentUser}
-                                    branchList={branchList}
-                                    loList={loList}
-                                    loListLoading={loListLoading}
-                                    groupList={groupList}
-                                    clientList={clientList}
-                                    comakerList={comakerList}
-                                    selectedLo={selectedLo}
-                                    selectedGroup={selectedGroup}
-                                    clientId={clientId}
-                                    clientType={clientType}
-                                    offsetClient={offsetClient}
-                                    selectedClientObj={selectedClientObj}
-                                    selectedOldBranch={selectedOldBranch}
-                                    selectedOldLO={selectedOldLO}
-                                    selectedOldGroup={selectedOldGroup}
-                                    oldLOList={oldLOList}
-                                    oldGroupList={oldGroupList}
-                                    slotNo={slotNo}
-                                    slotNumber={slotNumber}
-                                    selectedCoMaker={selectedCoMaker}
-                                    loStatus={loStatus}
-                                    handleLoIdChange={handleLoIdChange}
-                                    handleGroupIdChange={handleGroupIdChange}
-                                    handleClientIdChange={handleClientIdChange}
-                                    handleClientTypeChange={handleClientTypeChange}
-                                    handleSlotNoChange={handleSlotNoChange}
-                                    handleCoMakerChange={handleCoMakerChange}
-                                    coMakerChecking={coMakerChecking}
-                                    coMakerPending={coMakerPending}
-                                    coMakerPendingName={coMakerPendingName}
-                                    onCoMakerPendingChange={v => {
-                                        setCoMakerPending(v);
-                                        if (!v) setCoMakerPendingName('');
-                                    }}
-                                    onCoMakerPendingNameChange={setCoMakerPendingName}
-                                    handleOldBranchIdChange={handleOldBranchIdChange}
-                                    handleOldLoIdChange={handleOldLoIdChange}
-                                    handleOldGroupIdChange={handleOldGroupIdChange}
-                                    handleOffsetClientSelect={handleOffsetClientSelect}
-                                    onClearClient={handleClearClient}
-                                    isEditMode={isEdit}
-                                    touched={touched}
-                                    errors={errors}
-                                    setFieldTouched={setFieldTouched}
-                                />
+                            {/* ── CI Warning Banner ─────────────────────────────── */}
+                            {/* Shows when reloan/pending/balik client has no recent CI */}
+                            {(ciChecking || ciStatus) && clientType !== 'pending' && (
+                                <div className={`col-span-full mb-2 px-4 py-3 rounded-xl border flex items-start gap-3 ${
+                                    ciChecking
+                                        ? 'bg-gray-50 border-gray-200'
+                                        : !ciStatus?.hasCI || ciStatus?.isBalik
+                                            ? 'bg-red-50 border-red-300'
+                                            : ciStatus?.latestCI?.isOld
+                                                ? 'bg-amber-50 border-amber-300'
+                                                : 'bg-green-50 border-green-300'
+                                }`}>
+                                    {ciChecking ? (
+                                        <>
+                                            <svg className="w-4 h-4 animate-spin text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                            </svg>
+                                            <p className="text-sm text-gray-500">Checking CI investigation status...</p>
+                                        </>
+                                    ) : ciStatus?.isBalik && !ciStatus?.hasCI ? (
+                                        <>
+                                            <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-semibold text-red-700">CI Required — Balik Client</p>
+                                                <p className="text-xs text-red-600 mt-0.5">
+                                                    This client is returning after a loan offset. A new CI investigation is required before processing their reloan.
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : !ciStatus?.hasCI ? (
+                                        <>
+                                            <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-semibold text-red-700">No CI Investigation Found</p>
+                                                <p className="text-xs text-red-600 mt-0.5">
+                                                    This client has no approved CI investigation on record. Please conduct a CI investigation before processing this reloan.
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : ciStatus?.latestCI?.isOld ? (
+                                        <>
+                                            <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-semibold text-amber-700">CI Investigation is Old</p>
+                                                <p className="text-xs text-amber-600 mt-0.5">
+                                                    Last CI was {ciStatus.latestCI.monthsAgo} months ago
+                                                    {ciStatus.latestCI.picUserName ? ` by ${ciStatus.latestCI.picUserName}` : ''}.
+                                                    Consider conducting a new CI investigation.
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-semibold text-green-700">CI Investigation Complete</p>
+                                                <p className="text-xs text-green-600 mt-0.5">
+                                                    CI approved {ciStatus.latestCI.monthsAgo === 0 ? 'this month' : `${ciStatus.latestCI.monthsAgo} month(s) ago`}
+                                                    {ciStatus.latestCI.picUserName ? ` by ${ciStatus.latestCI.picUserName}` : ''}.
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
-                                {/* RIGHT — loan form */}
-                                <LoanFormPanel
-                                    values={values}
-                                    touched={touched}
-                                    errors={errors}
-                                    handleChange={handleChange}
-                                    setFieldValue={setFieldValue}
-                                    setFieldTouched={setFieldTouched}
-                                    initialDateRelease={initialDateRelease}
-                                    minDate={minDate}
-                                    maxDate={maxDate}
-                                    onDateChange={date => formikRef.current?.setFieldValue('dateOfRelease', date)}
-                                    loanTerms={loanTerms}
-                                    setLoanTerms={setLoanTerms}
-                                    groupOccurence={groupOccurence}
-                                    groupLeader={groupLeader}
-                                    clientType={clientType}
-                                    selectedClientObj={selectedClientObj}
-                                    offsetClient={offsetClient}
-                                    onPNFocus={() => getLastPNNumber(setFieldValue)}
-                                    onPNBlur={e => handlePNNumber(e, setFieldValue)}
-                                    branchId={currentUser.designatedBranchId}
-                                    onBack={onBack}
-                                    loading={loading}
-                                    coMakerChecking={coMakerChecking}
-                                    isSubmitting={isSubmitting}
-                                    isValidating={isValidating}
-                                />
-                            </div>
-                        </form>
-                    )}
-                </Formik>
+                            {/* LEFT — client selection */}
+                            <SelectClientPanel
+                                rep={rep}
+                                currentUser={currentUser}
+                                branchList={branchList}
+                                loList={loList}
+                                loListLoading={loListLoading}
+                                groupList={groupList}
+                                clientList={clientList}
+                                comakerList={comakerList}
+                                selectedLo={selectedLo}
+                                selectedGroup={selectedGroup}
+                                clientId={clientId}
+                                clientType={clientType}
+                                offsetClient={offsetClient}
+                                selectedClientObj={selectedClientObj}
+                                selectedOldBranch={selectedOldBranch}
+                                selectedOldLO={selectedOldLO}
+                                selectedOldGroup={selectedOldGroup}
+                                oldLOList={oldLOList}
+                                oldGroupList={oldGroupList}
+                                slotNo={slotNo}
+                                slotNumber={slotNumber}
+                                selectedCoMaker={selectedCoMaker}
+                                loStatus={loStatus}
+                                handleLoIdChange={handleLoIdChange}
+                                handleGroupIdChange={handleGroupIdChange}
+                                handleClientIdChange={handleClientIdChange}
+                                handleClientTypeChange={handleClientTypeChange}
+                                handleSlotNoChange={handleSlotNoChange}
+                                handleCoMakerChange={handleCoMakerChange}
+                                coMakerChecking={coMakerChecking}
+                                coMakerPending={coMakerPending}
+                                coMakerPendingName={coMakerPendingName}
+                                onCoMakerPendingChange={v => {
+                                    setCoMakerPending(v);
+                                    if (!v) setCoMakerPendingName('');
+                                }}
+                                onCoMakerPendingNameChange={setCoMakerPendingName}
+                                handleOldBranchIdChange={handleOldBranchIdChange}
+                                handleOldLoIdChange={handleOldLoIdChange}
+                                handleOldGroupIdChange={handleOldGroupIdChange}
+                                handleOffsetClientSelect={handleOffsetClientSelect}
+                                onClearClient={handleClearClient}
+                                isEditMode={isEdit}
+                                touched={touched}
+                                errors={errors}
+                                setFieldTouched={setFieldTouched}
+                            />
+
+                            {/* RIGHT — loan form */}
+                            <LoanFormPanel
+                                values={values}
+                                touched={touched}
+                                errors={errors}
+                                handleChange={handleChange}
+                                setFieldValue={setFieldValue}
+                                setFieldTouched={setFieldTouched}
+                                initialDateRelease={initialDateRelease}
+                                minDate={minDate}
+                                maxDate={maxDate}
+                                onDateChange={date => formikRef.current?.setFieldValue('dateOfRelease', date)}
+                                loanTerms={loanTerms}
+                                setLoanTerms={setLoanTerms}
+                                groupOccurence={groupOccurence}
+                                groupLeader={groupLeader}
+                                clientType={clientType}
+                                selectedClientObj={selectedClientObj}
+                                offsetClient={offsetClient}
+                                onPNFocus={() => getLastPNNumber(setFieldValue)}
+                                onPNBlur={e => handlePNNumber(e, setFieldValue)}
+                                branchId={currentUser.designatedBranchId}
+                                onBack={onBack}
+                                loading={loading}
+                                coMakerChecking={coMakerChecking}
+                                isSubmitting={isSubmitting}
+                                isValidating={isValidating}
+                            />
+                        </div>
+                    </form>
+                )}
+            </Formik>
             )}
         </div>
     );

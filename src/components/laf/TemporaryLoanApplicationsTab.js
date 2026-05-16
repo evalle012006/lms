@@ -96,19 +96,34 @@ const ApplicationDetailModal = ({ application, onClose, onPrintLAF }) => {
     const fields = [
         ['CI Reference Code',   application.ciReferenceCode],
         ['Branch',              `${application.branchCode} — ${application.branchName}`],
+        ['Client Type',         application.clientType
+            ? application.clientType.charAt(0).toUpperCase() + application.clientType.slice(1)
+            : 'Prospect'],
         ['Full Name',           `${application.lastName}, ${application.firstName} ${application.middleName || ''}`],
         ['Birthdate',           application.birthdate],
         ['Contact',             application.contactNumber],
         ['Address',             application.address],
-        ['Loan Amount',         application.loanAmount ? `₱${Number(application.loanAmount).toLocaleString()}` : '—'],
+        application.landmark           && ['Landmark',          application.landmark],
+        application.distanceFromBranch && ['Distance',          application.distanceFromBranch],
+        ['Loan Amount',         application.loanAmount
+            ? `₱${Number(application.loanAmount).toLocaleString()}` : '—'],
         ['Loan Purpose',        application.loanPurpose],
         ['Guarantor',           `${application.guarantorFirstName || ''} ${application.guarantorLastName || ''}`],
         ['Guarantor Contact',   application.guarantorContactNumber],
         ['Relationship',        application.guarantorRelationship],
+        // ── Government ID ─────────────────────────────────────────────────
+        application.governmentIdType   && ['ID Type',           application.governmentIdType],
+        application.governmentIdNumber && ['ID Number',         application.governmentIdNumber],
+        // ── Biometric ─────────────────────────────────────────────────────
+        ['Biometric',           application.biometricCredentialId
+            ? `Registered${application.biometricDeviceName ? ` · ${application.biometricDeviceName}` : ''}`
+            : 'Not yet registered'],
+        // ── Source info ───────────────────────────────────────────────────
+        application.isOffline && ['Submission Mode',   'Offline (synced)'],
         ['Submitted',           moment(application.submittedAt).format('MMM DD, YYYY h:mm A')],
         ['Expires',             moment(application.expiresAt).format('MMM DD, YYYY')],
         ['Status',              <StatusBadge key="s" status={application.status} />],
-    ];
+    ].filter(Boolean); // remove null/false entries from optional rows
 
     return (
         <div

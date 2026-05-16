@@ -1,0 +1,123 @@
+// src/pages/api/public/biometric/register-complete.js
+// POST { token, credential, deviceName }
+// Verifies WebAuthn attestation and saves biometric to client record.
+// Marks the registration token as used (single-use enforcement).
+// Public — no auth — token carries clientId + single-use tokenId.
+
+import { verifyRegistrationResponse }  from '@simplewebauthn/server';
+import { GraphProvider }               from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { CLIENT_FIELDS }               from '@/lib/graph.fields';
+import { logAuditPublic }              from '@/lib/audit';
+import getConfig                       from 'next/config';
+import jwt                             from 'jsonwebtoken';
+import moment                          from 'moment';
+import { createClient }                from 'ioredis';
+
+const redis = new createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+
+const { serverRuntimeConfig } = getConfig();
+const graph = new GraphProvider();
+
+const TOKEN_TYPE = createGraphType('biometricRegistrationTokens', `
+    _id clientId loanId usedAt expiresAt
+`)('biometricRegistrationTokens');
+
+const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
+
+export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).end();
+
+    const { token, credential, deviceName } = req.body;
+    if (!token || !credential) {
+        return res.status(200).json({ success: false, message: 'Missing required fields.' });
+    }
+
+    try {
+        // Verify outer JWT (8hr token from QR)
+        const decoded = jwt.verify(token, serverRuntimeConfig.secret);
+        if (decoded.type !== 'biometric_registration') {
+            return res.status(200).json({ success: false, message: 'Invalid token.' });
+        }
+
+        // Double-check token record (race condition guard)
+        const [record] = await graph.query(
+            queryQl(TOKEN_TYPE, { where: { _id: { _eq: decoded.tokenId } } })
+        ).then(r => r.data?.biometricRegistrationTokens ?? []);
+
+        if (!record)       return res.status(200).json({ success: false, message: 'Token not found.' });
+        if (record.usedAt) return res.status(200).json({ success: false, message: 'This link has already been used.' });
+
+        const rpID     = process.env.NEXT_PUBLIC_WEBAUTHN_RP_ID  || 'localhost';
+        const rpOrigin = process.env.NEXT_PUBLIC_WEBAUTHN_ORIGIN || 'http://localhost:3000';
+
+        // We need the challenge — it was embedded in the credential's clientDataJSON
+        // The challenge was generated in register-challenge.js and the client sends it back
+        // via the credential. We verify using the credential directly.
+        // The expected challenge is stored in the clientDataJSON — WebAuthn library handles this.
+        // Retrieve challenge from Redis (set by register-challenge.js)
+        const expectedChallenge = await redis.get(`bio_challenge:${decoded.tokenId}`);
+        if (!expectedChallenge) {
+            return res.status(200).json({
+                success: false,
+                message: 'Challenge expired. Please ask the Branch Manager to generate a new QR code.',
+            });
+        }
+        await redis.del(`bio_challenge:${decoded.tokenId}`);
+
+        const verification = await verifyRegistrationResponse({
+            response:                credential,
+            expectedChallenge,
+            expectedOrigin:          rpOrigin,
+            expectedRPID:            rpID,
+            requireUserVerification: false,
+        });
+
+        if (!verification.verified || !verification.registrationInfo) {
+            return res.status(200).json({ success: false, message: 'Biometric verification failed.' });
+        }
+
+        const { credential: cred } = verification.registrationInfo;
+
+        // Mark token as used FIRST (prevent race condition re-use)
+        await graph.mutation(
+            updateQl(TOKEN_TYPE, {
+                where: { _id: { _eq: decoded.tokenId } },
+                set: { usedAt: moment().toISOString() },
+            })
+        );
+
+        // Save biometric to client record
+        await graph.mutation(
+            updateQl(CLIENT_TYPE, {
+                where: { _id: { _eq: record.clientId } },
+                set: {
+                    biometricCredentialId: Buffer.from(cred.id).toString('base64url'),
+                    biometricPublicKey:    Buffer.from(cred.publicKey).toString('base64'),
+                    biometricCounter:      cred.counter,
+                    biometricRegisteredAt: moment().toISOString(),
+                    biometricDeviceName:   deviceName || 'Mobile Device',
+                },
+            })
+        );
+
+        await logAuditPublic(req, {
+            action:      'BIOMETRIC_REGISTERED_AT_DISBURSEMENT',
+            category:    'BIOMETRIC',
+            severity:    'INFO',
+            entityType:  'client',
+            entityId:    record.clientId,
+            description: `Client biometric registered at disbursement via QR token`,
+            metadata:    { tokenId: decoded.tokenId, loanId: record.loanId, deviceName },
+        });
+
+        return res.status(200).json({ success: true, message: 'Biometric registered successfully.' });
+
+    } catch (err) {
+        const isExpired = err.name === 'TokenExpiredError';
+        return res.status(200).json({
+            success: false,
+            message: isExpired ? 'Link expired.' : (err.message || 'Registration failed.'),
+        });
+    }
+}

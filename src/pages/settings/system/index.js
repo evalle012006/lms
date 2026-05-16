@@ -9,8 +9,10 @@ import TransactionsSettingsPage from './transactions';
 import {
   BuildingOfficeIcon,
   BanknotesIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
+import AuditLogsPage from './audit-logs';
 
 const ModernTabSelector = ({ isActive, onClick, children, icon: Icon }) => (
   <button
@@ -35,7 +37,8 @@ const SettingsPage = (props) => {
     const [selectedTab, setSelectedTab] = useTabs([
         'profile',
         'transactions',
-        'holidays'
+        'holidays',
+        'audit',
     ]);
 
     useEffect(() => {
@@ -97,6 +100,16 @@ const SettingsPage = (props) => {
                             >
                                 Holiday Management
                             </ModernTabSelector>
+                            {/* Audit Logs — admin/area+ only */}
+                            {currentUser?.role?.rep <= 2 && (
+                                <ModernTabSelector
+                                    isActive={selectedTab === "audit"}
+                                    onClick={() => setSelectedTab("audit")}
+                                    icon={ClipboardDocumentListIcon}
+                                >
+                                    Audit Logs
+                                </ModernTabSelector>
+                            )}
                         </nav>
                     </div>
                 </div>
@@ -112,6 +125,13 @@ const SettingsPage = (props) => {
                     <TabPanel hidden={selectedTab !== 'holidays'}>
                         <HolidaysSettingsPage />
                     </TabPanel>
+                    {currentUser?.role?.rep <= 2 && (
+                        <TabPanel hidden={selectedTab !== 'audit'}>
+                            <div className="p-6">
+                                <AuditLogsPage />
+                            </div>
+                        </TabPanel>
+                    )}
                 </div>
             </div>
         </Layout>

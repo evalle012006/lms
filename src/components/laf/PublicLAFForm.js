@@ -1,6 +1,7 @@
 // src/components/laf/PublicLAFForm.js — Phase 2
 // Client type selection, Government ID, updated step flows per type
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { Formik }     from 'formik';
 import * as yup       from 'yup';
 import { toast }      from 'react-toastify';
@@ -211,6 +212,7 @@ const PublicLAFForm = ({
 
     // ── Offline mode ──────────────────────────────────────────────────────
     const { isOnline, wasOffline }    = useOnlineStatus();
+    const currentUserToken = useSelector(s => s.user?.token || s.auth?.token || null);
     const {
         queue, stats, addEntry, removeEntry,
         markSynced, markFailed, clearSynced, getAll,
@@ -250,9 +252,7 @@ const PublicLAFForm = ({
     // ── Sync offline queue ────────────────────────────────────────────────
     const syncQueue = useCallback(async () => {
         if (syncing) return;
-        const token = typeof window !== 'undefined'
-            ? localStorage.getItem('jwt') || sessionStorage.getItem('jwt')
-            : null;
+        const token = currentUserToken;
         if (!token) {
             toast.error('You must be logged in to sync. Please log in and try again.');
             return;
@@ -305,7 +305,7 @@ const PublicLAFForm = ({
         const bad = results.filter(r => !r.success).length;
         if (ok > 0)  toast.success(`${ok} application${ok > 1 ? 's' : ''} synced successfully.`);
         if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
-    }, [syncing, queue, markSynced, markFailed]);
+    }, [syncing, queue, markSynced, markFailed, currentUserToken]);
 
     const validateAndNext = async (schema, values, form) => {
         try {
