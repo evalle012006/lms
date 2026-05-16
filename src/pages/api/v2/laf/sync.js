@@ -10,7 +10,30 @@ import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { generateUUID }                       from '@/lib/utils';
 import { logAudit }                           from '@/lib/audit';
 import { findUserById }                       from '@/lib/graph.functions';
-import { uploadBase64ToSpaces }               from '@/lib/spaces';
+import { S3Client, PutObjectCommand }          from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+    endpoint:       'https://sgp1.digitaloceanspaces.com',
+    region:         'sgp1',
+    credentials:    {
+        accessKeyId:     process.env.SPACES_ACCESS_KEY,
+        secretAccessKey: process.env.SPACES_SECRET_KEY,
+    },
+    forcePathStyle: false,
+});
+
+async function uploadBase64ToSpaces(base64String, key) {
+    if (!base64String) return null;
+    const buffer = Buffer.from(base64String, 'base64');
+    await s3.send(new PutObjectCommand({
+        Bucket:      process.env.SPACES_BUCKET,
+        Key:         key,
+        Body:        buffer,
+        ContentType: 'image/jpeg',
+        ACL:         'private',
+    }));
+    return key;
+}
 import moment                                 from 'moment';
 import crypto                                 from 'crypto';
 
