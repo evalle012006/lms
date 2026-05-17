@@ -1,18 +1,19 @@
-// Public API — no auth required (LAF is a public form)
-// Uses same JWT stateless pattern as user biometric
+// src/pages/api/public/laf/biometric-challenge.js
+// GET ?sessionId=xxx
+// Generates WebAuthn registration challenge for the LAF public form.
+// No auth required — LAF is filled on the client's own device.
+// Protected by x-laf-api-key header via publicApiHandler.
 
 import { generateRegistrationOptions } from '@simplewebauthn/server';
-import getConfig from 'next/config';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import { publicApiHandler }            from '@/services/public-api-handler';
+import getConfig                       from 'next/config';
+import jwt                             from 'jsonwebtoken';
 
 const { serverRuntimeConfig } = getConfig();
 
-export default async function handler(req, res) {
-    if (req.method !== 'GET') {
-        return res.status(405).json({ success: false, message: 'Method not allowed' });
-    }
+export default publicApiHandler({ get: biometricChallenge });
 
+async function biometricChallenge(req, res) {
     const { sessionId } = req.query;
     if (!sessionId) {
         return res.status(200).json({ success: false, message: 'sessionId required' });
@@ -31,11 +32,12 @@ export default async function handler(req, res) {
         authenticatorSelection: {
             residentKey:             'preferred',
             userVerification:        'preferred',
-            authenticatorAttachment: 'platform', // phone fingerprint/Face ID
+            authenticatorAttachment: 'platform',
         },
         excludeCredentials: [],
     });
 
+    // Embed challenge in JWT — stateless, works across all Docker containers
     const challengeToken = jwt.sign(
         { sessionId, challenge: options.challenge },
         serverRuntimeConfig.secret,

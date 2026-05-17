@@ -13,6 +13,7 @@ import LAFQueuePanel       from './LAFQueuePanel';
 import PhotoCapture        from '@/components/clients/PhotoCapture';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLAFOfflineQueue, MAX_ENTRIES } from '@/hooks/useLAFOfflineQueue';
+import { usePublicSignedUrl }               from '@/hooks/usePublicSignedUrl';
 
 // ID number format validation — regex + friendly hint per type
 const ID_FORMAT_RULES = {
@@ -93,6 +94,17 @@ const Input = ({ name, value, onChange, onBlur, placeholder, type = 'text', erro
     );
 };
 
+// Public API header — includes x-laf-api-key for all public LAF endpoint calls
+const lafApiHeaders = () => ({
+    'Content-Type':   'application/json',
+    'x-laf-api-key':  process.env.NEXT_PUBLIC_LAF_API_KEY || '',
+});
+
+const publicFetch = (url, opts = {}) => fetch(url, {
+    ...opts,
+    headers: { ...lafApiHeaders(), ...(opts.headers || {}) },
+});
+
 async function compressImage(file, maxW = 1200, q = 0.82) {
     return new Promise(resolve => {
         const img = new window.Image();
@@ -159,6 +171,63 @@ const loanSchema = yup.object().shape({
     guarantorRelationship: yup.string().required('Required'), guarantorContactNumber: yup.string().required('Required'),
 });
 
+// ── ClientPhoto — profile photo with broken URL fallback to initials ────────
+const ClientPhoto = ({ photoUrl, firstName, lastName, onZoom, size = 'md' }) => {
+    const [broken, setBroken] = React.useState(false);
+    const sizeClasses = size === 'lg'
+        ? 'w-14 h-14 border-2 border-green-400 text-sm'
+        : 'w-10 h-10 border border-gray-300 text-xs';
+    const showPhoto = photoUrl && !broken;
+    return (
+        <button
+            type="button"
+            onClick={() => showPhoto && onZoom?.()}
+            className={`flex-shrink-0 rounded-full overflow-hidden ${sizeClasses}
+                ${showPhoto ? 'cursor-zoom-in' : 'cursor-default'}`}
+        >
+            {showPhoto ? (
+                <img
+                    src={photoUrl}
+                    alt="Client"
+                    className="w-full h-full object-cover"
+                    onError={() => setBroken(true)}
+                />
+            ) : (
+                <div className={`w-full h-full rounded-full bg-gray-200 border-2 border-gray-300
+                    flex items-center justify-center font-bold text-gray-400 ${sizeClasses}`}>
+                    {(firstName?.[0] || '?')}{(lastName?.[0] || '')}
+                </div>
+            )}
+        </button>
+    );
+};
+
+// ── BalikMatchCard — each card in multi-match list has its own signed URL ──
+const BalikMatchCard = ({ match, branchName, onSelect }) => {
+    const { signedUrl: photoUrl } = usePublicSignedUrl(match.profile || null);
+    return (
+        <button type="button" onClick={onSelect}
+            className="w-full text-left flex items-center gap-3 p-3 bg-white border border-gray-200
+                rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors">
+            <ClientPhoto
+                photoUrl={photoUrl}
+                firstName={match.firstName}
+                lastName={match.lastName}
+                size="md"
+            />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                    {match.lastName}, {match.firstName} {match.middleName || ''}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                    {branchName || 'Unknown Branch'}
+                    {match.lastLoan ? ` · Last loan: ₱${Number(match.lastLoan.amountRelease).toLocaleString()} (Cycle ${match.lastLoan.loanCycle})` : ''}
+                </p>
+            </div>
+        </button>
+    );
+};
+
 const PublicLAFForm = ({
     groupId, groupName, loId, loName,
     branchId, branchName, qrToken,
@@ -170,25 +239,60 @@ const PublicLAFForm = ({
     const [clientType, setClientType] = useState(null);
 
     // Build steps based on clientType
-    const STEPS = (() => {
+    // ── Online status — must be declared BEFORE STEPS useMemo ──────────────
+    const { isOnline, wasOffline } = useOnlineStatus();
+
+    const existingClientHasId = !!(foundClient?.governmentIdType && foundClient?.governmentIdNumber);
+
+    // Lock existingClientHasId value at the moment foundClient is first set.
+    // This prevents STEPS from changing (and step indices shifting) when foundClient changes.
+    const lockedHasId = React.useRef(false);
+    React.useEffect(() => {
+        if (foundClient) {
+            lockedHasId.current = existingClientHasId;
+        } else {
+            lockedHasId.current = false;
+        }
+    }, [foundClient]);  // only update when foundClient changes, not on every render
+
+    // STEPS is memoised — only recomputes when the values that determine step count change.
+    // This prevents step indices from shifting under the user mid-flow (which caused
+    // si('Biometric') to not match the current step number).
+    const STEPS = React.useMemo(() => {
         if (!clientType) return ['Type'];
         const isExisting = clientType === 'reloan' || clientType === 'pending';
         // Biometric is skipped in offline mode — captured at disbursement
         const addBiometric = requireClientBiometric && isOnline;
         if (isExisting) {
-            const s = ['Type', 'Photo', 'Lookup', 'Confirm', 'Loan'];
+            const s = ['Type', 'Lookup', 'Confirm', 'Photo'];
+            // Always show ID step for existing clients — pre-fills if they have one,
+            // allows capture/update if they don't
+            if (requireGovernmentId) s.push('ID');
+            s.push('Loan');
             if (addBiometric) s.push('Biometric');
             return s;
         }
-        // prospect or balik
+        if (clientType === 'balik') {
+            const s = ['Type', 'Lookup'];
+            if (requireGovernmentId) s.push('ID');
+            s.push('Photo', 'Personal', 'Address', 'Loan');
+            if (addBiometric) s.push('Biometric');
+            return s;
+        }
+        // Prospect
         const s = ['Type', 'Photo'];
         if (requireGovernmentId) s.push('ID');
         s.push('Personal', 'Address', 'Loan');
         if (addBiometric) s.push('Biometric');
         return s;
-    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clientType, requireClientBiometric, isOnline, requireGovernmentId]);
 
-    const si = name => STEPS.indexOf(name);
+    // si() recalculates on every render since STEPS is now a stable memo value
+    const si = React.useCallback(
+        (name) => STEPS.indexOf(name),
+        [STEPS]
+    );
 
     const [step, setStep] = useState(0);
     const [lafPhotoFile, setLafPhotoFile] = useState(null);
@@ -199,19 +303,59 @@ const PublicLAFForm = ({
     const [idPhotoPreview, setIdPhotoPreview] = useState(null);
     const [selfieWithIdFile, setSelfieWithIdFile] = useState(null);
     const [idErrors, setIdErrors] = useState({});
-    const [lookupLastName, setLookupLastName] = useState('');
-    const [lookupSlotNo, setLookupSlotNo] = useState('');
-    const [lookupLooking, setLookupLooking] = useState(false);
-    const [foundClient, setFoundClient] = useState(null);
-    const [detailFlags, setDetailFlags] = useState({});
+    const [idDuplicate, setIdDuplicate] = useState(null);
+    const [idDupChecking, setIdDupChecking] = useState(false);
+    const [lookupLastName,   setLookupLastName]   = useState('');
+    const [lookupFirstName,  setLookupFirstName]  = useState('');
+    const [lookupMiddleName, setLookupMiddleName] = useState('');
+    const [lookupSlotNo,     setLookupSlotNo]     = useState('');
+    const [lookupBranchId,   setLookupBranchId]   = useState('');
+    const [lookupLooking,    setLookupLooking]     = useState(false);
+    const [foundClient,      setFoundClient]       = useState(null);
+    const [detailFlags,      setDetailFlags]       = useState({});
+    const [branchList,       setBranchList]        = useState([]);
+    const [balikMatches,     setBalikMatches]      = useState([]);
+    const [idStepNeeded,     setIdStepNeeded]      = useState(false);
+    const [photoZoom,        setPhotoZoom]         = useState(false);
+
+    // Resolve signed URL for found client's existing profile photo
+    const { signedUrl: foundClientPhotoUrl } = usePublicSignedUrl(foundClient?.profile || null);
+
+    // Pre-fill government ID fields from foundClient when lookup completes
+    React.useEffect(() => {
+        if (!foundClient) return;
+        if (foundClient.governmentIdType   && !idType)   setIdType(foundClient.governmentIdType);
+        if (foundClient.governmentIdNumber && !idNumber) setIdNumber(foundClient.governmentIdNumber);
+    }, [foundClient]);
+
+    // Pre-populate LAF photo step with existing client photo when signed URL resolves.
+    // Checks the URL loads before setting preview — avoids broken image in photo step.
+    useEffect(() => {
+        if (!foundClientPhotoUrl || lafPhotoFile || lafPhotoPreview) return;
+        const img = new window.Image();
+        img.onload  = () => setLafPhotoPreview(foundClientPhotoUrl);
+        img.onerror = () => {}; // broken URL — leave preview empty, user must take new photo
+        img.src = foundClientPhotoUrl;
+    }, [foundClientPhotoUrl]);
+    const [duplicates,     setDuplicates]     = useState([]);
+    const [dupChecking,    setDupChecking]    = useState(false);
+    const [dupWarningAcked,setDupWarningAcked]= useState(false);
     const [biometricData, setBiometricData] = useState(null);
     const [biometricVerified, setBiometricVerified] = useState(false);
+
+    // Load branch list for Balik lookup branch filter
+    useEffect(() => {
+        if (clientType !== 'balik' || branchList.length > 0) return;
+        publicFetch('/api/public/laf/branch-list')
+            .then(r => r.json())
+            .then(d => { if (d.success) setBranchList(d.branches || []); })
+            .catch(() => {});
+    }, [clientType, branchList.length]);
     const [submitting, setSubmitting] = useState(false);
     const [submitted,  setSubmitted]  = useState(false);
     const [ciCode,     setCiCode]     = useState('');
 
     // ── Offline mode ──────────────────────────────────────────────────────
-    const { isOnline, wasOffline }    = useOnlineStatus();
     const currentUserToken = useSelector(s => s.user?.token || s.auth?.token || null);
     const {
         queue, stats, addEntry, removeEntry,
@@ -226,7 +370,9 @@ const PublicLAFForm = ({
     const [syncResults,      setSyncResults]      = useState([]);
 
     const isExistingClient  = clientType === 'reloan' || clientType === 'pending';
-    const isProspectOrBalik = clientType === 'prospect' || clientType === 'balik';
+    // For biometric: only Prospect requires it mandatorily.
+    // Balik, Reloan, Pending — attempt but skippable (captured at disbursement if missed)
+    const biometricRequired = clientType === 'prospect';
 
     const uploadFile = useCallback(async (file, origin, uuid) => {
         const compressed = await compressImage(file);
@@ -307,6 +453,19 @@ const PublicLAFForm = ({
         if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
     }, [syncing, queue, markSynced, markFailed, currentUserToken]);
 
+    const checkDuplicates = async (firstName, lastName, birthdate) => {
+        if (!firstName || !lastName) return;
+        setDupChecking(true);
+        try {
+            const p = new URLSearchParams({ firstName: firstName.trim(), lastName: lastName.trim() });
+            if (birthdate) p.set('birthdate', birthdate);
+            const res  = await publicFetch(`/api/public/laf/check-duplicate?${p}`);
+            const data = await res.json();
+            if (data.success) setDuplicates(data.duplicates || []);
+        } catch { /* fail open */ }
+        finally { setDupChecking(false); }
+    };
+
     const validateAndNext = async (schema, values, form) => {
         try {
             await schema.validate(values, { abortEarly: false });
@@ -319,15 +478,47 @@ const PublicLAFForm = ({
     };
 
     const handleLookup = async () => {
-        if (!lookupLastName.trim()) { toast.error('Please enter your last name.'); return; }
-        if (!lookupSlotNo) { toast.error('Please select your slot number.'); return; }
+        if (clientType === 'balik') {
+            if (!lookupFirstName.trim()) { toast.error('Please enter your first name.'); return; }
+            if (!lookupLastName.trim())  { toast.error('Please enter your last name.'); return; }
+        } else {
+            if (!lookupLastName.trim()) { toast.error('Please enter your last name.'); return; }
+            if (!lookupSlotNo) { toast.error('Please select your slot number.'); return; }
+        }
         setLookupLooking(true);
         try {
-            const p = new URLSearchParams({ groupId, lastName: lookupLastName.trim(), slotNo: lookupSlotNo });
-            const res = await fetch(`/api/public/laf/lookup-client?${p}`);
+            const mode = clientType === 'pending' ? 'pending'
+                       : clientType === 'balik'   ? 'balik'
+                       : 'reloan';
+            const p = new URLSearchParams({ mode, groupId });
+            if (clientType === 'balik') {
+                // Balik: firstName + lastName mandatory, middleName + branchId optional
+                p.set('firstName', lookupFirstName.trim());
+                p.set('lastName',  lookupLastName.trim());
+                if (lookupMiddleName.trim()) p.set('middleName', lookupMiddleName.trim());
+                if (lookupBranchId)         p.set('branchId',   lookupBranchId);
+            } else {
+                p.set('branchId', branchId);
+                p.set('lastName', lookupLastName.trim());
+                p.set('slotNo',   lookupSlotNo || '1');
+            }
+            const res  = await publicFetch(`/api/public/laf/lookup-client?${p}`);
             const data = await res.json();
-            if (data.success && data.client) { setFoundClient(data.client); }
-            else { setFoundClient(null); toast.error(data.message || 'Not found. Check your details.'); }
+            if (data.success && data.multipleFound) {
+                setBalikMatches(data.clients || []);
+                setFoundClient(null);
+            } else if (data.success && data.client) {
+                setBalikMatches([]);
+                setFoundClient(data.client);
+                // Signal STEPS to include ID step if client has no ID on record
+                const hasId = !!(data.client.governmentIdType && data.client.governmentIdNumber);
+                setIdStepNeeded(!hasId);
+                lockedHasId.current = hasId;
+            } else {
+                setFoundClient(null);
+                setBalikMatches([]);
+                toast.error(data.message || 'Not found. Check your details.');
+            }
         } catch { toast.error('Lookup failed.'); }
         finally { setLookupLooking(false); }
     };
@@ -335,25 +526,74 @@ const PublicLAFForm = ({
     const goNext = useCallback(async () => {
         const cur = step;
         if (cur === 0) { if (!clientType) { toast.error('Please select membership type.'); return; } setStep(1); return; }
-        if (cur === si('Photo')) { if (!lafPhotoFile) { toast.error('Please capture or upload your photo.'); return; } setStep(s => s + 1); return; }
+        if (cur === si('Photo')) {
+            // Allow proceeding if there's a new photo OR an existing profile photo loaded
+            if (!lafPhotoFile && !lafPhotoPreview) {
+                toast.error('Please capture or upload your photo.');
+                return;
+            }
+            setStep(s => s + 1);
+            return;
+        }
         if (cur === si('ID')) {
+            // Existing client with ID on record — confirm only (no recapture)
+            if (isExistingClient && existingClientHasId) {
+                if (!idType)   setIdType(foundClient?.governmentIdType   || '');
+                if (!idNumber) setIdNumber(foundClient?.governmentIdNumber || '');
+                setIdErrors({}); setStep(s => s + 1); return;
+            }
+            // Validate fields first
             const errs = {};
             if (!idType) errs.idType = 'Required';
             if (!idNumber.trim()) {
                 errs.idNumber = 'Required';
             } else {
-                // Validate format against selected ID type
                 const fmtError = validateIdNumber(idType, idNumber);
                 if (fmtError) errs.idNumber = fmtError;
             }
             if (!idPhotoFile) errs.idPhoto = 'Required';
             if (requireSelfieWithId && !selfieWithIdFile) errs.selfieWithId = 'Required';
             if (Object.keys(errs).length) { setIdErrors(errs); return; }
-            setIdErrors({}); setStep(s => s + 1); return;
+            setIdErrors({});
+            // Check for duplicate ID number — block if already registered to another client
+            setIdDupChecking(true);
+            try {
+                const p = new URLSearchParams({ idType, idNumber: idNumber.trim() });
+                const res = await publicFetch(`/api/public/laf/check-id-duplicate?${p}`);
+                const data = await res.json();
+                if (data.isDuplicate && data.matches?.length > 0) {
+                    setIdDuplicate(data);
+                    setIdDupChecking(false);
+                    return; // Block — show warning in UI
+                }
+            } catch { /* fail open */ }
+            setIdDuplicate(null);
+            setIdDupChecking(false);
+            setStep(s => s + 1);
+            return;
         }
-        if (cur === si('Lookup')) { if (!foundClient) { toast.error('Please find your record first.'); return; } setStep(s => s + 1); return; }
-        if (cur === si('Confirm')) { setStep(s => s + 1); return; }
-        if (cur === si('Personal')) { await validateAndNext(personalSchema, formikRef.current?.values, formikRef.current); return; }
+        if (cur === si('Lookup')) {
+            // Balik can skip lookup if no match found
+            if (!foundClient && clientType !== 'balik') {
+                toast.error('Please find your record first.');
+                return;
+            }
+            setStep(s => s + 1);
+            return;
+        }
+        if (cur === si('Confirm')) {
+            setStep(s => s + 1);
+            return;
+        }
+        if (cur === si('Personal')) {
+            await validateAndNext(personalSchema, formikRef.current?.values, formikRef.current);
+            // Trigger duplicate check for Prospect after validation passes
+            const form = formikRef.current;
+            if (form && !form.errors.firstName && !form.errors.lastName && clientType === 'prospect') {
+                checkDuplicates(form.values.firstName, form.values.lastName, form.values.birthdate);
+            }
+            return;
+        }
         if (cur === si('Address')) { await validateAndNext(addressSchema, formikRef.current?.values, formikRef.current); return; }
         if (cur === si('Loan')) { await validateAndNext(loanSchema, formikRef.current?.values, formikRef.current); return; }
         setStep(s => s + 1);
@@ -368,7 +608,7 @@ const PublicLAFForm = ({
                 toast.error('Queue is full (30 clients). Please sync before adding more.');
                 return;
             }
-            if (!lafPhotoFile) { toast.error('Photo required.'); return; }
+            if (!lafPhotoFile && !lafPhotoPreview && !foundClient?.profile) { toast.error('Photo required.'); return; }
             const entryId = await addEntry(
                 {
                     ...values,
@@ -399,16 +639,26 @@ const PublicLAFForm = ({
 
         // ── Online mode: normal submit ────────────────────────────────────
         if (!lafPhotoFile) { toast.error('Photo required.'); return; }
-        if (requireClientBiometric && isProspectOrBalik && !biometricVerified) { toast.error('Biometric verification required.'); return; }
+        if (requireClientBiometric && biometricRequired && !biometricVerified) { toast.error('Biometric verification required.'); return; }
         setSubmitting(true);
         try {
             const uuid = `laf${Date.now()}`;
-            const lafPhotoKey = await uploadFile(lafPhotoFile, 'laf-photos', uuid);
+            // Use new photo if taken, otherwise reuse existing profile key
+            let lafPhotoKey;
+            if (lafPhotoFile) {
+                lafPhotoKey = await uploadFile(lafPhotoFile, 'laf-photos', uuid);
+            } else if (foundClient?.profile) {
+                lafPhotoKey = foundClient.profile; // reuse existing stored key
+            } else {
+                toast.error('Photo required.');
+                setSubmitting(false);
+                return;
+            }
             let governmentIdPhotoKey = null, selfieWithIdPhotoKey = null;
             if (requireGovernmentId && idPhotoFile) governmentIdPhotoKey = await uploadFile(idPhotoFile, 'laf-id-photos', uuid);
             if (requireSelfieWithId && selfieWithIdFile) selfieWithIdPhotoKey = await uploadFile(selfieWithIdFile, 'laf-selfie-with-id', uuid);
-            const res = await fetch('/api/public/laf/submit', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const res = await publicFetch('/api/public/laf/submit', {
+                method: 'POST',
                 body: JSON.stringify({
                     groupId, loId, branchId, qrToken, clientType,
                     existingClientId: foundClient?._id || null,
@@ -419,6 +669,15 @@ const PublicLAFForm = ({
                     lafPhotoKey, governmentIdPhotoKey, selfieWithIdPhotoKey,
                     governmentIdType: idType || null, governmentIdNumber: idNumber || null,
                     landmark: values.landmark || null, distanceFromBranch: values.distanceFromBranch || null,
+                    // Balik history — pass old assignment from lookup
+                    oldGroupId:            foundClient?.oldGroupId  || null,
+                    oldLoId:               foundClient?.oldLoId     || null,
+                    // Duplicate / Balik flags
+                    isDuplicateFlagged:    (clientType === 'prospect' && duplicates.length > 0 && !dupWarningAcked)
+                                            ? true
+                                            : (duplicates.length > 0 && dupWarningAcked),
+                    duplicateCandidateIds: duplicates.map(d => d._id),
+                    isBalikUnmatched:      clientType === 'balik' && !foundClient,
                     ...(requireClientBiometric && biometricData ? biometricData : {}),
                 }),
             });
@@ -430,7 +689,7 @@ const PublicLAFForm = ({
     }, [lafPhotoFile, idPhotoFile, selfieWithIdFile, biometricVerified, biometricData,
         groupId, loId, branchId, qrToken, clientType, idType, idNumber,
         foundClient, detailFlags, requireClientBiometric, requireGovernmentId,
-        requireSelfieWithId, isProspectOrBalik, uploadFile]);
+        requireSelfieWithId, biometricRequired, uploadFile]);
 
     // ── Reset form for "Add Another Client" ──────────────────────────────
     const resetForNextClient = useCallback(() => {
@@ -444,11 +703,20 @@ const PublicLAFForm = ({
         setIdPhotoPreview(null);
         setSelfieWithIdFile(null);
         setIdErrors({});
+        setIdDuplicate(null);
+        setIdDupChecking(false);
+        setIdStepNeeded(false);
         setLookupLastName('');
+        setLookupFirstName('');
+        setLookupMiddleName('');
         setLookupSlotNo('');
+        setLookupBranchId('');
+        setBalikMatches([]);
         setLookupLooking(false);
         setFoundClient(null);
         setDetailFlags({});
+        setDuplicates([]);
+        setDupWarningAcked(false);
         setBiometricData(null);
         setBiometricVerified(false);
         setOfflineConfirmed(false);
@@ -513,6 +781,7 @@ const PublicLAFForm = ({
     const bioIdx = si('Biometric');
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 py-6 px-4">
             <div className="max-w-lg mx-auto">
                 <div className="text-center mb-5">
@@ -601,7 +870,16 @@ const PublicLAFForm = ({
                     {step === si('Photo') && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Your Photo</h2>
-                            <LAFPhotoStep onPhotoReady={file => { if (!file) { setLafPhotoFile(null); setLafPhotoPreview(null); return; } setLafPhotoFile(file); setLafPhotoPreview(URL.createObjectURL(file)); }} uploading={false} preview={lafPhotoPreview} />
+                            {/* Show context only when photo preview successfully loaded */}
+                            {lafPhotoPreview && foundClientPhotoUrl && !lafPhotoFile && (
+                                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                                    ℹ Current photo loaded from your record. Take a new photo below to replace it.
+                                </div>
+                            )}
+                            <LAFPhotoStep onPhotoReady={file => { if (!file) { setLafPhotoFile(null); setLafPhotoPreview(foundClientPhotoUrl || null); return; } setLafPhotoFile(file); setLafPhotoPreview(URL.createObjectURL(file)); }} uploading={false} preview={lafPhotoPreview} />
+                            {lafPhotoFile && (
+                                <p className="text-xs text-green-600 mt-2">✓ New photo captured — will replace existing</p>
+                            )}
                             <NavBtns onBack={goPrev} onNext={goNext} nextDisabled={!lafPhotoFile} />
                         </div>
                     )}
@@ -610,73 +888,251 @@ const PublicLAFForm = ({
                     {requireGovernmentId && si('ID') !== -1 && step === si('ID') && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Government ID</h2>
-                            <div className="space-y-5">
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">A valid government-issued ID is required to verify your identity.</div>
-                                <Field label="ID Type" required error={idErrors.idType}>
-                                    <select value={idType} onChange={e => setIdType(e.target.value)}
-                                        className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${idErrors.idType ? 'border-red-400' : 'border-gray-300'}`}>
-                                        <option value="">Select ID type...</option>
-                                        {PH_ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                    </select>
-                                </Field>
-                                <Field label="ID Number" required error={idErrors.idNumber}>
-                                    <Input name="idNumber" noUppercase value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" error={idErrors.idNumber} />
-                                </Field>
-                                <Field label="Photo of ID" required error={idErrors.idPhoto}>
-                                    <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
-                                    <PhotoCapture
-                                        onFileReady={file => { setIdPhotoFile(file); setIdPhotoPreview(file ? URL.createObjectURL(file) : null); }}
-                                        label="Take/upload ID photo" facingMode="environment" maxMB={10}
-                                        preview={idPhotoPreview}
-                                    />
-                                    {idPhotoFile && <p className="text-xs text-green-600 mt-1">✓ ID photo captured</p>}
-                                </Field>
-                                {requireSelfieWithId && (
-                                    <Field label="Selfie Holding ID" required error={idErrors.selfieWithId}>
-                                        <p className="text-xs text-gray-500 mb-2">Take a selfie holding your ID next to your face.</p>
-                                        <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} />
-                                        {selfieWithIdFile && <p className="text-xs text-green-600 mt-1">✓ Selfie captured</p>}
+
+                            {/* Existing client WITH ID on record — show pre-filled + allow photo replacement */}
+                            {isExistingClient && existingClientHasId ? (
+                                <div className="space-y-4">
+                                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700">
+                                        ✓ Government ID on record. Please confirm your details below.
+                                    </div>
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                                        <p className="text-xs text-gray-400 mb-0.5">ID Type</p>
+                                        <p className="text-sm font-semibold text-gray-800">
+                                            {PH_ID_TYPES.find(t => t.value === foundClient?.governmentIdType)?.label || foundClient?.governmentIdType || '—'}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                                        <p className="text-xs text-gray-400 mb-0.5">ID Number</p>
+                                        <p className="text-sm font-semibold text-gray-800">
+                                            {foundClient?.governmentIdNumber || '—'}
+                                        </p>
+                                    </div>
+                                    {/* ID photo — pre-populate if on record, allow replacement */}
+                                    <Field label="ID Photo" error={null}>
+                                        <p className="text-xs text-gray-500 mb-2">
+                                            Your ID photo is on record. You may take a new photo to update it.
+                                        </p>
+                                        <PhotoCapture
+                                            onFileReady={file => {
+                                                setIdPhotoFile(file);
+                                                setIdPhotoPreview(file ? URL.createObjectURL(file) : null);
+                                            }}
+                                            label={idPhotoFile ? 'Replace ID photo' : 'Update ID photo (optional)'}
+                                            facingMode="environment"
+                                            maxMB={10}
+                                            preview={idPhotoPreview}
+                                            existingPhotoKey={foundClient?.governmentIdPhotoKey}
+                                        />
+                                        {idPhotoFile && (
+                                            <p className="text-xs text-blue-600 mt-1">✓ New ID photo captured — will replace the existing one</p>
+                                        )}
                                     </Field>
-                                )}
-                            </div>
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                                        If your ID type or number has changed, please inform your Loan Officer to update your records.
+                                    </div>
+                                </div>
+                            ) : (
+                                /* No ID on record OR prospect/balik — full capture */
+                                <div className="space-y-5">
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                                        {isExistingClient
+                                            ? 'No government ID found on your record. Please provide your ID to update your profile.'
+                                            : 'A valid government-issued ID is required to verify your identity.'}
+                                    </div>
+                                    {/* ID duplicate warning */}
+                                    {idDuplicate && (
+                                        <div className="p-3 bg-red-50 border border-red-300 rounded-xl">
+                                            <p className="text-xs font-semibold text-red-700 mb-2">
+                                                ⛔ This ID number is already registered to another client:
+                                            </p>
+                                            {idDuplicate.matches?.map((m, i) => (
+                                                <p key={i} className="text-xs text-red-600 py-0.5">
+                                                    {m.name} · {m.branch} · {m.status}
+                                                </p>
+                                            ))}
+                                            <p className="text-xs text-red-500 mt-2">
+                                                Please use a different ID, or select Reloan / Pending / Balik if this is an existing client.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {idDupChecking && (
+                                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                            </svg>
+                                            Checking ID number...
+                                        </div>
+                                    )}
+                                    <Field label="ID Type" required error={idErrors.idType}>
+                                        <select value={idType} onChange={e => setIdType(e.target.value)}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${idErrors.idType ? 'border-red-400' : 'border-gray-300'}`}>
+                                            <option value="">Select ID type...</option>
+                                            {PH_ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </select>
+                                    </Field>
+                                    <Field label="ID Number" required error={idErrors.idNumber}>
+                                        <Input name="idNumber" noUppercase value={idNumber}
+                                            onChange={e => { setIdNumber(e.target.value); setIdDuplicate(null); }}
+                                            placeholder="Enter your ID number" error={idErrors.idNumber} />
+                                    </Field>
+                                    <Field label="Photo of ID" required error={idErrors.idPhoto}>
+                                        <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
+                                        <PhotoCapture
+                                            onFileReady={file => { setIdPhotoFile(file); setIdPhotoPreview(file ? URL.createObjectURL(file) : null); }}
+                                            label="Take/upload ID photo" facingMode="environment" maxMB={10}
+                                            preview={idPhotoPreview}
+                                        />
+                                        {idPhotoFile && <p className="text-xs text-green-600 mt-1">✓ ID photo captured</p>}
+                                    </Field>
+                                    {requireSelfieWithId && (
+                                        <Field label="Selfie Holding ID" required error={idErrors.selfieWithId}>
+                                            <p className="text-xs text-gray-500 mb-2">Take a selfie holding your ID next to your face.</p>
+                                            <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} />
+                                            {selfieWithIdFile && <p className="text-xs text-green-600 mt-1">✓ Selfie captured</p>}
+                                        </Field>
+                                    )}
+                                </div>
+                            )}
                             <NavBtns onBack={goPrev} onNext={goNext} />
                         </div>
                     )}
 
-                    {/* Existing client lookup */}
-                    {isExistingClient && step === si('Lookup') && (
+                    {/* Lookup step — reloan/pending/balik */}
+                    {(isExistingClient || clientType === 'balik') && step === si('Lookup') && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Find Your Member Record</h2>
                             <div className="space-y-4">
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">Enter your last name and slot number to find your existing member record.</div>
-                                <Field label="Last Name" required>
-                                    <Input name="ln" noUppercase value={lookupLastName} onChange={e => setLookupLastName(e.target.value)} placeholder="Enter your last name" />
-                                </Field>
-                                <Field label="Slot Number" required>
-                                    <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Select slot number...</option>
-                                        {Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
-                                    </select>
-                                </Field>
+                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                                    {clientType === 'balik'
+                                        ? 'Enter your last name to find your previous member record. Your loan must have been offset/closed.'
+                                        : clientType === 'pending'
+                                            ? 'Enter your last name and slot number. Your latest loan must be completed (fully paid).'
+                                            : 'Enter your last name and slot number. You must have an active loan to apply for Reloan.'}
+                                </div>
+                                {clientType === 'balik' ? (<>
+                                    <Field label="First Name" required>
+                                        <Input name="fn" value={lookupFirstName} onChange={e => setLookupFirstName(e.target.value.toUpperCase())} placeholder="JUAN" />
+                                    </Field>
+                                    <Field label="Last Name" required>
+                                        <Input name="ln" value={lookupLastName} onChange={e => setLookupLastName(e.target.value.toUpperCase())} placeholder="DELA CRUZ" />
+                                    </Field>
+                                    <Field label="Middle Name (optional)">
+                                        <Input name="mn" value={lookupMiddleName} onChange={e => setLookupMiddleName(e.target.value.toUpperCase())} placeholder="SANTOS or leave blank" />
+                                    </Field>
+                                    <Field label="Previous Branch (optional)">
+                                        <select value={lookupBranchId} onChange={e => setLookupBranchId(e.target.value)}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">All branches</option>
+                                            {branchList.map(b => <option key={b._id} value={b._id}>{b.name} ({b.code})</option>)}
+                                        </select>
+                                    </Field>
+                                </>) : (<>
+                                    <Field label="Last Name" required>
+                                        <Input name="ln" noUppercase value={lookupLastName} onChange={e => setLookupLastName(e.target.value)} placeholder="Enter your last name" />
+                                    </Field>
+                                    <Field label="Slot Number" required>
+                                        <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">Select slot number...</option>
+                                            {Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                    </Field>
+                                </>)}
                                 <button type="button" onClick={handleLookup} disabled={lookupLooking}
                                     className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                                     {lookupLooking ? (<><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Searching...</>) : 'Find My Record'}
                                 </button>
-                                {foundClient && (
-                                    <div className="p-4 bg-green-50 border border-green-300 rounded-xl">
-                                        <p className="text-xs font-semibold text-green-700 mb-1">✓ Member found:</p>
-                                        <p className="text-sm font-bold text-gray-900">{foundClient.lastName}, {foundClient.firstName} {foundClient.middleName || ''}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">Slot {foundClient.slotNo} · {foundClient.contactNumber || '—'}</p>
+                                {/* Multiple Balik matches — show selection list */}
+                                {clientType === 'balik' && balikMatches.length > 1 && !foundClient && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-semibold text-amber-700">
+                                            ⚠ Multiple matching records found. Please select the correct one:
+                                        </p>
+                                        {balikMatches.map(m => (
+                                            <BalikMatchCard key={m._id} match={m}
+                                                branchName={branchList.find(b => b._id === m.branchId)?.name}
+                                                onSelect={() => { setFoundClient(m); setBalikMatches([]); }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                {foundClient && (
+                                    <div className="p-4 bg-green-50 border border-green-300 rounded-xl space-y-2">
+                                        <p className="text-xs font-semibold text-green-700">✓ Member found:</p>
+                                        {/* Profile photo + name side by side */}
+                                        <div className="flex items-center gap-3">
+                                            <ClientPhoto
+                                                photoUrl={foundClientPhotoUrl}
+                                                firstName={foundClient.firstName}
+                                                lastName={foundClient.lastName}
+                                                onZoom={() => setPhotoZoom(true)}
+                                                size="lg"
+                                            />
+                                            <p className="text-sm font-bold text-gray-900">
+                                                {foundClient.lastName}, {foundClient.firstName} {foundClient.middleName || ''}
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                                            {/* Delinquent — shown for all types */}
+                                            <div className={`col-span-2 flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                                foundClient.delinquent ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
+                                            }`}>
+                                                <span className={`text-xs font-semibold ${
+                                                    foundClient.delinquent ? 'text-red-600' : 'text-green-700'
+                                                }`}>
+                                                    {foundClient.delinquent ? '⚠ Delinquent: Yes' : '✓ Delinquent: No'}
+                                                </span>
+                                            </div>
+
+                                            {clientType === 'balik' ? (<>
+                                                {/* Balik — resolve branch name from cached branchList */}
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-gray-400">Previous Branch</p>
+                                                    <p className="text-xs font-semibold text-gray-800">
+                                                        {branchList.find(b => b._id === foundClient.branchId)?.name || foundClient.branchId || '—'}
+                                                    </p>
+                                                </div>
+                                            </>) : (<>
+                                                {/* Reloan / Pending — slot + loan details */}
+                                                <div>
+                                                    <p className="text-xs text-gray-400">Slot No.</p>
+                                                    <p className="text-xs font-semibold text-gray-800">{foundClient.slotNo}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">Loan Status</p>
+                                                    <p className={`text-xs font-semibold capitalize ${
+                                                        foundClient.loanStatus === 'active'  ? 'text-green-700' :
+                                                        foundClient.loanStatus === 'pending' ? 'text-amber-700' :
+                                                        'text-gray-700'
+                                                    }`}>{foundClient.loanStatus || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">Amount Released</p>
+                                                    <p className="text-xs font-semibold text-gray-800">
+                                                        ₱{foundClient.amountRelease ? Number(foundClient.amountRelease).toLocaleString() : '—'}
+                                                    </p>
+                                                </div>
+                                            </>)}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                            <NavBtns onBack={goPrev} onNext={goNext} nextDisabled={!foundClient} />
+                            <NavBtns
+                                onBack={goPrev}
+                                onNext={goNext}
+                                nextDisabled={
+                                    (clientType !== 'balik' && !foundClient) ||
+                                    balikMatches.length > 1
+                                }
+                                nextLabel={clientType === 'balik' && !foundClient && balikMatches.length === 0 ? 'Skip & Enter Manually' : 'Next'}
+                            />
                         </div>
                     )}
 
-                    {/* Confirm existing client */}
-                    {isExistingClient && step === si('Confirm') && foundClient && (
+                    {/* Confirm step — reloan/pending/balik (if match found) */}
+                    {(isExistingClient || clientType === 'balik') && step === si('Confirm') && foundClient && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Confirm Your Details</h2>
                             <div className="space-y-3">
@@ -710,6 +1166,39 @@ const PublicLAFForm = ({
                                     {step === si('Personal') && (
                                         <div>
                                             <h2 className="text-base font-semibold text-gray-800 mb-4">Personal Information</h2>
+
+                                            {/* Duplicate warning — Prospect only */}
+                                            {clientType === 'prospect' && duplicates.length > 0 && !dupWarningAcked && (
+                                                <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+                                                    <p className="text-xs font-semibold text-amber-800 mb-2">
+                                                        ⚠ Possible duplicate member found:
+                                                    </p>
+                                                    {duplicates.map(d => (
+                                                        <div key={d._id} className="text-xs text-amber-700 py-1 border-b border-amber-100 last:border-0">
+                                                            {d.lastName}, {d.firstName} {d.middleName || ''} · {d.branchName || 'Unknown Branch'} · Status: {d.status}
+                                                        </div>
+                                                    ))}
+                                                    <p className="text-xs text-amber-600 mt-2">
+                                                        If this is the same person, please use Reloan, Pending Member, or Balik instead.
+                                                        Otherwise, tap below to continue as a new Prospect.
+                                                    </p>
+                                                    <button type="button"
+                                                        onClick={() => setDupWarningAcked(true)}
+                                                        className="mt-2 px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700">
+                                                        This is a different person — Continue
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {clientType === 'prospect' && dupChecking && (
+                                                <div className="mb-3 text-xs text-gray-400 flex items-center gap-1.5">
+                                                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                                    </svg>
+                                                    Checking for existing members...
+                                                </div>
+                                            )}
+
                                             <div className="space-y-4">
                                                 <Field label="First Name" required error={touched.firstName && errors.firstName}><Input name="firstName" value={values.firstName} onChange={handleChange} onBlur={handleBlur} placeholder="Juan" error={touched.firstName && errors.firstName} readOnly={roFields} /></Field>
                                                 <Field label="Last Name" required error={touched.lastName && errors.lastName}><Input name="lastName" value={values.lastName} onChange={handleChange} onBlur={handleBlur} placeholder="dela Cruz" error={touched.lastName && errors.lastName} readOnly={roFields} /></Field>
@@ -771,7 +1260,7 @@ const PublicLAFForm = ({
                     {bioIdx !== -1 && step === bioIdx && isOnline && (
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Identity Verification</h2>
-                            {isExistingClient && (
+                            {!biometricRequired && (
                                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
                                     Biometric is recommended. If your device does not support it, you may skip — it will be captured at disbursement.
                                 </div>
@@ -780,7 +1269,7 @@ const PublicLAFForm = ({
                             <div className="mt-6 flex justify-between">
                                 <button type="button" onClick={goPrev} disabled={submitting} className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50">Back</button>
                                 <div className="flex gap-2">
-                                    {isExistingClient && !biometricVerified && (
+                                    {!biometricRequired && !biometricVerified && foundClient?.biometricCredentialId && (
                                         <button type="button"
                                         onClick={() => handleSubmit(formikRef.current?.values || {})}
                                         disabled={submitting}
@@ -788,9 +1277,9 @@ const PublicLAFForm = ({
                                     )}
                                     <button type="button"
                                         onClick={() => handleSubmit(formikRef.current?.values || {})}
-                                        disabled={submitting || (isProspectOrBalik && !biometricVerified)}
+                                        disabled={submitting || (biometricRequired && !biometricVerified)}
                                         className="px-6 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
-                                        {submitting ? (<><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Submitting…</>) : (biometricVerified ? 'Submit Application' : (isProspectOrBalik ? 'Verify Biometric First' : 'Submit Application'))}
+                                        {submitting ? (<><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Submitting…</>) : (biometricVerified ? 'Submit Application' : (biometricRequired ? 'Verify Biometric First' : 'Submit Application'))}
                                     </button>
                                 </div>
                             </div>
@@ -798,16 +1287,36 @@ const PublicLAFForm = ({
                     )}
                 </div>
             </div>
-
-            <LAFQueuePanel
-                isOpen={showQueue}
-                onClose={() => setShowQueue(false)}
-                queue={queue}
-                onRemove={removeEntry}
-                isSyncing={syncing}
-                syncProgress={syncProgress}
-            />
         </div>
+        {/* Photo zoom modal */}
+        {photoZoom && foundClientPhotoUrl && (
+            <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black bg-opacity-80"
+                onClick={() => setPhotoZoom(false)}>
+                <div className="relative max-w-sm w-full mx-4">
+                    <img src={foundClientPhotoUrl} alt="Client profile"
+                        className="w-full rounded-2xl shadow-2xl object-contain max-h-[80vh]"
+                        onError={e => {
+                            e.target.style.display = 'none';
+                            setPhotoZoom(false);
+                        }} />
+                    <button type="button" onClick={() => setPhotoZoom(false)}
+                        className="absolute top-3 right-3 w-8 h-8 bg-black bg-opacity-50 text-white
+                            rounded-full flex items-center justify-center text-sm hover:bg-opacity-70">
+                        ✕
+                    </button>
+                    <p className="text-center text-white text-xs mt-2 opacity-70">Tap anywhere to close</p>
+                </div>
+            </div>
+        )}
+        <LAFQueuePanel
+            isOpen={showQueue}
+            onClose={() => setShowQueue(false)}
+            queue={queue}
+            onRemove={removeEntry}
+            isSyncing={syncing}
+            syncProgress={syncProgress}
+        />
+        </>
     );
 };
 

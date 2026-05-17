@@ -37,6 +37,8 @@ async function uploadBase64ToSpaces(base64String, key) {
 import moment                                 from 'moment';
 import crypto                                 from 'crypto';
 
+const SPACES_ROOT = process.env.SPACES_ROOT || 'lms';
+
 const graph = new GraphProvider();
 
 const TEMP_TYPE = createGraphType(
@@ -86,9 +88,9 @@ async function syncEntry(req, res) {
     const uuid = generateUUID();
     let lafPhotoKey = null, governmentIdPhotoKey = null, selfieWithIdPhotoKey = null;
     try {
-        if (lafPhotoBase64) lafPhotoKey = await uploadBase64ToSpaces(lafPhotoBase64, `lms/laf-photos/${uuid}/${Date.now()}-laf.jpg`);
-        if (idPhotoBase64)  governmentIdPhotoKey = await uploadBase64ToSpaces(idPhotoBase64, `lms/laf-id-photos/${uuid}/${Date.now()}-id.jpg`);
-        if (selfieBase64)   selfieWithIdPhotoKey = await uploadBase64ToSpaces(selfieBase64, `lms/laf-selfie-with-id/${uuid}/${Date.now()}-selfie.jpg`);
+        if (lafPhotoBase64) lafPhotoKey = await uploadBase64ToSpaces(lafPhotoBase64, `${SPACES_ROOT}/laf-photos/${uuid}/${Date.now()}-laf.jpg`);
+        if (idPhotoBase64)  governmentIdPhotoKey = await uploadBase64ToSpaces(idPhotoBase64, `${SPACES_ROOT}/laf-id-photos/${uuid}/${Date.now()}-id.jpg`);
+        if (selfieBase64)   selfieWithIdPhotoKey = await uploadBase64ToSpaces(selfieBase64, `${SPACES_ROOT}/laf-selfie-with-id/${uuid}/${Date.now()}-selfie.jpg`);
     } catch (err) {
         return res.status(200).json({ success: false, message: `Photo upload failed: ${err.message}` });
     }

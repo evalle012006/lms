@@ -92,6 +92,13 @@ async function getForPromotion(req, res) {
         });
     }
 
+    if (application.status === 'pending_validation') {
+        return res.status(200).json({
+            success: false,
+            message: 'Cannot promote — this application is flagged as a potential duplicate and is awaiting admin validation (regional manager or deputy director must approve first).',
+        });
+    }
+ 
     if (application.status !== 'ci_approved') {
         return res.status(200).json({
             success: false,
@@ -157,6 +164,10 @@ async function getForPromotion(req, res) {
             groupId:                 application.groupId               || null,
             loId:                    application.loId                  || null,
             isOffline:               application.isOffline             || false,
+            // Balik history — set by submit.js from foundClient lookup
+            oldBranchId:             application.oldBranchId            || null,
+            oldGroupId:              application.oldGroupId             || null,
+            oldLoId:                 application.oldLoId                || null,
         },
         loanData: {
             loanAmount:  application.loanAmount,

@@ -10,6 +10,7 @@ import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CLIENT_FIELDS }               from '@/lib/graph.fields';
 import { logAuditPublic }              from '@/lib/audit';
 import getConfig                       from 'next/config';
+import { publicApiHandler } from '@/services/public-api-handler';
 import jwt    from 'jsonwebtoken';
 import moment from 'moment';
 
@@ -22,8 +23,7 @@ const TOKEN_TYPE = createGraphType('biometricRegistrationTokens', `
 
 const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
 
-export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).end();
+async function registerComplete(req, res) {
 
     const { token, credential, deviceName } = req.body;
     if (!token || !credential) {
@@ -131,3 +131,5 @@ export default async function handler(req, res) {
         });
     }
 }
+
+export default publicApiHandler({ post: registerComplete });

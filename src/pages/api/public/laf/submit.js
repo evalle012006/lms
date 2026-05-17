@@ -14,6 +14,10 @@ const GROUP_TYPE = createGraphType('groups', `
     branch { _id name code }
 `)('groups');
 
+const CLIENT_ID_TYPE = createGraphType('client', `
+    _id firstName lastName status
+`)('clients');
+
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 
 export default publicApiHandler({ post: submitLAF });
@@ -47,6 +51,13 @@ async function submitLAF(req, res) {
         existingClientId,
         existingLoanId,
         detailFlags,
+        // Duplicate flagging
+        isDuplicateFlagged,
+        duplicateCandidateIds,
+        isBalikUnmatched,
+        // Balik history
+        oldGroupId,
+        oldLoId,
     } = req.body;
 
     // Basic presence check
@@ -88,6 +99,30 @@ async function submitLAF(req, res) {
             success: false,
             message: 'A client photo is required to submit the application.',
         });
+    }
+
+    // ── Server-side ID duplicate check ──────────────────────────────────────
+    const isNewIdCapture = clientType === 'prospect' ||
+        (clientType === 'balik' && !existingClientId);
+    if (isNewIdCapture && governmentIdType && governmentIdNumber?.trim()) {
+        const dupeClients = await graph.query(
+            queryQl(CLIENT_ID_TYPE, {
+                where: {
+                    governmentIdType:   { _eq: governmentIdType },
+                    governmentIdNumber: { _ilike: governmentIdNumber.trim() },
+                    status:             { _neq: 'archived' },
+                },
+                limit: 1,
+            })
+        ).then(r => r.data?.clients ?? []);
+
+        if (dupeClients.length > 0) {
+            const dupe = dupeClients[0];
+            return res.status(200).json({
+                success: false,
+                message: `This ${governmentIdType} ID number is already registered to ${dupe.lastName}, ${dupe.firstName}. If this is an existing member, please select Reloan, Pending Member, or Balik instead.`,
+            });
+        }
     }
 
     // ── Generate CI reference code ────────────────────────────────────────
@@ -147,8 +182,16 @@ async function submitLAF(req, res) {
                 clientType:            clientType            || 'prospect',
                 existingClientId:      existingClientId      || null,
                 existingLoanId:        existingLoanId        || null,
-                detailFlags:           detailFlags           || [],
                 isOffline:             false,
+                // Balik history — previous assignment preserved
+                oldGroupId:            oldGroupId            || null,
+                oldLoId:               oldLoId               || null,
+                // Duplicate / Balik flagging
+                isDuplicateFlagged:    isDuplicateFlagged    || false,
+                duplicateCandidateIds: duplicateCandidateIds || [],
+                isBalikUnmatched:      isBalikUnmatched      || false,
+                // If prospect has duplicates → requires admin validation before promote
+                ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]
         })
     ).then(r => r.data?.temporaryLoanApplications?.returning ?? []);

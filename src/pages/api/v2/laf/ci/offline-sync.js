@@ -8,6 +8,8 @@ import { findUserById } from '@/lib/graph.functions'; // ← was missing, caused
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import moment from 'moment';
 
+const SPACES_ROOT = process.env.SPACES_ROOT || 'lms';
+
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations',          CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
@@ -28,7 +30,7 @@ async function uploadBase64ToSpaces(base64DataUrl, tempAppId) {
     const mimeType = matches[1];
     const buffer   = Buffer.from(matches[2], 'base64');
     const ext      = mimeType.split('/')[1] || 'jpg';
-    const key      = `lms/ci-selfies/${tempAppId}/${Date.now()}-offline-selfie.${ext}`;
+    const key      = `${SPACES_ROOT}/ci-selfies/${tempAppId}/${Date.now()}-offline-selfie.${ext}`;
     await s3.send(new PutObjectCommand({
         Bucket:      process.env.SPACES_BUCKET,
         Key:         key,

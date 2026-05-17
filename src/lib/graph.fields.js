@@ -788,6 +788,15 @@ export const TEMP_LOAN_APP_FIELDS = `
   syncedAt
   idVerified
   detailFlags
+  duplicateCandidateIds
+  isDuplicateFlagged
+  isBalikUnmatched
+  duplicateValidatedBy
+  duplicateValidatedAt
+  duplicateValidationNote
+  oldBranchId
+  oldGroupId
+  oldLoId
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

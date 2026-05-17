@@ -7,6 +7,7 @@ import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { GraphProvider }               from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl }    from '@/lib/graph/graph.util';
 import getConfig                       from 'next/config';
+import { publicApiHandler } from '@/services/public-api-handler';
 import jwt    from 'jsonwebtoken';
 import crypto from 'crypto';
 
@@ -21,8 +22,7 @@ const CLIENT_TYPE = createGraphType('client', `
     _id firstName lastName biometricCredentialId
 `)('clients');
 
-export default async function handler(req, res) {
-    if (req.method !== 'GET') return res.status(405).end();
+async function getChallenge(req, res) {
 
     const { token } = req.query;
     if (!token) return res.status(200).json({ success: false, message: 'Token required.' });
@@ -89,3 +89,5 @@ export default async function handler(req, res) {
         });
     }
 }
+
+export default publicApiHandler({ get: getChallenge });
