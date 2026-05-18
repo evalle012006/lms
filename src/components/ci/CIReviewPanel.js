@@ -7,6 +7,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 
 // ── Helper: convert File to base64 data URL ──────────────────────────────
 // Used when offline — stores selfie locally instead of uploading to S3
@@ -205,6 +206,15 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                     <span className="text-sm text-gray-700">Address verified</span>
                 </label>
             </div>
+
+            {/* Duplicate validation panel — shown for flagged applications */}
+            {(applicationData?.application?.isDuplicateFlagged || 
+            applicationData?.application?.duplicateCandidateIds?.length > 0) && (
+                <CIDuplicatePanel
+                    application={applicationData.application}
+                    onValidated={onSaved}
+                />
+            )}
 
             {/* Decision */}
             <div>

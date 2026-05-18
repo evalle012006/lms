@@ -257,6 +257,7 @@ export const SETTINGS_FIELDS = `
   requireClientBiometric
   requireGovernmentId
   requireSelfieWithId
+  smsEnabled
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `

@@ -5,6 +5,7 @@ import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.field
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions'; // ← ADD THIS
 import moment from 'moment';
+import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
 
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
@@ -71,6 +72,26 @@ async function saveInvestigation(req, res) {
             where: { ciReferenceCode: { _eq: ciReferenceCode } },
         })
     );
+
+    // Send SMS notification — non-blocking
+    try {
+        const appData = await graph.query(
+            queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
+        ).then(r => r.data?.temporaryLoanApplications?.[0]);
+
+        if (appData?.contactNumber) {
+            const smsFn = decision === 'approved' ? sendCIApprovedSMS : sendCIDeclinedSMS;
+            await smsFn({
+                contactNumber:   appData.contactNumber,
+                firstName:       appData.firstName,
+                ciReferenceCode: ciReferenceCode,
+                branchName:      appData.branchName || 'our branch',
+                reason:          decision === 'declined' ? declineReason : undefined,
+            });
+        }
+    } catch (smsErr) {
+        console.error('[CI investigate] SMS error:', smsErr.message);
+    }
 
     res.status(200).json({ success: true, investigation: saved });
 }

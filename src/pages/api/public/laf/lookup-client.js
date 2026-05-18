@@ -27,6 +27,11 @@ const CLIENT_TYPE = createGraphType('client', `
     }
 `)('clients');
 
+// For checking existing pending CI applications
+const TEMP_LAF_TYPE = createGraphType('temporaryLoanApplications', `
+    _id ciReferenceCode status submittedAt
+`)('temporaryLoanApplications');
+
 // ── Error messages per mode ───────────────────────────────────────────────
 const MODE_ERRORS = {
     reloan: {
@@ -171,6 +176,28 @@ export default async function handler(req, res) {
             : matchedClient.loans?.find(
                 l => l.slotNo === parseInt(slotNo) && l.groupId === groupId
               ) || matchedClient.loans?.[0];
+
+        // ── Check for existing pending CI application ─────────────────────────
+        // For reloan/pending/balik: block if client already has a LAF pending CI review
+        if (matchedClient) {
+            const pendingApps = await graph.query(
+                queryQl(TEMP_LAF_TYPE, {
+                    where: {
+                        existingClientId: { _eq: matchedClient._id },
+                        status:           { _in: ['pending', 'pending_validation'] },
+                    },
+                    limit: 1,
+                })
+            ).then(r => r.data?.temporaryLoanApplications ?? []);
+
+            if (pendingApps.length > 0) {
+                const app = pendingApps[0];
+                return res.status(200).json({
+                    success: false,
+                    message: `This member already has a loan application pending CI review (${app.ciReferenceCode}). Please wait for the current application to be processed before submitting a new one.`,
+                });
+            }
+        }
 
         // Final status validation
         if (mode === 'balik') {

@@ -24,6 +24,7 @@ import moment from "moment";
 import { getCurrentDate, getCurrentDateV2, getEndDate } from "@/lib/date-utils";
 import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-service';
 import { findUserById, findBranches } from '@/lib/graph.functions';
+import { sendLoanReleasedSMS } from '@/lib/sms-service';
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -125,6 +126,15 @@ async function processData(req, res) {
               loan.ldfApproved     = true;
               loan.ldfApprovedDate = currentDate;
               await updateLoan(loanId, loan, addToMutationList);
+
+              // SMS to client on loan release — non-blocking
+              sendLoanReleasedSMS({
+                  contactNumber: loan.contactNumber || loan.client?.contactNumber,
+                  firstName:     loan.fullName?.split(',')[1]?.trim() || loan.client?.firstName || 'Client',
+                  amountRelease: loan.amountRelease,
+                  loanCycle:     loan.loanCycle,
+                  branchName:    loan.branchName || 'our branch',
+              }).catch(e => console.error('[LDF] SMS error:', e.message));
           }
         })
       );

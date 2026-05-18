@@ -3,6 +3,7 @@ import { publicApiHandler } from '@/services/public-api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
+import { sendLAFSubmittedSMS }  from '@/lib/sms-service';
 import { generateUUID } from '@/lib/utils';
 import moment from 'moment';
 import crypto from 'crypto';
@@ -17,6 +18,10 @@ const GROUP_TYPE = createGraphType('groups', `
 const CLIENT_ID_TYPE = createGraphType('client', `
     _id firstName lastName status
 `)('clients');
+
+const TEMP_LAF_CHECK_TYPE = createGraphType('temporaryLoanApplications', `
+    _id ciReferenceCode status
+`)('temporaryLoanApplications');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 
@@ -125,6 +130,27 @@ async function submitLAF(req, res) {
         }
     }
 
+    // ── Check for existing pending CI application (reloan/pending only) ────────
+    if ((clientType === 'reloan' || clientType === 'pending' || clientType === 'balik') && existingClientId) {
+        const pendingApps = await graph.query(
+            queryQl(TEMP_LAF_CHECK_TYPE, {
+                where: {
+                    existingClientId: { _eq: existingClientId },
+                    status:           { _in: ['pending', 'pending_validation'] },
+                },
+                limit: 1,
+            })
+        ).then(r => r.data?.temporaryLoanApplications ?? []);
+
+        if (pendingApps.length > 0) {
+            const app = pendingApps[0];
+            return res.status(200).json({
+                success: false,
+                message: `This member already has a loan application pending CI review (${app.ciReferenceCode}). The current application must be processed before submitting a new one.`,
+            });
+        }
+    }
+
     // ── Generate CI reference code ────────────────────────────────────────
     const dateStr = moment().format('YYYYMMDD');
     const suffix  = crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -202,6 +228,14 @@ async function submitLAF(req, res) {
             message: 'Failed to save application. Please try again.',
         });
     }
+
+    // Send SMS to applicant — non-blocking, never fails the request
+    sendLAFSubmittedSMS({
+        contactNumber:   contactNumber,
+        firstName:       firstName,
+        ciReferenceCode: ciReferenceCode,
+        branchName:      group?.branch?.name || branchName || 'our branch',
+    }).catch(e => console.error('[LAF submit] SMS error:', e.message));
 
     res.status(200).json({
         success: true,
