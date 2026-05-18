@@ -11,7 +11,6 @@ const USER_TYPE = createGraphType('users', `
 ${USER_FIELDS}
 `)('users');
 
-// ── NEW ─────────────────────────────────────────────────────────────────────
 const LOG_TYPE = createGraphType('user_activity_logs', `
 id user_id action field old_value new_value created_at
 `);
@@ -42,6 +41,91 @@ async function writeChangeLogs(userId, oldData, newData) {
         console.error('Failed to write activity logs:', err);
     }
 }
+
+// ── ADDED: sanitizes any value that should be a real NULL in the DB ──────────
+// Catches: actual null, undefined, the string "null", the string "undefined",
+// and empty string.
+const nullify = (val) => {
+    if (val === null || val === undefined) return null;
+    const str = String(val).trim();
+    if (str === '' || str === 'null' || str === 'undefined') return null;
+    return val;
+};
+
+// ── ADDED: enforces correct hierarchy fields per role on update ──────────────
+// Mirrors the same logic in save.js so both paths are consistent.
+const buildHierarchyFields = (userRole, payload) => {
+    const shortCode = userRole.shortCode;
+    const rep = userRole.rep;
+
+    // admin / root — everything null
+    if (rep === 1) {
+        return {
+            areaId: null,
+            regionId: null,
+            divisionId: null,
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // deputy_director — only divisionId
+    if (shortCode === 'deputy_director') {
+        return {
+            areaId: null,
+            regionId: null,
+            divisionId: nullify(payload.divisionId),
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // regional_manager — divisionId + regionId
+    if (shortCode === 'regional_manager') {
+        return {
+            areaId: null,
+            regionId: nullify(payload.regionId),
+            divisionId: nullify(payload.divisionId),
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // area_admin — areaId + regionId + divisionId, designatedBranch allowed (multi-branch)
+    if (shortCode === 'area_admin') {
+        return {
+            areaId: nullify(payload.areaId),
+            regionId: nullify(payload.regionId),
+            divisionId: nullify(payload.divisionId),
+            designatedBranchId: null,
+            designatedBranch: (payload.designatedBranch && typeof payload.designatedBranch !== 'string')
+                ? JSON.parse(payload.designatedBranch)
+                : (nullify(payload.designatedBranch) ?? '[]'),
+        };
+    }
+
+    // branch_manager (rep 3) and loan_officer (rep 4) — full hierarchy
+    if (rep === 3 || rep === 4) {
+        return {
+            areaId: nullify(payload.areaId),
+            regionId: nullify(payload.regionId),
+            divisionId: nullify(payload.divisionId),
+            designatedBranchId: nullify(payload.designatedBranchId),
+            designatedBranch: (payload.designatedBranch && typeof payload.designatedBranch !== 'string')
+                ? JSON.parse(payload.designatedBranch)
+                : (nullify(payload.designatedBranch) ?? null),
+        };
+    }
+
+    // fallback — null everything
+    return {
+        areaId: null,
+        regionId: null,
+        divisionId: null,
+        designatedBranchId: null,
+        designatedBranch: null,
+    };
+};
 // ────────────────────────────────────────────────────────────────────────────
 
 export default apiHandler({
@@ -80,6 +164,9 @@ async function updateUser(req, res) {
                 const profile = file || userData.profile;
                 const userRole = JSON.parse(payload.role);
 
+                // ── CHANGED: use buildHierarchyFields for sanitized, role-correct values ──
+                const hierarchyFields = buildHierarchyFields(userRole, payload);
+
                 let forUpdate = {
                     firstName: payload.firstName,
                     lastName: payload.lastName,
@@ -87,23 +174,23 @@ async function updateUser(req, res) {
                     position: payload.position,
                     profile: profile === 'null' ? null : profile,
                     loNo: payload.loNo && payload.loNo !== 'null' ? +payload.loNo : null,
-                    areaId: payload.areaId,
-                    divisionId: payload.divisionId,
-                    regionId: payload.regionId,
-                    designatedBranch: payload.designatedBranch,
-                    transactionType: payload.transactionType
+                    transactionType: payload.transactionType,
+                    // ── CHANGED: spread sanitized hierarchy fields ──
+                    ...hierarchyFields,
                 };
 
                 if (userRole.rep === 3 || userRole.rep === 4) {
                     if (payload.branchManagerName) {
                         forUpdate.branchManagerName = payload.branchManagerName;
                     }
-                    forUpdate.designatedBranch = (payload.designatedBranch && typeof payload.designatedBranch !== "string") ?
-                        JSON.parse(payload.designatedBranch) : payload.designatedBranch;
-                    forUpdate.designatedBranchId = (payload.designatedBranchId && typeof payload.designatedBranchId !== "string") ?
-                        JSON.parse(payload.designatedBranchId) : payload.designatedBranchId;
+                    // designatedBranch already set by buildHierarchyFields above,
+                    // but designatedBranchId needs the object extraction for rep 3/4:
+                    forUpdate.designatedBranchId = (payload.designatedBranchId && typeof payload.designatedBranchId !== 'string')
+                        ? JSON.parse(payload.designatedBranchId)
+                        : nullify(payload.designatedBranchId);
 
                 } else if (userRole.rep === 2) {
+                    // ── manager linking: same as before but now using nullify-safe values ──
                     if (userRole.shortCode === 'deputy_director' && forUpdate.divisionId !== userData.divisionId) {
                         const [prev] = await findDivisions({ _id: { _eq: userData.divisionId } }, '_id managerIds');
                         const [current] = await findDivisions({ _id: { _eq: forUpdate.divisionId } }, '_id managerIds');
@@ -156,17 +243,14 @@ async function updateUser(req, res) {
                     })
                 );
 
-                console.log(resp);
                 if (resp.errors) {
                     reject(resp.errors);
                     return;
                 }
 
-                // ── NEW: log only the fields that actually changed ────────────
                 if (!payload._skipLog) {
                     await writeChangeLogs(userData._id, userData, forUpdate);
                 }
-                // ────────────────────────────────────────────────────────────
 
                 delete userData._id;
                 delete userData.password;

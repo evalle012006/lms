@@ -481,7 +481,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                         />
                                     </div>
                                 )}
-                                {selectedRole?.rep == 2 && (
+                                {selectedRole?.shortCode == 'area_admin' && (
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
                                             <div className="flex justify-between">

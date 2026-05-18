@@ -20,6 +20,92 @@ ${USER_FIELDS}
 
 const GROUP_TYPE = createGraphType('groups', `_id`);
 
+// ── ADDED: sanitizes any value that should be a real NULL in the DB ──────────
+// Catches: actual null, undefined, the string "null", the string "undefined",
+// empty string, and the string "[]" (empty branch placeholder).
+const nullify = (val) => {
+    if (val === null || val === undefined) return null;
+    const str = String(val).trim();
+    if (str === '' || str === 'null' || str === 'undefined') return null;
+    return val;
+};
+
+// ── ADDED: enforces correct hierarchy fields per role ────────────────────────
+// Prevents stale/wrong IDs from leaking across roles.
+const buildHierarchyFields = (userRole, data) => {
+    const shortCode = userRole.shortCode;
+    const rep = userRole.rep;
+
+    // admin / root — everything null
+    if (rep === 1) {
+        return {
+            areaId: null,
+            regionId: null,
+            divisionId: null,
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // deputy_director — only divisionId
+    if (shortCode === 'deputy_director') {
+        return {
+            areaId: null,
+            regionId: null,
+            divisionId: nullify(data.divisionId),
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // regional_manager — divisionId + regionId
+    if (shortCode === 'regional_manager') {
+        return {
+            areaId: null,
+            regionId: nullify(data.regionId),
+            divisionId: nullify(data.divisionId),
+            designatedBranchId: null,
+            designatedBranch: null,
+        };
+    }
+
+    // area_admin — areaId + regionId + divisionId, designatedBranch allowed (multi-branch)
+    if (shortCode === 'area_admin') {
+        return {
+            areaId: nullify(data.areaId),
+            regionId: nullify(data.regionId),
+            divisionId: nullify(data.divisionId),
+            designatedBranchId: null,
+            designatedBranch: (data.designatedBranch && typeof data.designatedBranch !== 'string')
+                ? JSON.parse(data.designatedBranch)
+                : (nullify(data.designatedBranch) ?? '[]'),
+        };
+    }
+
+    // branch_manager (rep 3) and loan_officer (rep 4) — full hierarchy
+    if (rep === 3 || rep === 4) {
+        return {
+            areaId: nullify(data.areaId),
+            regionId: nullify(data.regionId),
+            divisionId: nullify(data.divisionId),
+            designatedBranchId: nullify(data.designatedBranchId),
+            designatedBranch: (data.designatedBranch && typeof data.designatedBranch !== 'string')
+                ? JSON.parse(data.designatedBranch)
+                : (nullify(data.designatedBranch) ?? null),
+        };
+    }
+
+    // fallback — null everything to be safe
+    return {
+        areaId: null,
+        regionId: null,
+        divisionId: null,
+        designatedBranchId: null,
+        designatedBranch: null,
+    };
+};
+// ────────────────────────────────────────────────────────────────────────────
+
 export default apiHandler({
     post: save
 });
@@ -42,6 +128,10 @@ async function save(req, res) {
         };
     } else {
         const userRole = JSON.parse(data.role);
+
+        // ── CHANGED: use buildHierarchyFields instead of raw data values ──
+        const hierarchyFields = buildHierarchyFields(userRole, data);
+
         let userData = {
             _id: generateUUID(),
             firstName: data.firstName,
@@ -55,37 +145,36 @@ async function save(req, res) {
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,
-            designatedBranchId: data.designatedBranchId ?? null,
-            areaId: data.areaId ?? null,
-            regionId: data.regionId ?? null,
-            divisionId: data.divisionId ?? null,
             root: false,
+            // ── CHANGED: spread sanitized hierarchy fields ──
+            ...hierarchyFields,
         };
 
+        // rep 3/4: designatedBranchId from branch object if passed as object
+        // Note: buildHierarchyFields already handles designatedBranch string/object,
+        // but designatedBranchId for rep 3/4 needs the branch _id extraction:
         if (userRole.rep === 3 || userRole.rep === 4) {
-            userData.designatedBranch = (data.designatedBranch && typeof data.designatedBranch !== "string") ? JSON.parse(data.designatedBranch) : data.designatedBranch;
-            userData.designatedBranchId = (data.designatedBranchId && typeof data.designatedBranchId !== "string") ? JSON.parse(data.designatedBranch)._id : data.designatedBranchId;
+            userData.designatedBranchId = (data.designatedBranchId && typeof data.designatedBranchId !== 'string')
+                ? JSON.parse(data.designatedBranch)._id
+                : nullify(data.designatedBranchId);
         }
 
-        if (userData.role.rep === 3) {
+        if (userRole.rep === 3) {
             userData.branchManagerName = data.branchManagerName;
         }
 
         if (userRole.shortCode === 'area_admin') {
             const [area] = await findAreas({ _id: { _eq: userData.areaId } }, `_id managerIds`);
             const managerIds = JSON.parse(area.managerIds ?? '[]');
-            console.log(managerIds)
             managerIds.push(userData._id);
             addToMutationList((alias) => updateQl(createGraphType('areas', '_id')('area_' + alias), {
                 set: {
-                    managerIds: JSON.stringify([... new Set(managerIds)])
+                    managerIds: JSON.stringify([...new Set(managerIds)])
                 },
                 where: {
                     _id: { _eq: area._id ?? null }
                 }
             }));
-
-            userData.designatedBranch = (data.designatedBranch && typeof data.designatedBranch !== "string") ? JSON.parse(data.designatedBranch) : data.designatedBranch;
         }
 
         if (userRole.shortCode === 'regional_manager') {
@@ -94,7 +183,7 @@ async function save(req, res) {
             managerIds.push(userData._id);
             addToMutationList((alias) => updateQl(createGraphType('regions', '_id')('region_' + alias), {
                 set: {
-                    managerIds: JSON.stringify([... new Set(managerIds)])
+                    managerIds: JSON.stringify([...new Set(managerIds)])
                 },
                 where: {
                     _id: { _eq: region._id ?? null }
@@ -124,9 +213,9 @@ async function save(req, res) {
             await createGroups(userData, addToMutationList);
         }
 
-        if(mutationList.length) {
+        if (mutationList.length) {
             await graph.mutation(
-                ... mutationList
+                ...mutationList
             );
         }
 
@@ -144,10 +233,10 @@ async function save(req, res) {
 
 async function createGroups (user, addToMutationList) {
 
-    const insertGroups =  (groups) => {
+    const insertGroups = (groups) => {
         addToMutationList(alias => insertQl(GROUP_TYPE(alias), {
             objects: groups.map(group => ({
-                ... group,
+                ...group,
                 _id: generateUUID()
             }))
         }));
