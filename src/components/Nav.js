@@ -25,6 +25,7 @@ import {
     ArrowRightLeft,
     CloudUpload,
     Menu,
+    Network,
     X,
     PanelLeftClose,
     PanelLeftOpen,
@@ -197,7 +198,7 @@ const MenuItems = [
         },
         active: false,
         hasSub: false,
-        hidden: false,
+        hidden: true,
         roles: ["admin"]
     },
     {
@@ -209,7 +210,7 @@ const MenuItems = [
         },
         active: false,
         hasSub: false,
-        hidden: false,
+        hidden: true,
         roles: ["admin"]
     },
     {
@@ -221,7 +222,7 @@ const MenuItems = [
         },
         active: false,
         hasSub: false,
-        hidden: false,
+        hidden: true,
         roles: ["admin"]
     },
     {
@@ -782,6 +783,18 @@ const MenuItems = [
                 roles: ["admin"]
             },
             {
+                label: "Hierarchy",
+                url: "/settings/hierarchy",
+                icon: {
+                    active:    (props) => <Network {...props} />,
+                    notActive: (props) => <Network {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
                 label: "Manage Account Types",
                 url: "/settings/management-account-types",
                 icon: {
@@ -814,7 +827,7 @@ const MenuItems = [
                 },
                 active: false,
                 hasSub: false,
-                hidden: false,
+                hidden: true,
                 roles: ["admin"]
             },
             {
@@ -826,7 +839,7 @@ const MenuItems = [
                 },
                 active: false,
                 hasSub: false,
-                hidden: false,
+                hidden: true,
                 roles: ["admin"]
             }
         ]
