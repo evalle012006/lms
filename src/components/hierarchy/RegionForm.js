@@ -1,0 +1,224 @@
+import React, { useMemo } from 'react';
+import { Formik } from 'formik';
+import * as yup from 'yup';
+import Select from 'react-select';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
+import { toast } from 'react-toastify';
+import InputText from '@/lib/ui/InputText';
+import SelectDropdown from '@/lib/ui/select';
+import ButtonSolid from '@/lib/ui/ButtonSolid';
+import ButtonOutline from '@/lib/ui/ButtonOutline';
+import ChildList from './ChildList';
+import { multiStyles, DropdownIndicator } from '@/styles/select';
+import { parseIds } from '@/lib/hierarchy-cascade';
+
+const validationSchema = yup.object({
+    name:       yup.string().required('Name is required'),
+    divisionId: yup.string().nullable().required('Division is required'),
+});
+
+const LabelledMultiSelect = ({ label, value, options, onChange, placeholder }) => {
+    const hasValue = value && value.length > 0;
+    return (
+        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${hasValue ? 'border-main' : 'border-slate-400'}`}>
+            <label className={`font-proxima-bold text-xs font-bold mb-1 ${hasValue ? 'text-main' : 'text-gray-500'}`}>
+                {label}
+            </label>
+            <Select
+                options={options}
+                value={value}
+                isMulti
+                styles={multiStyles}
+                components={{ DropdownIndicator, IndicatorSeparator: () => null }}
+                onChange={onChange}
+                isSearchable
+                placeholder={placeholder}
+                closeMenuOnSelect={false}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                menuPosition="fixed"
+            />
+        </div>
+    );
+};
+
+const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) => {
+    const isView = mode === 'view';
+    const isAdd  = mode === 'add';
+
+    const divisionOptions = useMemo(() =>
+        divisions.map(d => ({ value: d._id, label: d.name })),
+        [divisions]
+    );
+
+    // regional_manager options
+    const managerOptions = useMemo(() =>
+        allManagers
+            .filter(u => u.shortCode === 'regional_manager')
+            .map(u => ({ value: u._id, label: `${u.lastName}, ${u.firstName}` })),
+        [allManagers]
+    );
+
+    // All areas for linking
+    const allAreaOptions = useMemo(() =>
+        divisions.flatMap(d =>
+            (d.regions ?? []).flatMap(r =>
+                (r.areas ?? []).map(a => ({ value: a._id, label: a.name }))
+            )
+        ),
+        [divisions]
+    );
+
+    const initialManagerIds = parseIds(data.managerIds);
+    const initialAreaIds    = parseIds(data.areaIds);
+
+    // Full option objects for multi selects
+    const initialManagerValues = useMemo(() =>
+        managerOptions.filter(o => initialManagerIds.includes(o.value)),
+        [managerOptions, initialManagerIds]
+    );
+    const initialAreaValues = useMemo(() =>
+        allAreaOptions.filter(o => initialAreaIds.includes(o.value)),
+        [allAreaOptions, initialAreaIds]
+    );
+
+    const initialValues = {
+        name:       data.name       ?? '',
+        // For SelectDropdown (single): pass the raw ID string — it does options.filter(o => o.value === value)
+        divisionId: data.divisionId ?? '',
+        managerIds: initialManagerValues,   // option objects for raw Select multi
+        areaIds:    initialAreaValues,      // option objects for raw Select multi
+    };
+
+    const handleSubmit = async (values, { setSubmitting }) => {
+        try {
+            const endpoint = isAdd
+                ? getApiBaseUrl() + 'hierarchy/region/save'
+                : getApiBaseUrl() + 'hierarchy/region/update';
+
+            const payload = {
+                name:       values.name,
+                divisionId: values.divisionId || null,
+                managerIds: (values.managerIds ?? []).map(o => o.value),
+                areaIds:    (values.areaIds    ?? []).map(o => o.value),
+                ...(!isAdd && { _id: data._id }),
+            };
+
+            const res = await fetchWrapper.post(endpoint, payload);
+            if (res.success) {
+                toast.success(`Region ${isAdd ? 'created' : 'updated'} successfully.`);
+                onSaved();
+            } else {
+                toast.error(res.message ?? 'Save failed.');
+            }
+        } catch {
+            toast.error('An error occurred.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // ── View mode ─────────────────────────────────────────────────────────────
+    if (isView) {
+        const managers   = allManagers.filter(u => initialManagerIds.includes(u._id));
+        const division   = divisions.find(d => d._id === data.divisionId);
+        const thisRegion = divisions.flatMap(d => d.regions ?? []).find(r => r._id === data._id);
+
+        return (
+            <div className="space-y-6">
+                <InfoRow label="Name"     value={data.name} />
+                <InfoRow label="Division" value={division?.name ?? '—'} />
+                <InfoRow
+                    label="Regional Manager(s)"
+                    value={managers.length
+                        ? managers.map(u => `${u.lastName}, ${u.firstName}`).join(' · ')
+                        : '—'}
+                />
+                <InfoRow label="Linked Areas" value={thisRegion?.areas?.length ?? 0} />
+                {thisRegion?.areas?.length > 0 && (
+                    <ChildList
+                        title="Areas"
+                        items={thisRegion.areas.map(a => ({
+                            label: a.name,
+                            sub:   `${a.branches?.length ?? 0} branches`
+                        }))}
+                    />
+                )}
+            </div>
+        );
+    }
+
+    // ── Add / Edit ─────────────────────────────────────────────────────────────
+    return (
+        <Formik
+            initialValues={initialValues}
+            validationSchema={validationSchema}
+            onSubmit={handleSubmit}
+            enableReinitialize
+        >
+            {({ values, errors, touched, handleChange, handleSubmit, setFieldValue, isSubmitting, isValidating }) => (
+                <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+
+                    {/* Division — single select, uses SelectDropdown with raw ID value */}
+                    <SelectDropdown
+                        name="divisionId"
+                        field="divisionId"
+                        value={values.divisionId}
+                        label="Division"
+                        options={divisionOptions}
+                        onChange={(field, value) => setFieldValue(field, value)}
+                        placeholder="Select division..."
+                        errors={touched.divisionId && errors.divisionId ? errors.divisionId : undefined}
+                    />
+
+                    <InputText
+                        name="name"
+                        value={values.name}
+                        onChange={handleChange}
+                        label="Region Name"
+                        placeholder="e.g. NCR I"
+                        setFieldValue={setFieldValue}
+                        errors={touched.name && errors.name ? errors.name : undefined}
+                    />
+
+                    {/* Regional Managers — multi */}
+                    <LabelledMultiSelect
+                        label="Regional Manager(s)"
+                        value={values.managerIds}
+                        options={managerOptions}
+                        onChange={(selected) => setFieldValue('managerIds', selected ?? [])}
+                        placeholder="Select managers..."
+                    />
+
+                    {/* Link Areas — multi */}
+                    <div>
+                        <LabelledMultiSelect
+                            label="Link Areas"
+                            value={values.areaIds}
+                            options={allAreaOptions}
+                            onChange={(selected) => setFieldValue('areaIds', selected ?? [])}
+                            placeholder="Select areas to link..."
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Linking an area cascades regionId + divisionId to branches and users.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <ButtonOutline label="Cancel" type="button" onClick={onCancel} />
+                        <ButtonSolid label={isAdd ? 'Create Region' : 'Save Changes'} type="submit" isSubmitting={isValidating && isSubmitting} />
+                    </div>
+                </form>
+            )}
+        </Formik>
+    );
+};
+
+const InfoRow = ({ label, value }) => (
+    <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-sm text-gray-800">{value}</p>
+    </div>
+);
+
+export default RegionForm;
