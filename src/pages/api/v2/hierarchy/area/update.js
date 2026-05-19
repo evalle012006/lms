@@ -12,18 +12,11 @@ const graph = new GraphProvider();
 export default apiHandler({ post: update });
 
 async function update(req, res) {
-    const {
-        _id,
-        name,
-        regionId,
-        divisionId,
-        managerIds: newManagerIds = [],
-        branchIds:  newBranchIds  = []
-    } = req.body;
+    const { _id, name, regionId, divisionId, managerIds: newManagerIds = [], branchIds: newBranchIds = [] } = req.body;
 
-    // 1. Fetch current state
+    // ── Read phase ─────────────────────────────────────────────────────────────
     const [current] = await graph.query(
-        queryQl(areaType('get'), { where: { _id: { _eq: _id } } })
+        queryQl(areaType(), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.areas ?? []);
 
     if (!current) {
@@ -37,44 +30,40 @@ async function update(req, res) {
     const oldRegionId   = current.regionId;
     const oldDivisionId = current.divisionId;
 
-    // ── 2. Manager diff ───────────────────────────────────────────────────────
+    // ── Build mutation batch ──────────────────────────────────────────────────
+    const mutationList = [];
+    const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
+
+    // Manager diff
     const { removed: removedManagers, added: addedManagers } = diffManagerIds(oldManagerIds, newManagerIds);
-    await syncManagerLinks('areas', removedManagers, addedManagers, {
-        divisionId: nullify(divisionId),
-        regionId:   nullify(regionId),
-        areaId:     _id
-    });
-
-    // ── 3. regionId or divisionId changed — cascade down ─────────────────────
-    const regionChanged   = nullify(regionId)   !== nullify(oldRegionId);
-    const divisionChanged = nullify(divisionId) !== nullify(oldDivisionId);
-
-    if (regionChanged || divisionChanged) {
-        await cascadeAreaChange(_id, nullify(regionId), nullify(divisionId));
+    if (removedManagers.length || addedManagers.length) {
+        await syncManagerLinks('areas', removedManagers, addedManagers, {
+            divisionId: nullify(divisionId), regionId: nullify(regionId), areaId: _id
+        }, addToMutationList);
     }
 
-    // ── 4. Branch link diff ───────────────────────────────────────────────────
-    await syncBranchLinks(
-        newBranchIds,
-        oldBranchIds,
-        _id,
-        nullify(regionId),
-        nullify(divisionId)
-    );
+    // regionId or divisionId changed — cascade down through branches + users
+    if (nullify(regionId) !== nullify(oldRegionId) || nullify(divisionId) !== nullify(oldDivisionId)) {
+        cascadeAreaChange(_id, nullify(regionId), nullify(divisionId), addToMutationList);
+    }
 
-    // ── 5. Update area record ─────────────────────────────────────────────────
-    await graph.mutation(
-        updateQl(areaType('upd'), {
-            set: {
-                name,
-                regionId:   nullify(regionId),
-                divisionId: nullify(divisionId),
-                managerIds: JSON.stringify(newManagerIds),
-                branchIds:  JSON.stringify(newBranchIds)
-            },
-            where: { _id: { _eq: _id } }
-        })
-    );
+    // Branch link diff
+    syncBranchLinks(newBranchIds, oldBranchIds, _id, nullify(regionId), nullify(divisionId), addToMutationList);
+
+    // Area record itself
+    addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
+        set: {
+            name,
+            regionId:   nullify(regionId),
+            divisionId: nullify(divisionId),
+            managerIds: JSON.stringify(newManagerIds),
+            branchIds:  JSON.stringify(newBranchIds),
+        },
+        where: { _id: { _eq: _id } }
+    }));
+
+    // ── Single round-trip ─────────────────────────────────────────────────────
+    await graph.mutation(...mutationList);
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
