@@ -74,6 +74,40 @@ export default async function handler(req, res) {
 
     const { groupId, branchId, firstName = '', lastName, middleName = '', slotNo, mode = 'reloan' } = req.query;
 
+    // ── mode=all: pre-load all group clients for offline caching ────────────
+    if (mode === 'all') {
+        if (!groupId) return res.status(200).json({ success: false, message: 'groupId required.' });
+        const allClients = await graph.query(
+            queryQl(CLIENT_TYPE, {
+                where: { groupId: { _eq: groupId }, status: { _neq: 'archived' } },
+                limit: 100,
+            })
+        ).then(r => r.data?.clients ?? []);
+
+        return res.status(200).json({
+            success: true,
+            clients: allClients.map(cl => ({
+                _id:                   cl._id,
+                firstName:             cl.firstName,
+                lastName:              cl.lastName,
+                middleName:            cl.middleName,
+                birthdate:             cl.birthdate,
+                contactNumber:         cl.contactNumber,
+                slotNo:                cl.slotNo,
+                status:                cl.status,
+                branchId:              cl.branchId,
+                branchName:            cl.branchName,
+                profile:               cl.profile                || null,
+                governmentIdType:      cl.governmentIdType       || null,
+                governmentIdNumber:    cl.governmentIdNumber     || null,
+                oldGroupId:            cl.oldGroupId             || null,
+                oldLoId:               cl.oldLoId                || null,
+                biometricCredentialId: cl.biometricCredentialId  || null,
+                delinquent:            cl.delinquent             || false,
+            })),
+        });
+    }
+
     // Balik requires firstName + lastName; reloan/pending require lastName + slotNo
     if (mode === 'balik') {
         if (!firstName?.trim() || !lastName?.trim()) {

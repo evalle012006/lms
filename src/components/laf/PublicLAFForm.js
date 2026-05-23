@@ -315,11 +315,36 @@ const PublicLAFForm = ({
     const [detailFlags,      setDetailFlags]       = useState({});
     const [branchList,       setBranchList]        = useState([]);
     const [balikMatches,     setBalikMatches]      = useState([]);
+    const [cachedClients,    setCachedClients]     = useState(null); // pre-loaded for offline lookup
+    const [cacheLoading,     setCacheLoading]      = useState(false);
+    const [cacheReady,       setCacheReady]        = useState(false);
     const [idStepNeeded,     setIdStepNeeded]      = useState(false);
     const [photoZoom,        setPhotoZoom]         = useState(false);
 
     // Resolve signed URL for found client's existing profile photo
     const { signedUrl: foundClientPhotoUrl } = usePublicSignedUrl(foundClient?.profile || null);
+
+    // Pre-load group clients for offline lookup — called before going to field
+    const loadGroupClientsForOffline = React.useCallback(async () => {
+        if (!groupId || cacheLoading) return;
+        setCacheLoading(true);
+        try {
+            const res = await publicFetch(
+                `/api/public/laf/lookup-client?groupId=${groupId}&mode=all`
+            );
+            if (res.success && res.clients) {
+                setCachedClients(res.clients);
+                setCacheReady(true);
+                toast.success(`${res.clients.length} member records cached for offline use.`);
+            } else {
+                toast.error('Failed to cache member records. Please stay online or try again.');
+            }
+        } catch {
+            toast.error('Could not load member records. Check connection and try again.');
+        } finally {
+            setCacheLoading(false);
+        }
+    }, [groupId, cacheLoading]);
 
     // Pre-fill government ID fields from foundClient when lookup completes
     React.useEffect(() => {
@@ -478,6 +503,31 @@ const PublicLAFForm = ({
     };
 
     const handleLookup = async () => {
+        // Offline: search cached clients instead of hitting API
+        if (!isOnline) {
+            if (!cachedClients) {
+                toast.error('No cached data. Please use Prepare for Field while online first.');
+                return;
+            }
+            const term = lookupLastName.trim().toLowerCase();
+            const matches = cachedClients.filter(cl => {
+                const nameMatch = cl.lastName?.toLowerCase().includes(term);
+                const slotMatch = !lookupSlotNo || String(cl.slotNo) === String(lookupSlotNo);
+                return nameMatch && slotMatch;
+            });
+            if (matches.length === 0) {
+                toast.error('Member not found in cached records. Check the name or slot number.');
+            } else if (matches.length > 1 && clientType === 'balik') {
+                setBalikMatches(matches);
+                setFoundClient(null);
+            } else {
+                const found = matches[0];
+                setFoundClient(found);
+                const hasId = !!(found.governmentIdType && found.governmentIdNumber);
+                setIdStepNeeded(!hasId);
+            }
+            return;
+        }
         if (clientType === 'balik') {
             if (!lookupFirstName.trim()) { toast.error('Please enter your first name.'); return; }
             if (!lookupLastName.trim())  { toast.error('Please enter your last name.'); return; }
@@ -724,6 +774,13 @@ const PublicLAFForm = ({
         formikRef.current?.resetForm();
     }, []);
 
+    // ── Offline no-cache gate ──────────────────────────────────────────────
+    // If offline and no cached clients loaded, block the form and prompt to prepare.
+    // Prospect doesn't need cache (no lookup) so only gate when form needs lookup.
+    const needsLookupOnline = !isOnline && !cacheReady &&
+        (clientType === 'reloan' || clientType === 'pending' || clientType === 'balik');
+    // Show prepare prompt at top of step 0 (not a full block — let prospect through)
+
     if (submitted) return <LAFSuccessScreen ciReferenceCode={ciCode} groupName={groupName} branchName={branchName} />;
 
     // Offline confirmation screen
@@ -796,6 +853,47 @@ const PublicLAFForm = ({
                         <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
+                        {/* Offline without cache — warn user about lookup limitations */}
+                    {!isOnline && !cacheReady && (
+                        <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-300
+                            rounded-xl">
+                            <p className="text-xs font-semibold text-amber-800">
+                                ⚠ You are offline without cached data
+                            </p>
+                            <p className="text-xs text-amber-700 mt-1">
+                                Member lookup (Reloan, Pending, Balik) will not work.
+                                Only <strong>Prospect</strong> applications can be submitted offline.
+                                Go online and tap <strong>Prepare for Field</strong> to enable full offline support.
+                            </p>
+                        </div>
+                    )}
+                    {/* Prepare for Field — cache members while online */}
+                        {isOnline && !cacheReady && (
+                            <div className="mb-3 px-4 py-2.5 bg-blue-50 border border-blue-200
+                                rounded-xl flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-semibold text-blue-800">
+                                        📶 Going to the field?
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-0.5">
+                                        Cache member records now so lookup works without internet.
+                                    </p>
+                                </div>
+                                <button type="button" onClick={loadGroupClientsForOffline}
+                                    disabled={cacheLoading}
+                                    className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white
+                                        text-xs font-semibold rounded-lg hover:bg-blue-700
+                                        disabled:opacity-50 transition-colors">
+                                    {cacheLoading ? 'Caching…' : 'Prepare for Field'}
+                                </button>
+                            </div>
+                        )}
+                        {isOnline && cacheReady && (
+                            <div className="mb-2 px-3 py-2 bg-green-50 border border-green-200
+                                rounded-xl text-xs text-green-700">
+                                ✓ {cachedClients?.length} members cached — offline lookup ready
+                            </div>
+                        )}
                         <div>
                             <p>⚠ Offline Mode — Do NOT refresh or close this page.</p>
                             <p className="text-xs font-normal mt-0.5 text-red-100">
@@ -850,14 +948,32 @@ const PublicLAFForm = ({
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Are you a new or existing member?</h2>
                             <div className="space-y-2">
-                                {CLIENT_TYPES.map(ct => (
+                                {CLIENT_TYPES.map(ct => {
+                                    const isBalikOffline = ct.value === 'balik' && !isOnline;
+                                    const isLookupOffline = !isOnline && !cacheReady &&
+                                        (ct.value === 'reloan' || ct.value === 'pending');
+                                    const isDisabled = isBalikOffline || isLookupOffline;
+                                    return (
                                     <button key={ct.value} type="button"
-                                        onClick={() => { setClientType(ct.value); setFoundClient(null); setDetailFlags({}); }}
+                                        disabled={isDisabled}
+                                        onClick={() => {
+                                            if (isDisabled) return;
+                                            setClientType(ct.value);
+                                            setFoundClient(null);
+                                            setDetailFlags({});
+                                        }}
                                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${clientType === ct.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'}`}>
                                         <p className="text-sm font-semibold text-gray-900">{ct.label}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{ct.desc}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            {isBalikOffline
+                                                ? 'Online only — requires server-side matching'
+                                                : isLookupOffline
+                                                    ? 'Requires cached data — use Prepare for Field'
+                                                    : ct.desc}
+                                        </p>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="mt-6 flex justify-end">
                                 <button type="button" onClick={goNext} disabled={!clientType}
@@ -878,7 +994,11 @@ const PublicLAFForm = ({
                             )}
                             <LAFPhotoStep onPhotoReady={file => { if (!file) { setLafPhotoFile(null); setLafPhotoPreview(foundClientPhotoUrl || null); return; } setLafPhotoFile(file); setLafPhotoPreview(URL.createObjectURL(file)); }} uploading={false} preview={lafPhotoPreview} />
                             {lafPhotoFile && (
-                                <p className="text-xs text-green-600 mt-2">✓ New photo captured — will replace existing</p>
+                                <p className="text-xs text-green-600 mt-2">
+                                    {foundClient?.profile
+                                        ? '✓ New photo captured — will replace existing'
+                                        : '✓ Photo captured'}
+                                </p>
                             )}
                             <NavBtns onBack={goPrev} onNext={goNext} nextDisabled={!lafPhotoFile} />
                         </div>

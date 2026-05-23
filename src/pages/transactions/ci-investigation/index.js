@@ -257,6 +257,7 @@ const CIInvestigationPage = () => {
     const [fieldModalOpen, setFieldModalOpen] = useState(false);
     const [cacheInfo,      setCacheInfo]      = useState(null);
     const [offlineApps,    setOfflineApps]    = useState([]);
+    const [showFieldModal, setShowFieldModal] = useState(false); // gate: open PrepareForFieldModal
     const [pendingCount,   setPendingCount]   = useState(0);
 
     useEffect(() => {
@@ -482,7 +483,38 @@ const CIInvestigationPage = () => {
     const allowLoCI = systemSettings?.allowLoCI ?? false;
 
     if (isLO && !allowLoCI) {
+        // If offline with no cache — block and prompt to prepare
+    const hasCache = !!(cacheInfo && offlineApps.length > 0);
+    if (!isOnline && !hasCache) {
         return (
+            <Layout>
+                <div className="flex flex-col items-center justify-center h-full py-24 gap-4 px-6">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                        </svg>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-base font-semibold text-gray-800">No Cached Data</p>
+                        <p className="text-sm text-gray-500 mt-1 max-w-xs">
+                            You are offline and have no field data cached.
+                            Please go online and use <strong>Prepare for Field Work</strong> before visiting clients.
+                        </p>
+                    </div>
+                    <button type="button"
+                        onClick={() => setFieldModalOpen(true)}
+                        disabled={true}
+                        className="px-5 py-2.5 bg-gray-200 text-gray-500 text-sm font-medium
+                            rounded-xl cursor-not-allowed">
+                        Prepare for Field Work (requires internet)
+                    </button>
+                </div>
+            </Layout>
+        );
+    }
+
+    return (
             <Layout>
                 <div className="flex flex-col items-center justify-center h-64 gap-4">
                     <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
