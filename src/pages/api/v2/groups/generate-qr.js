@@ -34,11 +34,12 @@ async function generateGroupQR(req, res) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
 
-    // Only LO of the group or BM/above can generate
-    if (currentUser.role.rep > 3) {
+    // Only BM/above or the assigned LO of the group can generate
+    // rep: 1=admin, 2=area+, 3=BM, 4=LO — all are allowed (rep <= 4)
+    if (currentUser.role.rep > 4) {
         return res.status(200).json({
             success: false,
-            message: 'Only Loan Officers and above can generate group QR codes.',
+            message: 'Insufficient permissions to generate QR codes.',
         });
     }
 

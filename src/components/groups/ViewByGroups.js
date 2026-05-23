@@ -41,11 +41,19 @@ const QRBadge = ({ group, onClick }) => {
         );
     }
 
-    const now       = moment();
-    const expiresAt = moment(group.qrExpiresAt);
-    const daysLeft  = expiresAt.diff(now, 'days');
-    const expired   = now.isAfter(expiresAt);
-    const expiring  = !expired && daysLeft <= 2;
+    const now        = moment();
+    const expiresAt  = moment(group.qrExpiresAt);
+    const expired    = now.isAfter(expiresAt);
+    const minsLeft   = expiresAt.diff(now, 'minutes');
+    const hoursLeft  = expiresAt.diff(now, 'hours');
+    const daysLeft   = expiresAt.diff(now, 'days');
+    const expiring   = !expired && daysLeft < 2; // < 2 full days = show precise time
+
+    // Human-readable time remaining
+    const timeLabel = expired ? '' :
+        minsLeft < 60  ? `${minsLeft}m` :
+        hoursLeft < 24 ? `${hoursLeft}h` :
+        `${daysLeft}d`;
 
     if (expired) {
         return (
@@ -63,7 +71,7 @@ const QRBadge = ({ group, onClick }) => {
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
                     bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors">
                 <Clock className="w-3 h-3" />
-                QR expires in {daysLeft}d
+                QR expires in {timeLabel}
             </button>
         );
     }
@@ -72,7 +80,7 @@ const QRBadge = ({ group, onClick }) => {
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
                 bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors">
             <CheckCircle className="w-3 h-3" />
-            QR valid · {daysLeft}d left
+            QR valid · {timeLabel} left
         </button>
     );
 };
@@ -263,11 +271,15 @@ const ViewByGroupsPage = ({ uuid }) => {
     // ── QR ────────────────────────────────────────────────────────────────
     const buildQrData = (source) => ({
         ...source,
-        url: `${window.location.origin}/apply/${source.qrToken}`,
+        url:        `${window.location.origin}/apply/${source.qrToken}`,
+        // Normalize field names — group list uses loanOfficerName, modal expects loName
+        loName:     source.loName     || source.loanOfficerName || '—',
+        branchName: source.branchName || '—',
+        groupName:  source.groupName  || source.name || '—',
     });
 
-    const handleQR = useCallback(async (g) => {
-        if (!g.qrToken || moment().isAfter(moment(g.qrExpiresAt))) {
+    const handleQR = useCallback(async (g, forceGenerate = false) => {
+        if (forceGenerate || !g.qrToken || moment().isAfter(moment(g.qrExpiresAt))) {
             // Generate new QR
             try {
                 const res = await fetchWrapper.post(getApiBaseUrl() + 'groups/generate-qr', { groupId: g._id });
@@ -436,7 +448,7 @@ const ViewByGroupsPage = ({ uuid }) => {
                     isOpen={qrOpen}
                     onClose={() => setQrOpen(false)}
                     qrData={qrData}
-                    onRegenerate={() => handleQR(qrData)}
+                    onRegenerate={() => handleQR({ ...qrData, _id: qrData.groupId }, true)}
                 />
             )}
         </Layout>
