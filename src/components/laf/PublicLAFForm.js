@@ -329,15 +329,16 @@ const PublicLAFForm = ({
         if (!groupId || cacheLoading) return;
         setCacheLoading(true);
         try {
-            const res = await publicFetch(
+            const res  = await publicFetch(
                 `/api/public/laf/lookup-client?groupId=${groupId}&mode=all`
             );
-            if (res.success && res.clients) {
-                setCachedClients(res.clients);
+            const data = await res.json();  // publicFetch returns raw Response — must parse
+            if (data.success && data.clients) {
+                setCachedClients(data.clients);
                 setCacheReady(true);
-                toast.success(`${res.clients.length} member records cached for offline use.`);
+                toast.success(`${data.clients.length} member records cached for offline use.`);
             } else {
-                toast.error('Failed to cache member records. Please stay online or try again.');
+                toast.error(data.message || 'Failed to cache member records. Please try again.');
             }
         } catch {
             toast.error('Could not load member records. Check connection and try again.');
@@ -792,6 +793,7 @@ const PublicLAFForm = ({
                         <h1 className="text-xl font-bold text-gray-900">Loan Application</h1>
                         <p className="text-xs text-gray-500 mt-0.5">{groupName} · {branchName}</p>
                     </div>
+
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                         <LAFOfflineConfirmation
                             entry={lastQueuedEntry}
@@ -847,53 +849,40 @@ const PublicLAFForm = ({
                     {loName && <p className="text-xs text-gray-400 mt-0.5">Loan Officer: {loName}</p>}
                 </div>
 
+                {/* Prepare for Field — always visible above card when online ── */}
+                {isOnline && !cacheReady && (
+                    <div className="mb-3 px-4 py-2.5 bg-blue-50 border border-blue-200
+                        rounded-xl flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-semibold text-blue-800">
+                                📶 Going to the field?
+                            </p>
+                            <p className="text-xs text-blue-600 mt-0.5">
+                                Cache member records so lookup works without internet.
+                            </p>
+                        </div>
+                        <button type="button" onClick={loadGroupClientsForOffline}
+                            disabled={cacheLoading}
+                            className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white
+                                text-xs font-semibold rounded-lg hover:bg-blue-700
+                                disabled:opacity-50 transition-colors">
+                            {cacheLoading ? 'Caching…' : 'Prepare for Field'}
+                        </button>
+                    </div>
+                )}
+                {isOnline && cacheReady && (
+                    <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200
+                        rounded-xl text-xs text-green-700 flex items-center gap-2">
+                        ✓ {cachedClients?.length} members cached — offline lookup ready
+                    </div>
+                )}
+
                 {/* ── Offline banner ───────────────────────────────────── */}
                 {!isOnline && (
                     <div className="mb-4 p-3 bg-red-600 text-white rounded-xl text-sm font-semibold flex items-start gap-2">
                         <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
-                        {/* Offline without cache — warn user about lookup limitations */}
-                    {!isOnline && !cacheReady && (
-                        <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-300
-                            rounded-xl">
-                            <p className="text-xs font-semibold text-amber-800">
-                                ⚠ You are offline without cached data
-                            </p>
-                            <p className="text-xs text-amber-700 mt-1">
-                                Member lookup (Reloan, Pending, Balik) will not work.
-                                Only <strong>Prospect</strong> applications can be submitted offline.
-                                Go online and tap <strong>Prepare for Field</strong> to enable full offline support.
-                            </p>
-                        </div>
-                    )}
-                    {/* Prepare for Field — cache members while online */}
-                        {isOnline && !cacheReady && (
-                            <div className="mb-3 px-4 py-2.5 bg-blue-50 border border-blue-200
-                                rounded-xl flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-semibold text-blue-800">
-                                        📶 Going to the field?
-                                    </p>
-                                    <p className="text-xs text-blue-600 mt-0.5">
-                                        Cache member records now so lookup works without internet.
-                                    </p>
-                                </div>
-                                <button type="button" onClick={loadGroupClientsForOffline}
-                                    disabled={cacheLoading}
-                                    className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white
-                                        text-xs font-semibold rounded-lg hover:bg-blue-700
-                                        disabled:opacity-50 transition-colors">
-                                    {cacheLoading ? 'Caching…' : 'Prepare for Field'}
-                                </button>
-                            </div>
-                        )}
-                        {isOnline && cacheReady && (
-                            <div className="mb-2 px-3 py-2 bg-green-50 border border-green-200
-                                rounded-xl text-xs text-green-700">
-                                ✓ {cachedClients?.length} members cached — offline lookup ready
-                            </div>
-                        )}
                         <div>
                             <p>⚠ Offline Mode — Do NOT refresh or close this page.</p>
                             <p className="text-xs font-normal mt-0.5 text-red-100">
@@ -902,6 +891,20 @@ const PublicLAFForm = ({
                                 {stats.pending > 0 && ` · ${stats.pending} client${stats.pending > 1 ? 's' : ''} queued`}
                             </p>
                         </div>
+                    </div>
+                )}
+
+                {/* No-cache offline warning — separate from the red banner */}
+                {!isOnline && !cacheReady && (
+                    <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-xl">
+                        <p className="text-xs font-semibold text-amber-800">
+                            ⚠ No member data cached
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                            Member lookup (Reloan, Pending, Balik) will not work.
+                            Only <strong>Prospect</strong> applications can be submitted offline.
+                            Go online and tap <strong>Prepare for Field</strong> to enable full offline support.
+                        </p>
                     </div>
                 )}
 
@@ -962,11 +965,20 @@ const PublicLAFForm = ({
                                             setFoundClient(null);
                                             setDetailFlags({});
                                         }}
-                                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${clientType === ct.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'}`}>
-                                        <p className="text-sm font-semibold text-gray-900">{ct.label}</p>
+                                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                                            isDisabled
+                                                ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                                                : clientType === ct.value
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 bg-white hover:border-blue-300'
+                                        }`}>
+                                        <p className={`text-sm font-semibold ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
+                                            {ct.label}
+                                            {isBalikOffline && <span className="ml-2 text-xs font-normal text-amber-600">Online only</span>}
+                                        </p>
                                         <p className="text-xs text-gray-500 mt-0.5">
                                             {isBalikOffline
-                                                ? 'Online only — requires server-side matching'
+                                                ? 'Balik clients require server-side cross-branch matching — not available offline'
                                                 : isLookupOffline
                                                     ? 'Requires cached data — use Prepare for Field'
                                                     : ct.desc}
@@ -1178,7 +1190,7 @@ const PublicLAFForm = ({
                                     </div>
                                 )}
 
-                {foundClient && (
+                                {foundClient && (
                                     <div className="p-4 bg-green-50 border border-green-300 rounded-xl space-y-2">
                                         <p className="text-xs font-semibold text-green-700">✓ Member found:</p>
                                         {/* Profile photo + name side by side */}
