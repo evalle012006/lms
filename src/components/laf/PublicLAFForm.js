@@ -265,9 +265,8 @@ const PublicLAFForm = ({
         const addBiometric = requireClientBiometric && isOnline;
         if (isExisting) {
             const s = ['Type', 'Lookup', 'Confirm', 'Photo'];
-            // Always show ID step for existing clients — pre-fills if they have one,
-            // allows capture/update if they don't
-            if (requireGovernmentId) s.push('ID');
+            // Show ID step if: settings require it OR client has no ID yet
+            if (requireGovernmentId || idStepNeeded) s.push('ID');
             s.push('Loan');
             if (addBiometric) s.push('Biometric');
             return s;
@@ -286,7 +285,7 @@ const PublicLAFForm = ({
         if (addBiometric) s.push('Biometric');
         return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [clientType, requireClientBiometric, isOnline, requireGovernmentId]);
+    }, [clientType, requireClientBiometric, isOnline, requireGovernmentId, idStepNeeded]);
 
     // si() recalculates on every render since STEPS is now a stable memo value
     const si = React.useCallback(
@@ -313,11 +312,32 @@ const PublicLAFForm = ({
     const [lookupLooking,    setLookupLooking]     = useState(false);
     const [foundClient,      setFoundClient]       = useState(null);
     const [detailFlags,      setDetailFlags]       = useState({});
+    // Inline edits from Confirm step — only changed fields, keyed by field name
+    const [clientChanges,    setClientChanges]     = useState({});
     const [branchList,       setBranchList]        = useState([]);
     const [balikMatches,     setBalikMatches]      = useState([]);
-    const [cachedClients,    setCachedClients]     = useState(null); // pre-loaded for offline lookup
+    // ── Offline client cache — localStorage with 8h TTL ─────────────────────
+    const CACHE_KEY  = `ambercash_laf_offline_${groupId}`;
+    const CACHE_TTL  = 24 * 60 * 60 * 1000; // 24 hours — matches CI cache TTL
+
+    const loadCacheFromStorage = () => {
+        try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            const { clients, cachedAt } = JSON.parse(raw);
+            if (Date.now() - cachedAt > CACHE_TTL) {
+                localStorage.removeItem(CACHE_KEY); // expired
+                return null;
+            }
+            return { clients, cachedAt };
+        } catch { return null; }
+    };
+
+    const storedCache = loadCacheFromStorage();
+    const [cachedClients,    setCachedClients]     = useState(storedCache?.clients || null);
     const [cacheLoading,     setCacheLoading]      = useState(false);
-    const [cacheReady,       setCacheReady]        = useState(false);
+    const [cacheReady,       setCacheReady]        = useState(!!storedCache);
+    const [cachedAt,         setCachedAt]          = useState(storedCache?.cachedAt || null);
     const [idStepNeeded,     setIdStepNeeded]      = useState(false);
     const [photoZoom,        setPhotoZoom]         = useState(false);
 
@@ -334,7 +354,17 @@ const PublicLAFForm = ({
             );
             const data = await res.json();  // publicFetch returns raw Response — must parse
             if (data.success && data.clients) {
+                const now = Date.now();
+                try {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({
+                        clients:  data.clients,
+                        cachedAt: now,
+                    }));
+                } catch (e) {
+                    console.warn('localStorage write failed — cache in memory only:', e);
+                }
                 setCachedClients(data.clients);
+                setCachedAt(now);
                 setCacheReady(true);
                 toast.success(`${data.clients.length} member records cached for offline use.`);
             } else {
@@ -477,7 +507,22 @@ const PublicLAFForm = ({
         const bad = results.filter(r => !r.success).length;
         if (ok > 0)  toast.success(`${ok} application${ok > 1 ? 's' : ''} synced successfully.`);
         if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
-    }, [syncing, queue, markSynced, markFailed, currentUserToken]);
+
+        // Clear ALL offline caches after sync — force fresh data on next prepare
+        if (ok > 0) {
+            try {
+                // Clear LAF member cache (group-scoped key)
+                localStorage.removeItem(CACHE_KEY);
+                // Clear CI field cache
+                localStorage.removeItem('ci_field_cache');
+                setCachedClients(null);
+                setCacheReady(false);
+                setCachedAt(null);
+            } catch (e) {
+                console.warn('Failed to clear offline caches after sync:', e);
+            }
+        }
+    }, [syncing, queue, markSynced, markFailed, currentUserToken, CACHE_KEY]);
 
     const checkDuplicates = async (firstName, lastName, birthdate) => {
         if (!firstName || !lastName) return;
@@ -610,9 +655,11 @@ const PublicLAFForm = ({
             setIdDupChecking(true);
             try {
                 const p = new URLSearchParams({ idType, idNumber: idNumber.trim() });
-                const res = await publicFetch(`/api/public/laf/check-id-duplicate?${p}`);
+                // Pass existingClientId so reloan/pending/balik don't block on their own ID
+                if (foundClient?._id) p.set('existingClientId', foundClient._id);
+                const res  = await publicFetch(`/api/public/laf/check-id-duplicate?${p}`);
                 const data = await res.json();
-                if (data.isDuplicate && data.matches?.length > 0) {
+                if (data.isDuplicate && data.conflicts?.length > 0) {
                     setIdDuplicate(data);
                     setIdDupChecking(false);
                     return; // Block — show warning in UI
@@ -653,6 +700,21 @@ const PublicLAFForm = ({
     const goPrev = () => setStep(s => Math.max(s - 1, 0));
 
     const handleSubmit = useCallback(async (values) => {
+        // ── Validate: same existing client already queued offline ─────────
+        if (foundClient?._id && (clientType === 'reloan' || clientType === 'pending' || clientType === 'balik')) {
+            const alreadyQueued = queue.some(
+                e => e.status !== 'failed' &&
+                     e.formData?.existingClientId === foundClient._id
+            );
+            if (alreadyQueued) {
+                toast.error(
+                    `${foundClient.lastName}, ${foundClient.firstName} already has a ` +
+                    `pending application in the queue. Sync first before submitting another.`
+                );
+                return;
+            }
+        }
+
         // ── Offline mode: save to queue instead of submitting ─────────────
         if (!isOnline) {
             if (stats.isFull) {
@@ -666,6 +728,9 @@ const PublicLAFForm = ({
                     qrToken, groupId, loId, branchId,
                     clientType,
                     existingClientId: foundClient?._id   || null,
+                    clientChanges:    Object.fromEntries(
+                        Object.entries(clientChanges).filter(([, v]) => v?.trim())
+                    ),
                     existingLoanId:   foundClient?.loanId || null,
                     detailFlags:      Object.keys(detailFlags).filter(k => detailFlags[k]),
                     governmentIdType:   idType   || null,
@@ -713,6 +778,9 @@ const PublicLAFForm = ({
                 body: JSON.stringify({
                     groupId, loId, branchId, qrToken, clientType,
                     existingClientId: foundClient?._id || null,
+                    clientChanges:    Object.fromEntries(
+                        Object.entries(clientChanges).filter(([, v]) => v?.trim())
+                    ),
                     existingLoanId: foundClient?.loanId || null,
                     detailFlags: Object.keys(detailFlags).filter(k => detailFlags[k]),
                     ...values,
@@ -757,6 +825,7 @@ const PublicLAFForm = ({
         setIdDuplicate(null);
         setIdDupChecking(false);
         setIdStepNeeded(false);
+        setClientChanges({});
         setLookupLastName('');
         setLookupFirstName('');
         setLookupMiddleName('');
@@ -870,10 +939,17 @@ const PublicLAFForm = ({
                         </button>
                     </div>
                 )}
-                {isOnline && cacheReady && (
+                {isOnline && cacheReady && cachedAt && (
                     <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200
-                        rounded-xl text-xs text-green-700 flex items-center gap-2">
-                        ✓ {cachedClients?.length} members cached — offline lookup ready
+                        rounded-xl text-xs text-green-700 flex items-center justify-between gap-2">
+                        <span>✓ {cachedClients?.length} members cached — expires {
+                            new Date(cachedAt + 8 * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        }</span>
+                        <button type="button" onClick={loadGroupClientsForOffline}
+                            disabled={cacheLoading}
+                            className="text-green-600 underline text-xs disabled:opacity-50">
+                            Refresh
+                        </button>
                     </div>
                 )}
 
@@ -963,7 +1039,9 @@ const PublicLAFForm = ({
                                             if (isDisabled) return;
                                             setClientType(ct.value);
                                             setFoundClient(null);
+                                            setIdStepNeeded(false);
                                             setDetailFlags({});
+                                            setClientChanges({});
                                         }}
                                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                                             isDisabled
@@ -1074,12 +1152,14 @@ const PublicLAFForm = ({
                                     {/* ID duplicate warning */}
                                     {idDuplicate && (
                                         <div className="p-3 bg-red-50 border border-red-300 rounded-xl">
-                                            <p className="text-xs font-semibold text-red-700 mb-2">
-                                                ⛔ This ID number is already registered to another client:
+                                            <p className="text-xs font-semibold text-red-700 mb-1">
+                                                ⛔ Government ID already in use
                                             </p>
-                                            {idDuplicate.matches?.map((m, i) => (
+                                            <p className="text-xs text-red-600 mb-2">{idDuplicate.message}</p>
+                                            {idDuplicate.conflicts?.map((m, i) => (
                                                 <p key={i} className="text-xs text-red-600 py-0.5">
                                                     {m.name} · {m.branch} · {m.status}
+                                                    {m.source === 'application' && m.ref ? ` · Ref: ${m.ref}` : ''}
                                                 </p>
                                             ))}
                                             <p className="text-xs text-red-500 mt-2">
@@ -1268,22 +1348,111 @@ const PublicLAFForm = ({
                         <div>
                             <h2 className="text-base font-semibold text-gray-800 mb-4">Confirm Your Details</h2>
                             <div className="space-y-3">
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">Review your details. If anything has changed, tick "Changed" — the investigator will update your record.</div>
-                                {[
-                                    { key: 'name',    label: 'Full Name',      value: `${foundClient.lastName}, ${foundClient.firstName} ${foundClient.middleName || ''}` },
-                                    { key: 'contact', label: 'Contact Number',  value: foundClient.contactNumber || '—' },
-                                    { key: 'address', label: 'Address',         value: [foundClient.addressStreetNo, foundClient.addressBarangayDistrict, foundClient.addressMunicipalityCity, foundClient.addressProvince].filter(Boolean).join(', ') || '—' },
-                                ].map(({ key, label, value }) => (
-                                    <div key={key} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                        <div className="flex-1"><p className="text-xs text-gray-500">{label}</p><p className="text-sm font-medium text-gray-900 mt-0.5">{value}</p></div>
-                                        <label className="flex items-center gap-1.5 text-xs text-amber-600 flex-shrink-0">
-                                            <input type="checkbox" checked={detailFlags[key] || false} onChange={e => setDetailFlags(p => ({ ...p, [key]: e.target.checked }))} className="rounded" />
-                                            Changed
-                                        </label>
+
+                                {/* ── Read-only fields ── */}
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Member Information</p>
+                                    {[
+                                        ['First Name',  foundClient.firstName],
+                                        ['Birthdate',   foundClient.birthdate],
+                                        ['Branch',      foundClient.branchName || '—'],
+                                        ['Slot No.',    foundClient.slotNo     || '—'],
+                                    ].map(([label, value]) => (
+                                        <div key={label} className="flex justify-between text-sm">
+                                            <span className="text-gray-500">{label}</span>
+                                            <span className="font-medium text-gray-900">{value || '—'}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* ── Editable fields ── */}
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 mb-1">
+                                    Update any details that have changed since your last loan.
+                                </div>
+
+                                {/* Last Name */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-600">
+                                        Last Name
+                                        <span className="ml-1 text-gray-400 font-normal">(current: {foundClient.lastName})</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Leave blank if unchanged"
+                                        value={clientChanges.lastName || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, lastName: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                    />
+                                </div>
+
+                                {/* Middle Name */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-600">
+                                        Middle Name
+                                        <span className="ml-1 text-gray-400 font-normal">(current: {foundClient.middleName || 'none'})</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Leave blank if unchanged"
+                                        value={clientChanges.middleName || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, middleName: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                    />
+                                </div>
+
+                                {/* Contact Number */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-600">
+                                        Contact Number
+                                        <span className="ml-1 text-gray-400 font-normal">(current: {foundClient.contactNumber || '—'})</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        placeholder="Leave blank if unchanged"
+                                        value={clientChanges.contactNumber || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, contactNumber: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                    />
+                                </div>
+
+                                {/* Address */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-600">Address</label>
+                                    <p className="text-xs text-gray-400 mb-1">
+                                        Current: {[foundClient.addressStreetNo, foundClient.addressBarangayDistrict,
+                                            foundClient.addressMunicipalityCity, foundClient.addressProvince]
+                                            .filter(Boolean).join(', ') || '—'}
+                                    </p>
+                                    <input type="text" placeholder="Street / House No. (leave blank if unchanged)"
+                                        value={clientChanges.addressStreetNo || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, addressStreetNo: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white mb-1.5" />
+                                    <input type="text" placeholder="Barangay / District"
+                                        value={clientChanges.addressBarangayDistrict || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, addressBarangayDistrict: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white mb-1.5" />
+                                    <input type="text" placeholder="Municipality / City"
+                                        value={clientChanges.addressMunicipalityCity || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, addressMunicipalityCity: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white mb-1.5" />
+                                    <input type="text" placeholder="Province"
+                                        value={clientChanges.addressProvince || ''}
+                                        onChange={e => setClientChanges(p => ({ ...p, addressProvince: e.target.value }))}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
+                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white" />
+                                </div>
+
+                                {/* Summary of changes */}
+                                {Object.entries(clientChanges).some(([, v]) => v?.trim()) && (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                                        ✎ Changes will be applied to this member's record when promoted.
                                     </div>
-                                ))}
-                                {Object.values(detailFlags).some(Boolean) && (
-                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">Flagged changes will be reviewed during your CI investigation visit.</div>
                                 )}
                             </div>
                             <NavBtns onBack={goPrev} onNext={goNext} />

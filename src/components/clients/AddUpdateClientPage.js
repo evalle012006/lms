@@ -474,8 +474,22 @@ const AddUpdateClientPage = ({
 
     const handleCIFound = useCallback((result) => {
         const code = result.ciData?.ciReferenceCode;
-        
-        // Update URL with ciCode — shallow so no full page reload
+ 
+        // Existing client (reloan/pending/balik) — already updated server-side.
+        // Skip the Add Client form entirely; redirect to Add Loan for this client.
+        if (result.isExistingClient && result.clientId) {
+            toast.success('Member record updated from LAF. Redirecting to Add Loan…');
+            const q = new URLSearchParams({
+                clientId: result.clientId,
+                ...(result.loanData?.groupId  ? { groupId:  result.loanData.groupId  } : {}),
+                ...(result.loanData?.loId     ? { loId:     result.loanData.loId     } : {}),
+                ...(result.loanData?.clientType ? { clientType: result.loanData.clientType } : {}),
+            });
+            router.push(`/loans/add?${q.toString()}`);
+            return;
+        }
+ 
+        // New prospect client — pre-fill Add Client form as before
         if (code) {
             router.replace(
                 { pathname: '/clients/add', query: { ciCode: code } },
@@ -483,7 +497,7 @@ const AddUpdateClientPage = ({
                 { shallow: true }
             );
         }
-
+ 
         setCiPreFill(result);
         setShowEntryPanel(false);
         if (result.duplicateCandidates?.length > 0) setDuplicate(true);

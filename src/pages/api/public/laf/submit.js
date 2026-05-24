@@ -15,9 +15,15 @@ const GROUP_TYPE = createGraphType('groups', `
     branch { _id name code }
 `)('groups');
 
-const CLIENT_ID_TYPE = createGraphType('client', `
+const CLIENT_ID_TYPE = createGraphType('clients', `
     _id firstName lastName status
 `)('clients');
+
+const TEMP_ID_TYPE = createGraphType('temporaryLoanApplications', `
+    _id firstName lastName status ciReferenceCode
+`)('temporaryLoanApplications');
+
+const ACTIVE_LAF_STATUSES = ['pending', 'ci_approved', 'pending_validation'];
 
 const TEMP_LAF_CHECK_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status
@@ -107,25 +113,56 @@ async function submitLAF(req, res) {
     }
 
     // ── Server-side ID duplicate check ──────────────────────────────────────
-    const isNewIdCapture = clientType === 'prospect' ||
-        (clientType === 'balik' && !existingClientId);
-    if (isNewIdCapture && governmentIdType && governmentIdNumber?.trim()) {
-        const dupeClients = await graph.query(
-            queryQl(CLIENT_ID_TYPE, {
-                where: {
-                    governmentIdType:   { _eq: governmentIdType },
-                    governmentIdNumber: { _ilike: governmentIdNumber.trim() },
-                    status:             { _neq: 'archived' },
-                },
-                limit: 1,
-            })
-        ).then(r => r.data?.clients ?? []);
+    // ── Government ID uniqueness check ─────────────────────────────────────
+    // Run for ALL client types that capture an ID — existingClientId excludes self
+    if (governmentIdType && governmentIdNumber?.trim()) {
+        const cleanId   = governmentIdNumber.trim();
+        const excludeId = existingClientId || '__none__';
+
+        const [dupeClients, dupeLAFs] = await Promise.all([
+            // Check promoted clients
+            graph.query(
+                queryQl(CLIENT_ID_TYPE, {
+                    where: {
+                        governmentIdType:   { _eq:   governmentIdType },
+                        governmentIdNumber: { _ilike: cleanId         },
+                        status:             { _neq:  'archived'       },
+                        _id:                { _neq:  excludeId        },
+                    },
+                    limit: 1,
+                })
+            ).then(r => r.data?.clients ?? []),
+
+            // Check active LAF pipeline
+            graph.query(
+                queryQl(TEMP_ID_TYPE, {
+                    where: {
+                        governmentIdType:   { _eq:   governmentIdType      },
+                        governmentIdNumber: { _ilike: cleanId               },
+                        status:             { _in:   ACTIVE_LAF_STATUSES   },
+                        existingClientId:   { _neq:  excludeId             },
+                    },
+                    limit: 1,
+                })
+            ).then(r => r.data?.temporaryLoanApplications ?? []),
+        ]);
 
         if (dupeClients.length > 0) {
             const dupe = dupeClients[0];
             return res.status(200).json({
                 success: false,
-                message: `This ${governmentIdType} ID number is already registered to ${dupe.lastName}, ${dupe.firstName}. If this is an existing member, please select Reloan, Pending Member, or Balik instead.`,
+                message: `This ${governmentIdType} ID is already registered to ${dupe.lastName}, ${dupe.firstName}. ` +
+                    `If this is an existing member, please select Reloan, Pending Member, or Balik instead.`,
+            });
+        }
+
+        if (dupeLAFs.length > 0) {
+            const dupe = dupeLAFs[0];
+            return res.status(200).json({
+                success: false,
+                message: `This ${governmentIdType} ID is already on an active application ` +
+                    `(${dupe.ciReferenceCode} — ${dupe.lastName}, ${dupe.firstName}). ` +
+                    `The previous application must be completed or declined before submitting a new one.`,
             });
         }
     }

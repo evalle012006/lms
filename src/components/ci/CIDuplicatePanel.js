@@ -58,10 +58,10 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
     const [note,       setNote]       = useState('');
     const [acting,     setActing]     = useState(false);
 
+    // Only system admin (rep=1) can approve/decline duplicates
     const canValidate =
         currentUser?.role?.rep === 1 ||
-        currentUser?.root === true    ||
-        ['regional_manager', 'deputy_director'].includes(currentUser?.role?.shortCode);
+        currentUser?.root === true;
 
     const isDuplicateFlagged = application?.isDuplicateFlagged;
     const isPendingValidation = application?.status === 'pending_validation';
@@ -189,7 +189,7 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
                 {/* Read-only for non-validators */}
                 {isPendingValidation && !canValidate && (
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
-                        Waiting for admin, regional manager, or deputy director to validate this application.
+                        Waiting for a system administrator to validate this application.
                     </div>
                 )}
             </div>

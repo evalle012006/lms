@@ -1,3 +1,4 @@
+// src/components/laf/TemporaryLoanApplicationsTab.js
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -271,6 +272,34 @@ const ApplicationDetailModal = ({ application, onClose, onPrintLAF, onValidated 
                             </span>
                         </div>
                     ))}
+
+                    {/* Client changes flagged by LO during LAF ─────────── */}
+                    {application.clientChanges &&
+                     Object.entries(application.clientChanges).some(([, v]) => v?.trim()) && (
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+                            <p className="text-xs font-semibold text-amber-800 mb-2">
+                                ✎ Member reported the following changes
+                            </p>
+                            {[
+                                ['Last Name',    application.clientChanges.lastName],
+                                ['Middle Name',  application.clientChanges.middleName],
+                                ['Contact No.',  application.clientChanges.contactNumber],
+                                ['Street',       application.clientChanges.addressStreetNo],
+                                ['Barangay',     application.clientChanges.addressBarangayDistrict],
+                                ['City',         application.clientChanges.addressMunicipalityCity],
+                                ['Province',     application.clientChanges.addressProvince],
+                            ].filter(([, v]) => v?.trim()).map(([label, value]) => (
+                                <div key={label} className="flex justify-between text-xs py-1
+                                    border-b border-amber-100 last:border-0">
+                                    <span className="text-amber-700">{label}</span>
+                                    <span className="font-semibold text-amber-900">{value}</span>
+                                </div>
+                            ))}
+                            <p className="text-xs text-amber-600 mt-2 italic">
+                                These will be applied to the client record upon promotion.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Duplicate validation panel — inside modal scroll area */}
                     {application.isDuplicateFlagged &&

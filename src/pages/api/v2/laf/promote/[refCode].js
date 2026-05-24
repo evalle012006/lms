@@ -1,16 +1,15 @@
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS } from '@/lib/graph.fields';
+import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS, CLIENT_FIELDS } from '@/lib/graph.fields';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import moment from 'moment';
 
 const graph = new GraphProvider();
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
-const CLIENT_TYPE = createGraphType('client', `
-    _id firstName lastName middleName branchName similarityScore
-`)('clients');
+const CLIENT_TYPE     = createGraphType('clients', CLIENT_FIELDS)('clients');
 
 const s3 = new S3Client({
     endpoint: 'https://sgp1.digitaloceanspaces.com',
@@ -117,13 +116,101 @@ async function getForPromotion(req, res) {
         checkDuplicates(application.firstName, application.lastName),
     ]);
 
-    res.status(200).json({
-        success: true,
+    // ── Existing client (reloan / pending / balik) ────────────────────────
+    // Update the client record in place — do NOT open AddClientPage form.
+    if (application.existingClientId) {
+        // Build update payload — only overwrite fields that have new values
+        const updatePayload = {};
+        // ── Apply inline edits from Confirm step (clientChanges) ────────────
+        // These are fields the LO explicitly updated during the LAF — last name
+        // (married), middle name, contact, address parts.
+        const ch = application.clientChanges || {};
+        if (ch.lastName)                updatePayload.lastName                = ch.lastName.trim();
+        if (ch.middleName)              updatePayload.middleName              = ch.middleName.trim();
+        if (ch.contactNumber)           updatePayload.contactNumber           = ch.contactNumber.trim();
+        if (ch.addressStreetNo)         updatePayload.addressStreetNo         = ch.addressStreetNo.trim();
+        if (ch.addressBarangayDistrict) updatePayload.addressBarangayDistrict = ch.addressBarangayDistrict.trim();
+        if (ch.addressMunicipalityCity) updatePayload.addressMunicipalityCity = ch.addressMunicipalityCity.trim();
+        if (ch.addressProvince)         updatePayload.addressProvince         = ch.addressProvince.trim();
+ 
+        // ── Fields from LAF that always override (photo, ID, biometric) ───
+        if (application.contactNumber && !ch.contactNumber) updatePayload.contactNumber = application.contactNumber;
+        if (application.addressStreetNo && !ch.addressStreetNo) updatePayload.addressStreetNo = application.addressStreetNo;
+        if (application.addressBarangayDistrict && !ch.addressBarangayDistrict) updatePayload.addressBarangayDistrict = application.addressBarangayDistrict;
+        if (application.addressMunicipalityCity && !ch.addressMunicipalityCity) updatePayload.addressMunicipalityCity = application.addressMunicipalityCity;
+        if (application.addressProvince && !ch.addressProvince) updatePayload.addressProvince = application.addressProvince;
+        if (application.addressZipCode)          updatePayload.addressZipCode          = application.addressZipCode;
+        if (application.landmark)                updatePayload.landmark                = application.landmark;
+        if (application.distanceFromBranch)      updatePayload.distanceFromBranch      = application.distanceFromBranch;
+        if (application.lafPhotoKey)             updatePayload.profile                 = application.lafPhotoKey;
+        if (application.governmentIdType)        updatePayload.governmentIdType        = application.governmentIdType;
+        if (application.governmentIdNumber)      updatePayload.governmentIdNumber      = application.governmentIdNumber;
+        if (application.governmentIdPhotoKey)    updatePayload.governmentIdPhotoKey    = application.governmentIdPhotoKey;
+        if (application.biometricCredentialId) {
+            updatePayload.biometricCredentialId = application.biometricCredentialId;
+            updatePayload.biometricPublicKey    = application.biometricPublicKey;
+            updatePayload.biometricCounter      = application.biometricCounter || 0;
+            updatePayload.biometricRegisteredAt = application.biometricRegisteredAt;
+            updatePayload.biometricDeviceName   = application.biometricDeviceName;
+        }
+        if (investigation?.picUserName) updatePayload.ciName = investigation.picUserName;
+ 
+        // Apply update if anything changed
+        if (Object.keys(updatePayload).length > 0) {
+            await graph.mutation(
+                updateQl(CLIENT_TYPE, {
+                    where: { _id: { _eq: application.existingClientId } },
+                    set:   updatePayload,
+                })
+            );
+        }
+ 
+        // Mark LAF as promoted
+        await graph.mutation(
+            updateQl(TEMP_TYPE, {
+                where: { ciReferenceCode: { _eq: refCode } },
+                set: {
+                    status:      'promoted',
+                    promotedAt:  moment().toISOString(),
+                },
+            })
+        );
+ 
+        return res.status(200).json({
+            success:          true,
+            isExistingClient: true,
+            clientId:         application.existingClientId,
+            ciData: {
+                ciReferenceCode: application.ciReferenceCode,
+                investigatedBy:  investigation?.picUserName || '',
+                investigatedAt:  investigation?.investigatedAt,
+                decision:        investigation?.decision,
+            },
+            loanData: {
+                loanAmount:             application.loanAmount,
+                loanPurpose:            application.loanPurpose,
+                guarantorFirstName:     application.guarantorFirstName,
+                guarantorLastName:      application.guarantorLastName,
+                guarantorRelationship:  application.guarantorRelationship,
+                guarantorContactNumber: application.guarantorContactNumber,
+                groupId:                application.groupId,
+                loId:                   application.loId,
+                clientType:             application.clientType,
+                existingLoanId:         application.existingLoanId,
+            },
+            photos: { lafPhotoUrl, selfieUrl },
+        });
+    }
+ 
+    // ── New client (prospect) — return data for AddUpdateClientPage form ──
+    return res.status(200).json({
+        success:          true,
+        isExistingClient: false,
         ciData: {
             ciReferenceCode: application.ciReferenceCode,
-            investigatedBy:  investigation.picUserName || '',
-            investigatedAt:  investigation.investigatedAt,
-            decision:        investigation.decision,
+            investigatedBy:  investigation?.picUserName || '',
+            investigatedAt:  investigation?.investigatedAt,
+            decision:        investigation?.decision,
         },
         clientData: {
             firstName:               application.firstName,
@@ -142,41 +229,28 @@ async function getForPromotion(req, res) {
             guarantorLastName:       application.guarantorLastName,
             guarantorRelationship:   application.guarantorRelationship,
             guarantorContactNumber:  application.guarantorContactNumber,
-            lafPhotoKey:             application.lafPhotoKey         || null,
-            // ── Biometric ─────────────────────────────────────────────────
-            biometricCredentialId:   application.biometricCredentialId || null,
-            biometricPublicKey:      application.biometricPublicKey    || null,
-            biometricCounter:        application.biometricCounter      || 0,
-            biometricRegisteredAt:   application.biometricRegisteredAt || null,
-            biometricDeviceName:     application.biometricDeviceName   || null,
-            // ── Phase 2 fields — Government ID ────────────────────────────
-            governmentIdType:        application.governmentIdType      || null,
-            governmentIdNumber:      application.governmentIdNumber    || null,
-            governmentIdPhotoKey:    application.governmentIdPhotoKey  || null,
-            selfieWithIdPhotoKey:    application.selfieWithIdPhotoKey  || null,
-            // ── Phase 2 fields — Address extras ───────────────────────────
-            landmark:                application.landmark              || null,
-            distanceFromBranch:      application.distanceFromBranch   || null,
-            // ── Phase 2 fields — Client type + origin ─────────────────────
-            clientType:              application.clientType            || 'prospect',
-            existingClientId:        application.existingClientId      || null,
-            existingLoanId:          application.existingLoanId        || null,
-            groupId:                 application.groupId               || null,
-            loId:                    application.loId                  || null,
-            isOffline:               application.isOffline             || false,
-            // Balik history — set by submit.js from foundClient lookup
-            oldBranchId:             application.oldBranchId            || null,
-            oldGroupId:              application.oldGroupId             || null,
-            oldLoId:                 application.oldLoId                || null,
+            lafPhotoKey:             application.lafPhotoKey             || null,
+            biometricCredentialId:   application.biometricCredentialId   || null,
+            biometricPublicKey:      application.biometricPublicKey       || null,
+            biometricCounter:        application.biometricCounter         || 0,
+            biometricRegisteredAt:   application.biometricRegisteredAt    || null,
+            biometricDeviceName:     application.biometricDeviceName      || null,
+            governmentIdType:        application.governmentIdType         || null,
+            governmentIdNumber:      application.governmentIdNumber       || null,
+            governmentIdPhotoKey:    application.governmentIdPhotoKey     || null,
+            selfieWithIdPhotoKey:    application.selfieWithIdPhotoKey     || null,
+            landmark:                application.landmark                 || null,
+            distanceFromBranch:      application.distanceFromBranch       || null,
+            clientType:              application.clientType               || 'prospect',
+            groupId:                 application.groupId                  || null,
+            loId:                    application.loId                     || null,
+            isOffline:               application.isOffline                || false,
         },
         loanData: {
             loanAmount:  application.loanAmount,
             loanPurpose: application.loanPurpose,
         },
-        photos: {
-            lafPhotoUrl,
-            selfieUrl,
-        },
+        photos: { lafPhotoUrl, selfieUrl },
         duplicateCandidates,
     });
 }

@@ -18,9 +18,6 @@ const TEMP_TYPE = createGraphType(
     'temporaryLoanApplications', TEMP_LOAN_APP_FIELDS
 )('temporaryLoanApplications');
 
-// Roles that can validate duplicates
-const ALLOWED_SHORT_CODES = ['root', 'regional_manager', 'deputy_director'];
-
 export default apiHandler({ post: validateDuplicate });
 
 async function validateDuplicate(req, res) {
@@ -36,13 +33,12 @@ async function validateDuplicate(req, res) {
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    // Role check — only admin/RM/DD
-    const shortCode = currentUser.role?.shortCode;
-    const isAdmin   = currentUser.role?.rep === 1 || currentUser.root === true;
-    if (!isAdmin && !ALLOWED_SHORT_CODES.includes(shortCode)) {
+    // Role check — admin (rep=1) only
+    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true;
+    if (!isAdmin) {
         return res.status(200).json({
             success: false,
-            message: 'Only administrators, regional managers, or deputy directors can validate duplicate applications.',
+            message: 'Only system administrators can validate duplicate applications.',
         });
     }
 
