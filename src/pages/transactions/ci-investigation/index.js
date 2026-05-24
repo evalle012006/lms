@@ -17,6 +17,22 @@ import TempLAFModal from '@/components/laf/TempLAFModal';
 import PrepareForFieldModal from '@/components/ci/PrepareForFieldModal';
 import { useCIOfflineCache } from '@/hooks/useCIOfflineCache';
 
+// Client type pill — compact, colour-coded
+const CLIENT_TYPE_CONFIG = {
+    prospect: { label: 'New',     cls: 'bg-green-100 text-green-700'  },
+    reloan:   { label: 'Reloan',  cls: 'bg-blue-100 text-blue-700'    },
+    pending:  { label: 'Pending', cls: 'bg-purple-100 text-purple-700' },
+    balik:    { label: 'Balik',   cls: 'bg-orange-100 text-orange-700' },
+};
+const ClientTypePill = ({ clientType }) => {
+    const cfg = CLIENT_TYPE_CONFIG[clientType] || { label: clientType || 'New', cls: 'bg-gray-100 text-gray-600' };
+    return (
+        <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
+            {cfg.label}
+        </span>
+    );
+};
+
 const StatusBadge = ({ status }) => {
     const map = {
         pending:     { label: 'Pending CI',  cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
@@ -28,7 +44,7 @@ const StatusBadge = ({ status }) => {
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 };
 
-const ApplicantCard = ({ application }) => {
+const ApplicantCard = ({ application, loanHistory }) => {
     const rows = [
         ['CI Reference',  application.ciReferenceCode],
         ['Branch',        `${application.branchCode} — ${application.branchName}`],
@@ -82,6 +98,67 @@ const ApplicantCard = ({ application }) => {
                     ))}
                 </div>
             )}
+
+            {/* Loan history — existing clients only ──────────────────── */}
+            {loanHistory && loanHistory.length > 0 && (
+                <div className="mt-4">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">
+                        Loan History ({loanHistory.length})
+                    </p>
+                    <div className="space-y-2">
+                        {loanHistory.map((loan, i) => {
+                            const missed   = loan.missedPayments || 0;
+                            const isDelinq = loan.delinquent    || false;
+                            return (
+                                <div key={loan._id}
+                                    className={`p-2.5 rounded-xl border text-xs ${
+                                        isDelinq  ? 'bg-red-50 border-red-300' :
+                                        missed > 0 ? 'bg-amber-50 border-amber-200' :
+                                                     'bg-gray-50 border-gray-200'
+                                    }`}>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="font-semibold text-gray-800">
+                                            Cycle {loan.loanCycle}
+                                            {i === 0 && (
+                                                <span className="ml-1.5 px-1.5 py-0.5 bg-blue-100
+                                                    text-blue-700 rounded-full text-xs">
+                                                    latest
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className={`font-semibold ${
+                                            isDelinq  ? 'text-red-700'   :
+                                            missed > 0 ? 'text-amber-700' : 'text-green-700'
+                                        }`}>
+                                            {isDelinq    ? '⛔ Delinquent'      :
+                                             missed > 0  ? `⚠ ${missed} missed` : '✓ Good standing'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-500 mt-0.5">
+                                        <span className="text-gray-400">Released</span>
+                                        <span className="text-right font-medium text-gray-700">
+                                            ₱{Number(loan.amountRelease || 0).toLocaleString()}
+                                        </span>
+                                        <span className="text-gray-400">Balance</span>
+                                        <span className={`text-right font-medium ${
+                                            loan.loanBalance > 0 ? 'text-red-600' : 'text-green-600'
+                                        }`}>
+                                            ₱{Number(loan.loanBalance || 0).toLocaleString()}
+                                        </span>
+                                        <span className="text-gray-400">Payments</span>
+                                        <span className="text-right font-medium text-gray-700">
+                                            {loan.noOfPayments ?? '—'}
+                                            {loan.totalPayments ? ` / ${loan.totalPayments}` : ''}
+                                        </span>
+                                        <span className="text-gray-400">Status</span>
+                                        <span className="text-right capitalize text-gray-700">{loan.status}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -118,7 +195,7 @@ const LAFPhotoCard = ({ lafPhotoUrl }) => {
 };
 
 const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isOnline, getDrafts }) => {
-    const [applications, setApplications] = useState([]);
+    const [applications,      setApplications]      = useState([]);
     const [loading, setLoading]           = useState(true);
     const [search, setSearch]             = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
@@ -135,8 +212,12 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
     const offlineAppsRef = React.useRef(offlineApps);
     React.useEffect(() => { offlineAppsRef.current = offlineApps; }, [offlineApps]);
 
+    // Use a ref for isOnline so fetchList identity stays stable across re-renders
+    const isOnlineRef = React.useRef(isOnline);
+    React.useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
+
     const fetchList = useCallback(async () => {
-        if (!isOnline) {
+        if (!isOnlineRef.current) {
             setApplications(offlineAppsRef.current || []);
             setLoading(false);
             return;
@@ -149,7 +230,7 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
             else toast.error('Failed to load applications.');
         } catch { toast.error('Error loading applications.'); }
         finally { setLoading(false); }
-    }, [statusFilter, isOnline]);
+    }, [statusFilter]); // isOnline via ref — does not destabilise the callback
 
     useEffect(() => { fetchList(); }, [fetchList, refreshKey]);
 
@@ -236,7 +317,10 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
                                     <p className="text-xs font-mono text-blue-500 mt-0.5">{app.ciReferenceCode}</p>
                                 </div>
                                 <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                                    <StatusBadge status={app.status} />
+                                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                                        <ClientTypePill clientType={app.clientType} />
+                                        <StatusBadge status={app.status} />
+                                    </div>
                                     {draftCodes.has(app.ciReferenceCode) && (
                                         <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700
                                             text-xs rounded-full font-medium">
@@ -264,6 +348,7 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
 };
 
 const CIInvestigationPage = () => {
+    const [clientLoanHistory, setClientLoanHistory] = useState(null);
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
     const isOnline = useOnlineStatus();
@@ -308,10 +393,13 @@ const CIInvestigationPage = () => {
         fetchWrapper.get(getApiBaseUrl() + 'laf/applications/list?status=pending')
             .then(r => { if (r.success) setPendingCount(r.applications?.length ?? 0); })
             .catch(() => {});
-    }, [isOnline, listRefreshKey]);
+    // listRefreshKey intentionally triggers refresh; isOnline only on first go-online
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [listRefreshKey]);
 
     const loadApplication = useCallback(async (ciCode) => {
         setSelectedCode(ciCode);
+        setClientLoanHistory(null); // reset on new selection
 
         // Offline — load from localStorage cache
         if (!isOnline) {
@@ -374,6 +462,27 @@ const CIInvestigationPage = () => {
             }
 
             setSearchResult(res);
+
+            // Fetch loan history for existing clients (reloan/pending/balik)
+            const existingClientId = res.application?.existingClientId;
+            if (existingClientId) {
+                try {
+                    const histRes = await fetchWrapper.get(
+                        getApiBaseUrl() + `clients/loan-history?clientId=${existingClientId}`
+                    );
+                    if (histRes.success && histRes.loans?.length) {
+                        // Already ordered desc by loanCycle from API
+                        setClientLoanHistory(histRes.loans);
+                    } else {
+                        setClientLoanHistory([]);
+                    }
+                } catch (e) {
+                    console.warn('[CI] Failed to fetch loan history:', e);
+                    setClientLoanHistory([]);
+                }
+            } else {
+                setClientLoanHistory(null);
+            }
         } catch { toast.error('Failed to load application.'); }
         finally { setLoadingDetail(false); }
     }, [isOnline, getCache, getDrafts]);
@@ -491,7 +600,7 @@ const CIInvestigationPage = () => {
     const handleSaved = useCallback(({ offline }) => {
         if (!offline && searchResult?.application?.ciReferenceCode) {
             loadApplication(searchResult.application.ciReferenceCode);
-            setListRefreshKey(k => k + 1);
+            setListRefreshKey(k => k + 1); // refresh list status badge only
         } else if (offline) {
             setDraftCount(getDrafts().length);
         }
@@ -683,7 +792,7 @@ const CIInvestigationPage = () => {
                                 )}
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                     <div className="space-y-4">
-                                        <ApplicantCard application={searchResult.application} />
+                                        <ApplicantCard application={searchResult.application} loanHistory={clientLoanHistory} />
                                         <LAFPhotoCard lafPhotoUrl={searchResult.application?.lafPhotoUrl} />
                                     </div>
                                     <div className="bg-white rounded-xl border border-gray-200 p-5">

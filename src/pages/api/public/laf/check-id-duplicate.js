@@ -17,7 +17,7 @@ import { createGraphType, queryQl }  from '@/lib/graph/graph.util';
 const graph = new GraphProvider();
 
 // Minimal fields — just enough to show a meaningful conflict message
-const CLIENT_TYPE = createGraphType('clients', `
+const CLIENT_TYPE = createGraphType('client', `
     _id firstName lastName status branchName
 `)('clients');
 

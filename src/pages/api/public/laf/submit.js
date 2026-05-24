@@ -15,7 +15,7 @@ const GROUP_TYPE = createGraphType('groups', `
     branch { _id name code }
 `)('groups');
 
-const CLIENT_ID_TYPE = createGraphType('clients', `
+const CLIENT_ID_TYPE = createGraphType('client', `
     _id firstName lastName status
 `)('clients');
 

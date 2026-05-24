@@ -22,7 +22,7 @@ const CLIENT_TYPE = createGraphType('client', `
         limit: 1
     ) {
         _id slotNo status loanCycle groupId branchId
-        amountRelease loanBalance
+        amountRelease loanBalance dateAdded dateOfRelease
         guarantorFirstName guarantorLastName guarantorMiddleName
     }
 `)('clients');
@@ -297,9 +297,11 @@ export default async function handler(req, res) {
                 governmentIdPhotoKey:    matchedClient.governmentIdPhotoKey   || null,
                 // Balik display fields — branchId sent so client resolves name from branchList cache
                 branchId:                matchedClient.branchId               || null,
+                branchName:              matchedClient.branchName             || null,
                 delinquent:              matchedClient.delinquent             || false,
                 // Balik history fields — branchId is kept on offset (not nulled)
                 oldGroupId:              matchedClient.oldGroupId             || null,
+                loans:                   matchedClient.loans                  || [],
                 oldLoId:                 matchedClient.oldLoId                || null,
                 guarantorFirstName:      matchedLoan?.guarantorFirstName      || null,
                 guarantorLastName:       matchedLoan?.guarantorLastName       || null,

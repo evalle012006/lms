@@ -9,7 +9,7 @@ import moment from 'moment';
 const graph = new GraphProvider();
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
-const CLIENT_TYPE     = createGraphType('clients', CLIENT_FIELDS)('clients');
+const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
 
 const s3 = new S3Client({
     endpoint: 'https://sgp1.digitaloceanspaces.com',
