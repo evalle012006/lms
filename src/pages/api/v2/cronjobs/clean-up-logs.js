@@ -1,4 +1,3 @@
-import { getCurrentDate } from '@/lib/date-utils';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -14,17 +13,21 @@ async function updateLoans(req, res) {
     let response;
     let statusCode = 200;
 
-    const currentDate = getCurrentDate();
-    const to_date = moment(currentDate).subtract(3, 'd');
+    // FIX: Use scheduled_time from payload — avoids locale string parsing
+    const scheduledTime = req.body?.scheduled_time;
+    const currentDate = scheduledTime
+        ? moment(scheduledTime).utcOffset('+08:00').format('YYYY-MM-DD')
+        : moment().utcOffset('+08:00').format('YYYY-MM-DD');
+
+    const to_date = moment(currentDate).subtract(3, 'd').format('YYYY-MM-DD');
 
     await graph.mutation(
         deleteQl(createGraphType('lms_logs', 'id')('result'), {
             created_dt: {
-                _lt: moment(to_date).format('YYYY-MM-DD')
+                _lt: to_date
             }
         })
     );
-
 
     response = { success: true, message: 'done clean up logs in background' };
 
