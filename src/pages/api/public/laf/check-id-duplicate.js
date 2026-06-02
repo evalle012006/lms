@@ -18,11 +18,11 @@ const graph = new GraphProvider();
 
 // Minimal fields — just enough to show a meaningful conflict message
 const CLIENT_TYPE = createGraphType('client', `
-    _id firstName lastName status branchName
+    _id status branchName
 `)('clients');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', `
-    _id firstName lastName status branchName ciReferenceCode
+    _id status
 `)('temporaryLoanApplications');
 
 // Statuses that mean the LAF is still active in the pipeline
@@ -78,21 +78,16 @@ async function checkIdDuplicate(req, res) {
             return res.status(200).json({ success: true, isDuplicate: false });
         }
 
-        // Build conflict detail for UI display
         const conflicts = [
             ...clientMatches.map(c => ({
                 source: 'client',
-                name:   `${c.lastName}, ${c.firstName}`,
                 branch: c.branchName || '—',
                 status: c.status,
-                ref:    null,
             })),
             ...lafMatches.map(l => ({
                 source: 'application',
-                name:   `${l.lastName}, ${l.firstName}`,
-                branch: l.branchName || '—',
+                branch: '—',
                 status: l.status,
-                ref:    l.ciReferenceCode,
             })),
         ];
 
@@ -100,10 +95,9 @@ async function checkIdDuplicate(req, res) {
             success:     true,
             isDuplicate: true,
             conflicts,
-            // Human-readable summary for toast
             message: clientMatches.length > 0
-                ? `This ID is already registered to ${clientMatches[0].lastName}, ${clientMatches[0].firstName}.`
-                : `This ID is already on a pending application (${lafMatches[0].ciReferenceCode}).`,
+                ? 'This ID number is already registered to an existing client record.'
+                : 'This ID number is already associated with an active application.',
         });
 
     } catch (err) {

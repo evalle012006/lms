@@ -9,7 +9,8 @@ import { CheckCircle, Download, Copy } from 'lucide-react';
 import { toast } from 'react-toastify';
 import QRCode from 'qrcode';
 
-const LAFSuccessScreen = ({ ciReferenceCode, groupName, branchName }) => {
+// FIX: added onAddAnother prop — renders "Submit Another Application" button
+const LAFSuccessScreen = ({ ciReferenceCode, groupName, branchName, onAddAnother }) => {
     const canvasRef = useRef();
     const [qrDataUrl, setQrDataUrl] = useState(null);
 
@@ -124,6 +125,18 @@ const LAFSuccessScreen = ({ ciReferenceCode, groupName, branchName }) => {
                 <p className="mt-4 text-xs text-gray-400">
                     Screenshot or download your QR code for safekeeping.
                 </p>
+
+                {/* FIX: Submit another application button — only shown when handler provided */}
+                {onAddAnother && (
+                    <button
+                        type="button"
+                        onClick={onAddAnother}
+                        className="mt-4 w-full py-3 border-2 border-blue-600 text-blue-600
+                            text-sm font-semibold rounded-xl hover:bg-blue-50 transition-colors"
+                    >
+                        + Submit Another Application
+                    </button>
+                )}
             </div>
         </div>
     );

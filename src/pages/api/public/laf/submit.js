@@ -62,6 +62,8 @@ async function submitLAF(req, res) {
         existingClientId,
         existingLoanId,
         detailFlags,
+        // FIX: clientChanges was missing from destructuring — now added
+        clientChanges,
         // Duplicate flagging
         isDuplicateFlagged,
         duplicateCandidateIds,
@@ -112,9 +114,9 @@ async function submitLAF(req, res) {
         });
     }
 
-    // ── Server-side ID duplicate check ──────────────────────────────────────
-    // ── Government ID uniqueness check ─────────────────────────────────────
+    // ── Server-side Government ID uniqueness check ──────────────────────
     // Run for ALL client types that capture an ID — existingClientId excludes self
+    // FIX: removed client name from error messages — public endpoint must not leak PII
     if (governmentIdType && governmentIdNumber?.trim()) {
         const cleanId   = governmentIdNumber.trim();
         const excludeId = existingClientId || '__none__';
@@ -147,21 +149,19 @@ async function submitLAF(req, res) {
             ).then(r => r.data?.temporaryLoanApplications ?? []),
         ]);
 
+        // FIX: generic messages — no names, no CI reference codes exposed
         if (dupeClients.length > 0) {
-            const dupe = dupeClients[0];
             return res.status(200).json({
                 success: false,
-                message: `This ${governmentIdType} ID is already registered to ${dupe.lastName}, ${dupe.firstName}. ` +
+                message: `This ${governmentIdType} ID is already registered to an existing client record. ` +
                     `If this is an existing member, please select Reloan, Pending Member, or Balik instead.`,
             });
         }
 
         if (dupeLAFs.length > 0) {
-            const dupe = dupeLAFs[0];
             return res.status(200).json({
                 success: false,
-                message: `This ${governmentIdType} ID is already on an active application ` +
-                    `(${dupe.ciReferenceCode} — ${dupe.lastName}, ${dupe.firstName}). ` +
+                message: `This ${governmentIdType} ID is already associated with an active application. ` +
                     `The previous application must be completed or declined before submitting a new one.`,
             });
         }
@@ -228,9 +228,10 @@ async function submitLAF(req, res) {
                 dateAdded:   moment().format('YYYY-MM-DD'),
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
-                // ── Biometric — captured during LAFBiometricStep ──────────
+                // ── Address extras ────────────────────────────────────────
                 landmark:              landmark              || null,
                 distanceFromBranch:    distanceFromBranch    || null,
+                // ── Biometric — captured during LAFBiometricStep ──────────
                 biometricCredentialId: biometricCredentialId || null,
                 biometricPublicKey:    biometricPublicKey    || null,
                 biometricCounter:      biometricCounter      || 0,
@@ -253,6 +254,13 @@ async function submitLAF(req, res) {
                 isDuplicateFlagged:    isDuplicateFlagged    || false,
                 duplicateCandidateIds: duplicateCandidateIds || [],
                 isBalikUnmatched:      isBalikUnmatched      || false,
+                // FIX: clientChanges was never saved — now persisted to DB
+                // Contains only fields the member explicitly changed in the Confirm step
+                clientChanges:         clientChanges && typeof clientChanges === 'object'
+                    ? clientChanges
+                    : {},
+                // FIX: detailFlags was destructured but never inserted
+                detailFlags:           Array.isArray(detailFlags) ? detailFlags : [],
                 // If prospect has duplicates → requires admin validation before promote
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]

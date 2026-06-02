@@ -524,18 +524,9 @@ const PublicLAFForm = ({
         }
     }, [syncing, queue, markSynced, markFailed, currentUserToken, CACHE_KEY]);
 
-    const checkDuplicates = async (firstName, lastName, birthdate) => {
-        if (!firstName || !lastName) return;
-        setDupChecking(true);
-        try {
-            const p = new URLSearchParams({ firstName: firstName.trim(), lastName: lastName.trim() });
-            if (birthdate) p.set('birthdate', birthdate);
-            const res  = await publicFetch(`/api/public/laf/check-duplicate?${p}`);
-            const data = await res.json();
-            if (data.success) setDuplicates(data.duplicates || []);
-        } catch { /* fail open */ }
-        finally { setDupChecking(false); }
-    };
+    // ── REMOVED: standalone checkDuplicates function that was called post-step-advance.
+    // Duplicate check is now inlined in goNext under the Personal step handler
+    // to ensure it runs BEFORE setStep — see FIX below.
 
     const validateAndNext = async (schema, values, form) => {
         try {
@@ -683,19 +674,65 @@ const PublicLAFForm = ({
             setStep(s => s + 1);
             return;
         }
+
+        // ── FIX: Personal step — check duplicates BEFORE advancing ──────────────
+        // Previously: validateAndNext() advanced the step first, then checkDuplicates()
+        // was called after — by the time duplicates were found, user was already on
+        // the Address step so the warning was invisible.
+        // Now: validate → check duplicates → only then advance.
         if (cur === si('Personal')) {
-            await validateAndNext(personalSchema, formikRef.current?.values, formikRef.current);
-            // Trigger duplicate check for Prospect after validation passes
             const form = formikRef.current;
-            if (form && !form.errors.firstName && !form.errors.lastName && clientType === 'prospect') {
-                checkDuplicates(form.values.firstName, form.values.lastName, form.values.birthdate);
+            if (!form) return;
+
+            // Step 1: validate fields — stop if invalid
+            try {
+                await personalSchema.validate(form.values, { abortEarly: false });
+                form.setErrors({});
+                form.setTouched({}, false);
+            } catch (err) {
+                const t = {}, e = {};
+                err.inner.forEach(x => { t[x.path] = true; e[x.path] = x.message; });
+                form.setTouched(t, false);
+                form.setErrors(e);
+                return; // invalid — do not proceed
             }
+
+            // Step 2: for Prospect, check name duplicates BEFORE advancing
+            // dupWarningAcked = user already confirmed "this is a different person"
+            if (clientType === 'prospect' && !dupWarningAcked) {
+                setDupChecking(true);
+                try {
+                    const p = new URLSearchParams({
+                        firstName: form.values.firstName.trim(),
+                        lastName:  form.values.lastName.trim(),
+                    });
+                    if (form.values.birthdate) p.set('birthdate', form.values.birthdate);
+                    const res  = await publicFetch(`/api/public/laf/check-duplicate?${p}`);
+                    const data = await res.json();
+                    const found = data.success ? (data.duplicates || []) : [];
+                    setDuplicates(found);
+                    if (found.length > 0) {
+                        // Block — warning panel is now visible on THIS step
+                        // User must click "This is a different person" to set dupWarningAcked
+                        setDupChecking(false);
+                        return;
+                    }
+                } catch { /* fail open — don't block on network error */ }
+                finally { setDupChecking(false); }
+            }
+
+            // Step 3: advance
+            setStep(s => s + 1);
             return;
         }
+        // ── END FIX ─────────────────────────────────────────────────────────────
+
         if (cur === si('Address')) { await validateAndNext(addressSchema, formikRef.current?.values, formikRef.current); return; }
         if (cur === si('Loan')) { await validateAndNext(loanSchema, formikRef.current?.values, formikRef.current); return; }
         setStep(s => s + 1);
-    }, [step, clientType, lafPhotoFile, idType, idNumber, idPhotoFile, selfieWithIdFile, requireSelfieWithId, foundClient, si]);
+    }, [step, clientType, lafPhotoFile, lafPhotoPreview, idType, idNumber, idPhotoFile,
+        selfieWithIdFile, requireSelfieWithId, foundClient, si, dupWarningAcked,
+        existingClientHasId, isExistingClient]);
 
     const goPrev = () => setStep(s => Math.max(s - 1, 0));
 
@@ -808,10 +845,13 @@ const PublicLAFForm = ({
     }, [lafPhotoFile, idPhotoFile, selfieWithIdFile, biometricVerified, biometricData,
         groupId, loId, branchId, qrToken, clientType, idType, idNumber,
         foundClient, detailFlags, requireClientBiometric, requireGovernmentId,
-        requireSelfieWithId, biometricRequired, uploadFile]);
+        requireSelfieWithId, biometricRequired, uploadFile, duplicates, dupWarningAcked,
+        clientChanges]);
 
     // ── Reset form for "Add Another Client" ──────────────────────────────
     const resetForNextClient = useCallback(() => {
+        setSubmitted(false);
+        setCiCode('');
         setStep(0);
         setClientType(null);
         setLafPhotoFile(null);
@@ -851,7 +891,14 @@ const PublicLAFForm = ({
         (clientType === 'reloan' || clientType === 'pending' || clientType === 'balik');
     // Show prepare prompt at top of step 0 (not a full block — let prospect through)
 
-    if (submitted) return <LAFSuccessScreen ciReferenceCode={ciCode} groupName={groupName} branchName={branchName} />;
+    if (submitted) return (
+        <LAFSuccessScreen
+            ciReferenceCode={ciCode}
+            groupName={groupName}
+            branchName={branchName}
+            onAddAnother={resetForNextClient}
+        />
+    );
 
     // Offline confirmation screen
     if (offlineConfirmed && lastQueuedEntry) {
@@ -1149,19 +1196,14 @@ const PublicLAFForm = ({
                                             ? 'No government ID found on your record. Please provide your ID to update your profile.'
                                             : 'A valid government-issued ID is required to verify your identity.'}
                                     </div>
-                                    {/* ID duplicate warning */}
+                                    {/* ID duplicate warning — no names/refs exposed */}
                                     {idDuplicate && (
                                         <div className="p-3 bg-red-50 border border-red-300 rounded-xl">
                                             <p className="text-xs font-semibold text-red-700 mb-1">
                                                 ⛔ Government ID already in use
                                             </p>
                                             <p className="text-xs text-red-600 mb-2">{idDuplicate.message}</p>
-                                            {idDuplicate.conflicts?.map((m, i) => (
-                                                <p key={i} className="text-xs text-red-600 py-0.5">
-                                                    {m.name} · {m.branch} · {m.status}
-                                                    {m.source === 'application' && m.ref ? ` · Ref: ${m.ref}` : ''}
-                                                </p>
-                                            ))}
+                                            {/* FIX: removed conflict detail rows — no names or ref codes returned from API */}
                                             <p className="text-xs text-red-500 mt-2">
                                                 Please use a different ID, or select Reloan / Pending / Balik if this is an existing client.
                                             </p>
@@ -1177,15 +1219,30 @@ const PublicLAFForm = ({
                                         </div>
                                     )}
                                     <Field label="ID Type" required error={idErrors.idType}>
-                                        <select value={idType} onChange={e => setIdType(e.target.value)}
+                                        <select value={idType} onChange={e => { setIdType(e.target.value); setIdDuplicate(null); }}
                                             className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${idErrors.idType ? 'border-red-400' : 'border-gray-300'}`}>
                                             <option value="">Select ID type...</option>
                                             {PH_ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                     </Field>
-                                    <Field label="ID Number" required error={idErrors.idNumber}>
+                                    {/* FIX: added onBlur to trigger duplicate check immediately when user leaves the field */}
+                                    <Field label="ID Number" required error={idErrors.idNumber || idDuplicate?.message}>
                                         <Input name="idNumber" noUppercase value={idNumber}
-                                            onChange={e => { setIdNumber(e.target.value); setIdDuplicate(null); }}
+                                            onChange={e => { setIdNumber(e.target.value); setIdDuplicate(null); setIdErrors(p => ({ ...p, idNumber: null })); }}
+                                            onBlur={async (e) => {
+                                                const val = e.target.value?.trim();
+                                                if (!val || !idType) return;
+                                                setIdDupChecking(true);
+                                                try {
+                                                    const p = new URLSearchParams({ idType, idNumber: val });
+                                                    if (foundClient?._id) p.set('existingClientId', foundClient._id);
+                                                    const res  = await publicFetch(`/api/public/laf/check-id-duplicate?${p}`);
+                                                    const data = await res.json();
+                                                    if (data.isDuplicate) setIdDuplicate(data);
+                                                    else setIdDuplicate(null);
+                                                } catch { /* fail open */ }
+                                                finally { setIdDupChecking(false); }
+                                            }}
                                             placeholder="Enter your ID number" error={idErrors.idNumber} />
                                     </Field>
                                     <Field label="Photo of ID" required error={idErrors.idPhoto}>
@@ -1206,7 +1263,8 @@ const PublicLAFForm = ({
                                     )}
                                 </div>
                             )}
-                            <NavBtns onBack={goPrev} onNext={goNext} />
+                            {/* FIX: block Next while duplicate detected or check running */}
+                            <NavBtns onBack={goPrev} onNext={goNext} nextDisabled={!!idDuplicate || idDupChecking} />
                         </div>
                     )}
 

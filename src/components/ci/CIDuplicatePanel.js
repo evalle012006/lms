@@ -75,7 +75,7 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
             .then(res => { if (res.success) setCandidates(res.clients || []); })
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [application?._id]);
+    }, [candidateIds.join(',')]);
 
     if (!isDuplicateFlagged && !candidateIds.length) return null;
 

@@ -75,6 +75,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     }), [application, findings, businessVerified, addressVerified, decision, declineReason]);
 
     const handleSave = useCallback(async () => {
+        // FIX: block CI save if application is pending duplicate validation by admin
+        if (application?.status === 'pending_validation') {
+            toast.error('This application has a flagged duplicate and requires admin validation before the CI can be saved.');
+            return;
+        }
         // ── Validation ────────────────────────────────────────────────────
         if (!decision) {
             toast.error('Please select Approve or Decline.');
@@ -161,7 +166,19 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
 
     return (
         <div className="space-y-6">
-
+            {/* Pending validation banner — shown when admin must resolve duplicate first */}
+            {application?.status === 'pending_validation' && (
+                <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
+                    <p className="text-sm font-semibold text-orange-900">
+                        ⏳ Awaiting Admin Validation
+                    </p>
+                    <p className="text-xs text-orange-700 mt-1">
+                        This application was flagged as a possible duplicate.
+                        A system administrator must approve or decline the duplicate
+                        panel below before this CI investigation can be saved.
+                    </p>
+                </div>
+            )}
             {/* LAF photo display */}
             {lafPhotoUrl && (
                 <div>
@@ -365,7 +382,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || !decision}
+                disabled={saving || !decision || application?.status === 'pending_validation'}
                 className="w-full py-3 bg-blue-600 text-white text-sm font-semibold
                     rounded-xl hover:bg-blue-700 disabled:opacity-50
                     disabled:cursor-not-allowed flex items-center justify-center gap-2"

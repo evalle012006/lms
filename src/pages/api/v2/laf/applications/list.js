@@ -38,14 +38,12 @@ async function listApplications(req, res) {
     let where = { ...branchWhere };
 
     if (status === 'pending') {
-        // For pending: show all pending apps, but expired claims appear as available
-        // The _or makes Hasura return apps that are:
-        //   a) truly unassigned
-        //   b) assigned to current user (their own claims)
-        //   c) claimed by others BUT claim is older than 24hrs (expired)
+        // FIX: include pending_validation — these are flagged duplicate prospects
+        // that submitted via LAF and are awaiting admin validation.
+        // They must appear in the CI list so admin can review and resolve them.
         where = {
             ...branchWhere,
-            status: { _eq: 'pending' },
+            status: { _in: ['pending', 'pending_validation'] },
         };
     } else if (status) {
         where = {
