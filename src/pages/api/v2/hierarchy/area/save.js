@@ -1,12 +1,10 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
-import {
-    nullify, syncManagerLinks, syncBranchLinks
-} from '@/lib/hierarchy-cascade';
+import { nullify, syncManagerLinks, syncBranchLinks } from '@/lib/hierarchy-cascade';
 
 const graph = new GraphProvider();
 
@@ -20,7 +18,7 @@ async function save(req, res) {
 
     const _id = generateUUID();
 
-    // 1. Insert area
+    // 1. Insert area — only real columns (no branchIds column)
     addToMutationList(alias => insertQl(createGraphType('areas', '_id')(alias), {
         objects: [{
             _id,
@@ -28,12 +26,11 @@ async function save(req, res) {
             regionId:   nullify(regionId),
             divisionId: nullify(divisionId),
             managerIds: JSON.stringify(managerIds),
-            branchIds:  JSON.stringify(branchIds),
             dateAdded:  moment(getCurrentDate()).format('YYYY-MM-DD'),
         }]
     }));
 
-    // 2. Link branches — stamp areaId/regionId/divisionId on branches + their users
+    // 2. Stamp areaId/regionId/divisionId on linked branches + their users
     if (branchIds.length > 0) {
         syncBranchLinks(branchIds, [], _id, nullify(regionId), nullify(divisionId), addToMutationList);
     }
@@ -43,14 +40,11 @@ async function save(req, res) {
         await syncManagerLinks('areas', [], managerIds, {
             divisionId: nullify(divisionId), regionId: nullify(regionId), areaId: _id
         }, addToMutationList);
-
-        addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
-            set: { managerIds: JSON.stringify(managerIds) },
-            where: { _id: { _eq: _id } }
-        }));
     }
 
-    await graph.mutation(...mutationList);
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

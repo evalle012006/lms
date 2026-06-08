@@ -47,7 +47,6 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
     const isView = mode === 'view';
     const isAdd  = mode === 'add';
 
-    // Region options for single SelectDropdown — needs raw ID as value
     const regionOptions = useMemo(() =>
         divisions.flatMap(d =>
             (d.regions ?? []).map(r => ({
@@ -59,7 +58,6 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
         [divisions]
     );
 
-    // area_admin options for multi
     const managerOptions = useMemo(() =>
         allManagers
             .filter(u => u.shortCode === 'area_admin')
@@ -67,7 +65,7 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
         [allManagers]
     );
 
-    // Build area name lookup for warnings
+    // Area name lookup for branch ownership warnings
     const areaNameMap = useMemo(() => {
         const map = {};
         divisions.forEach(d =>
@@ -78,33 +76,38 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
         return map;
     }, [divisions]);
 
-    // Branch options with ownership annotation
     const branchOptions = useMemo(() =>
         allBranches.map(b => {
             const isInThisArea  = b.areaId === data._id;
             const isInOtherArea = !!b.areaId && b.areaId !== data._id;
             const owningAreaName = isInOtherArea ? (areaNameMap[b.areaId] ?? 'another area') : null;
             return {
-                value:           b._id,
-                label:           isInOtherArea
+                value:        b._id,
+                label:        isInOtherArea
                     ? `${b.code} — ${b.name} ⚠ (${owningAreaName})`
                     : `${b.code} — ${b.name}`,
                 isInOtherArea,
                 owningAreaName,
-                rawLabel:        `${b.code} — ${b.name}`,
+                rawLabel:     `${b.code} — ${b.name}`,
             };
         }),
         [allBranches, data._id, areaNameMap]
     );
 
     const initialManagerIds = parseIds(data.managerIds);
-    const initialBranchIds  = parseIds(data.branchIds);
 
-    // Multi selects: full option objects
+    // FIX: branchIds is NOT a real DB column.
+    // data.branches is the embedded relationship array from the tree — use that.
+    const initialBranchIds = useMemo(() =>
+        (data.branches ?? []).map(b => b._id),
+        [data.branches]
+    );
+
     const initialManagerValues = useMemo(() =>
         managerOptions.filter(o => initialManagerIds.includes(o.value)),
         [managerOptions, initialManagerIds]
     );
+
     const initialBranchValues = useMemo(() =>
         branchOptions.filter(o => initialBranchIds.includes(o.value)),
         [branchOptions, initialBranchIds]
@@ -112,17 +115,13 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
 
     const initialValues = {
         name:       data.name       ?? '',
-        // Single SelectDropdown: raw ID string
         regionId:   data.regionId   ?? '',
         divisionId: data.divisionId ?? '',
-        // Multi: option objects
         managerIds: initialManagerValues,
         branchIds:  initialBranchValues,
     };
 
-    // When region changes, auto-derive divisionId from the option
     const handleRegionChange = (field, value, setFieldValue) => {
-        // value is the raw ID string from SelectDropdown
         setFieldValue('regionId', value);
         const opt = regionOptions.find(o => o.value === value);
         if (opt?.divisionId) setFieldValue('divisionId', opt.divisionId);
@@ -162,10 +161,7 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
         const managers = allManagers.filter(u => initialManagerIds.includes(u._id));
         const region   = regionOptions.find(o => o.value === data.regionId);
         const division = divisions.find(d => d._id === data.divisionId);
-        // Prefer data.branches (already embedded from API) for display
-        const branches = data.branches?.length
-            ? data.branches
-            : allBranches.filter(b => initialBranchIds.includes(b._id));
+        const branches = data.branches ?? [];
 
         return (
             <div className="space-y-6">
@@ -201,13 +197,9 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
             enableReinitialize
         >
             {({ values, errors, touched, handleChange, handleSubmit, setFieldValue, isSubmitting, isValidating }) => {
-                // Warn about branches already in another area
                 const warnings = (values.branchIds ?? []).filter(o => o.isInOtherArea);
-
                 return (
                     <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
-
-                        {/* Region — single, SelectDropdown with raw ID */}
                         <SelectDropdown
                             name="regionId"
                             field="regionId"
@@ -229,7 +221,6 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
                             errors={touched.name && errors.name ? errors.name : undefined}
                         />
 
-                        {/* Area Admins — multi */}
                         <LabelledMultiSelect
                             label="Area Admin(s)"
                             value={values.managerIds}
@@ -238,7 +229,6 @@ const AreaForm = ({ mode, data, allBranches, allManagers, divisions, onSaved, on
                             placeholder="Select managers..."
                         />
 
-                        {/* Link Branches — multi */}
                         <div>
                             <LabelledMultiSelect
                                 label="Link Branches"

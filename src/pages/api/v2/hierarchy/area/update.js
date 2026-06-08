@@ -15,6 +15,7 @@ async function update(req, res) {
     const { _id, name, regionId, divisionId, managerIds: newManagerIds = [], branchIds: newBranchIds = [] } = req.body;
 
     // ── Read phase ─────────────────────────────────────────────────────────────
+    // areaType() fetches: _id name managerIds regionId divisionId branches { _id }
     const [current] = await graph.query(
         queryQl(areaType(), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.areas ?? []);
@@ -26,7 +27,8 @@ async function update(req, res) {
     }
 
     const oldManagerIds = parseIds(current.managerIds);
-    const oldBranchIds  = parseIds(current.branchIds);
+    // FIX: branchIds derived from branches relationship, not a stored column
+    const oldBranchIds  = (current.branches ?? []).map(b => b._id);
     const oldRegionId   = current.regionId;
     const oldDivisionId = current.divisionId;
 
@@ -42,7 +44,7 @@ async function update(req, res) {
         }, addToMutationList);
     }
 
-    // regionId or divisionId changed — cascade down through branches + users
+    // regionId or divisionId changed — cascade down
     if (nullify(regionId) !== nullify(oldRegionId) || nullify(divisionId) !== nullify(oldDivisionId)) {
         cascadeAreaChange(_id, nullify(regionId), nullify(divisionId), addToMutationList);
     }
@@ -50,20 +52,20 @@ async function update(req, res) {
     // Branch link diff
     syncBranchLinks(newBranchIds, oldBranchIds, _id, nullify(regionId), nullify(divisionId), addToMutationList);
 
-    // Area record itself
+    // Area record — branchIds is not a real column
     addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
         set: {
             name,
             regionId:   nullify(regionId),
             divisionId: nullify(divisionId),
             managerIds: JSON.stringify(newManagerIds),
-            branchIds:  JSON.stringify(newBranchIds),
         },
         where: { _id: { _eq: _id } }
     }));
 
-    // ── Single round-trip ─────────────────────────────────────────────────────
-    await graph.mutation(...mutationList);
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

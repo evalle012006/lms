@@ -13,7 +13,8 @@ export default apiHandler({ post: update });
 async function update(req, res) {
     const { _id, name, managerIds: newManagerIds = [], regionIds: newRegionIds = [] } = req.body;
 
-    // ── Read phase (sequential queries, not batched) ───────────────────────────
+    // ── Read phase ─────────────────────────────────────────────────────────────
+    // divisionType() fetches: _id name managerIds regions { _id }
     const [current] = await graph.query(
         queryQl(divisionType(), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.divisions ?? []);
@@ -25,13 +26,14 @@ async function update(req, res) {
     }
 
     const oldManagerIds = parseIds(current.managerIds);
-    const oldRegionIds  = parseIds(current.regionIds);
+    // FIX: regionIds is derived from the regions relationship, not a stored column
+    const oldRegionIds  = (current.regions ?? []).map(r => r._id);
 
     // ── Build mutation batch ──────────────────────────────────────────────────
     const mutationList = [];
     const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
 
-    // Manager diff — reads happen inside syncManagerLinks, writes go to batch
+    // Manager diff
     const { removed: removedManagers, added: addedManagers } = diffManagerIds(oldManagerIds, newManagerIds);
     if (removedManagers.length || addedManagers.length) {
         await syncManagerLinks('divisions', removedManagers, addedManagers, {
@@ -63,18 +65,16 @@ async function update(req, res) {
         }
     }
 
-    // Division record itself
+    // Division record — note: regionIds is not a real column, only managerIds is
     addToMutationList(alias => updateQl(createGraphType('divisions', '_id')(alias), {
-        set: {
-            name,
-            managerIds: JSON.stringify(newManagerIds),
-            regionIds:  JSON.stringify(newRegionIds),
-        },
+        set: { name, managerIds: JSON.stringify(newManagerIds) },
         where: { _id: { _eq: _id } }
     }));
 
-    // ── Single round-trip for all writes ──────────────────────────────────────
-    await graph.mutation(...mutationList);
+    // ── Single round-trip ─────────────────────────────────────────────────────
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

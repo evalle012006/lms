@@ -7,9 +7,7 @@ import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
-import {
-    nullify, syncManagerLinks, cascadeAreaChange
-} from '@/lib/hierarchy-cascade';
+import { nullify, syncManagerLinks, cascadeAreaChange } from '@/lib/hierarchy-cascade';
 
 const graph = new GraphProvider();
 
@@ -23,19 +21,18 @@ async function save(req, res) {
 
     const _id = generateUUID();
 
-    // 1. Insert region
+    // 1. Insert region — only real columns (no areaIds column)
     addToMutationList(alias => insertQl(createGraphType('regions', '_id')(alias), {
         objects: [{
             _id,
             name,
             divisionId: nullify(divisionId),
             managerIds: JSON.stringify(managerIds),
-            areaIds:    JSON.stringify(areaIds),
             dateAdded:  moment(getCurrentDate()).format('YYYY-MM-DD'),
         }]
     }));
 
-    // 2. Link areas — stamp regionId + divisionId + cascade down
+    // 2. Stamp regionId + divisionId on linked areas and cascade down
     if (areaIds.length > 0) {
         addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
             set: { regionId: _id, divisionId: nullify(divisionId) },
@@ -51,14 +48,11 @@ async function save(req, res) {
         await syncManagerLinks('regions', [], managerIds, {
             divisionId: nullify(divisionId), regionId: _id, areaId: null
         }, addToMutationList);
-
-        addToMutationList(alias => updateQl(createGraphType('regions', '_id')(alias), {
-            set: { managerIds: JSON.stringify(managerIds) },
-            where: { _id: { _eq: _id } }
-        }));
     }
 
-    await graph.mutation(...mutationList);
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

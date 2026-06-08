@@ -6,7 +6,6 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
 import InputText from '@/lib/ui/InputText';
-import SelectDropdown from '@/lib/ui/select';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ChildList from './ChildList';
@@ -17,7 +16,6 @@ const validationSchema = yup.object({
     name: yup.string().required('Name is required'),
 });
 
-// ── Reusable labelled multi-select matching the app's existing style ──────────
 const LabelledMultiSelect = ({ label, value, options, onChange, placeholder }) => {
     const hasValue = value && value.length > 0;
     return (
@@ -46,7 +44,6 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
     const isView = mode === 'view';
     const isAdd  = mode === 'add';
 
-    // deputy_director options
     const managerOptions = useMemo(() =>
         allManagers
             .filter(u => u.shortCode === 'deputy_director')
@@ -54,7 +51,6 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
         [allManagers]
     );
 
-    // All regions for linking
     const allRegionOptions = useMemo(() =>
         divisions.flatMap(d => (d.regions ?? []).map(r => ({
             value: r._id,
@@ -64,22 +60,28 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
     );
 
     const initialManagerIds = parseIds(data.managerIds);
-    const initialRegionIds  = parseIds(data.regionIds);
 
-    // Full option objects for react-select multi value
+    // FIX: regionIds is NOT a real DB column.
+    // data.regions is the embedded relationship array from the tree — use that.
+    const initialRegionIds = useMemo(() =>
+        (data.regions ?? []).map(r => r._id),
+        [data.regions]
+    );
+
     const initialManagerValues = useMemo(() =>
         managerOptions.filter(o => initialManagerIds.includes(o.value)),
         [managerOptions, initialManagerIds]
     );
+
     const initialRegionValues = useMemo(() =>
         allRegionOptions.filter(o => initialRegionIds.includes(o.value)),
         [allRegionOptions, initialRegionIds]
     );
 
     const initialValues = {
-        name:       data.name ?? '',
-        managerIds: initialManagerValues,   // array of option objects
-        regionIds:  initialRegionValues,    // array of option objects
+        name:      data.name ?? '',
+        managerIds: initialManagerValues,
+        regionIds:  initialRegionValues,
     };
 
     const handleSubmit = async (values, { setSubmitting }) => {
@@ -89,7 +91,7 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
                 : getApiBaseUrl() + 'hierarchy/division/update';
 
             const payload = {
-                name:       values.name,
+                name:      values.name,
                 managerIds: (values.managerIds ?? []).map(o => o.value),
                 regionIds:  (values.regionIds  ?? []).map(o => o.value),
                 ...(!isAdd && { _id: data._id }),
@@ -112,7 +114,7 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
     // ── View mode ─────────────────────────────────────────────────────────────
     if (isView) {
         const managers = allManagers.filter(u => initialManagerIds.includes(u._id));
-        const thisDiv  = divisions.find(d => d._id === data._id);
+        const regions  = data.regions ?? [];
 
         return (
             <div className="space-y-6">
@@ -123,11 +125,11 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
                         ? managers.map(u => `${u.lastName}, ${u.firstName}`).join(' · ')
                         : '—'}
                 />
-                <InfoRow label="Linked Regions" value={thisDiv?.regions?.length ?? 0} />
-                {thisDiv?.regions?.length > 0 && (
+                <InfoRow label="Linked Regions" value={regions.length} />
+                {regions.length > 0 && (
                     <ChildList
                         title="Regions"
-                        items={thisDiv.regions.map(r => ({
+                        items={regions.map(r => ({
                             label: r.name,
                             sub:   `${r.areas?.length ?? 0} areas`
                         }))}
@@ -157,7 +159,6 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
                         errors={touched.name && errors.name ? errors.name : undefined}
                     />
 
-                    {/* Deputy Directors — multi, use raw Select */}
                     <LabelledMultiSelect
                         label="Deputy Director(s)"
                         value={values.managerIds}
@@ -166,7 +167,6 @@ const DivisionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel })
                         placeholder="Select managers..."
                     />
 
-                    {/* Link Regions — multi */}
                     <div>
                         <LabelledMultiSelect
                             label="Link Regions"

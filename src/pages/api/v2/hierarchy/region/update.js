@@ -15,6 +15,7 @@ async function update(req, res) {
     const { _id, name, divisionId, managerIds: newManagerIds = [], areaIds: newAreaIds = [] } = req.body;
 
     // ── Read phase ─────────────────────────────────────────────────────────────
+    // regionType() fetches: _id name managerIds divisionId areas { _id }
     const [current] = await graph.query(
         queryQl(regionType(), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.regions ?? []);
@@ -26,7 +27,8 @@ async function update(req, res) {
     }
 
     const oldManagerIds = parseIds(current.managerIds);
-    const oldAreaIds    = parseIds(current.areaIds);
+    // FIX: areaIds derived from areas relationship, not a stored column
+    const oldAreaIds    = (current.areas ?? []).map(a => a._id);
     const oldDivisionId = current.divisionId;
 
     // ── Build mutation batch ──────────────────────────────────────────────────
@@ -41,7 +43,7 @@ async function update(req, res) {
         }, addToMutationList);
     }
 
-    // divisionId change — cascade down through all areas/branches/users of this region
+    // divisionId changed — cascade down
     if (nullify(divisionId) !== nullify(oldDivisionId)) {
         cascadeRegionDivisionChange(_id, nullify(divisionId), addToMutationList);
     }
@@ -70,19 +72,19 @@ async function update(req, res) {
         }
     }
 
-    // Region record itself
+    // Region record — areaIds is not a real column
     addToMutationList(alias => updateQl(createGraphType('regions', '_id')(alias), {
         set: {
             name,
             divisionId: nullify(divisionId),
             managerIds: JSON.stringify(newManagerIds),
-            areaIds:    JSON.stringify(newAreaIds),
         },
         where: { _id: { _eq: _id } }
     }));
 
-    // ── Single round-trip ─────────────────────────────────────────────────────
-    await graph.mutation(...mutationList);
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
