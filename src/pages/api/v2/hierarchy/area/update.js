@@ -21,7 +21,8 @@ async function update(req, res) {
         branchIds:  newBranchIds  = []
     } = req.body;
 
-    // 1. Fetch current state
+    // ── Read phase ─────────────────────────────────────────────────────────────
+    // areaType() fetches: _id name managerIds regionId divisionId branches { _id }
     const [current] = await graph.query(
         queryQl(areaType('get'), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.areas ?? []);
@@ -33,7 +34,8 @@ async function update(req, res) {
     }
 
     const oldManagerIds = parseIds(current.managerIds);
-    const oldBranchIds  = parseIds(current.branchIds);
+    // FIX: branchIds derived from branches relationship, not a stored column
+    const oldBranchIds  = (current.branches ?? []).map(b => b._id);
     const oldRegionId   = current.regionId;
     const oldDivisionId = current.divisionId;
 
@@ -53,28 +55,28 @@ async function update(req, res) {
         await cascadeAreaChange(_id, nullify(regionId), nullify(divisionId));
     }
 
-    // ── 4. Branch link diff ───────────────────────────────────────────────────
-    await syncBranchLinks(
-        newBranchIds,
-        oldBranchIds,
-        _id,
-        nullify(regionId),
-        nullify(divisionId)
-    );
+    // regionId or divisionId changed — cascade down
+    if (nullify(regionId) !== nullify(oldRegionId) || nullify(divisionId) !== nullify(oldDivisionId)) {
+        cascadeAreaChange(_id, nullify(regionId), nullify(divisionId), addToMutationList);
+    }
 
-    // ── 5. Update area record ─────────────────────────────────────────────────
-    await graph.mutation(
-        updateQl(areaType('upd'), {
-            set: {
-                name,
-                regionId:   nullify(regionId),
-                divisionId: nullify(divisionId),
-                managerIds: JSON.stringify(newManagerIds),
-                branchIds:  JSON.stringify(newBranchIds)
-            },
-            where: { _id: { _eq: _id } }
-        })
-    );
+    // Branch link diff
+    syncBranchLinks(newBranchIds, oldBranchIds, _id, nullify(regionId), nullify(divisionId), addToMutationList);
+
+    // Area record — branchIds is not a real column
+    addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
+        set: {
+            name,
+            regionId:   nullify(regionId),
+            divisionId: nullify(divisionId),
+            managerIds: JSON.stringify(newManagerIds),
+        },
+        where: { _id: { _eq: _id } }
+    }));
+
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

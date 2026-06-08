@@ -51,7 +51,6 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
         [divisions]
     );
 
-    // regional_manager options
     const managerOptions = useMemo(() =>
         allManagers
             .filter(u => u.shortCode === 'regional_manager')
@@ -59,7 +58,6 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
         [allManagers]
     );
 
-    // All areas for linking
     const allAreaOptions = useMemo(() =>
         divisions.flatMap(d =>
             (d.regions ?? []).flatMap(r =>
@@ -70,13 +68,19 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
     );
 
     const initialManagerIds = parseIds(data.managerIds);
-    const initialAreaIds    = parseIds(data.areaIds);
 
-    // Full option objects for multi selects
+    // FIX: areaIds is NOT a real DB column.
+    // data.areas is the embedded relationship array from the tree — use that.
+    const initialAreaIds = useMemo(() =>
+        (data.areas ?? []).map(a => a._id),
+        [data.areas]
+    );
+
     const initialManagerValues = useMemo(() =>
         managerOptions.filter(o => initialManagerIds.includes(o.value)),
         [managerOptions, initialManagerIds]
     );
+
     const initialAreaValues = useMemo(() =>
         allAreaOptions.filter(o => initialAreaIds.includes(o.value)),
         [allAreaOptions, initialAreaIds]
@@ -84,10 +88,9 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
 
     const initialValues = {
         name:       data.name       ?? '',
-        // For SelectDropdown (single): pass the raw ID string — it does options.filter(o => o.value === value)
         divisionId: data.divisionId ?? '',
-        managerIds: initialManagerValues,   // option objects for raw Select multi
-        areaIds:    initialAreaValues,      // option objects for raw Select multi
+        managerIds: initialManagerValues,
+        areaIds:    initialAreaValues,
     };
 
     const handleSubmit = async (values, { setSubmitting }) => {
@@ -122,7 +125,7 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
     if (isView) {
         const managers   = allManagers.filter(u => initialManagerIds.includes(u._id));
         const division   = divisions.find(d => d._id === data.divisionId);
-        const thisRegion = divisions.flatMap(d => d.regions ?? []).find(r => r._id === data._id);
+        const areas      = data.areas ?? [];
 
         return (
             <div className="space-y-6">
@@ -134,11 +137,11 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
                         ? managers.map(u => `${u.lastName}, ${u.firstName}`).join(' · ')
                         : '—'}
                 />
-                <InfoRow label="Linked Areas" value={thisRegion?.areas?.length ?? 0} />
-                {thisRegion?.areas?.length > 0 && (
+                <InfoRow label="Linked Areas" value={areas.length} />
+                {areas.length > 0 && (
                     <ChildList
                         title="Areas"
-                        items={thisRegion.areas.map(a => ({
+                        items={areas.map(a => ({
                             label: a.name,
                             sub:   `${a.branches?.length ?? 0} branches`
                         }))}
@@ -158,8 +161,6 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
         >
             {({ values, errors, touched, handleChange, handleSubmit, setFieldValue, isSubmitting, isValidating }) => (
                 <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
-
-                    {/* Division — single select, uses SelectDropdown with raw ID value */}
                     <SelectDropdown
                         name="divisionId"
                         field="divisionId"
@@ -181,7 +182,6 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
                         errors={touched.name && errors.name ? errors.name : undefined}
                     />
 
-                    {/* Regional Managers — multi */}
                     <LabelledMultiSelect
                         label="Regional Manager(s)"
                         value={values.managerIds}
@@ -190,7 +190,6 @@ const RegionForm = ({ mode, data, allManagers, divisions, onSaved, onCancel }) =
                         placeholder="Select managers..."
                     />
 
-                    {/* Link Areas — multi */}
                     <div>
                         <LabelledMultiSelect
                             label="Link Areas"

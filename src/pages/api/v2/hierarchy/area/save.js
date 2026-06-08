@@ -1,13 +1,10 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
-import {
-    areaType, nullify,
-    syncManagerLinks, syncBranchLinks
-} from '@/lib/hierarchy-cascade';
+import { nullify, syncManagerLinks, syncBranchLinks } from '@/lib/hierarchy-cascade';
 
 const graph = new GraphProvider();
 
@@ -18,22 +15,19 @@ async function save(req, res) {
 
     const _id = generateUUID();
 
-    // 1. Insert the area
-    await graph.mutation(
-        insertQl(areaType('ins'), {
-            objects: [{
-                _id,
-                name,
-                regionId:   nullify(regionId),
-                divisionId: nullify(divisionId),
-                managerIds: JSON.stringify(managerIds),
-                branchIds:  JSON.stringify(branchIds),
-                dateAdded:  moment(getCurrentDate()).format('YYYY-MM-DD')
-            }]
-        })
-    );
+    // 1. Insert area — only real columns (no branchIds column)
+    addToMutationList(alias => insertQl(createGraphType('areas', '_id')(alias), {
+        objects: [{
+            _id,
+            name,
+            regionId:   nullify(regionId),
+            divisionId: nullify(divisionId),
+            managerIds: JSON.stringify(managerIds),
+            dateAdded:  moment(getCurrentDate()).format('YYYY-MM-DD'),
+        }]
+    }));
 
-    // 2. Link branches — stamp areaId/regionId/divisionId on branches + their users
+    // 2. Stamp areaId/regionId/divisionId on linked branches + their users
     if (branchIds.length > 0) {
         await syncBranchLinks(branchIds, [], _id, nullify(regionId), nullify(divisionId));
     }
@@ -41,16 +35,12 @@ async function save(req, res) {
     // 3. Assign managers — auto-remove from any previous area
     if (managerIds.length > 0) {
         await syncManagerLinks('areas', [], managerIds, {
-            divisionId: nullify(divisionId),
-            regionId:   nullify(regionId),
-            areaId:     _id
-        });
-        await graph.mutation(
-            updateQl(areaType('setMgr'), {
-                set: { managerIds: JSON.stringify(managerIds) },
-                where: { _id: { _eq: _id } }
-            })
-        );
+            divisionId: nullify(divisionId), regionId: nullify(regionId), areaId: _id
+        }, addToMutationList);
+    }
+
+    if (mutationList.length > 0) {
+        await graph.mutation(...mutationList);
     }
 
     res.status(200)
