@@ -1,10 +1,8 @@
 // src/pages/api/v2/clients/loan-history.js
 // GET ?clientId=xxx
-// Returns a client's full loan history, latest first.
-// - missedPayments: cashCollections with status = 'no_payment' per loan
-// - noOfPayments:   cashCollections with status != 'no_payment' per loan (paid days)
-// - totalPayments:  loanTerms (total installment days for that loan)
-// - delinquent:     from client record, applied only to latest active loan
+// FIX: cashCollections fetched directly by clientId — not via nested relationship.
+// Nested relationship loads ALL fields for ALL collections, causing 40s+ timeouts.
+// Direct query with only loanId + status fields is orders of magnitude faster.
 
 import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
@@ -12,6 +10,7 @@ import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 
 const graph = new GraphProvider();
 
+// Minimal client + loans — no cashCollections here
 const CLIENT_TYPE = createGraphType('client', `
     _id delinquent
     loans (order_by: [{ loanCycle: desc }]) {
@@ -21,12 +20,11 @@ const CLIENT_TYPE = createGraphType('client', `
     }
 `)('clients');
 
-const CASH_COL_TYPE = createGraphType('client', `
-    _id
-    cashCollections (where: { draft: { _neq: true } }) {
-        loanId status
-    }
-`)('clients');
+// FIX: direct cashCollections query — only two fields needed
+// Previously fetched via nested client relationship which loaded ALL fields
+const CASH_COL_DIRECT = createGraphType('cashCollections', `
+    loanId status
+`)('cashCollections');
 
 export default apiHandler({ get: getLoanHistory });
 
@@ -37,25 +35,33 @@ async function getLoanHistory(req, res) {
         return res.status(200).json({ success: false, message: 'clientId required.' });
     }
 
-    const [clientData, cashData] = await Promise.all([
+    const [clientData, cashCollections] = await Promise.all([
         graph.query(
             queryQl(CLIENT_TYPE, { where: { _id: { _eq: clientId } } })
         ).then(r => r.data?.clients?.[0] ?? null),
 
+        // FIX: query cashCollections table directly with clientId filter
+        // Only fetch loanId + status — the two fields needed for payment counting
+        // draft:false excluded same as before
         graph.query(
-            queryQl(CASH_COL_TYPE, { where: { _id: { _eq: clientId } } })
-        ).then(r => r.data?.clients?.[0]?.cashCollections ?? []),
+            queryQl(CASH_COL_DIRECT, {
+                where: {
+                    clientId: { _eq: clientId },
+                    draft:    { _neq: true    },
+                },
+            })
+        ).then(r => r.data?.cashCollections ?? []),
     ]);
 
     if (!clientData) {
         return res.status(200).json({ success: true, loans: [] });
     }
 
-    // Build per-loan collection maps
-    const missedMap = {};  // loanId → count of no_payment
-    const paidMap   = {};  // loanId → count of paid collections
+    // Build per-loan collection maps — same logic, now faster source data
+    const missedMap = {};
+    const paidMap   = {};
 
-    for (const col of cashData) {
+    for (const col of cashCollections) {
         if (!col.loanId) continue;
         if (col.status === 'no_payment') {
             missedMap[col.loanId] = (missedMap[col.loanId] || 0) + 1;
@@ -74,8 +80,7 @@ async function getLoanHistory(req, res) {
         dateOfRelease:  l.dateOfRelease,
         missedPayments: missedMap[l._id] || 0,
         noOfPayments:   paidMap[l._id]   || 0,
-        totalPayments:  l.loanTerms       || null,
-        // delinquent is client-level — only show on the latest active loan
+        totalPayments:  l.loanTerms      || null,
         delinquent: i === 0 && l.status === 'active'
             ? (clientData.delinquent || false)
             : false,

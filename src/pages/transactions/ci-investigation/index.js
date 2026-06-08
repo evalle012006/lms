@@ -5,6 +5,7 @@ import CISearchForm from '@/components/ci/CISearchForm';
 import CIReviewPanel from '@/components/ci/CIReviewPanel';
 import OfflineDraftBanner from '@/components/ci/OfflineDraftBanner';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useRouter } from 'next/router';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -348,6 +349,7 @@ const ApplicationsList = ({ onSelect, selectedCode, refreshKey, offlineApps, isO
 };
 
 const CIInvestigationPage = () => {
+    const router = useRouter();
     const [clientLoanHistory, setClientLoanHistory] = useState(null);
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
@@ -369,6 +371,15 @@ const CIInvestigationPage = () => {
     const [offlineApps,    setOfflineApps]    = useState([]);
     const [showFieldModal, setShowFieldModal] = useState(false); // gate: open PrepareForFieldModal
     const [pendingCount,   setPendingCount]   = useState(0);
+
+    // Auto-load application when arriving via QR scan
+    // /laf/[ciCode] redirects here with ?code=CI-XXXX
+    useEffect(() => {
+        const { code } = router.query;
+        if (code && isOnline && !selectedCode) {
+            loadApplication(code);
+        }
+    }, [router.query.code, isOnline, loadApplication]);
 
     useEffect(() => {
         // Initial read — subsequent updates come from onDraftChange callback

@@ -258,6 +258,7 @@ export const SETTINGS_FIELDS = `
   requireGovernmentId
   requireSelfieWithId
   smsEnabled
+  ciQuestions
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -818,6 +819,7 @@ export const CI_INVESTIGATION_FIELDS = `
   investigatedAt
   dateAdded
   insertedBy
+  ciAnswers
 `;
 
 export const AUDIT_LOG_FIELDS = `

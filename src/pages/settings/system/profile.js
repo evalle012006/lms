@@ -22,6 +22,7 @@ import {
   BellIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
+import CIQuestionsSettings from '@/components/settings/CIQuestionsSettings';
 
 const ModernInput = ({ 
   name, 
@@ -672,6 +673,10 @@ const ProfileSettingsPage = (props) => {
 
                                 <div className="mt-8">
                                     <FeatureEnablementCard values={values} setFieldValue={setFieldValue} currentUser={currentUser} />
+                                </div>
+
+                                <div className="mt-8">
+                                    <CIQuestionsSettings />
                                 </div>
 
                                 {/* Action Buttons */}

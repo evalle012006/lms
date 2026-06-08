@@ -1,3 +1,9 @@
+// src/components/ci/CIReviewPanel.js
+// FIX: findings textarea replaced by dynamic CI questions from systemSettings.ciQuestions
+// Questions are fetched from Redux (loaded in Layout.js bootstrap).
+// Answers stored as ciAnswers jsonb in ciInvestigations table.
+// Required questions block save if unanswered.
+
 import React, { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -10,7 +16,6 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 
 // ── Helper: convert File to base64 data URL ──────────────────────────────
-// Used when offline — stores selfie locally instead of uploading to S3
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -21,7 +26,6 @@ function fileToBase64(file) {
 }
 
 // Compress image before storing as base64 offline
-// Mobile selfies can be 5-8MB — compressing to ~300KB keeps localStorage safe
 function compressToBase64(file, maxWidth = 800, quality = 0.7) {
     return new Promise((resolve, reject) => {
         const img = new window.Image();
@@ -38,21 +42,78 @@ function compressToBase64(file, maxWidth = 800, quality = 0.7) {
         };
         img.onerror = () => {
             URL.revokeObjectURL(url);
-            // Fallback to uncompressed
             fileToBase64(file).then(resolve).catch(reject);
         };
         img.src = url;
     });
 }
 
+// ── CI Question renderer ─────────────────────────────────────────────────
+const CIQuestion = ({ question, index, answer, onChange }) => (
+    <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+            {index + 1}. {question.question}
+            {question.required && (
+                <span className="ml-1 text-red-500 text-xs">*</span>
+            )}
+            {!question.required && (
+                <span className="ml-1 text-gray-400 text-xs font-normal">(optional)</span>
+            )}
+        </label>
+
+        {question.answerType === 'yesno' ? (
+            // Yes / No radio buttons
+            <div className="flex gap-4">
+                {['Yes', 'No'].map(opt => (
+                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="radio"
+                            name={`ci_q_${question.id}`}
+                            value={opt}
+                            checked={answer === opt}
+                            onChange={() => onChange(opt)}
+                            className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">{opt}</span>
+                    </label>
+                ))}
+            </div>
+        ) : (
+            // Free text answer
+            <textarea
+                rows={2}
+                value={answer || ''}
+                onChange={e => onChange(e.target.value)}
+                placeholder="Enter your answer..."
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-gray-50"
+            />
+        )}
+    </div>
+);
+
 const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
-    const currentUser = useSelector(state => state.user.data);
-    const isOnline    = useOnlineStatus();
-    const { saveDraft } = useCIDraftStorage();
+    const currentUser    = useSelector(state => state.user.data);
+    const systemSettings = useSelector(state => state.systemSettings.data);
+    const isOnline       = useOnlineStatus();
+    const { saveDraft }  = useCIDraftStorage();
 
     const { application, lafPhotoUrl } = applicationData;
 
-    const [findings,         setFindings]         = useState(investigationData?.findings        || '');
+    // CI Questions from system settings
+    const ciQuestions = Array.isArray(systemSettings?.ciQuestions)
+        ? systemSettings.ciQuestions
+        : [];
+
+    // Restore saved answers from investigationData if available
+    const savedAnswers = investigationData?.ciAnswers || [];
+    const initialAnswers = () => {
+        const map = {};
+        savedAnswers.forEach(a => { map[a.questionId] = a.answer; });
+        return map;
+    };
+
+    const [answers,        setAnswers]        = useState(initialAnswers);
     const [businessVerified, setBusinessVerified] = useState(investigationData?.businessVerified || false);
     const [addressVerified,  setAddressVerified]  = useState(investigationData?.addressVerified  || false);
     const [decision,         setDecision]         = useState(investigationData?.decision         || '');
@@ -62,36 +123,68 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
 
+    const handleAnswerChange = (questionId, value) => {
+        setAnswers(prev => ({ ...prev, [questionId]: value }));
+    };
+
+    // Build ciAnswers array for payload
+    const buildCiAnswers = useCallback(() =>
+        ciQuestions.map(q => ({
+            questionId:  q.id,
+            question:    q.question,
+            answerType:  q.answerType,
+            required:    q.required,
+            answer:      answers[q.id] || '',
+        }))
+    , [ciQuestions, answers]);
+
     const buildPayload = useCallback((selfieKey = null) => ({
         ciReferenceCode:   application.ciReferenceCode,
         tempApplicationId: application._id,
-        findings,
+        // FIX: findings removed — replaced by ciAnswers
+        // Keep findings as empty string for backward compat with existing API
+        findings:          '',
         businessVerified,
         addressVerified,
         decision,
         declineReason: decision === 'declined' ? declineReason : null,
         selfieKey,
+        ciAnswers:     buildCiAnswers(),
         investigatedAt: new Date().toISOString(),
-    }), [application, findings, businessVerified, addressVerified, decision, declineReason]);
+    }), [application, businessVerified, addressVerified, decision,
+        declineReason, buildCiAnswers]);
 
     const handleSave = useCallback(async () => {
-        // FIX: block CI save if application is pending duplicate validation by admin
+        // ── Block if pending_validation ──────────────────────────────────
         if (application?.status === 'pending_validation') {
-            toast.error('This application has a flagged duplicate and requires admin validation before the CI can be saved.');
+            toast.error('This application requires admin duplicate validation before CI can be saved.');
             return;
         }
-        // ── Validation ────────────────────────────────────────────────────
+
+        // ── Validate decision ────────────────────────────────────────────
         if (!decision) {
             toast.error('Please select Approve or Decline.');
             return;
         }
+
+        // ── Validate required CI questions ───────────────────────────────
+        const unanswered = ciQuestions.filter(q =>
+            q.required && !answers[q.id]?.trim()
+        );
+        if (unanswered.length > 0) {
+            toast.error(
+                `Please answer all required questions: ${unanswered.map((q, i) => `${i + 1}. ${q.question}`).join(', ')}`
+            );
+            return;
+        }
+
         if (decision === 'approved' && !selfieFile
             && !investigationData?.selfieKey
             && !investigationData?.selfieUrl) {
-            // selfieUrl covers both signed URLs (synced) and base64 (draft)
             toast.error('A selfie photo is required to approve an application.');
             return;
         }
+
         if (decision === 'declined' && !declineReason.trim()) {
             toast.error('Please provide a decline reason.');
             return;
@@ -100,14 +193,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         setSaving(true);
 
         try {
-            // ── OFFLINE PATH ──────────────────────────────────────────────
-            // Check online status BEFORE attempting any network calls.
-            // Store selfie as base64 in localStorage — upload during sync.
+            // ── OFFLINE PATH ─────────────────────────────────────────────
             if (!isOnline) {
                 let selfieBase64 = null;
                 if (selfieFile) {
-                    // Compress before storing — mobile selfies are 5-8MB
-                    // Compressed to ~300KB so localStorage (5MB limit) isn't exceeded
                     selfieBase64 = await compressToBase64(selfieFile);
                 }
 
@@ -118,7 +207,6 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 });
 
                 if (saveResult?.success === false) {
-                    // localStorage quota exceeded — selfie too large even after compression
                     toast.error('Could not save offline: device storage full. Please free up space and try again.');
                     return;
                 }
@@ -128,10 +216,9 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 return;
             }
 
-            // ── ONLINE PATH ───────────────────────────────────────────────
+            // ── ONLINE PATH ──────────────────────────────────────────────
             let selfieKey = investigationData?.selfieKey || null;
 
-            // Upload selfie to S3 if a new file was selected
             if (selfieFile) {
                 const fd = new FormData();
                 fd.append('file', selfieFile);
@@ -161,12 +248,13 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         } finally {
             setSaving(false);
         }
-    }, [decision, declineReason, selfieFile, investigationData,
-        isOnline, buildPayload, saveDraft, onSaved, application]);
+    }, [decision, declineReason, selfieFile, investigationData, ciQuestions,
+        answers, isOnline, buildPayload, saveDraft, onSaved, application]);
 
     return (
         <div className="space-y-6">
-            {/* Pending validation banner — shown when admin must resolve duplicate first */}
+
+            {/* Pending validation banner */}
             {application?.status === 'pending_validation' && (
                 <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
                     <p className="text-sm font-semibold text-orange-900">
@@ -174,11 +262,12 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                     </p>
                     <p className="text-xs text-orange-700 mt-1">
                         This application was flagged as a possible duplicate.
-                        A system administrator must approve or decline the duplicate
-                        panel below before this CI investigation can be saved.
+                        A system administrator must resolve the duplicate panel below
+                        before this CI investigation can be saved.
                     </p>
                 </div>
             )}
+
             {/* LAF photo display */}
             {lafPhotoUrl && (
                 <div>
@@ -193,20 +282,35 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 </div>
             )}
 
-            {/* Findings */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Investigation Findings
-                </label>
-                <textarea
-                    rows={4}
-                    value={findings}
-                    onChange={e => setFindings(e.target.value)}
-                    placeholder="Describe what you observed during the field visit..."
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-            </div>
+            {/* FIX: CI Questions — replaces findings textarea */}
+            {ciQuestions.length > 0 ? (
+                <div className="space-y-4">
+                    <p className="text-sm font-semibold text-gray-700">
+                        Investigation Questions
+                    </p>
+                    {/* Previously saved answers notice */}
+                    {investigationData?.ciAnswers?.length > 0 && (
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                            Previously saved answers pre-filled below. Update if needed.
+                        </div>
+                    )}
+                    {ciQuestions.map((q, i) => (
+                        <CIQuestion
+                            key={q.id}
+                            question={q}
+                            index={i}
+                            answer={answers[q.id] || ''}
+                            onChange={(val) => handleAnswerChange(q.id, val)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                // No questions configured — show placeholder
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs
+                    text-gray-500 text-center">
+                    No CI questions configured. Add questions in System Settings → CI Questions.
+                </div>
+            )}
 
             {/* Verification checkboxes */}
             <div className="flex gap-6">
@@ -224,8 +328,8 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 </label>
             </div>
 
-            {/* Duplicate validation panel — shown for flagged applications */}
-            {(applicationData?.application?.isDuplicateFlagged || 
+            {/* Duplicate validation panel */}
+            {(applicationData?.application?.isDuplicateFlagged ||
             applicationData?.application?.duplicateCandidateIds?.length > 0) && (
                 <CIDuplicatePanel
                     application={applicationData.application}

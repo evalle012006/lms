@@ -165,7 +165,7 @@ const addressSchema = yup.object().shape({
     addressMunicipalityCity: yup.string().required('Required'), addressProvince: yup.string().required('Required'),
 });
 const loanSchema = yup.object().shape({
-    loanAmount: yup.number().typeError('Must be a number').positive().required('Required'),
+    // loanAmount: yup.number().typeError('Must be a number').positive().required('Required'),
     loanPurpose: yup.string().required('Required'),
     guarantorFirstName: yup.string().required('Required'), guarantorLastName: yup.string().required('Required'),
     guarantorRelationship: yup.string().required('Required'), guarantorContactNumber: yup.string().required('Required'),
@@ -772,7 +772,8 @@ const PublicLAFForm = ({
                     detailFlags:      Object.keys(detailFlags).filter(k => detailFlags[k]),
                     governmentIdType:   idType   || null,
                     governmentIdNumber: idNumber || null,
-                    loanAmount: parseFloat(values.loanAmount) || 0,
+                    // loanAmount: parseFloat(values.loanAmount) || 0,
+                    loanAmount: 0,
                 },
                 {
                     lafPhoto:     lafPhotoFile,
@@ -947,7 +948,8 @@ const PublicLAFForm = ({
         firstName: '', lastName: '', middleName: '', birthdate: '', contactNumber: '',
         addressStreetNo: '', addressBarangayDistrict: '', addressMunicipalityCity: '',
         addressProvince: '', addressZipCode: '', landmark: '', distanceFromBranch: '',
-        loanAmount: '', loanPurpose: '',
+        // loanAmount: '',
+        loanPurpose: '',
         guarantorFirstName: '', guarantorLastName: '', guarantorRelationship: '', guarantorContactNumber: '',
         ...preFilledValues,
     };

@@ -248,13 +248,13 @@ const ClientsProspectPage = () => {
 
 
     const actionButtons = [
-        <ButtonSolid 
-            label="Add Client" 
-            type="button" 
-            className="p-2 mr-3" 
-            onClick={() => router.push('/clients/add')}
-            icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
-        />
+        // <ButtonSolid 
+        //     label="Add Client" 
+        //     type="button" 
+        //     className="p-2 mr-3" 
+        //     onClick={() => router.push('/clients/add')}
+        //     icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
+        // />
     ];
 
 
@@ -276,7 +276,7 @@ const ClientsProspectPage = () => {
     }, [branchList]);
 
     return (
-        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
+        <Layout>
             {loading ? (
                 // <div className="absolute top-1/2 left-1/2">
                     <Spinner />

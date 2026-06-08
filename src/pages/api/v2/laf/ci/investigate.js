@@ -25,7 +25,7 @@ async function saveInvestigation(req, res) {
     const {
         ciReferenceCode, tempApplicationId,
         findings, businessVerified, addressVerified,
-        decision, declineReason, selfieKey,
+        decision, declineReason, selfieKey, ciAnswers,
     } = req.body;
 
     if (decision === 'approved' && !selfieKey) {
@@ -52,6 +52,7 @@ async function saveInvestigation(req, res) {
                 picUserId:     decision === 'approved' ? userId : null,
                 picUserName:   decision === 'approved' ? picUserName : null, // ← real name
                 investigatedAt: new Date().toISOString(),
+                ciAnswers: Array.isArray(req.body.ciAnswers) ? req.body.ciAnswers : [],
                 dateAdded:      moment().format('YYYY-MM-DD'),
                 insertedBy:     userId,
             }],
@@ -61,6 +62,7 @@ async function saveInvestigation(req, res) {
                     'findings', 'businessVerified', 'addressVerified',
                     'decision', 'declineReason', 'selfieKey',
                     'picUserId', 'picUserName', 'investigatedAt',
+                    'ciAnswers',
                 ],
             }
         })
