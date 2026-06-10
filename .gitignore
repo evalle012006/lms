@@ -2,7 +2,9 @@ node_modules
 .DS_Store
 next.config.js
 .next
-/public
+/public/fonts
+/public/images
+/public/migrations
 logs
 src/pages/_app.js
 
