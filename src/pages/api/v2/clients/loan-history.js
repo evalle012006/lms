@@ -13,7 +13,7 @@ const graph = new GraphProvider();
 // Minimal client + loans — no cashCollections here
 const CLIENT_TYPE = createGraphType('client', `
     _id delinquent
-    loans (order_by: [{ loanCycle: desc }]) {
+    loans (order_by: [{ loanCycle: desc }], limit: 20) {
         _id loanCycle status
         amountRelease loanBalance loanTerms
         dateAdded dateOfRelease
