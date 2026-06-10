@@ -96,6 +96,8 @@ export const CLIENT_FIELDS = `
   selfieWithIdPhotoKey
   landmark
   distanceFromBranch
+  faceTemplate
+  faceEnrolledAt
   `;
 
 export const LOAN_FIELDS = `
@@ -208,6 +210,9 @@ export const LOAN_FIELDS = `
   ldfApprovedBy
   clientBiometricVerified
   clientBiometricVerifiedAt
+  faceVerified
+  faceVerifiedAt
+  faceMatchScore
   `;
 
 export const GROUP_FIELDS = `
@@ -800,6 +805,10 @@ export const TEMP_LOAN_APP_FIELDS = `
   oldGroupId
   oldLoId
   clientChanges
+  faceTemplate
+  faceEnrolledAt
+  livenessScore
+  promotedAt
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

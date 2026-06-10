@@ -71,6 +71,9 @@ async function submitLAF(req, res) {
         // Balik history
         oldGroupId,
         oldLoId,
+        faceTemplate,
+        faceEnrolledAt,
+        livenessScore,
     } = req.body;
 
     // Basic presence check
@@ -261,6 +264,9 @@ async function submitLAF(req, res) {
                     : {},
                 // FIX: detailFlags was destructured but never inserted
                 detailFlags:           Array.isArray(detailFlags) ? detailFlags : [],
+                faceTemplate:   faceTemplate   || null,
+                faceEnrolledAt: faceEnrolledAt || null,
+                livenessScore:  livenessScore  != null ? livenessScore : null,
                 // If prospect has duplicates → requires admin validation before promote
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]

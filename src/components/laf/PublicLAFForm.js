@@ -7,7 +7,7 @@ import * as yup       from 'yup';
 import { toast }      from 'react-toastify';
 import LAFPhotoStep        from './LAFPhotoStep';
 import LAFSuccessScreen    from './LAFSuccessScreen';
-import LAFBiometricStep    from './LAFBiometricStep';
+import FaceLivenessStep from './FaceLivenessStep';
 import LAFOfflineConfirmation from './LAFOfflineConfirmation';
 import LAFQueuePanel       from './LAFQueuePanel';
 import PhotoCapture        from '@/components/clients/PhotoCapture';
@@ -835,7 +835,14 @@ const PublicLAFForm = ({
                                             : (duplicates.length > 0 && dupWarningAcked),
                     duplicateCandidateIds: duplicates.map(d => d._id),
                     isBalikUnmatched:      clientType === 'balik' && !foundClient,
-                    ...(requireClientBiometric && biometricData ? biometricData : {}),
+                    // FIX: face liveness fields — removed old WebAuthn biometric spread
+                    // biometricData now contains faceTemplate/faceEnrolledAt/livenessScore
+                    // from FaceLivenessStep, NOT WebAuthn credential fields
+                    faceTemplate:   biometricData?.faceTemplate
+                        ? JSON.stringify(biometricData.faceTemplate)
+                        : null,
+                    faceEnrolledAt: biometricData?.faceEnrolledAt || null,
+                    livenessScore:  biometricData?.livenessScore  || null,
                 }),
             });
             const data = await res.json();
@@ -1227,7 +1234,6 @@ const PublicLAFForm = ({
                                             {PH_ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                     </Field>
-                                    {/* FIX: added onBlur to trigger duplicate check immediately when user leaves the field */}
                                     <Field label="ID Number" required error={idErrors.idNumber || idDuplicate?.message}>
                                         <Input name="idNumber" noUppercase value={idNumber}
                                             onChange={e => { setIdNumber(e.target.value); setIdDuplicate(null); setIdErrors(p => ({ ...p, idNumber: null })); }}
@@ -1245,7 +1251,13 @@ const PublicLAFForm = ({
                                                 } catch { /* fail open */ }
                                                 finally { setIdDupChecking(false); }
                                             }}
-                                            placeholder="Enter your ID number" error={idErrors.idNumber} />
+                                            placeholder="Enter your ID number"
+                                            error={idErrors.idNumber} />
+                                        {idType && ID_FORMAT_RULES[idType] && (
+                                            <p className="mt-1 text-xs text-blue-500 font-medium">
+                                                {ID_FORMAT_RULES[idType].hint}
+                                            </p>
+                                        )}
                                     </Field>
                                     <Field label="Photo of ID" required error={idErrors.idPhoto}>
                                         <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
@@ -1587,7 +1599,7 @@ const PublicLAFForm = ({
                                         <div>
                                             <h2 className="text-base font-semibold text-gray-800 mb-4">Loan & Guarantor</h2>
                                             <div className="space-y-4">
-                                                <Field label="Loan Amount (₱)" required error={touched.loanAmount && errors.loanAmount}><Input name="loanAmount" value={values.loanAmount} onChange={handleChange} onBlur={handleBlur} type="number" placeholder="5000" error={touched.loanAmount && errors.loanAmount} /></Field>
+                                                {/* <Field label="Loan Amount (₱)" required error={touched.loanAmount && errors.loanAmount}><Input name="loanAmount" value={values.loanAmount} onChange={handleChange} onBlur={handleBlur} type="number" placeholder="5000" error={touched.loanAmount && errors.loanAmount} /></Field> */}
                                                 <Field label="Loan Purpose" required error={touched.loanPurpose && errors.loanPurpose}><Input name="loanPurpose" noUppercase value={values.loanPurpose} onChange={handleChange} onBlur={handleBlur} placeholder="Livelihood, education..." error={touched.loanPurpose && errors.loanPurpose} /></Field>
                                                 <div className="pt-2 border-t border-gray-100">
                                                     <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor / Co-maker</p>
@@ -1626,11 +1638,14 @@ const PublicLAFForm = ({
                                     Biometric is recommended. If your device does not support it, you may skip — it will be captured at disbursement.
                                 </div>
                             )}
-                            <LAFBiometricStep onVerified={d => { setBiometricData(d); setBiometricVerified(true); }} verified={biometricVerified} />
+                            <FaceLivenessStep
+                                onVerified={d => { setBiometricData(d); setBiometricVerified(true); }}
+                                verified={biometricVerified}
+                            />
                             <div className="mt-6 flex justify-between">
                                 <button type="button" onClick={goPrev} disabled={submitting} className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50">Back</button>
                                 <div className="flex gap-2">
-                                    {!biometricRequired && !biometricVerified && foundClient?.biometricCredentialId && (
+                                    {!biometricRequired && !biometricVerified && (
                                         <button type="button"
                                         onClick={() => handleSubmit(formikRef.current?.values || {})}
                                         disabled={submitting}

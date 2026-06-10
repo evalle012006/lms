@@ -43,9 +43,16 @@ function RouteGuard({ children }) {
             const bypassBiometric = biometricBypassPaths.includes(path) || isPublicPath;
 
             if (!user && !isPublicPath) {
-                // Not authenticated
                 setAuthorized(false);
-                router.push({ pathname: '/login' });
+                // FIX: router.asPath returns template '/laf/[ciCode]' before hydration.
+                // window.location.pathname always has the real resolved path.
+                const redirectPath = typeof window !== 'undefined'
+                    ? window.location.pathname + window.location.search
+                    : router.asPath;
+                router.push({
+                    pathname: '/login',
+                    query: { redirect: redirectPath },
+                });
             } else if (
                 user &&
                 !biometricCredentialId &&

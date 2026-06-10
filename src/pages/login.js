@@ -397,7 +397,9 @@ const LoginPage = () => {
         if (!hasBiometric && !isRoot) {
             router.push('/biometric-setup');
         } else {
-            router.push('/');
+            // FIX: honour redirect param — used by QR scan flow (/laf/CI-XXXX)
+            const redirectTo = router.query.redirect;
+            router.push(redirectTo && redirectTo !== '/' ? redirectTo : '/');
         }
     };
     

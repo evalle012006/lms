@@ -31,6 +31,7 @@
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express-jwt": "^8.4.1",
+    "face-api.js": "^0.22.2",
     "format": "^0.2.2",
     "formidable": "^2.0.1",
     "formik": "^2.2.9",

@@ -1,15 +1,15 @@
 // src/components/transactions/loan-application/DisbursementPhotoModal.js
 // Phase 6 update — client biometric step:
-//   • If client has no biometric → REGISTER via QR (single-use 8hr token)
-//   • If client has biometric → VERIFY via existing QR flow
-//   • If requireClientBiometric = false → skip client biometric entirely
-// Polling detects when client completes registration/verification on their device.
+//   • FIX: replaced QR-based WebAuthn client biometric with FaceVerifyStep
+//     (face-api.js liveness detection + descriptor matching against stored faceTemplate)
+//   • Staff approver biometric (WebAuthn) unchanged
+//   • If requireClientBiometric = false → skip client face verification entirely
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { useSelector } from 'react-redux';
 import { CameraIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { Fingerprint, QrCode, RefreshCw } from 'lucide-react';
+import { Fingerprint } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
@@ -17,6 +17,8 @@ import { useBiometric } from '@/hooks/useBiometric';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import Spinner from '@/components/Spinner';
+// FIX: import FaceVerifyStep — replaces QR biometric client verification
+import FaceVerifyStep from '@/components/transactions/loan-application/FaceVerifyStep';
 
 const DisbursementPhotoModal = ({
     show,
@@ -47,17 +49,13 @@ const DisbursementPhotoModal = ({
     const [biometricVerified, setBiometricVerified] = useState(false);
     const [biometricRequired, setBiometricRequired] = useState(false);
 
-    // ── Client biometric state ───────────────────────────────────────────
-    // clientBioMode: null | 'register' | 'verify'
-    const [clientBioMode,   setClientBioMode]   = useState(null);
-    const [clientVerified,  setClientVerified]  = useState(false);
-    const [clientQrUrl,     setClientQrUrl]     = useState(null);
-    const [clientQrDataUrl, setClientQrDataUrl] = useState(null);
-    const [clientBioLoading,setClientBioLoading]= useState(false);
-    const [polling,         setPolling]         = useState(false);
-    const pollRef                               = useRef(null);
-    // Store which clientId we generated the register token for
-    const [regTokenClientId, setRegTokenClientId] = useState(null);
+    // ── FIX: Client face verification state ──────────────────────────────
+    // Replaces: clientBioMode, clientQrUrl, clientQrDataUrl, clientBioLoading,
+    //           polling, pollRef, regTokenClientId
+    // Now uses FaceVerifyStep with stored faceTemplate from client record
+    const [clientVerified,     setClientVerified]     = useState(false);
+    const [faceMatchScore,     setFaceMatchScore]     = useState(null);
+    const [clientFaceTemplate, setClientFaceTemplate] = useState(null);
 
     const [confirming, setConfirming] = useState(false);
 
@@ -68,106 +66,48 @@ const DisbursementPhotoModal = ({
         deputy_director:  'OD',
     };
 
-    // ── Reset on open ────────────────────────────────────────────────────
+    // ── FIX: Reset on open — simplified, no QR/polling state ────────────
     useEffect(() => {
         if (!show) return;
         setPhoto(null); setPhotoFile(null); setPhotoKey(null);
         setApproverId(currentUser?._id || '');
         setBiometricVerified(false); setBiometricRequired(false);
-        setClientBioMode(null); setClientVerified(false);
-        setClientQrUrl(null); setClientQrDataUrl(null);
-        setRegTokenClientId(null);
-        setPolling(false);
-        if (pollRef.current) clearInterval(pollRef.current);
+        setClientVerified(false);
+        setClientFaceTemplate(null);
+        setFaceMatchScore(null);
     }, [show, currentUser]);
 
-    // ── Determine client biometric mode when modal opens ─────────────────
-    // Uses the first loan's client — multi-loan shares one check
+    // ── FIX: Load client faceTemplate when modal opens ───────────────────
+    // Previously: checked WebAuthn biometric status → generated QR → polled
+    // Now: fetches client record → parses faceTemplate JSON → passes to FaceVerifyStep
     useEffect(() => {
         if (!show || !loans?.length || !requireClientBiometric) return;
         const firstLoan = loans[0];
-        // Check if client has biometric on record
-        fetchWrapper.get(
-            getApiBaseUrl() + `clients/biometric/status?clientId=${firstLoan.clientId || firstLoan.client?._id}`
-        ).then(res => {
-            if (res.success) {
-                setClientBioMode(res.hasBiometric ? 'verify' : 'register');
-            }
-        }).catch(() => {
-            // Default to verify if check fails — safer
-            setClientBioMode('verify');
-        });
-    }, [show, loans, requireClientBiometric]);
-
-    // ── Generate client biometric QR ─────────────────────────────────────
-    const generateClientBiometricQR = useCallback(async () => {
-        if (!loans?.length) return;
-        const firstLoan = loans[0];
         const clientId  = firstLoan.clientId || firstLoan.client?._id;
-        const loanId    = firstLoan._id;
+        if (!clientId) return;
 
-        setClientBioLoading(true);
-        try {
-            if (clientBioMode === 'register') {
-                // Generate single-use 8hr registration token
-                const res = await fetchWrapper.post(
-                    getApiBaseUrl() + 'clients/biometric/register-token',
-                    { clientId, loanId }
-                );
-                if (!res.success) throw new Error(res.message);
-
-                const url = `${window.location.origin}/biometric-register/${encodeURIComponent(res.token)}`;
-                setClientQrUrl(url);
-                setRegTokenClientId(clientId);
-                const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, errorCorrectionLevel: 'H' });
-                setClientQrDataUrl(dataUrl);
-                startPollingBiometric(clientId, 'register');
-            } else {
-                // Verify existing biometric — use existing QR flow
-                const url = `${window.location.origin}/biometric-verify/${loanId}`;
-                setClientQrUrl(url);
-                const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, errorCorrectionLevel: 'H' });
-                setClientQrDataUrl(dataUrl);
-                startPollingBiometric(clientId, 'verify');
-            }
-        } catch (err) {
-            toast.error(err.message || 'Failed to generate QR code.');
-        } finally {
-            setClientBioLoading(false);
-        }
-    }, [loans, clientBioMode]);
-
-    // ── Poll for client biometric completion ─────────────────────────────
-    const startPollingBiometric = useCallback((clientId, mode) => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setPolling(true);
-
-        pollRef.current = setInterval(async () => {
-            try {
-                const endpoint = mode === 'register'
-                    ? `clients/biometric/status?clientId=${clientId}`
-                    : `transactions/loans/client-biometric-status?loanId=${loans[0]?._id}`;
-
-                const res = await fetchWrapper.get(getApiBaseUrl() + endpoint);
-
-                const done = mode === 'register'
-                    ? res.success && res.hasBiometric
-                    : res.success && res.verified;
-
-                if (done) {
-                    setClientVerified(true);
-                    setPolling(false);
-                    clearInterval(pollRef.current);
-                    toast.success('Client biometric confirmed.');
+        fetchWrapper.get(getApiBaseUrl() + `clients?clientId=${clientId}`)
+            .then(res => {
+                // API returns client data in various shapes — handle both
+                const clientRecord = res.client?.[0] || res.clients?.[0];
+                const raw = clientRecord?.faceTemplate;
+                if (raw) {
+                    try {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length === 128) {
+                            setClientFaceTemplate(parsed);
+                        } else {
+                            setClientFaceTemplate(null);
+                        }
+                    } catch {
+                        setClientFaceTemplate(null);
+                    }
+                } else {
+                    setClientFaceTemplate(null);
                 }
-            } catch { /* ignore poll errors */ }
-        }, 3000);
-    }, [loans]);
-
-    // Cleanup on unmount / close
-    useEffect(() => {
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, []);
+            })
+            .catch(() => setClientFaceTemplate(null));
+    }, [show, loans, requireClientBiometric]);
 
     // ── Load approvers ───────────────────────────────────────────────────
     useEffect(() => {
@@ -226,7 +166,7 @@ const DisbursementPhotoModal = ({
         return data.fileKey;
     }, [loans]);
 
-    // ── Staff biometric scan ─────────────────────────────────────────────
+    // ── Staff biometric scan (WebAuthn — unchanged) ──────────────────────
     const handleBiometricScan = async () => {
         const result = await authenticateWithBiometric(approverId);
         if (result.success) {
@@ -246,7 +186,7 @@ const DisbursementPhotoModal = ({
             return;
         }
         if (requireClientBiometric && !clientVerified) {
-            toast.error('Please complete client biometric before approving.');
+            toast.error('Please complete client face verification before approving.');
             return;
         }
         setConfirming(true);
@@ -373,7 +313,7 @@ const DisbursementPhotoModal = ({
                         )}
                     </div>
 
-                    {/* ── Step 3: Staff Biometric (if required) ──────────── */}
+                    {/* ── Step 3: Staff Biometric (WebAuthn — unchanged) ─── */}
                     {biometricRequired && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
@@ -401,76 +341,47 @@ const DisbursementPhotoModal = ({
                         </div>
                     )}
 
-                    {/* ── Step 4: Client Biometric ────────────────────────── */}
-                    {requireClientBiometric && clientBioMode && (
+                    {/* ── Step 4: Client Face Verification ───────────────── */}
+                    {/* FIX: replaced QR-based WebAuthn polling with FaceVerifyStep */}
+                    {/* Client must complete liveness challenge matching their LAF template */}
+                    {requireClientBiometric && (
                         <div>
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-3">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepDone(clientVerified)}`}>
                                     {clientVerified ? '✓' : (biometricRequired ? '4' : '3')}
                                 </div>
                                 <p className="text-sm font-semibold text-gray-700">
-                                    Client Biometric {clientBioMode === 'register' ? 'Registration' : 'Verification'}
+                                    Client Face Verification
                                 </p>
                             </div>
                             <div className="ml-7">
                                 {clientVerified ? (
-                                    <div className="flex items-center gap-2 text-green-700 text-sm">
-                                        <CheckCircleIcon className="w-4 h-4" />
-                                        {clientBioMode === 'register' ? 'Biometric registered' : 'Identity verified'}
-                                    </div>
-                                ) : clientQrDataUrl ? (
-                                    <div className="space-y-3">
-                                        {/* Mode badge */}
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                            clientBioMode === 'register'
-                                                ? 'bg-orange-100 text-orange-700'
-                                                : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                            <Fingerprint className="w-3 h-3" />
-                                            {clientBioMode === 'register' ? 'New — Register fingerprint' : 'Existing — Verify fingerprint'}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-green-700 text-sm">
+                                            <CheckCircleIcon className="w-4 h-4" />
+                                            Identity confirmed
                                         </div>
-                                        {/* QR */}
-                                        <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                            <img src={clientQrDataUrl} alt="Client Biometric QR"
-                                                className="w-36 h-36 object-contain" />
-                                            <p className="text-xs text-gray-500 text-center">
-                                                Ask client to scan this QR with their phone to {clientBioMode === 'register' ? 'register their fingerprint / Face ID' : 'verify their identity'}
+                                        {faceMatchScore !== null && (
+                                            <p className="text-xs text-gray-400">
+                                                Match confidence: {(
+                                                    Math.max(0, (0.5 - faceMatchScore) / 0.5) * 100
+                                                ).toFixed(0)}%
                                             </p>
-                                        </div>
-                                        {/* Polling indicator */}
-                                        {polling && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                                </svg>
-                                                Waiting for client to complete…
-                                            </div>
-                                        )}
-                                        {/* Regenerate for register mode */}
-                                        {clientBioMode === 'register' && (
-                                            <button type="button" onClick={generateClientBiometricQR}
-                                                disabled={clientBioLoading}
-                                                className="text-xs text-gray-400 hover:text-gray-600 underline flex items-center gap-1">
-                                                <RefreshCw className="w-3 h-3" />
-                                                Regenerate QR
-                                            </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <button type="button" onClick={generateClientBiometricQR}
-                                        disabled={clientBioLoading}
-                                        className="flex items-center gap-2 px-4 py-2.5 border border-gray-300
-                                            text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50
-                                            disabled:opacity-50 transition-colors">
-                                        {clientBioLoading ? (
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                        ) : <QrCode className="w-4 h-4" />}
-                                        {clientBioMode === 'register' ? 'Generate Registration QR' : 'Generate Verification QR'}
-                                    </button>
+                                    <FaceVerifyStep
+                                        faceTemplate={clientFaceTemplate}
+                                        onVerified={(result) => {
+                                            setClientVerified(true);
+                                            setFaceMatchScore(result.faceMatchScore ?? null);
+                                        }}
+                                        onSkip={() => setClientVerified(true)}
+                                        canSkip={
+                                            currentUser?.role?.rep === 1 ||
+                                            currentUser?.root === true
+                                        }
+                                    />
                                 )}
                             </div>
                         </div>
