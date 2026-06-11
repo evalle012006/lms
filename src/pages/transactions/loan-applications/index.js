@@ -133,6 +133,7 @@ const LoanApplicationPage = () => {
 
     const [showDisbursementModal, setShowDisbursementModal] = useState(false);
     const [pendingLdfLoans, setPendingLdfLoans]             = useState([]);
+    const [pendingLdfOrigin, setPendingLdfOrigin] = useState('ldf');
     const [showApprovalModal, setShowApprovalModal] = useState(false);
     const [selectedApprovalLoan, setSelectedApprovalLoan] = useState(null);
 
@@ -1228,6 +1229,7 @@ const LoanApplicationPage = () => {
             // Open disbursement modal before final approval
             if (validation.length === 0 && selectedLoanList.length > 0) {
                 setPendingLdfLoans(selectedLoanList);
+                setPendingLdfOrigin(origin);
                 setShowDisbursementModal(true);
                 return;
             }
@@ -1348,7 +1350,7 @@ const LoanApplicationPage = () => {
                             toast.error(errors);
                             setTimeout(() => {
                                 getListLoan();
-                                window.location.reload();
+                                // window.location.reload();
                             }, 1000);
                         } else {
                             if (origin == 'ldf') {
@@ -1359,7 +1361,7 @@ const LoanApplicationPage = () => {
     
                             setTimeout(() => {
                                 getListLoan();
-                                window.location.reload();
+                                // window.location.reload();
                             }, 1000);
                         }
                     }
@@ -1374,14 +1376,20 @@ const LoanApplicationPage = () => {
         setShowDisbursementModal(false);
 
         // Attach disbursement photo + approver to each loan before sending
+        // FIX: set status to 'active' so approve-by-batch processes it correctly
+        // The application path only activates loans where status === 'active'
         const loansWithPhoto = pendingLdfLoans.map(loan => ({
             ...loan,
+            status: 'active',
             disbursementPhotoKey,
             disbursementPhotoAt: new Date().toISOString(),
             ldfApprovedBy: approverId,
         }));
 
-        const params = { loanData: loansWithPhoto, origin: 'ldf', user: currentUser };
+        // FIX: use the origin that triggered the modal — not always 'ldf'
+        // 'application' tab → sets status active, saves cash collection
+        // 'ldf' tab → sets ldfApproved, activates loan
+        const params = { loanData: loansWithPhoto, origin: pendingLdfOrigin, user: currentUser };
         const response = await fetchWrapper.post(
             getApiBaseUrl() + 'transactions/loans/approve-by-batch', params
         );
@@ -1394,7 +1402,9 @@ const LoanApplicationPage = () => {
             } else {
                 toast.success('Selected loans successfully updated');
             }
-            setTimeout(() => { getListLoan(); window.location.reload(); }, 1000);
+            // FIX: window.location.reload() was crashing the page due to ExcelExportModal
+            // selector error on remount — use getListLoan() only to refresh data in place
+            setTimeout(() => { getListLoan(); }, 1000);
         }
 
         setPendingLdfLoans([]);
