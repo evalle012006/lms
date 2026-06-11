@@ -7,6 +7,7 @@ import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import moment from 'moment';
+import { getMcbuWithdrawRetainConfig, validateMcbuRetain } from "@/lib/mcbu-withdrawal-utils";
 
 const graph = new GraphProvider();
 const mcbuWithdrawalsType = createGraphType(
@@ -46,11 +47,12 @@ async function bulkApprove(req, res) {
     // Process each withdrawal update
 
     const validWithdrawalMap = {};
+    const retainConfig = await getMcbuWithdrawRetainConfig();
 
     // validated all withdrawals and add it in a map for distinct duplicates
     for(const withdrawal of withdrawals) {
       if (!validWithdrawalMap[withdrawal.id]) {
-        const validWithdrawal = await validate(withdrawal.id, errors).catch(err => {
+        const validWithdrawal = await validate(withdrawal.id, errors, retainConfig).catch(err => {
           errors.push({
             error: true,
             message: 'Error in validating withdrawal',
@@ -294,7 +296,7 @@ async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, cur
   );
 }
 
-async function validate(id, errors) {
+async function validate(id, errors, retainConfig) {
   const [withdrawal] = await graph.query(
     queryQl(mcbuWithdrawalsType('results'), {
       where: { _id: { _eq: id } }
@@ -383,35 +385,13 @@ async function validate(id, errors) {
     }
     
     // Additional business logic validation for MCBU
-    if (mcbuAmount > 0) { // Only validate MCBU limits if amount > 0
-      // Group leaders: can only withdraw excess over 3000
-      // Regular clients (daily): can only withdraw excess over 1000
-      if (group_leader) {
-        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
-        if (mcbuAmount > maxMcbuWithdrawal) {
-
-           errors.push({ 
-            error: true, 
-            message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`,
-            withdrawal
-          });
-
+    if (mcbuAmount > 0) {
+      const retainCheck = validateMcbuRetain(mcbuAmount, currentMcbu, group_leader, loan.occurence, retainConfig);
+      if (!retainCheck.valid) {
+          errors.push({ error: true, message: retainCheck.message, withdrawal });
           return false;
-        }
-      } else {
-        // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
-        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-        if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
-          
-          errors.push({ 
-            error: true, 
-            message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`,
-            withdrawal
-          });
-          return false;
-        }
       }
-    }
+  }
     
     // Validate CSF withdrawal amount (only for group leaders)
     if (csfAmount > 0) {

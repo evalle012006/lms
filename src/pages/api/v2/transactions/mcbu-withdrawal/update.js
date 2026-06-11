@@ -4,6 +4,7 @@ import { updateQl, createGraphType, queryQl } from "@/lib/graph/graph.util";
 import { MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS } from "@/lib/graph.fields";
 import { filterGraphFields } from '@/lib/graph.functions';
 import logger from '@/logger';
+import { getMcbuWithdrawRetainConfig, validateMcbuRetain } from "@/lib/mcbu-withdrawal-utils";
 
 const graph = new GraphProvider();
 
@@ -123,27 +124,12 @@ async function update(req, res) {
       }
       
       // Additional business logic validation for MCBU
-      if (mcbuAmount > 0) { // Only validate MCBU limits if amount > 0
-        // Group leaders: can only withdraw excess over 3000
-        // Regular clients (daily): can only withdraw excess over 1000
-        if (isGroupLeader) {
-          const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
-          if (mcbuAmount > maxMcbuWithdrawal) {
-            return res.status(400).json({
-              error: true,
-              message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-            });
+      if (mcbuAmount > 0) {
+          const retainConfig = await getMcbuWithdrawRetainConfig();
+          const retainCheck = validateMcbuRetain(mcbuAmount, currentMcbu, isGroupLeader, loan.occurence, retainConfig);
+          if (!retainCheck.valid) {
+              return res.status(200).json({ success: false, message: retainCheck.message });
           }
-        } else {
-          // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
-          const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-          if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
-            return res.status(400).json({
-              error: true,
-              message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-            });
-          }
-        }
       }
     }
 

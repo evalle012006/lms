@@ -3449,23 +3449,27 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleMcbuWithdrawal = (selected, index) => {
-        if (selected.loanCycle == 1 && !selected.client.groupLeader) {
+        const isGL = selected.client?.groupLeader || false;
+        const minRetain = isGL
+            ? (transactionSettings.minDailyMcbuWithdrawalGL ?? 3000)
+            : (transactionSettings.minDailyMcbuWithdrawal   ?? 1000);
+
+        if (selected.loanCycle == 1 && !isGL) {
             toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
         } else if (selected.mcbuWithdrawal > 0) {
             toast.error('Error occured. MCBU Withdrawal has already been processed.');
-        } else if (selected.mcbu <= 1000 && !selected.client.groupLeader) {
-            toast.error('Error occured. MCBU Withdrawal should have more than ₱1,000 remaining MCBU balance.');
+        } else if (minRetain > 0 && parseFloat(selected.mcbu) <= minRetain) {
+            toast.error(`MCBU Withdrawal not allowed. Client must have more than ₱${minRetain.toLocaleString()} MCBU balance.`);
         } else if (parseFloat(selected.mcbu) > 0) {
             const list = data.map((cc, idx) => {
                 let temp = {...cc};
 
                 if (selected.slotNo === cc.slotNo) {
                     temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
-            
+                
                     if (temp.mcbuWithdrawFlag) {
                         setLoan(selected);
                         setShowMcbuWithdrawalDrawer(true);
-                        // setAllowMcbuWithdrawal(true);
                     } else {
                         setAllowMcbuWithdrawal(false);
                     }
