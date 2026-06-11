@@ -177,6 +177,22 @@ const DisbursementPhotoModal = ({
 
     // ── Staff biometric scan (WebAuthn — unchanged for login) ────────────
     const handleBiometricScan = async () => {
+        // FIX: check platform authenticator is available on THIS device before
+        // calling WebAuthn — prevents "No passkeys available" browser dialog
+        // if the user registered biometric on a different device
+        const platformAvailable = await window.PublicKeyCredential
+            ?.isUserVerifyingPlatformAuthenticatorAvailable()
+            .catch(() => false);
+
+        if (!platformAvailable) {
+            toast.error(
+                'No fingerprint reader detected on this device. ' +
+                'If you registered biometric on another device, please use that device ' +
+                'or proceed without biometric verification.'
+            );
+            return;
+        }
+
         const result = await authenticateWithBiometric(approverId);
         if (result.success) {
             setBiometricVerified(true);

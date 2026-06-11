@@ -210,9 +210,21 @@ export function useBiometric() {
             return { success: true, user: verifyRes.user };
         } catch (err) {
             setLoading(false);
-            registeringRef.current = false;
+            // FIX 1: registeringRef is not defined here — it lives in biometric-setup.js
+            // Remove the erroneous reference that caused "registeringRef is not defined"
             if (err.name === 'NotAllowedError') {
+                // User cancelled or tapped Close on the browser dialog
                 return { success: false, cancelled: true };
+            }
+            if (err.name === 'NotFoundError' || err.name === 'InvalidStateError') {
+                // FIX 2: credential not found on this device — no passkey registered here.
+                // Return gracefully instead of letting the browser show the picker dialog.
+                setError('No biometric found for this account on this device.');
+                return { success: false, error: 'No biometric found on this device. Please use your password.' };
+            }
+            if (err.name === 'SecurityError') {
+                setError('Biometric authentication failed due to a security error.');
+                return { success: false, error: 'Biometric authentication failed. Please use your password.' };
             }
             setError(err.message);
             return { success: false, error: err.message };
