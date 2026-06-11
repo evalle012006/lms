@@ -33,10 +33,25 @@ function RouteGuard({ children }) {
                 ? rawUser.user
                 : rawUser;
 
-            // Prefer Redux for biometricCredentialId — biometric-setup.js
-            // updates Redux via dispatch(setUser()) after registration
+            // FIX: read biometricCredentialId directly from localStorage as source of truth.
+            // userService.userValue shape is inconsistent after reload (login wraps in
+            // { success, user } but update() merges flat) causing biometricCredentialId
+            // to be lost on window.location.reload(). localStorage always has the latest value.
+            const getStoredBiometric = () => {
+                try {
+                    const raw = localStorage.getItem('acuser');
+                    if (!raw) return null;
+                    const parsed = JSON.parse(raw);
+                    // Handle both flat { biometricCredentialId } and nested { user: { biometricCredentialId } }
+                    return parsed?.biometricCredentialId
+                        || parsed?.user?.biometricCredentialId
+                        || null;
+                } catch { return null; }
+            };
+
             const biometricCredentialId = userState?.biometricCredentialId
-                || user?.biometricCredentialId;
+                || user?.biometricCredentialId
+                || getStoredBiometric();
 
             // Paths that bypass the biometric check
             const biometricBypassPaths = ['/biometric-setup', '/logout'];
