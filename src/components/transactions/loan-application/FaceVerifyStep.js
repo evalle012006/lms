@@ -123,7 +123,10 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
     </div>
 );
 
-const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, canSkip = false }) => {
+// onRetry — optional callback to parent when user clicks Try Again
+// Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
+// clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
+const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = false }) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
@@ -317,8 +320,10 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, canSkip = false }) =
 
     const handleRetry = useCallback(() => {
         setResult(null);
+        // FIX: call parent onRetry so DisbursementPhotoModal can force remount via key
+        onRetry?.();
         handleStart();
-    }, [handleStart]);
+    }, [handleStart, onRetry]);
 
     if (noTemplate) {
         return (
