@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { useBiometric, isBiometricSupported } from '@/hooks/useBiometric';
+import { useSelector } from 'react-redux';
 
 /**
  * BiometricLoginButton
@@ -16,6 +17,9 @@ const BiometricLoginButton = ({ email, onSuccess, onFallback }) => {
     const [userId, setUserId]         = useState(null);
     const [hasBiometric, setHasBiometric] = useState(false);
     const [checking, setChecking]     = useState(false);
+    const requireStaffBiometric = useSelector(
+        s => s.systemSettings?.data?.requireStaffBiometric ?? true
+    );
 
     // Detect if device has fingerprint/Face ID sensor
     useEffect(() => {
@@ -74,7 +78,8 @@ const BiometricLoginButton = ({ email, onSuccess, onFallback }) => {
     }, [userId, authenticateWithBiometric, onSuccess, onFallback]);
 
     // Only render if device supports it AND user has biometric
-    if (!platformSupported || (!hasBiometric && !checking)) return null;
+    if (!requireStaffBiometric) return null;
+    if (!platformSupported || !hasBiometric || checking) return null;
 
     return (
         <div className="mt-3">

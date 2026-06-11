@@ -31,6 +31,10 @@ const DisbursementPhotoModal = ({
     const requireClientBiometric = useSelector(
         s => s.systemSettings?.data?.requireClientBiometric ?? true
     );
+    // FIX: when off, Step 3 (staff biometric) is skipped entirely
+    const requireStaffBiometric  = useSelector(
+        s => s.systemSettings?.data?.requireStaffBiometric ?? true
+    );
     const { authenticateWithBiometric, loading: biometricLoading } = useBiometric();
 
     const fileInputRef = useRef();
@@ -74,7 +78,8 @@ const DisbursementPhotoModal = ({
         if (!show) return;
         setPhoto(null); setPhotoFile(null); setPhotoKey(null);
         setApproverId(currentUser?._id || '');
-        setBiometricVerified(false); setBiometricRequired(false);
+        setBiometricVerified(false); 
+        setBiometricRequired(false);
         setSelectedApprover(null);
         setClientVerified(false);
         setClientFaceTemplate(null);
@@ -126,7 +131,8 @@ const DisbursementPhotoModal = ({
                     const defaultId = currentUser._id || '';
                     setApproverId(defaultId);
                     const me = admins.find(u => u._id === defaultId);
-                    setBiometricRequired(!!(me?.hasBiometric));
+                    // FIX: only require biometric if system setting is on AND user has one
+                    setBiometricRequired(requireStaffBiometric && !!(me?.hasBiometric));
                     setSelectedApprover(me || null);
                 }
             })
@@ -141,7 +147,8 @@ const DisbursementPhotoModal = ({
         setSelectedApprover(selected || null);
         // Only require biometric scan if selected approver has one registered
         const isCurrentUser = userId === currentUser?._id;
-        setBiometricRequired(isCurrentUser && !!(selected?.hasBiometric));
+        // FIX: respect requireStaffBiometric setting
+        setBiometricRequired(requireStaffBiometric && isCurrentUser && !!(selected?.hasBiometric));
     };
 
     // ── Photo handlers ───────────────────────────────────────────────────
@@ -344,8 +351,8 @@ const DisbursementPhotoModal = ({
                     </div>
 
                     {/* ── Step 3: Staff Biometric ──────────────────────────── */}
-                    {/* FIX 2 & 3: Always show step 3, but content changes based on state */}
-                    {approverId && (
+                    {/* Hidden entirely when requireStaffBiometric setting is off */}
+                    {requireStaffBiometric && approverId && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center

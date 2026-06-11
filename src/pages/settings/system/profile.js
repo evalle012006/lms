@@ -271,12 +271,13 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                         </div>
                         <div className="flex-1">
                             <label className="text-base font-semibold text-gray-900">
-                                Require Client Biometric Verification
+                                Require Client Face Verification
                             </label>
                             <p className="text-sm text-gray-500 mt-1">
-                                When enabled, clients must register their fingerprint or Face ID
-                                during the loan application process, and verify at disbursement.
-                                Disable for branches where client devices do not support biometrics.
+                                When enabled, clients must complete face liveness verification
+                                (look left, right, camera) during the loan application process,
+                                and their face is matched at disbursement. Disable for branches
+                                where camera access is unavailable.
                             </p>
                             {!values.requireClientBiometric && (
                                 <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
@@ -315,6 +316,76 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                                 : 'bg-gray-100 text-gray-500'
                         }`}>
                             {values.requireClientBiometric ? 'Required' : 'Optional'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Require Staff Biometric Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                className="h-6 w-6 text-blue-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Require Staff Biometric Verification
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, staff with registered biometrics must scan their
+                                fingerprint or Face ID to approve LDF disbursements, and
+                                the biometric login button appears on the login page.
+                                Disable for branches where staff devices do not have
+                                fingerprint sensors (e.g. desktop PCs, some laptops).
+                            </p>
+                            {!values.requireStaffBiometric && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Staff biometric step will be hidden in disbursement
+                                        confirmation and the biometric login button will not appear.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('requireStaffBiometric', !values.requireStaffBiometric)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0
+                                cursor-pointer rounded-full border-2 border-transparent
+                                transition-colors duration-200 ease-in-out focus:outline-none
+                                focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                                values.requireStaffBiometric ? 'bg-blue-600' : 'bg-gray-200'
+                            }`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200
+                                ease-in-out ${
+                                values.requireStaffBiometric ? 'translate-x-7' : 'translate-x-0'
+                            }`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full
+                            text-xs font-semibold ${
+                            values.requireStaffBiometric
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.requireStaffBiometric ? 'Required' : 'Optional'}
                         </span>
                     )}
                 </div>
@@ -438,6 +509,7 @@ const ProfileSettingsPage = (props) => {
         enableNotifications: state.enableNotifications ?? false,
         allowLoCI: state.allowLoCI ?? false,
         requireClientBiometric:  state.requireClientBiometric  ?? true,
+        requireStaffBiometric:  state.requireStaffBiometric  ?? true,
         smsEnabled:              state.smsEnabled              ?? false,
     }
 

@@ -264,6 +264,7 @@ export const SETTINGS_FIELDS = `
   requireSelfieWithId
   smsEnabled
   ciQuestions
+  requireStaffBiometric
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
