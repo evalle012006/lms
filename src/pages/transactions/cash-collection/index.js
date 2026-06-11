@@ -327,7 +327,7 @@ const ModernBranchCashCollections = () => {
         query.viewMode = viewMode;
       }
       
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -355,7 +355,7 @@ const ModernBranchCashCollections = () => {
         query.viewMode = viewMode;
       }
       
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -781,8 +781,8 @@ const ModernBranchCashCollections = () => {
   const fetchCashCollectionsData = async (date) => {
     setLoading(true);
     try {
-      const formattedDate = date ? moment(date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
-      const currentSystemDate = moment().format('YYYY-MM-DD');
+      const formattedDate = date ? moment(date).format('YYYY-MM-DD') : currentDate;
+      const currentSystemDate = currentDate || moment().format('YYYY-MM-DD');
       
       let baseParams = {
         dateAdded: formattedDate,
@@ -1066,7 +1066,7 @@ const ModernBranchCashCollections = () => {
             item.name;
 
           // Get current day name for weekly group filtering
-          const currentDayName = moment().format('dddd').toLowerCase();
+          const currentDayName = moment(currentDate).format('dddd').toLowerCase();
           
           // Check if we should show target loan collection (for weekly groups only)
           const shouldShowTarget = () => {
@@ -1388,7 +1388,7 @@ const ModernBranchCashCollections = () => {
         isHoliday,
         isWeekend,
         currentDate,
-        currentDayName: moment().format('dddd').toLowerCase(),
+        currentDayName: moment(currentDate).format('dddd').toLowerCase(),
         loId: router.query.id,
         dataLength: data.length,
         hasWeeklyTransactions,
@@ -1507,7 +1507,7 @@ const ModernBranchCashCollections = () => {
     }
     
     // Preserve date parameter if it exists and is different from current date
-    if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+    if (router.query.date && router.query.date !== currentDate) {
       query.date = router.query.date;
     }
     
@@ -1527,7 +1527,6 @@ const ModernBranchCashCollections = () => {
 
   const handleDateChange = (e) => {
     const selectedDate = e.target.value;
-    const currentDate = moment().format('YYYY-MM-DD');
     
     setDateFilter(selectedDate);
     
@@ -1679,7 +1678,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         updatedQuery.date = router.query.date;
       }
       
@@ -1802,7 +1801,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -1823,7 +1822,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -1845,7 +1844,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -1863,7 +1862,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
@@ -1879,7 +1878,7 @@ const ModernBranchCashCollections = () => {
       }
       
       // Preserve date parameter if it exists and is different from current date
-      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      if (router.query.date && router.query.date !== currentDate) {
         query.date = router.query.date;
       }
       
