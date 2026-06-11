@@ -3425,6 +3425,16 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleMcbuWithdrawal = (selected, index) => {
+        const isGL = selected.client?.groupLeader || false;
+        const minRetain = isGL
+            ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
+            : (transactionSettings.minWeeklyMcbuWithdrawal  ?? 0);
+
+        if (minRetain > 0 && parseFloat(selected.mcbu) <= minRetain) {
+            toast.error(`MCBU Withdrawal not allowed. Client must have more than ₱${minRetain.toLocaleString()} MCBU balance.`);
+            return;
+        }
+
         if (parseFloat(selected.mcbu) > 0) {
             const list = data.map((cc, idx) => {
                 let temp = JSON.parse(JSON.stringify(cc));
@@ -3435,7 +3445,6 @@ const CashCollectionDetailsPage = () => {
                     if (temp.mcbuWithdrawFlag) {
                         setLoan(selected);
                         setShowMcbuWithdrawalDrawer(true);
-                        // setAllowMcbuWithdrawal(true);
                     } else {
                         setAllowMcbuWithdrawal(false);
                     }

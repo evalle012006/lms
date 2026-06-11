@@ -7,6 +7,7 @@ import { generateUUID } from '@/lib/utils';
 import logger from '@/logger';
 import { isNotificationEnabled, notifyWithdrawal } from '@/lib/notification-service';
 import { findUserById, findBranches, findClients } from '@/lib/graph.functions';
+import { getMcbuWithdrawRetainConfig, validateMcbuRetain } from "@/lib/mcbu-withdrawal-utils";
 
 const graph = new GraphProvider();
 
@@ -51,29 +52,11 @@ async function createWithdrawalNotification({
             
             // Notify for MCBU withdrawal if amount > 0
             if (mcbuAmount > 0) {
-                await notifyWithdrawal({
-                    clientName,
-                    clientId: client_id,
-                    loanId: loan_id,
-                    amount: mcbuAmount,
-                    groupId: group_id,
-                    branchId: branch_id,
-                    areaId: branch.areaId || area_id,
-                    regionId: branch.regionId || region_id,
-                    divisionId: branch.divisionId || division_id,
-                    loId: lo_id,
-                    createdBy: user?._id || user_id,
-                    createdByName: user ? `${user.firstName} ${user.lastName}` : 'System',
-                    isCsf: false
-                });
-                
-                logger.debug({
-                    user_id,
-                    page: 'MCBU Withdrawal Save',
-                    message: 'Notification created for MCBU withdrawal',
-                    amount: mcbuAmount,
-                    clientId: client_id
-                });
+                const retainConfig = await getMcbuWithdrawRetainConfig();
+                const retainCheck = validateMcbuRetain(mcbuAmount, currentMcbu, group_leader, loan.occurence, retainConfig);
+                if (!retainCheck.valid) {
+                    return res.status(200).json({ success: false, message: retainCheck.message });
+                }
             }
             
             // Notify for CSF withdrawal if amount > 0

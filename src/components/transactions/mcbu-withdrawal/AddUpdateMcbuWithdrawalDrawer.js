@@ -22,6 +22,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const dispatch = useDispatch();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentUser = useSelector(state => state.user.data);
+    const transactionSettings = useSelector(state => state.transactionsSettings?.data || {});
     const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Mcbu Withdrawal');
@@ -194,11 +195,14 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         // Validate MCBU withdrawal amount against available balance and client type limits
         if (submitValues.mcbu_withdrawal_amount > maxWithdrawalAmount) {
             setLoading(false);
-            if (isGroupLeader) {
-                toast.error("Group leaders cannot withdraw more than the excess over ₱3,000 MCBU balance");
-            } else if (occurence == 'daily') {
-                toast.error("Clients cannot withdraw more than the excess over ₱1,000 MCBU balance");
-            }
+            const minRetain = isGroupLeader
+                ? (occurence === 'weekly'
+                    ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
+                    : (transactionSettings.minDailyMcbuWithdrawalGL  ?? 3000))
+                : (occurence === 'weekly'
+                    ? (transactionSettings.minWeeklyMcbuWithdrawal  ?? 0)
+                    : (transactionSettings.minDailyMcbuWithdrawal   ?? 1000));
+            toast.error(`Cannot withdraw more than the excess over ₱${minRetain.toLocaleString()} MCBU balance`);
             return;
         }
 
@@ -625,28 +629,29 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
 
         setIsGroupLeader(groupLeader);
 
-        // Calculate MCBU max amount
-        let mcbuMaxAmount = 0;
-        if (groupLeader && (loan?.status === 'active' || loan?.status === 'tomorrow')) {
-            // Group leaders can only withdraw excess over 3000
-            mcbuMaxAmount = Math.max(0, mcbu - 3000);
-        } else if (occurence === 'daily') {
-            // Regular clients can only withdraw excess over 1000
-            mcbuMaxAmount = Math.max(0, mcbu - 1000);
-        } else {
-            mcbuMaxAmount = mcbu;
-        }
+        // Derive retain config from transactionSettings
+        const minRetain = groupLeader
+            ? (occurence === 'weekly'
+                ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
+                : (transactionSettings.minDailyMcbuWithdrawalGL  ?? 3000))
+            : (occurence === 'weekly'
+                ? (transactionSettings.minWeeklyMcbuWithdrawal  ?? 0)
+                : (transactionSettings.minDailyMcbuWithdrawal   ?? 1000));
 
-        // Calculate CSF max amount (only for group leaders)
+        // 0 = unlimited
+        const mcbuMaxAmount = minRetain === 0
+            ? mcbu
+            : Math.max(0, mcbu - minRetain);
+
+        // CSF max unchanged — group leaders can withdraw all CSF
         let csfMaxAmount = 0;
         if (groupLeader && csf > 0) {
-            // Group leaders can withdraw all their CSF (no minimum balance required)
             csfMaxAmount = csf;
         }
 
         setMaxWithdrawalAmount(mcbuMaxAmount);
         setMaxCsfWithdrawalAmount(csfMaxAmount);
-    }, [mcbu, csf, formState.group_leader, loan, occurence]);
+    }, [mcbu, csf, formState.group_leader, loan, occurence, transactionSettings]);
 
     useEffect(() => {
         if (!currentDate || !last5DaysOfTheMonth) return;

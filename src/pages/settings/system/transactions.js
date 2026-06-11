@@ -155,6 +155,11 @@ const TransactionsSettingsPage = (props) => {
         delinquentAlertThreshold: transactionState.delinquentAlertThreshold ?? 1,
         // Maximum client age allowed for loan application
         clientAgeThreshold: transactionState.clientAgeThreshold ?? 65,
+
+        minDailyMcbuWithdrawal:   transactionState.minDailyMcbuWithdrawal   ?? 1000,
+        minWeeklyMcbuWithdrawal:  transactionState.minWeeklyMcbuWithdrawal  ?? 1000,
+        minDailyMcbuWithdrawalGL:  transactionState.minDailyMcbuWithdrawalGL  ?? 3000,
+        minWeeklyMcbuWithdrawalGL: transactionState.minWeeklyMcbuWithdrawalGL ?? 3000,
     }
 
     const validationSchema = yup.object().shape({
@@ -196,6 +201,11 @@ const TransactionsSettingsPage = (props) => {
             .min(18, 'Minimum age is 18')
             .max(100, 'Maximum age is 100')
             .required('Client age threshold is required'),
+
+        minDailyMcbuWithdrawal:   yup.number().min(0, 'Cannot be negative').required('Required'),
+        minWeeklyMcbuWithdrawal:  yup.number().min(0, 'Cannot be negative').required('Required'),
+        minDailyMcbuWithdrawalGL:  yup.number().min(0, 'Cannot be negative').required('Required'),
+        minWeeklyMcbuWithdrawalGL: yup.number().min(0, 'Cannot be negative').required('Required'),
     });
 
     const handleUpdate = async (values, action) => {
@@ -531,6 +541,60 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
+                                                required
+                                            />
+                                            {/* MCBU Withdrawal Retain - Regular Clients */}
+                                            <ModernInput
+                                                name="minDailyMcbuWithdrawal"
+                                                value={values.minDailyMcbuWithdrawal}
+                                                label="Min Daily MCBU Retain (Regular)"
+                                                placeholder="0 = unlimited"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minDailyMcbuWithdrawal && errors.minDailyMcbuWithdrawal}
+                                                required
+                                            />
+                                            <ModernInput
+                                                name="minWeeklyMcbuWithdrawal"
+                                                value={values.minWeeklyMcbuWithdrawal}
+                                                label="Min Weekly MCBU Retain (Regular)"
+                                                placeholder="0 = unlimited"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minWeeklyMcbuWithdrawal && errors.minWeeklyMcbuWithdrawal}
+                                                required
+                                            />
+                                            {/* MCBU Withdrawal Retain - Group Leaders */}
+                                            <ModernInput
+                                                name="minDailyMcbuWithdrawalGL"
+                                                value={values.minDailyMcbuWithdrawalGL}
+                                                label="Min Daily MCBU Retain (Group Leader)"
+                                                placeholder="0 = unlimited"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minDailyMcbuWithdrawalGL && errors.minDailyMcbuWithdrawalGL}
+                                                required
+                                            />
+                                            <ModernInput
+                                                name="minWeeklyMcbuWithdrawalGL"
+                                                value={values.minWeeklyMcbuWithdrawalGL}
+                                                label="Min Weekly MCBU Retain (Group Leader)"
+                                                placeholder="0 = unlimited"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minWeeklyMcbuWithdrawalGL && errors.minWeeklyMcbuWithdrawalGL}
                                                 required
                                             />
                                             <ModernInput

@@ -239,6 +239,10 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   mcbuInterestRate
   delinquentAlertThreshold
   clientAgeThreshold
+  minDailyMcbuWithdrawal
+  minWeeklyMcbuWithdrawal
+  minDailyMcbuWithdrawalGL
+  minWeeklyMcbuWithdrawalGL
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

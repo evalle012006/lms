@@ -32,6 +32,7 @@ const EditMcbuCsfWithdrawalModal = ({
 }) => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const transactionSettings = useSelector(state => state.transactionsSettings?.data || {});
 
     const [loading, setLoading] = useState(false);
     const [mcbuWithdrawalAmount, setMcbuWithdrawalAmount] = useState(0);
@@ -70,16 +71,20 @@ const EditMcbuCsfWithdrawalModal = ({
     }, [withdrawalData, show]);
 
     const calculateMaxMcbuWithdrawal = () => {
-        // Original balance = current balance + current withdrawal
         const originalBalance = mcbuBalance + originalMcbuWithdrawal;
         if (!originalBalance) return 0;
-        
-        // For group leaders: can withdraw excess over ₱3,000
-        // For regular clients: can withdraw excess over ₱1,000
-        const minBalance = isGroupLeader ? 3000 : 1000;
-        const maxWithdrawal = Math.max(0, originalBalance - minBalance);
-        
-        return maxWithdrawal;
+
+        const occurence = withdrawalData?.occurence || 'daily';
+        const minRetain = isGroupLeader
+            ? (occurence === 'weekly'
+                ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
+                : (transactionSettings.minDailyMcbuWithdrawalGL  ?? 3000))
+            : (occurence === 'weekly'
+                ? (transactionSettings.minWeeklyMcbuWithdrawal  ?? 0)
+                : (transactionSettings.minDailyMcbuWithdrawal   ?? 1000));
+
+        if (minRetain === 0) return originalBalance; // unlimited
+        return Math.max(0, originalBalance - minRetain);
     };
 
     const calculateMaxCsfWithdrawal = () => {
@@ -243,6 +248,15 @@ const EditMcbuCsfWithdrawalModal = ({
         return 'Edit Withdrawal Amount';
     };
 
+    const occurence = withdrawalData?.occurence || 'daily';
+    const minRetainDisplay = isGroupLeader
+        ? (occurence === 'weekly'
+            ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
+            : (transactionSettings.minDailyMcbuWithdrawalGL  ?? 3000))
+        : (occurence === 'weekly'
+            ? (transactionSettings.minWeeklyMcbuWithdrawal  ?? 0)
+            : (transactionSettings.minDailyMcbuWithdrawal   ?? 1000));
+
     return (
         <Modal 
             title={getModalTitle()} 
@@ -343,7 +357,7 @@ const EditMcbuCsfWithdrawalModal = ({
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
                                     Maximum allowed: {formatPricePhp(maxMcbuWithdrawal)} 
-                                    (Minimum {isGroupLeader ? '₱3,000' : '₱1,000'} must remain)
+                                    {minRetainDisplay > 0 ? `(Minimum ₱${minRetainDisplay.toLocaleString()} must retain)` : '(No minimum retain required)'}
                                 </p>
                             </div>
                         )}
