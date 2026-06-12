@@ -79,7 +79,7 @@ export default async function handler(req, res) {
         if (!groupId) return res.status(200).json({ success: false, message: 'groupId required.' });
         const allClients = await graph.query(
             queryQl(CLIENT_TYPE, {
-                where: { groupId: { _eq: groupId }, status: { _neq: 'archived' } },
+                where: { groupId: { _eq: groupId }, status: { _nin: ['archived', 'merged'] } },
                 limit: 100,
             })
         ).then(r => r.data?.clients ?? []);

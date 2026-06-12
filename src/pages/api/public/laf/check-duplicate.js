@@ -35,7 +35,7 @@ async function checkDuplicate(req, res) {
                 where: {
                     firstName: { _eq: firstUpper },
                     lastName:  { _eq: lastUpper  },
-                    status:    { _neq: 'archived' },
+                    status: { _nin: ['archived', 'merged'] },
                 },
                 limit: 10,
             })

@@ -98,6 +98,9 @@ export const CLIENT_FIELDS = `
   distanceFromBranch
   faceTemplate
   faceEnrolledAt
+  mergedIntoClientId
+  mergedAt
+  mergedBy
   `;
 
 export const LOAN_FIELDS = `
