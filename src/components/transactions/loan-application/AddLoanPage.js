@@ -155,20 +155,20 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         const group = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
         if (group?.availableSlots?.length) {
             let slots = [...group.availableSlots];
-            // In edit mode, the loan's own slotNo is already occupied (removed from availableSlots)
-            // so we must add it back so the dropdown has a valid selected option
-            if (isEdit && slotNo && !slots.includes(parseInt(slotNo))) {
+            // In edit mode OR when clientType is active/advance, the client's
+            // own slotNo is occupied (not in availableSlots) — add it back
+            // so the dropdown has a valid selected option to display
+            if ((isEdit || clientType === 'active' || clientType === 'advance')
+                && slotNo && !slots.includes(parseInt(slotNo))) {
                 slots.push(parseInt(slotNo));
             }
             setSlotNumber(
-                slots
-                    .sort((a, b) => a - b)
-                    .map(s => ({ value: s, label: s }))
+                slots.sort((a, b) => a - b).map(s => ({ value: s, label: s }))
             );
         } else {
             setSlotNumber(Array.from({ length: 30 }, (_, i) => ({ value: i + 1, label: i + 1 })));
         }
-    }, [selectedGroup, offsetClient, groupList, isEdit, slotNo]);
+    }, [selectedGroup, offsetClient, groupList, isEdit, slotNo, clientType]);
 
     // ── Auto-fill CI Name + Guarantor from client (add mode only) ─
     // In edit mode, guarantor comes from the loan record — never overwrite from client
@@ -406,42 +406,55 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
 
     const getListCoMaker = async (groupId) => {
         if (!groupId) return;
-        const effectiveDate = currentDate || '';
-        if (!effectiveDate) return;
-        const url = getApiBaseUrl() + 'transactions/loans/list?' +
+        // FIX: source co-makers from clients in the group, not loans.
+        // A co-maker is a group member — their loan status is irrelevant.
+        // Any active client in the group can serve as co-maker.
+        const res = await fetchWrapper.get(
+            getApiBaseUrl() + 'clients/list?' +
             new URLSearchParams({
                 groupId,
-                status:      'pending',
-                currentDate: effectiveDate,
-            });
-        const res = await fetchWrapper.get(url);
+                status: 'active',   // active clients in this group
+                mode:   'view_only_no_exist_loan',
+                branchId: currentUser.designatedBranchId,
+            })
+        );
         if (res.success) {
-            // Collect clientIds already serving as co-makers on OTHER loans in this group
-            const usedCoMakerIds = new Set(
-                (res.loans || [])
-                    .filter(l => l.coMakerId && l.clientId !== clientId) // exclude current applicant's own loan
-                    .map(l => l.coMakerId)
-            );
+            // Also fetch pending loans in group to detect already-assigned co-makers
+            let usedCoMakerIds = new Set();
+            try {
+                const loansRes = await fetchWrapper.get(
+                    getApiBaseUrl() + 'transactions/loans/list?' +
+                    new URLSearchParams({ groupId, status: 'pending', currentDate: currentDate || '' })
+                );
+                if (loansRes.success) {
+                    (loansRes.loans || [])
+                        .filter(l => l.coMakerId && l.clientId !== clientId)
+                        .forEach(l => usedCoMakerIds.add(l.coMakerId));
+                }
+            } catch { /* non-fatal — proceed without used-comaker data */ }
 
-            const entries = (res.loans || [])
-                .filter(l => l.slotNo && l.clientId && l.clientId !== clientId) // exclude the applicant
-                .map(l => {
-                    const name = l.fullName?.trim()
-                        || (l.client
-                            ? `${l.client.lastName}, ${l.client.firstName}`.toUpperCase()
-                            : l.clientId);
-                    const alreadyUsed = usedCoMakerIds.has(l.clientId);
+            const entries = (res.clients || [])
+                .filter(c => c._id !== clientId) // exclude the applicant
+                .map(c => {
+                    // Get slotNo from client's latest loan if available
+                    const slotNo     = c.loans?.[0]?.slotNo || c.slotNo || null;
+                    const name       = `${c.lastName}, ${c.firstName}`.toUpperCase();
+                    const alreadyUsed = usedCoMakerIds.has(c._id);
                     return {
-                        slotNo:      l.slotNo,
-                        clientId:    l.clientId,
-                        value:       l.clientId,
-                        isDisabled:  alreadyUsed,  // SelectDropdown respects this
-                        label:       alreadyUsed
-                            ? `Slot ${l.slotNo} — ${name.toUpperCase()} (already co-maker)`
-                            : `Slot ${l.slotNo} — ${name.toUpperCase()}`,
+                        slotNo,
+                        clientId:   c._id,
+                        value:      c._id,
+                        isDisabled: alreadyUsed,
+                        label:      slotNo
+                            ? alreadyUsed
+                                ? `Slot ${slotNo} — ${name} (already co-maker)`
+                                : `Slot ${slotNo} — ${name}`
+                            : alreadyUsed
+                                ? `${name} (already co-maker)`
+                                : name,
                     };
                 })
-                .sort((a, b) => a.slotNo - b.slotNo);
+                .sort((a, b) => (a.slotNo || 999) - (b.slotNo || 999));
             dispatch(setComakerList(entries));
         }
     };
@@ -557,8 +570,12 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
             const lc = c.loans?.[0]?.loanCycle;
             setSlotNo(sl);
             setSelectedLoanId(c.loans?.[0]?._id);
-            form?.setFieldValue('slotNo', sl);
-            form?.setFieldValue('loanCycle', (lc || 0) + 1);
+            // FIX: use setTimeout to ensure Formik ref is current after clientList
+            // state update — direct setFieldValue can race against re-render
+            setTimeout(() => {
+                formikRef.current?.setFieldValue('slotNo', sl);
+                formikRef.current?.setFieldValue('loanCycle', (lc || 0) + 1);
+            }, 50);
         }
         form?.setFieldValue('groupId', selectedGroup);
         form?.setFieldValue(field, value);

@@ -164,6 +164,11 @@ async function getForPromotion(req, res) {
             updatePayload.biometricDeviceName   = application.biometricDeviceName;
         }
 
+        // FIX: balik clients come from 'offset' status — reset to 'pending' on promote
+        if (application.clientType === 'balik') {
+            updatePayload.status = 'pending';
+        }
+
         // FIX: copy face liveness fields from LAF to client record on promote
         if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;
         if (application.faceEnrolledAt) updatePayload.faceEnrolledAt = application.faceEnrolledAt;

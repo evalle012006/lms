@@ -671,6 +671,18 @@ const PublicLAFForm = ({
             return;
         }
         if (cur === si('Confirm')) {
+            // FIX: require address if client has no address on record
+            if (foundClient && !foundClient.addressStreetNo?.trim()) {
+                const missing = [];
+                if (!clientChanges.addressStreetNo?.trim())         missing.push('Street / House No.');
+                if (!clientChanges.addressBarangayDistrict?.trim()) missing.push('Barangay');
+                if (!clientChanges.addressMunicipalityCity?.trim()) missing.push('Municipality / City');
+                if (!clientChanges.addressProvince?.trim())         missing.push('Province');
+                if (missing.length > 0) {
+                    toast.error(`Please fill in the address: ${missing.join(', ')}`);
+                    return;
+                }
+            }
             setStep(s => s + 1);
             return;
         }
