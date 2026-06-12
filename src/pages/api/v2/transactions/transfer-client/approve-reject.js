@@ -278,7 +278,7 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             groupId: transfer.targetGroupId,
             loId: transfer.targetUserId,
             clientId: transfer.selectedClientId,
-            mispayment: false,
+            // mispayment: false,
             // collection: 0,
             excess: 0,
             total: 0,
@@ -322,8 +322,29 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             data.pastDue = loan.pastDue;
             data.noPastDue = loan.noPastDue;
             data.loanTerms = loan.loanTerms + "";
-            data.remarks = existingCashCollection.length > 0 ? existingCashCollection[0].remarks : null;
-            data.status = existingCashCollection.length > 0 ? existingCashCollection[0].status : null;
+
+            if (existingCashCollection.length > 0) {
+                const prevCC = existingCashCollection[0];
+                data.remarks      = prevCC.remarks ?? null;
+                data.status       = prevCC.status ?? null;
+                data.mispayment   = prevCC.mispayment ?? false;
+                data.noMispayment = prevCC.noMispayment ?? 0;
+                data.noPastDue    = prevCC.noPastDue ?? 0;
+                data.pastDue      = prevCC.pastDue ?? 0;
+                data.maturedPastDue = prevCC.maturedPastDue ?? null;
+                data.maturedPD    = prevCC.maturedPD ?? false;
+                data.delinquent   = prevCC.delinquent ?? false;
+            } else {
+                data.remarks        = null;
+                data.status         = null;
+                data.mispayment     = false;
+                data.noMispayment   = 0;
+                data.noPastDue      = 0;
+                data.pastDue        = 0;
+                data.maturedPastDue = null;
+                data.maturedPD      = false;
+                data.delinquent     = false;
+            }
 
             if (data.status == 'tomorrow')  {
                 data.amountRelease = 0;
