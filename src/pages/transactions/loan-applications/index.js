@@ -37,11 +37,14 @@ import LAFModal from "@/components/transactions/loan-application/LAFModal";
 import { useRouter } from "next/router";
 import DisbursementPhotoModal from '@/components/transactions/loan-application/DisbursementPhotoModal';
 import LDFApprovalDetailsModal from "@/components/transactions/loan-application/LDFApprovalDetailsModal";
+import { approvalBlockedMessage, isApprovalBlocked } from "@/lib/approval-restriction-utils";
+import { ClockIcon } from "lucide-react";
 
 const LoanApplicationPage = () => {
     const router = useRouter();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const transactionSettings = useSelector(state => state.transactionsSettings?.data || {});
     const dispatch = useDispatch();
     const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
@@ -136,6 +139,15 @@ const LoanApplicationPage = () => {
     const [pendingLdfOrigin, setPendingLdfOrigin] = useState('ldf');
     const [showApprovalModal, setShowApprovalModal] = useState(false);
     const [selectedApprovalLoan, setSelectedApprovalLoan] = useState(null);
+
+    const ldfBlocked  = isApprovalBlocked(
+        transactionSettings.enableLdfApprovalRestriction,
+        transactionSettings.ldfApprovalCutoffTime
+    );
+    const loanBlocked = isApprovalBlocked(
+        transactionSettings.enableLoanApprovalRestriction,
+        transactionSettings.loanApprovalCutoffTime
+    );
 
     const handleViewApprovalDetails = (row) => {
         setSelectedApprovalLoan(row.original);
@@ -1817,10 +1829,12 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         let actBtns = [];
         if (currentUser?.role?.rep < 4 && selectedTab !== 'forecast') {
-            actBtns = [
-                <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
-                <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
-            ];
+            if (!ldfBlocked) {
+                actBtns = [
+                    <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
+                    <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
+                ];
+            }
 
             if (currentUser?.role?.rep > 2)  {
                 actBtns.push(
@@ -1834,7 +1848,7 @@ const LoanApplicationPage = () => {
                 );
             }
 
-            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction) {
+            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction && !loanBlocked) {
                 actBtns.splice(0, 2);
                 if (selectedTab == 'application') {
                     actBtns.unshift(
@@ -1849,7 +1863,7 @@ const LoanApplicationPage = () => {
         }
         
         setActionButtons(actBtns);
-    }, [selectedTab, list, pendingList, duplicateList]);
+    }, [selectedTab, list, pendingList, duplicateList, ldfBlocked, loanBlocked]);
 
     useEffect(() => {
         if (selectedTab === 'history') {
@@ -2061,6 +2075,16 @@ const LoanApplicationPage = () => {
                                         );
                                     })()}
 
+                                    {/* LDF tab banner */}
+                                    {ldfBlocked && transactionSettings.enableLdfApprovalRestriction && (
+                                        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                                            <ClockIcon className="h-5 w-5 text-red-500 shrink-0" />
+                                            <p className="text-sm text-red-700">
+                                                {approvalBlockedMessage('LDF', transactionSettings.ldfApprovalCutoffTime)}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="mb-6">
                                         <TableComponent 
                                             columns={columns} 
@@ -2198,6 +2222,16 @@ const LoanApplicationPage = () => {
                                                 placeholder={'Group Filter'}/>
                                         </div>
                                     </div>
+
+                                    {/* Application tab banner */}
+                                    {loanBlocked && transactionSettings.enableLoanApprovalRestriction && (
+                                        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                                            <ClockIcon className="h-5 w-5 text-red-500 shrink-0" />
+                                            <p className="text-sm text-red-700">
+                                                {approvalBlockedMessage('Loan', transactionSettings.loanApprovalCutoffTime)}
+                                            </p>
+                                        </div>
+                                    )}
                                     <TableComponent 
                                         columns={columns} 
                                         data={pendingData} 

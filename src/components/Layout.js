@@ -55,10 +55,14 @@ const Layout = ({
     }
 
     const getTransactionSettings = async () => {
-        const apiURL = `${getApiBaseUrl()}settings/transactions`;
-        const response = await fetchWrapper.get(apiURL);
-        if (response.success) {
-            dispatch(setTransactionSettings(response.transactions));
+        try {
+            const apiURL = `${getApiBaseUrl()}settings/transactions`;
+            const response = await fetchWrapper.get(apiURL);
+            if (response.success && response.transactions) {
+                dispatch(setTransactionSettings(response.transactions));
+            }
+        } catch (e) {
+            // silent — don't disrupt UI on background poll failure
         }
     }
 
@@ -94,7 +98,6 @@ const Layout = ({
             const dayName = moment(currentDate).format('dddd');
             dispatch(setWeekend(dayName === 'Saturday' || dayName === 'Sunday'));
             
-            // these likely already exist in the current code
             const lastDay = getLastWeekdayOfTheMonth(currentDate);
             const last5Days = getLastFiveWeekdaysOfMonth(currentDate);
             dispatch(setLastDayOfTheMonth(lastDay));
@@ -104,8 +107,8 @@ const Layout = ({
         }
     };
 
+    // Initial load — fetch date, settings if not yet in Redux
     useEffect(() => {
-        // currentDate drives holiday fetching — always needed on refresh
         if (!currentDate) {
             getCurrentDate();
         }
@@ -117,6 +120,18 @@ const Layout = ({
         if (!systemSettingsData || Object.keys(systemSettingsData).length === 0) {
             getSystemSettings();
         }
+    }, []);
+
+    // Poll transaction settings every 60 seconds to keep approval restriction
+    // config fresh without requiring a page reload. This ensures that when an
+    // admin changes the LDF/Loan approval cutoff time, all active sessions
+    // reflect it within 60 seconds automatically.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            getTransactionSettings();
+        }, 60 * 1000);
+
+        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {

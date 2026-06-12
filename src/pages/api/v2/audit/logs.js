@@ -4,10 +4,11 @@
 // Query params: category, action, userId, branchId, entityId,
 //               severity, success, dateFrom, dateTo, search, page, limit
 
-import { apiHandler }             from '@/services/api-handler';
-import { GraphProvider }          from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { findUserById }           from '@/lib/graph.functions';
+import { apiHandler }                   from '@/services/api-handler';
+import { GraphProvider }                from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl }     from '@/lib/graph/graph.util';
+import { _gql as gql }                  from '@/lib/graph/apollo';
+import { findUserById }                 from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 
@@ -40,12 +41,12 @@ async function getLogs(req, res) {
     // Build where clause
     const where = {};
 
-    if (category)  where.category  = { _eq: category };
-    if (action)    where.action     = { _ilike: `%${action}%` };
-    if (userId)    where.userId     = { _eq: userId };
-    if (branchId)  where.branchId   = { _eq: branchId };
-    if (entityId)  where.entityId   = { _eq: entityId };
-    if (severity)  where.severity   = { _eq: severity };
+    if (category)  where.category = { _eq: category };
+    if (action)    where.action   = { _ilike: `%${action}%` };
+    if (userId)    where.userId   = { _eq: userId };
+    if (branchId)  where.branchId = { _eq: branchId };
+    if (entityId)  where.entityId = { _eq: entityId };
+    if (severity)  where.severity = { _eq: severity };
     if (successFilter !== undefined) {
         where.success = { _eq: successFilter === 'true' };
     }
@@ -60,16 +61,11 @@ async function getLogs(req, res) {
         ];
     }
 
-    // Branch scope for rep=2
-    if (currentUser.role.rep === 2 && !branchId) {
-        // Area admins see their own branches only
-        // (branchId filter applied if they select a specific branch)
-    }
-
     const pageNum  = Math.max(1, parseInt(page));
     const pageSize = Math.min(100, Math.max(10, parseInt(limit)));
     const offset   = (pageNum - 1) * pageSize;
 
+    // Fetch paginated logs
     const logs = await graph.query(
         queryQl(AUDIT_TYPE, {
             where,
@@ -79,23 +75,28 @@ async function getLogs(req, res) {
         })
     ).then(r => r.data?.audit_logs ?? []);
 
-    // Get total count for pagination
-    const COUNT_TYPE = createGraphType('audit_logs_aggregate', `
-        aggregate { count }
-    `)('audit_logs_aggregate');
-
-    const total = await graph.query(
-        queryQl(COUNT_TYPE, { where })
-    ).then(r => r.data?.audit_logs_aggregate?.aggregate?.count ?? 0);
+    // Fetch total count — use graph.apollo directly with explicit variable typing
+    // to avoid the 'audit_logs_aggregate_bool_exp vs audit_logs_bool_exp' mismatch
+    // that occurs when passing through queryQl with createGraphType on the aggregate root.
+    const total = await graph.apollo.query({
+        query: gql`
+            query GetAuditLogsCount($where: audit_logs_bool_exp) {
+                audit_logs_aggregate(where: $where) {
+                    aggregate { count }
+                }
+            }
+        `,
+        variables: { where },
+    }).then(r => r.data?.audit_logs_aggregate?.aggregate?.count ?? 0);
 
     return res.status(200).json({
         success: true,
         logs,
         pagination: {
-            page:     pageNum,
-            limit:    pageSize,
+            page:  pageNum,
+            limit: pageSize,
             total,
-            pages:    Math.ceil(total / pageSize),
+            pages: Math.ceil(total / pageSize),
         },
     });
 }

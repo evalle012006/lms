@@ -296,6 +296,10 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   minWeeklyMcbuWithdrawal
   minDailyMcbuWithdrawalGL
   minWeeklyMcbuWithdrawalGL
+  enableLdfApprovalRestriction
+  ldfApprovalCutoffTime
+  enableLoanApprovalRestriction
+  loanApprovalCutoffTime
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
