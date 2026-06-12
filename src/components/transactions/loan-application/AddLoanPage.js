@@ -58,6 +58,9 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     const [minDate, setMinDate]                   = useState(null);
     const [maxDate, setMaxDate]                   = useState(null);
     const [selectedLoanId, setSelectedLoanId]     = useState(null);
+    const [slotReadOnly, setSlotReadOnly] = useState(false);
+    const [coMakerReadOnly,      setCoMakerReadOnly]      = useState(false);
+    const [coMakerReadOnlyLabel, setCoMakerReadOnlyLabel] = useState('');
 
     // LO list for rep=3
     const [loList, setLoList]               = useState([]);
@@ -283,28 +286,43 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     }, [mode, loanId]);
 
     // ── Load co-maker list when group + currentDate are both ready ──
-    // Separate from the edit fetch setTimeout so it waits for currentDate from Redux
     useEffect(() => {
         if (!selectedGroup || !currentDate) return;
-        getListCoMaker(selectedGroup);
+        // Pass clientId from state — this useEffect is for group/date changes,
+        // handleClientIdChange handles client selection with fresh ID directly
+        getListCoMaker(selectedGroup, clientId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedGroup, currentDate]);
 
-    // ── Resolve coMaker once comakerList is populated (edit mode) ────
+    // ── Resolve coMaker once comakerList is populated ─────────────────
     useEffect(() => {
         if (!pendingCoMakerRestore || !comakerList?.length) return;
-        const { slotNo, coMakerId } = pendingCoMakerRestore;
-        // Match by coMakerId first (UUID), fall back to slot number
+        const { slotNo: prevSlot, coMakerId } = pendingCoMakerRestore;
+        // Match by clientId UUID first, fall back to slot number
         const entry = comakerList.find(c =>
-            (coMakerId && c.clientId === coMakerId) ||
-            c.slotNo === slotNo
+            (coMakerId && (c.clientId === coMakerId || c.value === coMakerId)) ||
+            (prevSlot && String(c.slotNo) === String(prevSlot))
         );
         if (entry) {
+            // Found in current group — pre-select and show read-only
             setSelectedCoMaker(entry.value);
             formikRef.current?.setFieldValue('coMaker', entry.value);
+            if (clientType === 'active' || clientType === 'advance') {
+                // FIX 3: show as read-only since previous co-maker is still in group
+                setCoMakerReadOnly(true);
+                setCoMakerReadOnlyLabel(entry.label);
+            }
+        } else {
+            // Not found — co-maker may have left group or loan completed
+            // Show dropdown so BM can select a new one
+            setCoMakerReadOnly(false);
+            setCoMakerReadOnlyLabel('');
+            if (clientType === 'active' || clientType === 'advance') {
+                toast.info('Previous co-maker not found in this group. Please select a new co-maker.', { autoClose: 4000 });
+            }
         }
-        setPendingCoMakerRestore(null); // clear once resolved
-    }, [comakerList, pendingCoMakerRestore]);
+        setPendingCoMakerRestore(null);
+    }, [comakerList, pendingCoMakerRestore, clientType]);
 
     // Auto-generate PN number on mount (add mode only)
     // Guard with mode prop directly — isEdit may be stale on first render
@@ -404,59 +422,88 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         setLoading(false);
     };
 
-    const getListCoMaker = async (groupId) => {
+    const getListCoMaker = async (groupId, currentClientId = null) => {
         if (!groupId) return;
-        // FIX: source co-makers from clients in the group, not loans.
-        // A co-maker is a group member — their loan status is irrelevant.
-        // Any active client in the group can serve as co-maker.
-        const res = await fetchWrapper.get(
-            getApiBaseUrl() + 'clients/list?' +
-            new URLSearchParams({
-                groupId,
-                status: 'active',   // active clients in this group
-                mode:   'view_only_no_exist_loan',
-                branchId: currentUser.designatedBranchId,
-            })
-        );
-        if (res.success) {
-            // Also fetch pending loans in group to detect already-assigned co-makers
-            let usedCoMakerIds = new Set();
-            try {
-                const loansRes = await fetchWrapper.get(
-                    getApiBaseUrl() + 'transactions/loans/list?' +
-                    new URLSearchParams({ groupId, status: 'pending', currentDate: currentDate || '' })
-                );
-                if (loansRes.success) {
-                    (loansRes.loans || [])
-                        .filter(l => l.coMakerId && l.clientId !== clientId)
-                        .forEach(l => usedCoMakerIds.add(l.coMakerId));
-                }
-            } catch { /* non-fatal — proceed without used-comaker data */ }
+        // Use param if provided, fall back to state (edit mode / useEffect calls)
+        const excludeId = currentClientId || clientId;
 
-            const entries = (res.clients || [])
-                .filter(c => c._id !== clientId) // exclude the applicant
-                .map(c => {
-                    // Get slotNo from client's latest loan if available
-                    const slotNo     = c.loans?.[0]?.slotNo || c.slotNo || null;
-                    const name       = `${c.lastName}, ${c.firstName}`.toUpperCase();
-                    const alreadyUsed = usedCoMakerIds.has(c._id);
-                    return {
-                        slotNo,
-                        clientId:   c._id,
-                        value:      c._id,
-                        isDisabled: alreadyUsed,
-                        label:      slotNo
-                            ? alreadyUsed
-                                ? `Slot ${slotNo} — ${name} (already co-maker)`
-                                : `Slot ${slotNo} — ${name}`
-                            : alreadyUsed
-                                ? `${name} (already co-maker)`
-                                : name,
-                    };
-                })
-                .sort((a, b) => (a.slotNo || 999) - (b.slotNo || 999));
-            dispatch(setComakerList(entries));
-        }
+        // FIX: fetch ALL clients in this group regardless of loan status.
+        // Co-maker is a group membership relationship, not loan-status dependent.
+        // Use the clients/list endpoint with pending status to get all group members
+        // — pending includes both new members and reloaning members.
+        // Then also fetch active to get reloaning clients.
+        const bId = currentUser.designatedBranchId;
+
+        const [pendingRes, activeRes] = await Promise.all([
+            fetchWrapper.get(
+                getApiBaseUrl() + 'clients/list?' +
+                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'pending' })
+            ).catch(() => ({ success: false })),
+            fetchWrapper.get(
+                getApiBaseUrl() + 'clients/list?' +
+                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'active' })
+            ).catch(() => ({ success: false })),
+        ]);
+
+        // pending returns plain client objects
+        const pendingClients = (pendingRes.clients || []).map(c => ({
+            _id:    c._id,
+            name:   `${c.lastName}, ${c.firstName}`.toUpperCase(),
+            slotNo: c.slotNo || null,
+        }));
+
+        // active returns loan objects with nested client — same shape as getListClient
+        const activeClients = (activeRes.clients || []).map(loan => ({
+            _id:    loan.client?._id || loan.clientId,
+            name:   loan.client
+                ? `${loan.client.lastName}, ${loan.client.firstName}`.toUpperCase()
+                : loan.fullName || '',
+            slotNo: loan.slotNo || null,
+        }));
+
+        // Merge, deduplicate by _id, exclude the current applicant
+        const seen = new Set();
+        const allMembers = [...pendingClients, ...activeClients].filter(c => {
+            if (!c._id || c._id === excludeId) return false;
+            if (seen.has(c._id)) return false;
+            seen.add(c._id);
+            return true;
+        });
+
+        // Detect already-assigned co-makers from pending loans
+        let usedCoMakerIds = new Set();
+        try {
+            const loansRes = await fetchWrapper.get(
+                getApiBaseUrl() + 'transactions/loans/list?' +
+                new URLSearchParams({ groupId, status: 'pending', currentDate: currentDate || '' })
+            );
+            if (loansRes.success) {
+                (loansRes.loans || [])
+                    .filter(l => l.coMakerId && l.clientId !== excludeId)
+                    .forEach(l => usedCoMakerIds.add(l.coMakerId));
+            }
+        } catch { /* non-fatal */ }
+
+        const entries = allMembers
+            .map(c => {
+                const alreadyUsed = usedCoMakerIds.has(c._id);
+                return {
+                    slotNo:     c.slotNo,
+                    clientId:   c._id,
+                    value:      c._id,
+                    isDisabled: alreadyUsed,
+                    label:      c.slotNo
+                        ? alreadyUsed
+                            ? `Slot ${c.slotNo} — ${c.name} (already co-maker)`
+                            : `Slot ${c.slotNo} — ${c.name}`
+                        : alreadyUsed
+                            ? `${c.name} (already co-maker)`
+                            : c.name,
+                };
+            })
+            .sort((a, b) => (a.slotNo || 999) - (b.slotNo || 999));
+
+        dispatch(setComakerList(entries));
     };
 
     const getLastPNNumber = async (setFieldValue) => {
@@ -500,6 +547,9 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         setClientId(null);
         setSelectedClientObj(null);
         setSlotNo(null);
+        setSlotReadOnly(false);
+        setCoMakerReadOnly(false);
+        setCoMakerReadOnlyLabel('');
         form?.setFieldValue('clientId', '');
         form?.setFieldValue('slotNo', '');
         form?.setFieldValue('ciName', '');
@@ -555,6 +605,11 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     const handleClientIdChange = (field, value, resolvedPhotoUrl = null) => {
         const form = formikRef.current;
         setClientId(value);
+        // FIX: refresh co-maker list with fresh clientId immediately
+        // — useEffect closure captures stale clientId so we call directly here
+        if (selectedGroup && currentDate) {
+            getListCoMaker(selectedGroup, value);
+        }
         setCiStatus(null);
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
@@ -566,16 +621,30 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         }
         setGroupLeader(c.groupLeader || false);
         if (clientType === 'active' || clientType === 'advance') {
-            const sl = c.loans?.[0]?.slotNo;
-            const lc = c.loans?.[0]?.loanCycle;
+            const sl   = c.loans?.[0]?.slotNo;
+            const lc   = c.loans?.[0]?.loanCycle;
+            const prevCoMaker   = c.loans?.[0]?.coMaker;    // slot number (varchar)
+            const prevCoMakerId = c.loans?.[0]?.coMakerId;  // clientId UUID
             setSlotNo(sl);
             setSelectedLoanId(c.loans?.[0]?._id);
-            // FIX: use setTimeout to ensure Formik ref is current after clientList
-            // state update — direct setFieldValue can race against re-render
+            setSlotReadOnly(true);
+            // Reset co-maker read-only — will be resolved once comakerList loads
+            setCoMakerReadOnly(false);
+            setCoMakerReadOnlyLabel('');
+            setSelectedCoMaker(null);
+            formikRef.current?.setFieldValue('coMaker', null);
+            // Store for resolution after comakerList loads
+            if (prevCoMaker || prevCoMakerId) {
+                setPendingCoMakerRestore({ slotNo: prevCoMaker, coMakerId: prevCoMakerId });
+            }
             setTimeout(() => {
                 formikRef.current?.setFieldValue('slotNo', sl);
                 formikRef.current?.setFieldValue('loanCycle', (lc || 0) + 1);
-            }, 50);
+            }, 150);
+        } else {
+            setSlotReadOnly(false);
+            setCoMakerReadOnly(false);
+            setCoMakerReadOnlyLabel('');
         }
         form?.setFieldValue('groupId', selectedGroup);
         form?.setFieldValue(field, value);
@@ -1225,6 +1294,10 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
                                 slotNo={slotNo}
                                 slotNumber={slotNumber}
                                 selectedCoMaker={selectedCoMaker}
+                                slotReadOnly={slotReadOnly}
+                                coMakerReadOnly={coMakerReadOnly}
+                                coMakerReadOnlyLabel={coMakerReadOnlyLabel}
+                                loanCycle={values.loanCycle}
                                 loStatus={loStatus}
                                 handleLoIdChange={handleLoIdChange}
                                 handleGroupIdChange={handleGroupIdChange}
@@ -1236,6 +1309,14 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
                                 coMakerPending={coMakerPending}
                                 coMakerPendingName={coMakerPendingName}
                                 onCoMakerPendingChange={v => {
+                                    if (v === 'clear') {
+                                        // "Change" button clicked on read-only co-maker
+                                        setCoMakerReadOnly(false);
+                                        setCoMakerReadOnlyLabel('');
+                                        setSelectedCoMaker(null);
+                                        formikRef.current?.setFieldValue('coMaker', null);
+                                        return;
+                                    }
                                     setCoMakerPending(v);
                                     if (!v) setCoMakerPendingName('');
                                 }}
