@@ -39,6 +39,7 @@ import DisbursementPhotoModal from '@/components/transactions/loan-application/D
 import LDFApprovalDetailsModal from "@/components/transactions/loan-application/LDFApprovalDetailsModal";
 import { approvalBlockedMessage, isApprovalBlocked } from "@/lib/approval-restriction-utils";
 import { ClockIcon } from "lucide-react";
+import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 
 const LoanApplicationPage = () => {
     const router = useRouter();
@@ -1870,6 +1871,25 @@ const LoanApplicationPage = () => {
             getHistoyListLoan();
         }
     }, [selectedTab, selectedMonth, selectedYear]);
+
+    // Poll transaction settings every 60s to keep approval restriction config fresh.
+    // Scoped to this page only — no impact on other pages.
+    useEffect(() => {
+        const fetchTxnSettings = async () => {
+            try {
+                const response = await fetchWrapper.get(`${getApiBaseUrl()}settings/transactions`);
+                if (response.success && response.transactions) {
+                    dispatch(setTransactionSettings(response.transactions));
+                }
+            } catch (e) {
+                // silent
+            }
+        };
+
+        const interval = setInterval(fetchTxnSettings, 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, []); // empty deps — self-contained, runs once on mount
 
     return (
         <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
