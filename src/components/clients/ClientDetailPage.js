@@ -44,6 +44,8 @@ import { setClient } from "@/redux/actions/clientActions";
 import PaymentHistoryModal from "./PaymentHistoryModal";
 import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
+import { GraduationCap } from 'lucide-react';
+import ClientProgramsTab from './programs/ClientProgramsTab';
 
 // ── FIX: PhotoCard — zoomable photo thumbnail for Documents tab ───────────
 // Shows a label, optional sublabel, and fullscreen preview on click.
@@ -318,7 +320,8 @@ const ClientDetailPage = () => {
     const tabs = [
         { id: 'overview',   label: 'Overview',      icon: UserIcon },
         { id: 'loans',      label: 'Loan History',  icon: CurrencyDollarIcon },
-        { id: 'documents',  label: 'Documents',     icon: DocumentTextIcon }
+        { id: 'documents',  label: 'Documents',     icon: DocumentTextIcon },
+        { id: 'programs',   label: 'Programs',      icon: GraduationCap },
     ];
 
     useEffect(() => {
@@ -890,6 +893,10 @@ const ClientDetailPage = () => {
                             )}
                         </div>
                     </div>
+                )}
+                {/* ── Programs Tab — shows all educational programs client is enrolled in ──────────────── */}
+                {activeTab === 'programs' && (
+                    <ClientProgramsTab client={client} />
                 )}
             </div>
 

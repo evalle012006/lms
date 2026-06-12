@@ -876,3 +876,35 @@ export const BIOMETRIC_REGISTRATION_TOKENS_FIELDS = `
   createdAt
   createdBy
 `;
+
+export const CLIENT_PROGRAM_FIELDS = `
+  _id
+  client_id
+  program_type
+  scholar_name
+  birthdate
+  sex
+  year_level
+  school_name
+  course
+  grant_date
+  picture_key
+  status
+  status_reason
+  status_changed_at
+  inserted_by
+  inserted_date
+  modified_by
+  modified_date
+`;
+ 
+export const CLIENT_PROGRAM_ATTACHMENT_FIELDS = `
+  _id
+  program_id
+  file_name
+  file_key
+  file_type
+  uploaded_by
+  uploaded_at
+`;
+ 
