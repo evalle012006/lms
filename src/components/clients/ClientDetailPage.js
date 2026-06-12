@@ -45,6 +45,8 @@ import PaymentHistoryModal from "./PaymentHistoryModal";
 // ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
+import { GraduationCap } from 'lucide-react';
+import ClientProgramsTab from './programs/ClientProgramsTab';
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -272,9 +274,10 @@ const ClientDetailPage = () => {
 
     // Tab configurations
     const tabs = [
-        { id: 'overview', label: 'Overview', icon: UserIcon },
-        { id: 'loans', label: 'Loan History', icon: CurrencyDollarIcon },
-        { id: 'documents', label: 'Documents', icon: DocumentTextIcon }
+        { id: 'overview',   label: 'Overview',      icon: UserIcon },
+        { id: 'loans',      label: 'Loan History',  icon: CurrencyDollarIcon },
+        { id: 'documents',  label: 'Documents',     icon: DocumentTextIcon },
+        { id: 'programs',   label: 'Programs',      icon: GraduationCap },
     ];
 
     // Process guarantor name and active loan when loanList changes
@@ -825,6 +828,10 @@ const ClientDetailPage = () => {
                             </div>
                         </div>
                     </div>
+                )}
+                {/* ── Programs Tab — shows all educational programs client is enrolled in ──────────────── */}
+                {activeTab === 'programs' && (
+                    <ClientProgramsTab client={client} />
                 )}
             </div>
 
