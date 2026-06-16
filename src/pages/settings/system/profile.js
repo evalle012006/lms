@@ -391,6 +391,40 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                 </div>
             </div>
 
+            {/* QR Application Time Restriction */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                    QR Application Hours
+                </p>
+                <p className="text-sm text-gray-500 mb-3">
+                    Only allow loan applications via QR code within this time window (Manila time).
+                    Outside of these hours, scanning the QR will show a "closed" message.
+                </p>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                        <input
+                            type="time"
+                            value={values.qrAllowedStartTime || '06:00'}
+                            onChange={e => setFieldValue('qrAllowedStartTime', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                    <span className="text-gray-400 mt-4">—</span>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                        <input
+                            type="time"
+                            value={values.qrAllowedEndTime || '22:00'}
+                            onChange={e => setFieldValue('qrAllowedEndTime', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* SMS Notifications Toggle */}
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <div className="flex items-center justify-between">
@@ -511,6 +545,8 @@ const ProfileSettingsPage = (props) => {
         requireClientBiometric:  state.requireClientBiometric  ?? true,
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
         smsEnabled:              state.smsEnabled              ?? false,
+        qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
+        qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }
 
     const validationSchema = yup.object().shape({

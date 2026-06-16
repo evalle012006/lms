@@ -1,9 +1,8 @@
 // src/components/groups/ViewByGroups.js
-// Revamped Groups page:
-// — Groups displayed per Loan Officer (accordion/section per LO)
-// — QR status badge visible inline — no need to click to check
-// — Filters: Branch (admin/area+), Loan Officer, Status, QR status, Search
-// — QR expiry shown with color coding (valid/expiring/expired)
+// FIX: QR hidden/non-clickable for full groups
+// FIX: LO self-view filters by transactionType (occurence param to API + client-side safety net)
+// FIX: Ordering — LO by loNo (1→12), groups by groupNo within LO
+// FIX: Higher roles — Branch → LO (by loNo) → Groups (by groupNo)
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch }    from 'react-redux';
@@ -11,9 +10,9 @@ import { useRouter }                   from 'next/router';
 import { toast }                       from 'react-toastify';
 import moment                          from 'moment';
 import {
-    QrCode, Search, RefreshCw, Plus, Edit2, Trash2,
+    QrCode, Search, RefreshCw, Edit2, Trash2,
     ChevronDown, ChevronRight, Users, CheckCircle,
-    AlertTriangle, Clock,
+    AlertTriangle, Clock, Building2,
 } from 'lucide-react';
 import Layout                          from '@/components/Layout';
 import Spinner                         from '@/components/Spinner';
@@ -29,6 +28,20 @@ import { PlusIcon }                    from '@heroicons/react/24/solid';
 
 // ── QR status badge ───────────────────────────────────────────────────────
 const QRBadge = ({ group, onClick }) => {
+    // FIX: use both status AND availableSlots — either signals full
+    const isFull = group.status === 'full' || !group.availableSlots?.length;
+
+    // Full group — always show non-clickable badge regardless of QR state
+    if (isFull) {
+        return (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
+                bg-gray-100 text-gray-500 border border-gray-200">
+                <Users className="w-3 h-3" />
+                Group Full
+            </div>
+        );
+    }
+
     if (!group.qrToken) {
         return (
             <button type="button" onClick={onClick}
@@ -41,15 +54,14 @@ const QRBadge = ({ group, onClick }) => {
         );
     }
 
-    const now        = moment();
-    const expiresAt  = moment(group.qrExpiresAt);
-    const expired    = now.isAfter(expiresAt);
-    const minsLeft   = expiresAt.diff(now, 'minutes');
-    const hoursLeft  = expiresAt.diff(now, 'hours');
-    const daysLeft   = expiresAt.diff(now, 'days');
-    const expiring   = !expired && daysLeft < 2; // < 2 full days = show precise time
+    const now       = moment();
+    const expiresAt = moment(group.qrExpiresAt);
+    const expired   = now.isAfter(expiresAt);
+    const minsLeft  = expiresAt.diff(now, 'minutes');
+    const hoursLeft = expiresAt.diff(now, 'hours');
+    const daysLeft  = expiresAt.diff(now, 'days');
+    const expiring  = !expired && daysLeft < 2;
 
-    // Human-readable time remaining
     const timeLabel = expired ? '' :
         minsLeft < 60  ? `${minsLeft}m` :
         hoursLeft < 24 ? `${hoursLeft}h` :
@@ -85,13 +97,12 @@ const QRBadge = ({ group, onClick }) => {
     );
 };
 
-// ── Group row card ────────────────────────────────────────────────────────
+// ── Group row ─────────────────────────────────────────────────────────────
 const GroupRow = ({ group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClick }) => (
     <div onClick={() => onRowClick(group)}
         className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 items-center
             px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50
             last:border-0 transition-colors group/row">
-        {/* Name */}
         <div>
             <p className="text-sm font-medium text-gray-900 group-hover/row:text-blue-700">
                 {group.name}
@@ -100,39 +111,34 @@ const GroupRow = ({ group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClic
                 {group.occurence} · {group.day} · {group.time || '—'}
             </p>
         </div>
-        {/* Members */}
         <div className="flex items-center gap-1 text-xs text-gray-500">
             <Users className="w-3.5 h-3.5" />
             {group.noOfClients ?? '—'} / {group.capacity ?? '—'}
         </div>
-        {/* Status */}
         <div>
             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                group.status === 'open'  ? 'bg-green-100 text-green-700' :
-                group.status === 'close' ? 'bg-red-100 text-red-700'    :
-                group.status === 'full'  ? 'bg-amber-100 text-amber-700' :
+                group.status === 'open'      ? 'bg-green-100 text-green-700'  :
+                group.status === 'close'     ? 'bg-red-100 text-red-700'      :
+                group.status === 'full'      ? 'bg-amber-100 text-amber-700'  :
+                group.status === 'available' ? 'bg-blue-50 text-blue-600'     :
                 'bg-gray-100 text-gray-500'
             }`}>
                 {group.status || '—'}
             </span>
         </div>
-        {/* QR */}
         <div onClick={e => e.stopPropagation()}>
             <QRBadge group={group} onClick={() => onQR(group)} />
         </div>
-        {/* Actions */}
         <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
             {canEdit && (
                 <button type="button" onClick={() => onEdit(group)}
-                    className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400
-                        hover:text-blue-600 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
                     <Edit2 className="w-3.5 h-3.5" />
                 </button>
             )}
             {canDelete && (
                 <button type="button" onClick={() => onDelete(group)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400
-                        hover:text-red-600 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                 </button>
             )}
@@ -143,18 +149,24 @@ const GroupRow = ({ group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClic
 // ── LO section (accordion) ────────────────────────────────────────────────
 const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
     const [open, setOpen] = useState(defaultOpen);
-    const qrCount = groups.filter(g => g.qrToken && moment().isBefore(moment(g.qrExpiresAt))).length;
+    const now     = moment();
+    const qrCount = groups.filter(g =>
+        g.qrToken && now.isBefore(moment(g.qrExpiresAt))
+    ).length;
+    const noQRCount = groups.filter(g =>
+        !g.qrToken || now.isAfter(moment(g.qrExpiresAt))
+    ).length;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-3">
-            {/* LO header */}
             <button type="button"
                 onClick={() => setOpen(o => !o)}
                 className="w-full flex items-center justify-between px-4 py-3
                     hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
-                    {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> :
-                            <ChevronRight className="w-4 h-4 text-gray-400" />}
+                    {open
+                        ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                        : <ChevronRight className="w-4 h-4 text-gray-400" />}
                     <div className="text-left">
                         <p className="text-sm font-semibold text-gray-900">{loName}</p>
                         <p className="text-xs text-gray-400">
@@ -171,15 +183,16 @@ const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
                             {qrCount} QR active
                         </span>
                     )}
-                    <span className="text-xs text-gray-400 tabular-nums">
-                        {groups.filter(g => !g.qrToken || moment().isAfter(moment(g.qrExpiresAt))).length} without QR
-                    </span>
+                    {noQRCount > 0 && (
+                        <span className="text-xs text-gray-400 tabular-nums">
+                            {noQRCount} without QR
+                        </span>
+                    )}
                 </div>
             </button>
 
             {open && (
                 <>
-                    {/* Column headers */}
                     <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-2
                         bg-gray-50 border-t border-gray-100 text-xs font-semibold
                         text-gray-500 uppercase tracking-wide">
@@ -187,7 +200,7 @@ const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
                         <span>Members</span>
                         <span>Status</span>
                         <span>QR Code</span>
-                        <span></span>
+                        <span />
                     </div>
                     {groups.map(g => <GroupRow key={g._id} group={g} {...rowProps} />)}
                 </>
@@ -195,6 +208,16 @@ const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
         </div>
     );
 };
+
+// ── Branch header — for admin/area views ──────────────────────────────────
+const BranchHeader = ({ branchName, totalGroups }) => (
+    <div className="flex items-center gap-2 mb-2 px-1 mt-4 first:mt-0">
+        <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+        <p className="text-sm font-bold text-gray-800">{branchName}</p>
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">{totalGroups} group{totalGroups !== 1 ? 's' : ''}</span>
+    </div>
+);
 
 // ── Main component ────────────────────────────────────────────────────────
 const ViewByGroupsPage = ({ uuid }) => {
@@ -204,155 +227,246 @@ const ViewByGroupsPage = ({ uuid }) => {
     const branchList  = useSelector(s => s.branch.list);
     const groupList   = useSelector(s => s.group.list);
 
-    const [loading,   setLoading]   = useState(true);
-    const [mode,      setMode]      = useState('add');
-    const [group,     setGroup]     = useState({});
-    const [showDrawer,setShowDrawer]= useState(false);
-    const [showDel,   setShowDel]   = useState(false);
-
-    // QR modal
-    const [qrData,    setQrData]    = useState(null);
-    const [qrOpen,    setQrOpen]    = useState(false);
+    const [loading,    setLoading]    = useState(true);
+    const [mode,       setMode]       = useState('add');
+    const [group,      setGroup]      = useState({});
+    const [showDrawer, setShowDrawer] = useState(false);
+    const [showDel,    setShowDel]    = useState(false);
+    const [qrData,     setQrData]     = useState(null);
+    const [qrOpen,     setQrOpen]     = useState(false);
 
     // Filters
-    const [search,    setSearch]    = useState('');
-    const [filterLO,  setFilterLO]  = useState('');
-    const [filterSt,  setFilterSt]  = useState('');
-    const [filterQR,  setFilterQR]  = useState('');
+    const [search,   setSearch]   = useState('');
+    const [filterLO, setFilterLO] = useState('');
+    const [filterSt, setFilterSt] = useState('');
+    const [filterQR, setFilterQR] = useState('');
 
-    const isAdmin    = currentUser?.role?.rep <= 2;
-    const isBM       = currentUser?.role?.rep === 3;
-    const isLO       = currentUser?.role?.rep === 4;
-    const canEdit    = currentUser?.role?.rep <= 3;
-    const canDelete  = currentUser?.role?.rep === 1;
+    const isAdmin = currentUser?.role?.rep <= 2;
+    const isBM    = currentUser?.role?.rep === 3;
+    const isLO    = currentUser?.role?.rep === 4;
+    const canEdit  = currentUser?.role?.rep <= 3;
+    const canDelete = currentUser?.role?.rep === 1;
 
     // ── Fetch ─────────────────────────────────────────────────────────────
     const fetchGroups = useCallback(async () => {
         setLoading(true);
         try {
-            let url = getApiBaseUrl() + 'groups/list-all?';
             const params = {};
-
-            // For rep 3/4, branchId is always on currentUser.designatedBranchId
-            // No need to wait for branchList Redux store to populate
             const branchId = (isLO || isBM)
                 ? (currentUser.designatedBranchId || branchList?.[0]?._id)
                 : null;
 
             if (uuid) {
-                params.loId     = uuid;
+                // BM clicked through to a specific LO
+                params.loId = uuid;
                 if (branchId) params.branchId = branchId;
             } else if (isLO) {
-                params.loId     = currentUser._id;
+                params.loId = currentUser._id;
                 if (branchId) params.branchId = branchId;
+                // FIX: pass transactionType as occurence so API filters
+                // groups matching the LO's own type (daily or weekly)
+                if (currentUser.transactionType) {
+                    params.occurence = currentUser.transactionType;
+                }
             } else if (isBM) {
                 if (branchId) params.branchId = branchId;
             }
-            // admin/area+: no branchId — fetches all
-            // admin/area: no filter — gets all
+            // admin/area+: no filter — fetches all
 
-            const res = await fetchWrapper.get(url + new URLSearchParams(params));
+            const res = await fetchWrapper.get(
+                getApiBaseUrl() + 'groups/list-all?' + new URLSearchParams(params)
+            );
             if (res.success) {
                 const groups = (res.groups || []).map(g => ({
-                    ...g, day: g.day ? g.day.charAt(0).toUpperCase() + g.day.slice(1) : g.day
+                    ...g,
+                    day: g.day ? g.day.charAt(0).toUpperCase() + g.day.slice(1) : g.day,
                 }));
                 dispatch(setGroupList(groups));
             } else {
                 toast.error(res.message || 'Failed to load groups.');
             }
-        } catch { toast.error('Error loading groups.'); }
-        finally { setLoading(false); }
+        } catch {
+            toast.error('Error loading groups.');
+        } finally {
+            setLoading(false);
+        }
     }, [uuid, branchList, currentUser, isLO, isBM]);
 
-    useEffect(() => {
-        fetchGroups();
-    }, [fetchGroups]);
+    useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
     // ── QR ────────────────────────────────────────────────────────────────
     const buildQrData = (source) => ({
         ...source,
         url:        `${window.location.origin}/apply/${source.qrToken}`,
-        // Normalize field names — group list uses loanOfficerName, modal expects loName
         loName:     source.loName     || source.loanOfficerName || '—',
         branchName: source.branchName || '—',
-        groupName:  source.groupName  || source.name || '—',
+        groupName:  source.groupName  || source.name            || '—',
     });
 
     const handleQR = useCallback(async (g, forceGenerate = false) => {
         if (forceGenerate || !g.qrToken || moment().isAfter(moment(g.qrExpiresAt))) {
-            // Generate new QR
             try {
-                const res = await fetchWrapper.post(getApiBaseUrl() + 'groups/generate-qr', { groupId: g._id });
+                const res = await fetchWrapper.post(
+                    getApiBaseUrl() + 'groups/generate-qr', { groupId: g._id }
+                );
                 if (res.success) {
-                    // API returns res.qr with qrToken, qrExpiresAt, groupName, branchName, loName
                     const merged = { ...g, ...res.qr };
                     setQrData(buildQrData(merged));
                     setQrOpen(true);
                     fetchGroups();
-                } else { toast.error(res.message || 'Failed to generate QR.'); }
-            } catch { toast.error('Error generating QR.'); }
+                } else {
+                    toast.error(res.message || 'Failed to generate QR.');
+                }
+            } catch {
+                toast.error('Error generating QR.');
+            }
         } else {
-            // Existing valid QR — build URL from group's qrToken
             setQrData(buildQrData(g));
             setQrOpen(true);
         }
     }, [fetchGroups]);
 
-    // ── LO options ────────────────────────────────────────────────────────
+    // ── LO filter options ─────────────────────────────────────────────────
     const loOptions = useMemo(() => {
-        const names = [...new Set((groupList || []).map(g => g.loanOfficerName).filter(Boolean))].sort();
+        const names = [...new Set(
+            (groupList || []).map(g => g.loanOfficerName).filter(Boolean)
+        )].sort();
         return names;
     }, [groupList]);
 
-    // ── Filtered + grouped ────────────────────────────────────────────────
+    // ── Grouped data — Branch → LO (by loNo) → Groups (by groupNo) ───────
     const grouped = useMemo(() => {
         const now = moment();
         let list  = groupList || [];
 
+        // FIX: LO self-view — client-side safety net filter by transactionType
+        // In case API didn't filter (e.g. cached redux state from a previous fetch)
+        if (isLO && currentUser?.transactionType) {
+            list = list.filter(g =>
+                g.occurence === currentUser.transactionType ||
+                g.loTransactionType === currentUser.transactionType
+            );
+        }
+
+        // ── Apply search + filters ────────────────────────────────────────
         if (search)   list = list.filter(g =>
             g.name?.toLowerCase().includes(search.toLowerCase()) ||
-            g.loanOfficerName?.toLowerCase().includes(search.toLowerCase()));
+            g.loanOfficerName?.toLowerCase().includes(search.toLowerCase()) ||
+            g.branchName?.toLowerCase().includes(search.toLowerCase())
+        );
         if (filterLO) list = list.filter(g => g.loanOfficerName === filterLO);
         if (filterSt) list = list.filter(g => g.status === filterSt);
-        if (filterQR === 'active')  list = list.filter(g => g.qrToken && now.isBefore(moment(g.qrExpiresAt)));
-        if (filterQR === 'none')    list = list.filter(g => !g.qrToken || now.isAfter(moment(g.qrExpiresAt)));
-        if (filterQR === 'expiring')list = list.filter(g => {
+        if (filterQR === 'active')   list = list.filter(g =>
+            g.qrToken && now.isBefore(moment(g.qrExpiresAt)));
+        if (filterQR === 'none')     list = list.filter(g =>
+            !g.qrToken || now.isAfter(moment(g.qrExpiresAt)));
+        if (filterQR === 'expiring') list = list.filter(g => {
             if (!g.qrToken) return false;
             const d = moment(g.qrExpiresAt).diff(now, 'days');
             return d >= 0 && d <= 2;
         });
 
-        // Group by loan officer
+        // ── Higher roles (admin/area/BM without specific LO uuid) ─────────
+        // Structure: Branch → LO (by loNo) → Groups (by groupNo)
+        const showBranchLevel = !isLO && !uuid && (isAdmin || isBM);
+
+        if (showBranchLevel) {
+            // { branchKey: { loKey: { loNo, loName, groups[] } } }
+            const byBranch = {};
+            list.forEach(g => {
+                const branchKey = g.branchName || g.branchCode || g.branchId || 'Unknown Branch';
+                const loKey     = g.loanOfficerId || 'unassigned';
+                const loName    = g.loanOfficerName || 'Unassigned';
+                // FIX: extract loNo from loanOfficerName as fallback
+                const loNoFromName2 = loName.match(/LO\s+(\d+)/i);
+                const loNo      = g.loNo ?? (loNoFromName2 ? parseInt(loNoFromName2[1]) : 999);
+
+                if (!byBranch[branchKey]) byBranch[branchKey] = {};
+                if (!byBranch[branchKey][loKey]) {
+                    byBranch[branchKey][loKey] = { loNo, loName, groups: [] };
+                }
+                byBranch[branchKey][loKey].groups.push(g);
+            });
+
+            // Sort groups within each LO by groupNo
+            Object.values(byBranch).forEach(loMap => {
+                Object.values(loMap).forEach(lo => {
+                    lo.groups.sort((a, b) => (a.groupNo || 0) - (b.groupNo || 0));
+                });
+            });
+
+            // Return: [ { branchName, sections: [ { loName, groups[] } ] } ]
+            // branches sorted alphabetically, LOs within branch sorted by loNo
+            return Object.entries(byBranch)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([branchName, loMap]) => ({
+                    branchName,
+                    sections: Object.values(loMap)
+                        .sort((a, b) => (a.loNo || 999) - (b.loNo || 999))
+                        .map(({ loName, groups }) => ({ loName, groups })),
+                }));
+        }
+
+        // ── LO self-view or BM viewing specific LO (uuid) ─────────────────
+        // Structure: LO (by loNo) → Groups (by groupNo) — no branch header
         const byLO = {};
         list.forEach(g => {
-            const lo = g.loanOfficerName || 'Unassigned';
-            if (!byLO[lo]) byLO[lo] = [];
-            byLO[lo].push(g);
+            const loKey  = g.loanOfficerId || 'unassigned';
+            const loName = g.loanOfficerName || 'Unassigned';
+            // FIX: extract loNo from loanOfficerName if loNo not returned by API
+            // e.g. "Naga, LO 3" → 3, "Pasig II, LO 12" → 12
+            const loNoFromName = loName.match(/LO\s+(\d+)/i);
+            const loNo   = g.loNo ?? (loNoFromName ? parseInt(loNoFromName[1]) : 999);
+            if (!byLO[loKey]) byLO[loKey] = { loNo, loName, groups: [] };
+            byLO[loKey].groups.push(g);
         });
-        // Sort groups within each LO by groupNo
-        Object.values(byLO).forEach(arr => arr.sort((a, b) => (a.groupNo || 0) - (b.groupNo || 0)));
-        return Object.entries(byLO).sort(([a], [b]) => a.localeCompare(b));
-    }, [groupList, search, filterLO, filterSt, filterQR]);
 
-    const total   = groupList?.length || 0;
-    const hasQR   = (groupList || []).filter(g => g.qrToken && moment().isBefore(moment(g.qrExpiresAt))).length;
-    const noQR    = total - hasQR;
+        // Sort groups within each LO by groupNo
+        Object.values(byLO).forEach(lo => {
+            lo.groups.sort((a, b) => (a.groupNo || 0) - (b.groupNo || 0));
+        });
+
+        // Return: [ { loName, groups[] } ] sorted by loNo (1 → 12)
+        return Object.values(byLO)
+            .sort((a, b) => (a.loNo || 999) - (b.loNo || 999))
+            .map(({ loName, groups }) => ({ loName, groups }));
+
+    }, [groupList, search, filterLO, filterSt, filterQR,
+        isLO, isAdmin, isBM, uuid, currentUser]);
+
+    // ── Stats ─────────────────────────────────────────────────────────────
+    const total = groupList?.length || 0;
+    const hasQR = (groupList || []).filter(g =>
+        g.qrToken && moment().isBefore(moment(g.qrExpiresAt))
+    ).length;
+    const noQR  = total - hasQR;
+
+    const rowProps = {
+        onQR:      handleQR,
+        onEdit:    g => { setMode('edit'); setGroup(g); setShowDrawer(true); },
+        onDelete:  g => { setGroup(g); setShowDel(true); },
+        onRowClick: g => router.push('/groups/clients/' + g._id),
+        canEdit,
+        canDelete,
+    };
 
     const actionButtons = canEdit ? [
         <ButtonSolid key="add" label="Add Group" type="button"
-            className="p-2 mr-3" onClick={() => { setMode('add'); setGroup({}); setShowDrawer(true); }}
-            icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+            className="p-2 mr-3"
+            onClick={() => { setMode('add'); setGroup({}); setShowDrawer(true); }}
+            icon={[<PlusIcon key="icon" className="w-5 h-5" />, 'left']} />,
     ] : [];
 
-    const layout = (
+    return (
         <Layout actionButtons={actionButtons}>
             <div className="pb-6 space-y-4">
+
                 {/* Stats strip */}
                 <div className="flex gap-4 flex-wrap">
                     {[
-                        { label: 'Total Groups',    val: total },
-                        { label: 'QR Active',       val: hasQR,  cls: 'text-green-700' },
-                        { label: 'No/Expired QR',   val: noQR,   cls: 'text-amber-700' },
+                        { label: 'Total Groups',  val: total },
+                        { label: 'QR Active',     val: hasQR, cls: 'text-green-700' },
+                        { label: 'No/Expired QR', val: noQR,  cls: 'text-amber-700' },
                     ].map(({ label, val, cls }) => (
                         <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-2">
                             <p className="text-xs text-gray-400">{label}</p>
@@ -365,8 +479,9 @@ const ViewByGroupsPage = ({ uuid }) => {
                 <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3">
                     <div className="flex-1 min-w-[180px] relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="Search group or LO..."
+                        <input type="text" value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search group, LO or branch..."
                             className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm
                                 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
@@ -399,29 +514,61 @@ const ViewByGroupsPage = ({ uuid }) => {
                     </button>
                 </div>
 
-                {/* Groups by LO */}
-                {loading ? <div className="flex justify-center py-16"><Spinner /></div> :
-                 grouped.length === 0 ? (
+                {/* Group list */}
+                {loading ? (
+                    <div className="flex justify-center py-16"><Spinner /></div>
+                ) : grouped.length === 0 ? (
                     <div className="text-center py-16 text-gray-400">
                         <QrCode className="w-10 h-10 mx-auto mb-3 text-gray-200" />
                         <p className="text-sm">No groups found</p>
                     </div>
-                ) : grouped.map(([loName, groups]) => (
-                    <LOSection key={loName} loName={loName} groups={groups}
-                        defaultOpen={grouped.length <= 3}
-                        onQR={handleQR}
-                        onEdit={g => { setMode('edit'); setGroup(g); setShowDrawer(true); }}
-                        onDelete={g => { setGroup(g); setShowDel(true); }}
-                        onRowClick={g => router.push('/groups/clients/' + g._id)}
-                        canEdit={canEdit} canDelete={canDelete}
-                    />
-                ))}
+                ) : grouped.map((item, i) => {
+                    // ── Higher role view: item has branchName + sections ──
+                    if (item.branchName) {
+                        const totalGroups = item.sections.reduce(
+                            (t, s) => t + s.groups.length, 0
+                        );
+                        return (
+                            <div key={item.branchName + i}>
+                                <BranchHeader
+                                    branchName={item.branchName}
+                                    totalGroups={totalGroups}
+                                />
+                                {item.sections.map(({ loName, groups }) => (
+                                    <LOSection
+                                        key={loName}
+                                        loName={loName}
+                                        groups={groups}
+                                        defaultOpen={
+                                            grouped.length <= 2 &&
+                                            item.sections.length <= 4
+                                        }
+                                        {...rowProps}
+                                    />
+                                ))}
+                            </div>
+                        );
+                    }
+
+                    // ── LO/BM self-view: item has loName + groups ─────────
+                    return (
+                        <LOSection
+                            key={item.loName + i}
+                            loName={item.loName}
+                            groups={item.groups}
+                            defaultOpen={grouped.length <= 3}
+                            {...rowProps}
+                        />
+                    );
+                })}
             </div>
 
             {/* Add/Edit drawer */}
-            <AddUpdateGroup mode={mode} group={group}
+            <AddUpdateGroup
+                mode={mode} group={group}
                 showSidebar={showDrawer} setShowSidebar={setShowDrawer}
-                onClose={() => { setMode('add'); setGroup({}); fetchGroups(); }} />
+                onClose={() => { setMode('add'); setGroup({}); fetchGroups(); }}
+            />
 
             {/* Delete dialog */}
             <Dialog show={showDel}>
@@ -435,9 +582,16 @@ const ViewByGroupsPage = ({ uuid }) => {
                         onClick={() => setShowDel(false)} />
                     <ButtonSolid label="Yes, delete" type="button" className="p-2"
                         onClick={async () => {
-                            const res = await fetchWrapper.postCors(getApiBaseUrl() + 'groups/delete', { _id: group._id });
-                            if (res.success) { setShowDel(false); toast.success('Group deleted.'); fetchGroups(); }
-                            else toast.error(res.message);
+                            const res = await fetchWrapper.postCors(
+                                getApiBaseUrl() + 'groups/delete', { _id: group._id }
+                            );
+                            if (res.success) {
+                                setShowDel(false);
+                                toast.success('Group deleted.');
+                                fetchGroups();
+                            } else {
+                                toast.error(res.message);
+                            }
                         }} />
                 </div>
             </Dialog>
@@ -448,17 +602,13 @@ const ViewByGroupsPage = ({ uuid }) => {
                     isOpen={qrOpen}
                     onClose={() => setQrOpen(false)}
                     qrData={qrData}
-                    onRegenerate={() => handleQR({ ...qrData, _id: qrData.groupId }, true)}
+                    onRegenerate={() => handleQR(
+                        { ...qrData, _id: qrData.groupId }, true
+                    )}
                 />
             )}
         </Layout>
     );
-
-    // LO gets the layout without the branch-level wrapper
-    if (currentUser.role.rep >= 3) return layout;
-
-    // Admin/area: wrap in their own layout (already done above)
-    return layout;
 };
 
 export default ViewByGroupsPage;

@@ -159,6 +159,7 @@ const personalSchema = yup.object().shape({
     firstName: yup.string().required('Required'), lastName: yup.string().required('Required'),
     middleName: yup.string().required('Required'), birthdate: yup.string().required('Required'),
     contactNumber: yup.string().required('Required'),
+    civilStatus: yup.string().required('Required'),
 });
 const addressSchema = yup.object().shape({
     addressStreetNo: yup.string().required('Required'), addressBarangayDistrict: yup.string().required('Required'),
@@ -855,6 +856,10 @@ const PublicLAFForm = ({
                         : null,
                     faceEnrolledAt: biometricData?.faceEnrolledAt || null,
                     livenessScore:  biometricData?.livenessScore  || null,
+                    civilStatus:  values.civilStatus  || null,
+                    yearsOfStay:  values.yearsOfStay  || null,
+                    business:     values.business     || null,
+                    dailyIncome:  values.dailyIncome ? String(values.dailyIncome) : null,
                 }),
             });
             const data = await res.json();
@@ -961,12 +966,18 @@ const PublicLAFForm = ({
         addressMunicipalityCity: foundClient.addressMunicipalityCity || '',
         addressProvince: foundClient.addressProvince || '',
         addressZipCode: foundClient.addressZipCode || '',
+        civilStatus:   foundClient?.civilStatus   || '',
+        yearsOfStay:   foundClient?.yearsOfStay   || '',
+        business:      foundClient?.business      || '',
+        dailyIncome:   foundClient?.dailyIncome   || '',
     } : {};
 
     const initialValues = {
         firstName: '', lastName: '', middleName: '', birthdate: '', contactNumber: '',
         addressStreetNo: '', addressBarangayDistrict: '', addressMunicipalityCity: '',
         addressProvince: '', addressZipCode: '', landmark: '', distanceFromBranch: '',
+        // FIX: add defaults for new personal info fields so Formik tracks them
+        civilStatus: '', yearsOfStay: '', business: '', dailyIncome: '',
         // loanAmount: '',
         loanPurpose: '',
         guarantorFirstName: '', guarantorLastName: '', guarantorRelationship: '', guarantorContactNumber: '',
@@ -1590,6 +1601,47 @@ const PublicLAFForm = ({
                                                 <Field label="Middle Name" required error={touched.middleName && errors.middleName}><Input name="middleName" value={values.middleName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.middleName && errors.middleName} readOnly={roFields} /></Field>
                                                 <Field label="Birthdate" required error={touched.birthdate && errors.birthdate}><Input name="birthdate" value={values.birthdate} onChange={handleChange} onBlur={handleBlur} type="date" error={touched.birthdate && errors.birthdate} readOnly={roFields} /></Field>
                                                 <Field label="Contact Number" required error={touched.contactNumber && errors.contactNumber}><Input name="contactNumber" noUppercase value={values.contactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.contactNumber && errors.contactNumber} /></Field>
+                                                <Field label="Civil Status" required
+                                                    error={touched.civilStatus && errors.civilStatus}>
+                                                    <select
+                                                        name="civilStatus"
+                                                        value={values.civilStatus}
+                                                        onChange={handleChange}
+                                                        onBlur={handleBlur}
+                                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                        <option value="">Select...</option>
+                                                        <option value="Single">Single</option>
+                                                        <option value="Married">Married</option>
+                                                        <option value="Widowed">Widowed</option>
+                                                        <option value="Separated">Separated</option>
+                                                    </select>
+                                                </Field>
+                                                <Field label="Years at Current Address">
+                                                    <Input name="yearsOfStay" noUppercase
+                                                        value={values.yearsOfStay}
+                                                        onChange={handleChange}
+                                                        onBlur={handleBlur}
+                                                        placeholder="e.g. 5" />
+                                                </Field>
+                                                <Field label="Business / Occupation">
+                                                    <Input name="business" noUppercase
+                                                        value={values.business}
+                                                        onChange={handleChange}
+                                                        onBlur={handleBlur}
+                                                        placeholder="e.g. Sari-sari store" />
+                                                </Field>
+                                                <Field label="Daily Income (₱)">
+                                                    <input
+                                                        name="dailyIncome"
+                                                        value={values.dailyIncome}
+                                                        onChange={handleChange}
+                                                        onBlur={handleBlur}
+                                                        inputMode="numeric"
+                                                        placeholder="e.g. 500"
+                                                        className="w-full px-3 py-2.5 border border-gray-300
+                                                            rounded-lg text-sm focus:outline-none
+                                                            focus:ring-2 focus:ring-blue-500" />
+                                                </Field>
                                             </div>
                                         </div>
                                     )}

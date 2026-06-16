@@ -120,6 +120,13 @@ async function getForPromotion(req, res) {
         queryQl(CI_TYPE, { where: { ciReferenceCode: { _eq: refCode } } })
     ).then(r => r.data?.ciInvestigations ?? []);
 
+    // FIX: fetch existing client so we can check which fields to fill in
+    const existingClient = application.existingClientId
+        ? await graph.query(
+            queryQl(CLIENT_TYPE, { where: { _id: { _eq: application.existingClientId } } })
+          ).then(r => r.data?.clients?.[0] ?? null)
+        : null;
+
     // Parallel: signed URLs + duplicate check
     const [lafPhotoUrl, selfieUrl, duplicateCandidates] = await Promise.all([
         application.lafPhotoKey    ? getSignedUrlForKey(application.lafPhotoKey)    : Promise.resolve(null),
@@ -172,6 +179,18 @@ async function getForPromotion(req, res) {
         // FIX: copy face liveness fields from LAF to client record on promote
         if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;
         if (application.faceEnrolledAt) updatePayload.faceEnrolledAt = application.faceEnrolledAt;
+        // FIX: livenessScore missing from previous patch
+        if (application.livenessScore != null && !existingClient?.livenessScore) {
+            updatePayload.livenessScore = application.livenessScore;
+        }
+
+        // FIX: push new personal info fields — only if client has no value yet
+        // These are captured in LAF for the first time for many pre-digital clients
+        if (application.birthdate    && !existingClient?.birthdate)    updatePayload.birthdate    = application.birthdate;
+        if (application.civilStatus  && !existingClient?.civilStatus)  updatePayload.civilStatus  = application.civilStatus;
+        if (application.yearsOfStay  && !existingClient?.yearsOfStay)  updatePayload.yearsOfStay  = application.yearsOfStay;
+        if (application.business     && !existingClient?.business)     updatePayload.business     = application.business;
+        if (application.dailyIncome  && !existingClient?.dailyIncome)  updatePayload.dailyIncome  = application.dailyIncome;
 
         if (investigation?.picUserName) updatePayload.ciName = investigation.picUserName;
 
@@ -276,6 +295,12 @@ async function getForPromotion(req, res) {
                 // FIX: face liveness template from LAF — used for LDF verification
                 faceTemplate:            application.faceTemplate            || null,
                 faceEnrolledAt:          application.faceEnrolledAt          || null,
+                // FIX: new personal info fields from LAF
+                civilStatus:             application.civilStatus             || null,
+                yearsOfStay:             application.yearsOfStay             || null,
+                business:                application.business                || null,
+                dailyIncome:             application.dailyIncome             || null,
+                
                 // CI investigator name
                 ciName:                  investigation?.picUserName          || null,
                 // Client metadata

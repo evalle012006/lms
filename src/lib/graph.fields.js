@@ -101,6 +101,10 @@ export const CLIENT_FIELDS = `
   mergedIntoClientId
   mergedAt
   mergedBy
+  civilStatus
+  yearsOfStay
+  business
+  dailyIncome
   `;
 
 export const LOAN_FIELDS = `
@@ -216,6 +220,17 @@ export const LOAN_FIELDS = `
   faceVerified
   faceVerifiedAt
   faceMatchScore
+  guarantorPhotoKey
+  guarantorIdPhotoKey
+  guarantorIsClient
+  guarantorClientId
+  guarantorDuplicateNote
+  ciReferenceCode
+  guarantorBirthDate
+  guarantorCivilStatus
+  guarantorBusiness
+  guarantorDailyIncome
+  guarantorAddress
   `;
 
 export const GROUP_FIELDS = `
@@ -268,6 +283,8 @@ export const SETTINGS_FIELDS = `
   smsEnabled
   ciQuestions
   requireStaffBiometric
+  qrAllowedStartTime
+  qrAllowedEndTime
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -821,6 +838,10 @@ export const TEMP_LOAN_APP_FIELDS = `
   faceEnrolledAt
   livenessScore
   promotedAt
+  civilStatus
+  yearsOfStay
+  business
+  dailyIncome
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

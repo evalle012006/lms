@@ -163,23 +163,25 @@ const GroupQRModal = ({ isOpen, onClose, onRegenerate, qrData }) => {
                         <Copy className="w-3.5 h-3.5" />
                         Copy URL
                     </button>
-                    <button type="button" onClick={handleRegenerate}
-                        disabled={regenerating}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5
-                            border border-amber-300 text-amber-700 text-xs font-medium
-                            rounded-xl hover:bg-amber-50 disabled:opacity-50 transition-colors">
-                        {regenerating ? (
-                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10"
-                                    stroke="currentColor" strokeWidth="4"/>
-                                <path className="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8v8H4z"/>
-                            </svg>
-                        ) : (
-                            <RefreshCw className="w-3.5 h-3.5" />
-                        )}
-                        Regenerate QR
-                    </button>
+                    {(qrData?.availableSlots?.length > 0) && (
+                        <button type="button" onClick={handleRegenerate}
+                            disabled={regenerating}
+                            className="w-full flex items-center justify-center gap-1.5 py-2.5
+                                border border-amber-300 text-amber-700 text-xs font-medium
+                                rounded-xl hover:bg-amber-50 disabled:opacity-50 transition-colors">
+                            {regenerating ? (
+                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" strokeWidth="4"/>
+                                    <path className="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                            ) : (
+                                <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                            Regenerate QR
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,7 +1,6 @@
 // src/components/ci/CIReviewPanel.js
-// CI questions replace findings textarea.
-// Auto-promote after CI approval — runs silently, no redirect.
-// onSaved refreshes the CI page list and reloads current application.
+// FIX: businessVerified and addressVerified are now required before saving
+// FIX: Checkboxes show visual confirmed state with green styling + checkmark
 
 import React, { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
@@ -127,6 +126,16 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         }
         if (!decision) { toast.error('Please select Approve or Decline.'); return; }
 
+        // FIX: businessVerified and addressVerified are required before saving
+        if (!businessVerified) {
+            toast.error('Please confirm that the business has been verified.');
+            return;
+        }
+        if (!addressVerified) {
+            toast.error('Please confirm that the address has been verified.');
+            return;
+        }
+
         const unanswered = ciQuestions.filter(q => q.required && !answers[q.id]?.trim());
         if (unanswered.length > 0) {
             toast.error(`Please answer all required questions: ${unanswered.map((q, i) => `${i + 1}. ${q.question}`).join(', ')}`);
@@ -173,12 +182,12 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 selfieKey = uploadData.fileKey;
             }
 
-            const res = await fetchWrapper.post(getApiBaseUrl() + 'laf/ci/investigate', buildPayload(selfieKey));
+            const res = await fetchWrapper.post(
+                getApiBaseUrl() + 'laf/ci/investigate', buildPayload(selfieKey)
+            );
             if (!res.success) throw new Error(res.message || 'Save failed.');
 
-            // ── Auto-promote after CI approval — no redirect ──────────────
-            // Promote runs silently. onSaved refreshes the list and reloads
-            // the current application — status will update to "promoted".
+            // ── Auto-promote after CI approval ────────────────────────────
             if (decision === 'approved') {
                 try {
                     const promoteRes = await fetchWrapper.get(
@@ -197,7 +206,6 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                     console.error('[CI] Promote error:', promoteErr);
                     toast.warning('CI saved. Promotion failed — please retry from the LAF tab.');
                 }
-                // Always refresh regardless of promote outcome
                 onSaved?.({ offline: false, investigation: res.investigation });
             } else {
                 toast.success('Investigation saved. Application declined.');
@@ -209,7 +217,8 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         } finally {
             setSaving(false);
         }
-    }, [decision, declineReason, selfieFile, investigationData, ciQuestions,
+    }, [decision, declineReason, businessVerified, addressVerified,
+        selfieFile, investigationData, ciQuestions,
         answers, isOnline, buildPayload, saveDraft, onSaved, application]);
 
     return (
@@ -243,36 +252,80 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 <div className="space-y-4">
                     <p className="text-sm font-semibold text-gray-700">Investigation Questions</p>
                     {investigationData?.ciAnswers?.length > 0 && (
-                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg
+                            text-xs text-blue-700">
                             Previously saved answers pre-filled below. Update if needed.
                         </div>
                     )}
                     {ciQuestions.map((q, i) => (
                         <CIQuestion key={q.id} question={q} index={i}
                             answer={answers[q.id] || ''}
-                            onChange={(val) => handleAnswerChange(q.id, val)} />
+                            onChange={val => handleAnswerChange(q.id, val)} />
                     ))}
                 </div>
             ) : (
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 text-center">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl
+                    text-xs text-gray-500 text-center">
                     No CI questions configured. Add questions in System Settings → CI Questions.
                 </div>
             )}
 
-            {/* Verification checkboxes */}
-            <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={businessVerified}
-                        onChange={e => setBusinessVerified(e.target.checked)}
-                        className="w-4 h-4 rounded text-blue-600" />
-                    <span className="text-sm text-gray-700">Business verified</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={addressVerified}
-                        onChange={e => setAddressVerified(e.target.checked)}
-                        className="w-4 h-4 rounded text-blue-600" />
-                    <span className="text-sm text-gray-700">Address verified</span>
-                </label>
+            {/* FIX: Verification checkboxes — required before saving */}
+            <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Verification
+                    <span className="ml-1 text-red-500 normal-case font-normal text-xs">
+                        * both required
+                    </span>
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                    {/* Business verified */}
+                    <label className={`flex items-center gap-2 cursor-pointer px-4 py-2.5
+                        rounded-xl border-2 transition-colors flex-1 min-w-[160px] ${
+                        businessVerified
+                            ? 'bg-green-50 border-green-400'
+                            : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                    }`}>
+                        <input type="checkbox" checked={businessVerified}
+                            onChange={e => setBusinessVerified(e.target.checked)}
+                            className="w-4 h-4 rounded text-green-600 flex-shrink-0" />
+                        <span className={`text-sm font-medium ${
+                            businessVerified ? 'text-green-700' : 'text-gray-700'
+                        }`}>
+                            Business verified
+                        </span>
+                        {businessVerified && (
+                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 ml-auto" />
+                        )}
+                    </label>
+
+                    {/* Address verified */}
+                    <label className={`flex items-center gap-2 cursor-pointer px-4 py-2.5
+                        rounded-xl border-2 transition-colors flex-1 min-w-[160px] ${
+                        addressVerified
+                            ? 'bg-green-50 border-green-400'
+                            : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                    }`}>
+                        <input type="checkbox" checked={addressVerified}
+                            onChange={e => setAddressVerified(e.target.checked)}
+                            className="w-4 h-4 rounded text-green-600 flex-shrink-0" />
+                        <span className={`text-sm font-medium ${
+                            addressVerified ? 'text-green-700' : 'text-gray-700'
+                        }`}>
+                            Address verified
+                        </span>
+                        {addressVerified && (
+                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 ml-auto" />
+                        )}
+                    </label>
+                </div>
+                {/* Hint when either is unchecked */}
+                {(!businessVerified || !addressVerified) && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                        Both must be confirmed before the investigation can be saved.
+                    </p>
+                )}
             </div>
 
             {/* Duplicate validation panel */}
@@ -352,17 +405,23 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                         <div className="mb-3">
                             <p className="text-xs text-gray-500 mb-2">Previously uploaded selfie:</p>
                             <button type="button"
-                                onClick={() => { setPreviewUrl(investigationData.selfieUrl); setPreviewOpen(true); }}
-                                className="relative group rounded-xl overflow-hidden border border-gray-200
-                                    hover:border-blue-400 transition-colors block">
+                                onClick={() => {
+                                    setPreviewUrl(investigationData.selfieUrl);
+                                    setPreviewOpen(true);
+                                }}
+                                className="relative group rounded-xl overflow-hidden border
+                                    border-gray-200 hover:border-blue-400 transition-colors block">
                                 <img src={investigationData.selfieUrl} alt="CI selfie"
                                     className="w-28 h-28 object-cover" />
-                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30
-                                    transition-all flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100
-                                        transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="absolute inset-0 bg-black bg-opacity-0
+                                    group-hover:bg-opacity-30 transition-all flex items-center
+                                    justify-center">
+                                    <svg className="w-6 h-6 text-white opacity-0
+                                        group-hover:opacity-100 transition-opacity"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round"
-                                            strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                                            strokeWidth={2}
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
                                     </svg>
                                 </div>
                             </button>
@@ -374,22 +433,27 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                             flex items-center justify-center p-4"
                             onClick={() => setPreviewOpen(false)}>
                             <button type="button" onClick={() => setPreviewOpen(false)}
-                                className="absolute top-4 right-4 text-white bg-black bg-opacity-50
-                                    rounded-full p-2 hover:bg-opacity-70">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                className="absolute top-4 right-4 text-white bg-black
+                                    bg-opacity-50 rounded-full p-2 hover:bg-opacity-70">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round"
                                         strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
                             <img src={previewUrl} alt="CI selfie full view"
-                                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                                className="max-w-full max-h-full object-contain rounded-lg
+                                    shadow-2xl"
                                 onClick={e => e.stopPropagation()} />
-                            <p className="absolute bottom-4 left-0 right-0 text-center text-white
-                                text-xs opacity-50">Tap anywhere outside to close</p>
+                            <p className="absolute bottom-4 left-0 right-0 text-center
+                                text-white text-xs opacity-50">
+                                Tap anywhere outside to close
+                            </p>
                         </div>
                     )}
 
-                    <PhotoCapture onFileReady={setSelfieFile} label="Take selfie with client and form"
+                    <PhotoCapture onFileReady={setSelfieFile}
+                        label="Take selfie with client and form"
                         facingMode="user" maxMB={10} />
                 </div>
             )}

@@ -1,15 +1,12 @@
 // src/components/laf/TempLAFModal.js
-// Updated Phase 2 — includes all new fields in the loanData/client objects
-// shown on the CI Investigation page when "View LAF" is clicked.
+// FIX 1: Pass slotNo and approved loan amount when ldfApproved=true
+// FIX 2: All available fields from temporaryLoanApplications pre-filled
+// FIX 3: client photo object-cover fix passed via loanData
 
-import React from 'react';
-import LAFModal from '@/components/transactions/loan-application/LAFModal';
+import React       from 'react';
+import moment      from 'moment';
+import LAFModal    from '@/components/transactions/loan-application/LAFModal';
 
-/**
- * Wraps LAFModal for temporaryLoanApplication data.
- * LAFModal uses a plain <img> for the profile photo,
- * so we must pass a pre-signed URL (lafPhotoUrl), not the storage key.
- */
 const TempLAFModal = ({ isOpen, onClose, application }) => {
     if (!isOpen || !application) return null;
 
@@ -17,90 +14,129 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         || application.lafPhotoKey
         || '';
 
+    // Age derived from birthdate
+    const age = application.birthdate
+        ? moment().diff(moment(application.birthdate), 'years')
+        : '';
+
+    // When ldfApproved: pick up slot and approved amount from linked loan
+    // application.loan is populated by TemporaryLoanApplicationsTab when printing
+    const loan        = application.loan    || null;
+    const slotNo      = loan?.slotNo        || application.slotNo        || '';
+    const pnNumber    = loan?.pnNumber      || application.ciReferenceCode;
+    const loanCycle   = loan?.loanCycle     || 1;
+    const ldfApproved = loan?.ldfApproved   || application.ldfApproved   || false;
+    const dateOfRelease = loan?.dateOfRelease || application.dateOfRelease || null;
+    const principalLoan = Number(loan?.principalLoan || application.loanAmount) || 0;
+    const amountRelease = Number(loan?.amountRelease  || application.loanAmount) || 0;
+
+    // LO name — from application or loan
+    const loName = application.loName
+        || loan?.loanOfficerName
+        || '';
+
     const loanData = {
-        // ── Identifiers ──────────────────────────────────────────────────
+        // ── Identifiers ────────────────────────────────────────────────
         _id:             application._id,
-        pnNumber:        application.ciReferenceCode,
+        pnNumber,
         ciReferenceCode: application.ciReferenceCode,
 
-        // ── Loan fields ───────────────────────────────────────────────────
-        principalLoan:  Number(application.loanAmount) || 0,
+        // ── Loan fields ───────────────────────────────────────────────
+        principalLoan,
+        amountRelease,
         loanPurpose:    application.loanPurpose || '',
-        loanCycle:      1,
-        dateOfRelease:  null,
+        loanCycle,
+        dateOfRelease,
         dateAdded:      application.dateAdded || application.submittedAt,
-        loanTerms:      60,
-        occurence:      'daily',
-        amountRelease:  Number(application.loanAmount) || 0,
+        loanTerms:      loan?.loanTerms || 60,
+        occurence:      loan?.occurence || 'daily',
+        // FIX 1: slot from linked loan (when ldfApproved)
+        slotNo,
+        ldfApproved,
+        // FIX: link to previous loan for reloan print
+        prevLoanId:     loan?.prevLoanId || application.existingLoanId || null,
+        prevLoanFullPaymentAmount: loan?.prevLoanFullPaymentAmount || null,
 
-        // ── Guarantor ─────────────────────────────────────────────────────
-        guarantorFirstName:  application.guarantorFirstName  || '',
-        guarantorLastName:   application.guarantorLastName   || '',
-        guarantorMiddleName: '',
-        guarantorRelation:   application.guarantorRelationship  || '',
-        guarantorContactNo:  application.guarantorContactNumber || '',
-        guarantorAddress:    application.address || '',
+        // ── Guarantor ─────────────────────────────────────────────────
+        guarantorFirstName:    application.guarantorFirstName    || '',
+        guarantorLastName:     application.guarantorLastName     || '',
+        guarantorMiddleName:   application.guarantorMiddleName   || '',
+        guarantorRelation:     application.guarantorRelationship || '',
+        guarantorContactNo:    application.guarantorContactNumber || '',
+        guarantorAddress:      application.guarantorAddress || application.address || '',
+        // FIX: new guarantor fields — pre-filled from LAF, finalized during AddLoan
+        guarantorBirthDate:    application.guarantorBirthDate    || '',
+        guarantorAge:          application.guarantorBirthDate
+                                   ? String(moment().diff(moment(application.guarantorBirthDate), 'years'))
+                                   : '',
+        guarantorCivilStatus:  application.guarantorCivilStatus  || '',
+        guarantorWorkBusiness: application.guarantorBusiness     || '',
+        guarantorDailyIncome:  application.guarantorDailyIncome  || '',
 
-        // ── CI name ───────────────────────────────────────────────────────
-        ciName: application.ciName || '',
+        // ── CI name ───────────────────────────────────────────────────
+        ciName: application.ciName || application.picUserName || '',
 
-        // ── Photo ─────────────────────────────────────────────────────────
+        // ── Photo ─────────────────────────────────────────────────────
         profile: photoUrl,
 
-        // ── Nested client object ──────────────────────────────────────────
+        // ── Client object ─────────────────────────────────────────────
         client: {
-            _id:                     application._id,
-            firstName:               application.firstName  || '',
-            lastName:                application.lastName   || '',
-            middleName:              application.middleName || '',
-            fullName:                `${application.firstName || ''} ${application.middleName || ''} ${application.lastName || ''}`.trim(),
-            birthdate:               application.birthdate  || '',
-            contactNumber:           application.contactNumber || '',
-            address:                 application.address    || '',
-            addressStreetNo:         application.addressStreetNo         || '',
+            _id:          application._id,
+            firstName:    application.firstName  || '',
+            lastName:     application.lastName   || '',
+            middleName:   application.middleName || '',
+            fullName:     `${application.firstName || ''} ${application.middleName || ''} ${application.lastName || ''}`.trim(),
+            birthdate:    application.birthdate  || '',
+            // FIX 2: age derived from birthdate
+            age,
+            // civilStatus, business, yearsOfStay, dailyIncome — not yet in LAF form
+            // Leave blank — these will be populated once added to PublicLAFForm
+            civilStatus:         application.civilStatus        || '',
+            business:            application.business           || '',
+            yearsOfStay:         application.yearsOfStay        || '',
+            dailyIncome:         application.dailyIncome        || '',
+            contactNumber:       application.contactNumber      || '',
+            address:             application.address            || '',
+            addressStreetNo:     application.addressStreetNo    || '',
             addressBarangayDistrict: application.addressBarangayDistrict || '',
             addressMunicipalityCity: application.addressMunicipalityCity || '',
-            addressProvince:         application.addressProvince         || '',
-            addressZipCode:          application.addressZipCode          || '',
-            profile:  photoUrl,
-            ciName:   application.ciName || '',
-            yearsOfStay: '',
-            business:    '',
-
-            // ── Phase 2: Address extras ───────────────────────────────────
+            addressProvince:     application.addressProvince    || '',
+            addressZipCode:      application.addressZipCode     || '',
             landmark:            application.landmark           || '',
             distanceFromBranch:  application.distanceFromBranch || '',
-
-            // ── Phase 2: Government ID ────────────────────────────────────
             governmentIdType:    application.governmentIdType   || '',
-            governmentIdNumber:  application.governmentIdNumber  || '',
-
-            // ── Phase 2: Client type ──────────────────────────────────────
-            clientType:          application.clientType         || 'prospect',
-
-            // ── Biometric ─────────────────────────────────────────────────
+            governmentIdNumber:  application.governmentIdNumber || '',
+            // FIX 3: profile for client photo display
+            profile:             photoUrl,
+            ciName:              application.ciName || '',
+            clientType:          application.clientType || 'prospect',
             biometricCredentialId: application.biometricCredentialId || null,
             biometricDeviceName:   application.biometricDeviceName   || null,
             biometricRegisteredAt: application.biometricRegisteredAt || null,
         },
 
-        // ── Branch ────────────────────────────────────────────────────────
+        // ── Branch ────────────────────────────────────────────────────
         branch: [{
             _id:  application.branchId   || '',
             name: application.branchName || '',
             code: application.branchCode || '',
         }],
 
-        // ── Group / LO ───────────────────────────────────────────────────
+        // ── Group / LO ───────────────────────────────────────────────
         group: { name: application.groupName || '' },
         groupName:      application.groupName || '',
         loId:           application.loId      || '',
+        loanOfficerName: loName,
+        loanOfficer: {
+            firstName: loName ? loName.split(' ')[0] : '',
+            lastName:  loName ? loName.split(' ').slice(1).join(' ') : '',
+            loNo:      '',
+        },
 
-        // ── Submission info ───────────────────────────────────────────────
-        isOffline:      application.isOffline      || false,
-        submittedAt:    application.submittedAt    || null,
-        loanOfficerName: '',
-        loanOfficer: { firstName: '', lastName: '', loNo: '' },
+        // ── Submission info ───────────────────────────────────────────
+        isOffline:   application.isOffline   || false,
+        submittedAt: application.submittedAt || null,
+        insertedDateTime: application.submittedAt || null,
     };
 
     return (

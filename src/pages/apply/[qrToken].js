@@ -84,6 +84,28 @@ export async function getServerSideProps({ req, params }) {
         queryQl(SETTINGS_TYPE, { limit: 1 })
     ).then(r => r.data?.settings ?? []);
 
+    // ── Time restriction check ──────────────────────────────────────────
+    // Manila time — check if current time is within the allowed window
+    const manilaTime = moment().utcOffset('+08:00');
+    const startTime  = settings?.qrAllowedStartTime || '06:00';
+    const endTime    = settings?.qrAllowedEndTime   || '22:00';
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH,   endM]   = endTime.split(':').map(Number);
+    const nowMinutes   = manilaTime.hours() * 60 + manilaTime.minutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes   = endH   * 60 + endM;
+ 
+    if (nowMinutes < startMinutes || nowMinutes >= endMinutes) {
+        return {
+            props: {
+                error:    'time_restricted',
+                errorMsg: `Loan applications are only accepted between ${startTime} and ${endTime} (Manila time). Please come back during operating hours.`,
+                allowedStart: startTime,
+                allowedEnd:   endTime,
+            },
+        };
+    }
+
     // ── Audit valid access ─────────────────────────────────────────────
     logAuditPublic(req, {
         action:      'GROUP_QR_ACCESSED',
@@ -120,11 +142,12 @@ export async function getServerSideProps({ req, params }) {
 }
 
 // ── Error screens ─────────────────────────────────────────────────────────
-const ErrorScreen = ({ type, message }) => (
+const ErrorScreen = ({ type, message, allowedStart, allowedEnd }) => (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 max-w-sm w-full text-center">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                type === 'expired' ? 'bg-amber-100' : 'bg-red-100'
+                type === 'expired'          ? 'bg-amber-100' :
+                type === 'time_restricted'  ? 'bg-blue-100'  : 'bg-red-100'
             }`}>
                 <svg className={`w-8 h-8 ${type === 'expired' ? 'text-amber-600' : 'text-red-600'}`}
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,6 +161,12 @@ const ErrorScreen = ({ type, message }) => (
                 {type === 'expired' ? 'QR Code Expired' : 'Invalid QR Code'}
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed">{message}</p>
+            {type === 'time_restricted' && allowedStart && allowedEnd && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                    <p className="font-semibold mb-1">Operating Hours</p>
+                    <p>{allowedStart} — {allowedEnd} (Manila time)</p>
+                </div>
+            )}
             <p className="text-xs text-gray-400 mt-4">
                 AmberCash PH Micro Lending Corp.
             </p>
@@ -167,7 +196,8 @@ export default function ApplyPage(props) {
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
                     <meta name="robots" content="noindex" />
                 </Head>
-                <ErrorScreen type={error} message={errorMsg} />
+                <ErrorScreen type={error} message={errorMsg}
+                    allowedStart={props.allowedStart} allowedEnd={props.allowedEnd} />
             </>
         );
     }

@@ -74,6 +74,10 @@ async function submitLAF(req, res) {
         faceTemplate,
         faceEnrolledAt,
         livenessScore,
+        civilStatus,
+        yearsOfStay,
+        business,
+        dailyIncome,
     } = req.body;
 
     // Basic presence check
@@ -103,6 +107,27 @@ async function submitLAF(req, res) {
         return res.status(200).json({
             success: false,
             message: 'This QR code has expired. Please ask your Loan Officer for a new QR code.',
+        });
+    }
+
+     // ── Time restriction check — enforce server-side too ─────────────────
+    const [sysSettings] = await graph.query(
+        queryQl(
+            createGraphType('settings', 'qrAllowedStartTime qrAllowedEndTime')('settings'),
+            { limit: 1 }
+        )
+    ).then(r => r.data?.settings ?? []);
+ 
+    const manilaTime   = moment().utcOffset('+08:00');
+    const startTime    = sysSettings?.qrAllowedStartTime || '06:00';
+    const endTime      = sysSettings?.qrAllowedEndTime   || '22:00';
+    const [sH, sM]     = startTime.split(':').map(Number);
+    const [eH, eM]     = endTime.split(':').map(Number);
+    const nowMins      = manilaTime.hours() * 60 + manilaTime.minutes();
+    if (nowMins < (sH * 60 + sM) || nowMins >= (eH * 60 + eM)) {
+        return res.status(200).json({
+            success: false,
+            message: `Applications are only accepted between ${startTime} and ${endTime} (Manila time).`,
         });
     }
 
@@ -267,6 +292,10 @@ async function submitLAF(req, res) {
                 faceTemplate:   faceTemplate   || null,
                 faceEnrolledAt: faceEnrolledAt || null,
                 livenessScore:  livenessScore  != null ? livenessScore : null,
+                civilStatus:   civilStatus  || null,
+                yearsOfStay:   yearsOfStay  || null,
+                business:      business     || null,
+                dailyIncome:   dailyIncome  || null,
                 // If prospect has duplicates → requires admin validation before promote
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]

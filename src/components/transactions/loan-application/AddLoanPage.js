@@ -19,7 +19,13 @@ import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';
 
-const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
+const AddLoanPage = ({
+    onBack, onSuccess, mode = 'add', loanId = null,
+    initialClientId   = null,
+    initialGroupId    = null,
+    initialLoId       = null,
+    initialClientType = null,
+}) => {
     const dispatch        = useDispatch();
     const formikRef       = useRef();
 
@@ -39,6 +45,11 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
 
     // ── State ──────────────────────────────────────────────────
     const [loading, setLoading]                   = useState(false);
+    // FIX: guarantor photo/ID upload state
+    const [guarantorPhotoFile,    setGuarantorPhotoFile]    = useState(null);
+    const [guarantorPhotoPreview, setGuarantorPhotoPreview] = useState(null);
+    const [guarantorIdFile,       setGuarantorIdFile]       = useState(null);
+    const [guarantorIdPreview,    setGuarantorIdPreview]    = useState(null);
     const [clientType, setClientType]             = useState('pending');
     const [groupOccurence, setGroupOccurence]     = useState(currentUser?.transactionType || 'daily');
     const [selectedLo, setSelectedLo]             = useState(rep === 4 ? currentUser._id : null);
@@ -83,6 +94,8 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     const [pendingCoMakerRestore, setPendingCoMakerRestore] = useState(null);
     const [clientProfileKey, setClientProfileKey] = useState(null);
     const isEdit = mode === 'edit';
+
+    const [hasPreFilled, setHasPreFilled] = useState(false);
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
@@ -178,14 +191,21 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
     useEffect(() => {
         if (!selectedClientObj || mode === 'edit') return;
         formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
-        // Guarantor fields may exist on client from CI promotion; only set if not already filled
         const form = formikRef.current;
         if (!form) return;
         const current = form.values;
         if (!current.guarantorFirstName) {
-            form.setFieldValue('guarantorFirstName',  selectedClientObj.guarantorFirstName  || '');
-            form.setFieldValue('guarantorMiddleName', selectedClientObj.guarantorMiddleName || '');
-            form.setFieldValue('guarantorLastName',   selectedClientObj.guarantorLastName   || '');
+            form.setFieldValue('guarantorFirstName',   selectedClientObj.guarantorFirstName   || '');
+            form.setFieldValue('guarantorMiddleName',  selectedClientObj.guarantorMiddleName  || '');
+            form.setFieldValue('guarantorLastName',    selectedClientObj.guarantorLastName    || '');
+            // FIX: pre-fill extended guarantor fields from LAF data on client record
+            // These are editable — BM can update during loan creation
+            form.setFieldValue('guarantorBirthDate',   selectedClientObj.guarantorBirthDate   || '');
+            form.setFieldValue('guarantorCivilStatus', selectedClientObj.guarantorCivilStatus || '');
+            form.setFieldValue('guarantorBusiness',    selectedClientObj.guarantorBusiness    || '');
+            form.setFieldValue('guarantorDailyIncome', selectedClientObj.guarantorDailyIncome || '');
+            form.setFieldValue('guarantorAddress',     selectedClientObj.guarantorAddress
+                || selectedClientObj.address || '');
         }
     }, [selectedClientObj, mode]);
 
@@ -236,6 +256,15 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
                     form.setFieldValue('guarantorFirstName',  l.guarantorFirstName || '');
                     form.setFieldValue('guarantorMiddleName', l.guarantorMiddleName || '');
                     form.setFieldValue('guarantorLastName',   l.guarantorLastName || '');
+                    form.setFieldValue('guarantorBirthDate',   l.guarantorBirthDate   || '');
+                    form.setFieldValue('guarantorCivilStatus', l.guarantorCivilStatus || '');
+                    form.setFieldValue('guarantorBusiness',    l.guarantorBusiness    || '');
+                    form.setFieldValue('guarantorDailyIncome', l.guarantorDailyIncome || '');
+                    form.setFieldValue('guarantorAddress',     l.guarantorAddress     || '');
+
+                    // FIX: restore guarantor photo previews in edit mode
+                    if (l.guarantorPhotoKey)   setGuarantorPhotoPreview(l.guarantorPhotoKey);
+                    if (l.guarantorIdPhotoKey) setGuarantorIdPreview(l.guarantorIdPhotoKey);
 
                     // Restore derived state
                     setSelectedGroup(l.groupId);
@@ -336,6 +365,35 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate, mode]);
+
+    useEffect(() => {
+        if (!initialClientId || !initialGroupId || hasPreFilled) return;
+        if (mode !== 'add') return;
+ 
+        // Step 1: set clientType first
+        const ct = initialClientType || 'pending';
+        setClientType(ct);
+ 
+        // Step 2: set LO
+        if (initialLoId) setSelectedLo(initialLoId);
+ 
+        // Step 3: set group and load client list
+        setSelectedGroup(initialGroupId);
+        formikRef.current?.setFieldValue('groupId', initialGroupId);
+        getListClient(ct, initialGroupId);
+ 
+        // Step 4: set clientId after a small delay so clientList loads first
+        setTimeout(() => {
+            setClientId(initialClientId);
+            formikRef.current?.setFieldValue('clientId', initialClientId);
+            if (initialGroupId && currentDate) {
+                getListCoMaker(initialGroupId, initialClientId);
+            }
+        }, 800);
+ 
+        setHasPreFilled(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialClientId, initialGroupId, groupList]);
 
     // ─────────────────────────────────────────────────────────
     // API helpers — exact mirror of AddUpdateLoanDrawer
@@ -753,16 +811,36 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         checkClientCI(client._id, true);
     };
 
+    // FIX: guarantor photo handlers
+    const handleGuarantorPhotoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setGuarantorPhotoFile(file);
+        setGuarantorPhotoPreview(URL.createObjectURL(file));
+    };
+
+    const handleGuarantorIdChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setGuarantorIdFile(file);
+        setGuarantorIdPreview(URL.createObjectURL(file));
+    };
+
     const handleClearClient = () => {
         setSelectedClientObj(null);
         setOffsetClient(null);
         resetClient(formikRef.current);
+        // FIX: clear guarantor photos when client is cleared
+        setGuarantorPhotoFile(null);
+        setGuarantorPhotoPreview(null);
+        setGuarantorIdFile(null);
+        setGuarantorIdPreview(null);
     };
 
     // ─────────────────────────────────────────────────────────
     // Save — exact mirror of AddUpdateLoanDrawer
     // ─────────────────────────────────────────────────────────
-    const handleSaveUpdate = (values, action) => {
+    const handleSaveUpdate = async(values, action) => {
         // ── Phase 7: Block loan creation without valid CI ─────────────────
         // Applies to all existing client types (reloan/pending/balik).
         // Prospect (clientType='pending') is excluded — they have no CI yet.
@@ -930,11 +1008,39 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
             return;
         }
 
-        // ── Edit mode: UPDATE existing loan ─────────────────────────────
-        // ── Add mode:  INSERT new loan ───────────────────────────────────
+        // FIX: upload guarantor photo if a new file was selected
+        let guarantorPhotoKey = isEdit ? (loanData?.guarantorPhotoKey || null) : null;
+        if (guarantorPhotoFile) {
+            try {
+                const fd = new FormData();
+                fd.append('file', guarantorPhotoFile);
+                fd.append('folder', `lmsv2/guarantor-photos/${clientId || 'unknown'}`);
+                const uploadRes = await fetchWrapper.upload(getApiBaseUrl() + 'upload', fd);
+                if (uploadRes.success) guarantorPhotoKey = uploadRes.key;
+            } catch (e) {
+                console.error('Guarantor photo upload failed:', e);
+                // Non-fatal — proceed without photo
+            }
+        }
+
+        // FIX: upload guarantor ID if a new file was selected
+        let guarantorIdPhotoKey = isEdit ? (loanData?.guarantorIdPhotoKey || null) : null;
+        if (guarantorIdFile) {
+            try {
+                const fd = new FormData();
+                fd.append('file', guarantorIdFile);
+                fd.append('folder', `lmsv2/guarantor-id-photos/${clientId || 'unknown'}`);
+                const uploadRes = await fetchWrapper.upload(getApiBaseUrl() + 'upload', fd);
+                if (uploadRes.success) guarantorIdPhotoKey = uploadRes.key;
+            } catch (e) {
+                console.error('Guarantor ID upload failed:', e);
+            }
+        }
+
         const saveUrl = isEdit
-            ? getApiBaseUrl() + 'transactions/loans'          // POST → updateLoan handler
-            : getApiBaseUrl() + 'transactions/loans/save';    // POST → insertLoan handler
+            ? getApiBaseUrl() + 'transactions/loans'
+            : getApiBaseUrl() + 'transactions/loans/save';
+
 
         // ── Build edit payload: loanData base + form values overlay ─────
         // Strip nested join objects that the update API doesn't accept.
@@ -964,6 +1070,14 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
             clientId:            values.clientId,
             coMaker:             values.coMaker,
             coMakerId:           values.coMakerId,
+            // FIX: guarantor photo keys
+            guarantorPhotoKey,
+            guarantorIdPhotoKey,
+            guarantorBirthDate:   values.guarantorBirthDate   || null,
+            guarantorCivilStatus: values.guarantorCivilStatus || null,
+            guarantorBusiness:    values.guarantorBusiness    || null,
+            guarantorDailyIncome: values.guarantorDailyIncome || null,
+            guarantorAddress:     values.guarantorAddress     || null,
         };
 
         // Computed fields set in handleSaveUpdate — always override
@@ -1131,6 +1245,12 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
         guarantorFirstName:  '',
         guarantorMiddleName: '',
         guarantorLastName:   '',
+        // FIX: new guarantor fields
+        guarantorBirthDate:   '',
+        guarantorCivilStatus: '',
+        guarantorBusiness:    '',
+        guarantorDailyIncome: '',
+        guarantorAddress:     '',
         status:              'pending',
         ciName:              '',
         dateOfRelease:       '',
@@ -1359,6 +1479,10 @@ const AddLoanPage = ({ onBack, onSuccess, mode = 'add', loanId = null }) => {
                                 coMakerChecking={coMakerChecking}
                                 isSubmitting={isSubmitting}
                                 isValidating={isValidating}
+                                guarantorPhotoPreview={guarantorPhotoPreview}
+                                guarantorIdPhotoPreview={guarantorIdPreview}
+                                onGuarantorPhotoChange={handleGuarantorPhotoChange}
+                                onGuarantorIdChange={handleGuarantorIdChange}
                             />
                         </div>
                     </form>
