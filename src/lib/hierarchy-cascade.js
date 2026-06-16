@@ -55,7 +55,11 @@ export const parseIds = (raw) => {
     try { return JSON.parse(raw); } catch { return []; }
 };
 
-// ── Manager diff helpers ──────────────────────────────────────────────────────
+// ── Manager diff ──────────────────────────────────────────────────────────────
+export const diffManagerIds = (oldIds, newIds) => ({
+    removed: oldIds.filter(id => !newIds.includes(id)),
+    added:   newIds.filter(id => !oldIds.includes(id)),
+});
 
 /**
  * Collects manager link mutations into addToMutationList.
@@ -65,45 +69,45 @@ export async function syncManagerLinks(entityTable, removedIds, addedIds, hierar
     for (const userId of removedIds) {
         const records = await graph.query(
             queryQl(
-                createGraphType(entityTable, `_id managerIds`)(alias('find')),
+                createGraphType(entityTable, `_id managerIds`)(entityTable),
                 { where: { managerIds: { _like: `%${userId}%` } } }
             )
         ).then(r => r.data[entityTable] ?? []);
 
-        for (const entity of entityRecords) {
+        for (const entity of records) {
             const updated = parseIds(entity.managerIds).filter(id => id !== userId);
-            mutations.push(
-                updateQl(createGraphType(entityTable, '_id')(alias('rmMgr')), {
+            addToMutationList(alias => updateQl(
+                createGraphType(entityTable, '_id')(alias), {
                     set: { managerIds: JSON.stringify(updated) },
                     where: { _id: { _eq: entity._id } }
-                })
-            );
+                }
+            ));
         }
 
         addToMutationList(alias => updateQl(
             createGraphType('users', '_id')(alias), {
                 set: { divisionId: null, regionId: null, areaId: null, designatedBranchId: null },
                 where: { _id: { _eq: userId } }
-            })
-        );
+            }
+        ));
     }
 
     for (const userId of addedIds) {
         const records = await graph.query(
             queryQl(
-                createGraphType(entityTable, `_id managerIds`)(alias('findAdd')),
+                createGraphType(entityTable, `_id managerIds`)(entityTable),
                 { where: { managerIds: { _like: `%${userId}%` } } }
             )
         ).then(r => r.data[entityTable] ?? []);
 
-        for (const entity of entityRecords) {
+        for (const entity of records) {
             const updated = parseIds(entity.managerIds).filter(id => id !== userId);
-            mutations.push(
-                updateQl(createGraphType(entityTable, '_id')(alias('addRm')), {
+            addToMutationList(alias => updateQl(
+                createGraphType(entityTable, '_id')(alias), {
                     set: { managerIds: JSON.stringify(updated) },
                     where: { _id: { _eq: entity._id } }
-                })
-            );
+                }
+            ));
         }
 
         addToMutationList(alias => updateQl(
@@ -115,52 +119,27 @@ export async function syncManagerLinks(entityTable, removedIds, addedIds, hierar
                     designatedBranchId: null,
                 },
                 where: { _id: { _eq: userId } }
-            })
-        );
-    }
-
-    if (mutations.length > 0) {
-        await graph.mutation(...mutations);
+            }
+        ));
     }
 }
 
-// ── Branch linking helpers ────────────────────────────────────────────────────
-
 /**
- * When branches are linked to an area:
- *   - Update the branch's areaId, regionId, divisionId
- *   - Update all users under that branch (by designatedBranchId)
- *
- * When branches are unlinked from an area:
- *   - Null out areaId on the branch (regionId/divisionId left as-is —
- *     they'll be corrected when the branch is reassigned)
- *   - Leave user fields alone (they'll be corrected on reassignment)
+ * Collects branch link mutations into addToMutationList.
  */
-export async function syncBranchLinks(
-    newBranchIds,
-    oldBranchIds,
-    areaId,
-    regionId,
-    divisionId
-) {
+export function syncBranchLinks(newBranchIds, oldBranchIds, areaId, regionId, divisionId, addToMutationList) {
     const removed = oldBranchIds.filter(id => !newBranchIds.includes(id));
     const added   = newBranchIds.filter(id => !oldBranchIds.includes(id));
 
-    const mutations = [];
-    let aliasCounter = 0;
-    const alias = (prefix) => `${prefix}_${aliasCounter++}`;
-
-    // Unlink removed branches — null areaId only
     if (removed.length > 0) {
-        mutations.push(
-            updateQl(branchType(alias('rmBranch')), {
+        addToMutationList(alias => updateQl(
+            createGraphType('branches', '_id')(alias), {
                 set: { areaId: null },
                 where: { _id: { _in: removed } }
-            })
-        );
+            }
+        ));
     }
 
-    // Link added branches — stamp all three IDs
     if (added.length > 0) {
         addToMutationList(alias => updateQl(
             createGraphType('branches', '_id')(alias), {
@@ -172,12 +151,8 @@ export async function syncBranchLinks(
             createGraphType('users', '_id')(alias), {
                 set: { areaId: nullify(areaId), regionId: nullify(regionId), divisionId: nullify(divisionId) },
                 where: { designatedBranchId: { _in: added } }
-            })
-        );
-    }
-
-    if (mutations.length > 0) {
-        await graph.mutation(...mutations);
+            }
+        ));
     }
 }
 
@@ -204,10 +179,4 @@ export function cascadeAreaChange(areaId, regionId, divisionId, addToMutationLis
     }));
 }
 
-/**
- * When a region is linked to a new division, cascade that divisionId
- * down through the region's full subtree.
- */
-export async function cascadeRegionToDivision(regionId, divisionId) {
-    await cascadeRegionDivisionChange(regionId, divisionId);
-}
+export const cascadeRegionToDivision = cascadeRegionDivisionChange;
