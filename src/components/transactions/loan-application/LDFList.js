@@ -120,10 +120,35 @@ const LDFListPage = React.forwardRef((props, ref) => {
             setSummaryList(summary);
         }
     }, [props, currentBranch]);
+
+    // Column widths as % of the 75% left panel — must sum to 100
+    // NO(2) SL(2) FullName(11) DOB(5) Group(5) Cycle(3) Principal(5) Release(5) ClientSig(9) LoanApp(4) BM(8) Cashier(8) Time(4) DesigLO(8) CI(8) = ~97 → padded to 100
+    const colWidths = {
+        no:          '2%',
+        sl:          '2%',
+        fullName:    '11%',
+        dob:         '5%',
+        group:       '5%',
+        cycle:       '3%',
+        principal:   '5%',
+        release:     '5%',
+        clientSig:   '9%',
+        loanApp:     '4%',
+        bm:          '9%',
+        cashier:     '9%',
+        time:        '4%',
+        desigLO:     '9%',
+        ci:          '9%',
+    };
+
     return (
-        <div ref={ref} className='media-to-print w-full mt-4 p-8' style={{ fontSize: '9px' }}>
+        <div ref={ref} className='media-to-print w-full mt-4 p-4' style={{ fontSize: '8px' }}>
             <style>{hideComponent()}</style>
             <style>{getPageMargins()}</style>
+            <style>{`
+                .ldf-table th, .ldf-table td { padding: 2px 3px !important; }
+                .ldf-table { table-layout: fixed; border-collapse: collapse; }
+            `}</style>
             <style type="text/css" media="print">{"\
                 @page {\ size: landscape;\ }\
             "}</style>
@@ -138,40 +163,61 @@ const LDFListPage = React.forwardRef((props, ref) => {
                     </div>
                     <Image alt="ambercashph logo" src={logo} className="overflow-hidden mr-4" width='80' height='60' />
                 </div>
-                <div className='flex flex-row ml-2'>
-                    <span>Branch: </span>
-                    <span className='underline font-bold ml-2'>{ currentBranch.name }</span>
+                {/* Branch left (75%) and Date right (25%) — same row, outside tables */}
+                <div className='flex flex-row' style={{ width: '100%' }}>
+                    <div style={{ width: '75%' }} className='flex flex-row ml-2 items-center'>
+                        <span>Branch: </span>
+                        <span className='underline font-bold ml-2'>{ currentBranch.name }</span>
+                    </div>
+                    <div style={{ width: '25%' }} className='flex flex-row justify-end items-center pr-1'>
+                        <span>Date:&nbsp;</span>
+                        <span className='inline-block border-b border-gray-900' style={{ minWidth: '80px' }}>&nbsp;</span>
+                    </div>
                 </div>
                 <div className='flex flex-row justify-center'>
-                    <div className='flex flex-col p-2' style={{ width: '75%' }}>
+                    {/* LEFT PANEL: main table at 75% */}
+                    <div className='flex flex-col p-1' style={{ width: '75%' }}>
                         <div className='w-full'>
                             <div className='flex flex-col justify-between w-full'>
-                                <table className='table-auto w-full border-collapse'>
+                                <table className='ldf-table w-full'>
+                                    <colgroup>
+                                        <col style={{ width: colWidths.no }} />
+                                        <col style={{ width: colWidths.sl }} />
+                                        <col style={{ width: colWidths.fullName }} />
+                                        <col style={{ width: colWidths.dob }} />
+                                        <col style={{ width: colWidths.group }} />
+                                        <col style={{ width: colWidths.cycle }} />
+                                        <col style={{ width: colWidths.principal }} />
+                                        <col style={{ width: colWidths.release }} />
+                                        <col style={{ width: colWidths.clientSig }} />
+                                        <col style={{ width: colWidths.loanApp }} />
+                                        <col style={{ width: colWidths.bm }} />
+                                        <col style={{ width: colWidths.cashier }} />
+                                        <col style={{ width: colWidths.time }} />
+                                        <col style={{ width: colWidths.desigLO }} />
+                                        <col style={{ width: colWidths.ci }} />
+                                    </colgroup>
                                     <thead>
                                         <tr>
-                                            <th className='border border-gray-900 w-8' rowSpan={2}>NO</th>
-                                            <th className='border border-gray-900 w-8' rowSpan={2}>SL #</th>
-                                            <th className='border border-gray-900 w-40' rowSpan={2}>Full Name of Clients</th>
-                                            <th className='border border-gray-900 w-16' rowSpan={2}>Date of Birth</th>
-                                            <th className='border border-gray-900 w-12' rowSpan={2}>Group Name</th>
-                                            <th className='border border-gray-900 w-10' rowSpan={2}>Loan Cycle</th>
-                                            {/* <th className='border border-gray-900 w-12' rowSpan={2}>Business Type</th> */}
-                                            {/* CHANGE: removed Date column, colSpan 3→2 */}
-                                            <th className='border border-gray-900 w-12' colSpan={2}>Loan Disbursement</th>
-                                            <th className='border border-gray-900 w-52' rowSpan={2}>Client's Signature Over Printed Name</th>
-                                            <th className='border border-gray-900 w-12' rowSpan={2}>Loan App. #</th>
-                                            {/* CHANGE: label "Signatures"→"SIGNATURE", colSpan 3→4, removed "Designated LO" rowSpan col */}
-                                            <th className='border border-gray-900' colSpan={4}>SIGNATURE</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>NO</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>SL #</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Full Name of Clients</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Date of Birth</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Group Name</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Loan Cycle</th>
+                                            <th className='border border-gray-900 text-center' colSpan={2}>Loan Disbursement</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Client&apos;s Signature Over Printed Name</th>
+                                            <th className='border border-gray-900 text-center' rowSpan={2}>Loan App. #</th>
+                                            <th className='border border-gray-900 text-center' colSpan={5}>SIGNATURE</th>
                                         </tr>
                                         <tr>
-                                            {/* CHANGE: removed Date <th> */}
-                                            <th className='border border-gray-900 w-15'>Principal Amount</th>
-                                            <th className='border border-gray-900 w-15'>Loan w/ Service Charge</th>
-                                            {/* CHANGE: replaced LO / Person in-charge in CI / Approved by / Designated LO with new 4 columns */}
-                                            <th className='border border-gray-900 w-32'>Name of BM & UP Approved (Signature Over Printed Name)</th>
-                                            <th className='border border-gray-900 w-32'>Name of Cashier In Charge (Signature Over Printed Name)</th>
-                                            <th className='border border-gray-900 w-12'>Time</th>
-                                            <th className='border border-gray-900 w-32'>Designated Loan Officer (Signature Over Printed Name)</th>
+                                            <th className='border border-gray-900 text-center'>Principal Amount</th>
+                                            <th className='border border-gray-900 text-center'>Loan w/ Service Charge</th>
+                                            <th className='border border-gray-900 text-center'>BM &amp; Up Approved (Sig. Over Printed Name)</th>
+                                            <th className='border border-gray-900 text-center'>Cashier In Charge (Sig. Over Printed Name)</th>
+                                            <th className='border border-gray-900 text-center'>Time</th>
+                                            <th className='border border-gray-900 text-center'>Designated LO (Sig. Over Printed Name)</th>
+                                            <th className='border border-gray-900 text-center'>Person In-charge in C.I (Sig. Over Printed Name)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -184,18 +230,15 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                                     <td className='border border-gray-900 text-center'>{ loan.dob }</td>
                                                     <td className='border border-gray-900'>{ loan.groupName }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.loanCycle }</td>
-                                                    {/* <td className='border border-gray-900'>{ loan.businessType }</td> */}
-                                                    {/* CHANGE: removed loanDisbursementDate <td> */}
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementPrincipalAmount ? formatPricePhp(loan.loanDisbursementPrincipalAmount) : '' }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementAmountRelease ? formatPricePhp(loan.loanDisbursementAmountRelease) : '' }</td>
-                                                    {/* CHANGE: Client sig + Loan App# empty cells */}
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
-                                                    {/* CHANGE: 4 new signature cells — BM, Cashier, Time, Designated LO */}
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan.designatedOfficer }</td>
+                                                    <td className='border border-gray-900'></td>
                                                 </tr>
                                             )
                                         }) }
@@ -210,11 +253,12 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     <span>* CODE for Loan Application Number: (LO1-MONTH-provided release #) * e.g. (LO1-06-001)</span>
                                 </div>
                                 <span className='font-bold text-xs'>Note:</span>
-                                <span>You can encode information in white cells only otherwise are formulated and can't be encoded!!</span>
+                                <span>You can encode information in white cells only otherwise are formulated and can&apos;t be encoded!!</span>
                             </div>
                         </div>
                     </div>
-                    <div className='flex flex-col p-2' style={{ width: '25%' }}>
+                    {/* RIGHT PANEL: summary at 25% — Date removed from here */}
+                    <div className='flex flex-col p-1' style={{ width: '25%' }}>
                         <div className='w-full flex flex-col'>
                             <div className='flex flex-col justify-between w-full'>
                                 <table className='table-auto w-full'>
@@ -223,7 +267,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                             <th className='border border-gray-900 w-8' colSpan={4}>Summary of Release</th>
                                         </tr>
                                         <tr>
-                                            <th className='border border-gray-900 w-12'>LO's</th>
+                                            <th className='border border-gray-900 w-12'>LO&apos;s</th>
                                             <th className='border border-gray-900 w-12'>No Rel.</th>
                                             <th className='border border-gray-900 w-15'>Amount Principal</th>
                                             <th className='border border-gray-900 w-15'>Loan w/ Service Charge</th>
@@ -247,7 +291,6 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     </tbody>
                                 </table>
                             </div>
-                            {/* CHANGE: replaced old 2-col signature table with new 4-signature layout + Reminders */}
                             <div className='flex flex-col justify-between w-full mt-1'>
                                 <table className='table-auto w-full'>
                                     <tbody>

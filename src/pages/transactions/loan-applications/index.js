@@ -2028,6 +2028,7 @@ const LoanApplicationPage = () => {
                                                 <ReactToPrint
                                                     trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-28'/> }
                                                     content={() => ndsFormRef.current }
+                                                    documentTitle={`AC_LDF_${moment(currentDate).format('YYYY-MM-DD_HH-mm-ss')}`}
                                                 />
                                             </div>
                                         )}
