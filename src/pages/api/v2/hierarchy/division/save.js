@@ -18,8 +18,8 @@ async function save(req, res) {
 
     const _id = generateUUID();
 
-    // 1. Insert division — only real columns
-    addToMutationList(alias => insertQl(createGraphType('divisions', `_id`)(alias), {
+    // 1. Insert division — regionIds is NOT a column, omit it
+    addToMutationList(alias => insertQl(createGraphType('divisions', '_id')(alias), {
         objects: [{
             _id,
             name,
@@ -44,11 +44,14 @@ async function save(req, res) {
         await syncManagerLinks('divisions', [], managerIds, {
             divisionId: _id, regionId: null, areaId: null
         }, addToMutationList);
+
+        addToMutationList(alias => updateQl(createGraphType('divisions', '_id')(alias), {
+            set: { managerIds: JSON.stringify(managerIds) },
+            where: { _id: { _eq: _id } }
+        }));
     }
 
-    if (mutationList.length > 0) {
-        await graph.mutation(...mutationList);
-    }
+    await graph.mutation(...mutationList);
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')

@@ -1,6 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/pages/api/v2/hierarchy/region/save.js
-// ─────────────────────────────────────────────────────────────────────────────
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
@@ -21,7 +18,7 @@ async function save(req, res) {
 
     const _id = generateUUID();
 
-    // 1. Insert region — only real columns (no areaIds column)
+    // 1. Insert region — areaIds is NOT a column, omit it
     addToMutationList(alias => insertQl(createGraphType('regions', '_id')(alias), {
         objects: [{
             _id,
@@ -48,11 +45,14 @@ async function save(req, res) {
         await syncManagerLinks('regions', [], managerIds, {
             divisionId: nullify(divisionId), regionId: _id, areaId: null
         }, addToMutationList);
+
+        addToMutationList(alias => updateQl(createGraphType('regions', '_id')(alias), {
+            set: { managerIds: JSON.stringify(managerIds) },
+            where: { _id: { _eq: _id } }
+        }));
     }
 
-    if (mutationList.length > 0) {
-        await graph.mutation(...mutationList);
-    }
+    await graph.mutation(...mutationList);
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
