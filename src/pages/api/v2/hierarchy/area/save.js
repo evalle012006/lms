@@ -13,6 +13,9 @@ export default apiHandler({ post: save });
 async function save(req, res) {
     const { name, regionId, divisionId, managerIds = [], branchIds = [] } = req.body;
 
+    const mutationList = [];
+    const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
+
     const _id = generateUUID();
 
     // 1. Insert area — branchIds is NOT a column, omit it
@@ -29,7 +32,7 @@ async function save(req, res) {
 
     // 2. Stamp areaId/regionId/divisionId on linked branches + users
     if (branchIds.length > 0) {
-        await syncBranchLinks(branchIds, [], _id, nullify(regionId), nullify(divisionId));
+        syncBranchLinks(branchIds, [], _id, nullify(regionId), nullify(divisionId), addToMutationList);
     }
 
     // 3. Assign managers — reads happen inside, writes queued to batch

@@ -13,6 +13,9 @@ export default apiHandler({ post: save });
 async function save(req, res) {
     const { name, managerIds = [], regionIds = [] } = req.body;
 
+    const mutationList = [];
+    const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
+
     const _id = generateUUID();
 
     // 1. Insert division — regionIds is NOT a column, omit it
@@ -32,7 +35,7 @@ async function save(req, res) {
             where: { _id: { _in: regionIds } }
         }));
         for (const regionId of regionIds) {
-            await cascadeRegionToDivision(regionId, _id);
+            cascadeRegionToDivision(regionId, _id, addToMutationList);
         }
     }
 

@@ -12,19 +12,12 @@ const graph = new GraphProvider();
 export default apiHandler({ post: update });
 
 async function update(req, res) {
-    const {
-        _id,
-        name,
-        regionId,
-        divisionId,
-        managerIds: newManagerIds = [],
-        branchIds:  newBranchIds  = []
-    } = req.body;
+    const { _id, name, regionId, divisionId, managerIds: newManagerIds = [], branchIds: newBranchIds = [] } = req.body;
 
     // ── Read phase ─────────────────────────────────────────────────────────────
     // areaType() fetches: _id name managerIds regionId divisionId branches { _id }
     const [current] = await graph.query(
-        queryQl(areaType('get'), { where: { _id: { _eq: _id } } })
+        queryQl(areaType(), { where: { _id: { _eq: _id } } })
     ).then(r => r.data.areas ?? []);
 
     if (!current) {
@@ -39,20 +32,16 @@ async function update(req, res) {
     const oldRegionId   = current.regionId;
     const oldDivisionId = current.divisionId;
 
-    // ── 2. Manager diff ───────────────────────────────────────────────────────
+    // ── Build mutation batch ──────────────────────────────────────────────────
+    const mutationList = [];
+    const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
+
+    // Manager diff
     const { removed: removedManagers, added: addedManagers } = diffManagerIds(oldManagerIds, newManagerIds);
-    await syncManagerLinks('areas', removedManagers, addedManagers, {
-        divisionId: nullify(divisionId),
-        regionId:   nullify(regionId),
-        areaId:     _id
-    });
-
-    // ── 3. regionId or divisionId changed — cascade down ─────────────────────
-    const regionChanged   = nullify(regionId)   !== nullify(oldRegionId);
-    const divisionChanged = nullify(divisionId) !== nullify(oldDivisionId);
-
-    if (regionChanged || divisionChanged) {
-        await cascadeAreaChange(_id, nullify(regionId), nullify(divisionId));
+    if (removedManagers.length || addedManagers.length) {
+        await syncManagerLinks('areas', removedManagers, addedManagers, {
+            divisionId: nullify(divisionId), regionId: nullify(regionId), areaId: _id
+        }, addToMutationList);
     }
 
     // regionId or divisionId changed — cascade down

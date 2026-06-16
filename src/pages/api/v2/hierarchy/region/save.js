@@ -13,6 +13,9 @@ export default apiHandler({ post: save });
 async function save(req, res) {
     const { name, divisionId, managerIds = [], areaIds = [] } = req.body;
 
+    const mutationList = [];
+    const addToMutationList = (fn) => mutationList.push(fn(`bulk_${mutationList.length}`));
+
     const _id = generateUUID();
 
     // 1. Insert region — areaIds is NOT a column, omit it
@@ -28,17 +31,12 @@ async function save(req, res) {
 
     // 2. Stamp regionId + divisionId on linked areas and cascade down
     if (areaIds.length > 0) {
-        await graph.mutation(
-            updateQl(areaType('linkAreas'), {
-                set: {
-                    regionId:   _id,
-                    divisionId: nullify(divisionId)
-                },
-                where: { _id: { _in: areaIds } }
-            })
-        );
+        addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
+            set: { regionId: _id, divisionId: nullify(divisionId) },
+            where: { _id: { _in: areaIds } }
+        }));
         for (const areaId of areaIds) {
-            await cascadeAreaChange(areaId, _id, divisionId);
+            cascadeAreaChange(areaId, _id, nullify(divisionId), addToMutationList);
         }
     }
 
