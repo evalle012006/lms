@@ -21,8 +21,9 @@ import {
 import {
     CLIENT_FIELDS, TEMP_LOAN_APP_FIELDS,
 } from '@/lib/graph.fields';
-import { logAudit }  from '@/lib/audit-logger';
+
 import moment        from 'moment';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 

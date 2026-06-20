@@ -13,8 +13,9 @@ import { apiHandler }    from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
-import { logAudit }  from '@/lib/audit-logger';
+
 import moment        from 'moment';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 
