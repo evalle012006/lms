@@ -4067,7 +4067,9 @@ const CashCollectionDetailsPage = () => {
                                         const isHighlighted = highlightedSlotNo === cc.slotNo;
                                         const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
 
-                                        const allowCSFCollection = cc.groupLeader && cc.mcbu >= transactionSettings.minDailyCsfCollectionGL;
+                                        const allowCSFCollection = cc.groupLeader && 
+                                            ((cc.mcbu >= transactionSettings.minDailyMcbuWithdrawalGL && cc.loanCycle == 1) 
+                                                || (cc.mcbu >= 2000 && cc.loanCycle > 1));
 
                                         return (
                                             <tr key={index} 
