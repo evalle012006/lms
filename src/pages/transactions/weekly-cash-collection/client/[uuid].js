@@ -4100,6 +4100,8 @@ const CashCollectionDetailsPage = () => {
 
                                         const isHighlighted = highlightedSlotNo === cc.slotNo;
                                         const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
+
+                                        const allowCSFCollection = cc.groupLeader && cc.mcbu >= transactionSettings.minWeeklyCsfCollectionGL;
                                         
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
@@ -4221,7 +4223,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                  <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode && allowCSFCollection
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (

@@ -4067,6 +4067,8 @@ const CashCollectionDetailsPage = () => {
                                         const isHighlighted = highlightedSlotNo === cc.slotNo;
                                         const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
 
+                                        const allowCSFCollection = cc.groupLeader && cc.mcbu >= transactionSettings.minDailyCsfCollectionGL;
+
                                         return (
                                             <tr key={index} 
                                                 data-slot-no={cc.slotNo}
@@ -4193,7 +4195,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc?.groupLeader && editMode
+                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && allowCSFCollection && editMode
                                                         && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
                                                         <React.Fragment>
