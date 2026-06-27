@@ -54,7 +54,7 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         slotNo,
         ldfApproved,
         // FIX: link to previous loan for reloan print
-        prevLoanId:     loan?.prevLoanId || application.existingLoanId || null,
+        prevLoanId:                loan?.prevLoanId                || application.existingLoanId || null,
         prevLoanFullPaymentAmount: loan?.prevLoanFullPaymentAmount || null,
 
         // ── Guarantor ─────────────────────────────────────────────────
@@ -64,7 +64,7 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         guarantorRelation:     application.guarantorRelationship || '',
         guarantorContactNo:    application.guarantorContactNumber || '',
         guarantorAddress:      application.guarantorAddress || application.address || '',
-        // FIX: new guarantor fields — pre-filled from LAF, finalized during AddLoan
+        // FIX: extended guarantor fields — captured in PublicLAFForm Loan step
         guarantorBirthDate:    application.guarantorBirthDate    || '',
         guarantorAge:          application.guarantorBirthDate
                                    ? String(moment().diff(moment(application.guarantorBirthDate), 'years'))
@@ -87,32 +87,29 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
             middleName:   application.middleName || '',
             fullName:     `${application.firstName || ''} ${application.middleName || ''} ${application.lastName || ''}`.trim(),
             birthdate:    application.birthdate  || '',
-            // FIX 2: age derived from birthdate
             age,
-            // civilStatus, business, yearsOfStay, dailyIncome — not yet in LAF form
-            // Leave blank — these will be populated once added to PublicLAFForm
-            civilStatus:         application.civilStatus        || '',
-            business:            application.business           || '',
-            yearsOfStay:         application.yearsOfStay        || '',
-            dailyIncome:         application.dailyIncome        || '',
-            contactNumber:       application.contactNumber      || '',
-            address:             application.address            || '',
-            addressStreetNo:     application.addressStreetNo    || '',
+            civilStatus:             application.civilStatus             || '',
+            business:                application.business                || '',
+            yearsOfStay:             application.yearsOfStay             || '',
+            dailyIncome:             application.dailyIncome             || '',
+            contactNumber:           application.contactNumber           || '',
+            address:                 application.address                 || '',
+            addressStreetNo:         application.addressStreetNo         || '',
             addressBarangayDistrict: application.addressBarangayDistrict || '',
             addressMunicipalityCity: application.addressMunicipalityCity || '',
-            addressProvince:     application.addressProvince    || '',
-            addressZipCode:      application.addressZipCode     || '',
-            landmark:            application.landmark           || '',
-            distanceFromBranch:  application.distanceFromBranch || '',
-            governmentIdType:    application.governmentIdType   || '',
-            governmentIdNumber:  application.governmentIdNumber || '',
+            addressProvince:         application.addressProvince         || '',
+            addressZipCode:          application.addressZipCode          || '',
+            landmark:                application.landmark                || '',
+            distanceFromBranch:      application.distanceFromBranch      || '',
+            governmentIdType:        application.governmentIdType        || '',
+            governmentIdNumber:      application.governmentIdNumber      || '',
             // FIX 3: profile for client photo display
-            profile:             photoUrl,
-            ciName:              application.ciName || '',
-            clientType:          application.clientType || 'prospect',
-            biometricCredentialId: application.biometricCredentialId || null,
-            biometricDeviceName:   application.biometricDeviceName   || null,
-            biometricRegisteredAt: application.biometricRegisteredAt || null,
+            profile:                 photoUrl,
+            ciName:                  application.ciName || '',
+            clientType:              application.clientType || 'prospect',
+            biometricCredentialId:   application.biometricCredentialId || null,
+            biometricDeviceName:     application.biometricDeviceName   || null,
+            biometricRegisteredAt:   application.biometricRegisteredAt || null,
         },
 
         // ── Branch ────────────────────────────────────────────────────
@@ -123,7 +120,11 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         }],
 
         // ── Group / LO ───────────────────────────────────────────────
-        group: { name: application.groupName || '' },
+        // FIX: groupName now comes from the API enrichment in applications/list.js
+        // which batch-fetches groups by groupId and adds groupName to the response.
+        // Previously groupName was always '' because temporaryLoanApplications
+        // doesn't store a groupName column — it only has groupId.
+        group:          { name: application.groupName || '' },
         groupName:      application.groupName || '',
         loId:           application.loId      || '',
         loanOfficerName: loName,
@@ -134,8 +135,8 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         },
 
         // ── Submission info ───────────────────────────────────────────
-        isOffline:   application.isOffline   || false,
-        submittedAt: application.submittedAt || null,
+        isOffline:        application.isOffline   || false,
+        submittedAt:      application.submittedAt || null,
         insertedDateTime: application.submittedAt || null,
     };
 

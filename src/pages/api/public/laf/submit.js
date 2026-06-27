@@ -29,6 +29,15 @@ const TEMP_LAF_CHECK_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status
 `)('temporaryLoanApplications');
 
+// FIX: used for server-side prospect name duplicate check against both tables
+const CLIENT_NAME_TYPE = createGraphType('client', `
+    _id firstName lastName middleName status
+`)('clients');
+
+const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
+    _id firstName lastName middleName status ciReferenceCode
+`)('temporaryLoanApplications');
+
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 
 export default publicApiHandler({ post: submitLAF });
@@ -42,6 +51,11 @@ async function submitLAF(req, res) {
         loanAmount, loanPurpose,
         guarantorFirstName, guarantorLastName,
         guarantorRelationship, guarantorContactNumber,
+        // FIX: new guarantor extended fields — captured in PublicLAFForm Loan step
+        guarantorBirthDate,
+        guarantorCivilStatus,
+        guarantorBusiness,
+        guarantorDailyIncome,
         lafPhotoKey,
         // ── Address extras ────────────────────────────────────────────────
         landmark,
@@ -62,23 +76,27 @@ async function submitLAF(req, res) {
         existingClientId,
         existingLoanId,
         detailFlags,
-        // FIX: clientChanges was missing from destructuring — now added
         clientChanges,
-        // Duplicate flagging
-        isDuplicateFlagged,
-        duplicateCandidateIds,
-        isBalikUnmatched,
         // Balik history
         oldGroupId,
         oldLoId,
+        // Face liveness
         faceTemplate,
         faceEnrolledAt,
         livenessScore,
+        // Borrower personal info
         civilStatus,
         yearsOfStay,
         business,
         dailyIncome,
+        // Balik
+        isBalikUnmatched,
     } = req.body;
+
+    // FIX: isDuplicateFlagged and duplicateCandidateIds extracted as let
+    // so server can override client-sent values after running its own check
+    let isDuplicateFlagged    = req.body.isDuplicateFlagged    || false;
+    let duplicateCandidateIds = req.body.duplicateCandidateIds || [];
 
     // Basic presence check
     if (!groupId || !qrToken) {
@@ -110,20 +128,20 @@ async function submitLAF(req, res) {
         });
     }
 
-     // ── Time restriction check — enforce server-side too ─────────────────
+    // ── Time restriction check — enforce server-side too ─────────────────
     const [sysSettings] = await graph.query(
         queryQl(
             createGraphType('settings', 'qrAllowedStartTime qrAllowedEndTime')('settings'),
             { limit: 1 }
         )
     ).then(r => r.data?.settings ?? []);
- 
-    const manilaTime   = moment().utcOffset('+08:00');
-    const startTime    = sysSettings?.qrAllowedStartTime || '06:00';
-    const endTime      = sysSettings?.qrAllowedEndTime   || '22:00';
-    const [sH, sM]     = startTime.split(':').map(Number);
-    const [eH, eM]     = endTime.split(':').map(Number);
-    const nowMins      = manilaTime.hours() * 60 + manilaTime.minutes();
+
+    const manilaTime = moment().utcOffset('+08:00');
+    const startTime  = sysSettings?.qrAllowedStartTime || '06:00';
+    const endTime    = sysSettings?.qrAllowedEndTime   || '22:00';
+    const [sH, sM]   = startTime.split(':').map(Number);
+    const [eH, eM]   = endTime.split(':').map(Number);
+    const nowMins    = manilaTime.hours() * 60 + manilaTime.minutes();
     if (nowMins < (sH * 60 + sM) || nowMins >= (eH * 60 + eM)) {
         return res.status(200).json({
             success: false,
@@ -131,8 +149,6 @@ async function submitLAF(req, res) {
         });
     }
 
-    // branchId comes from req.body — validate it matches group
-    // loId resolved from group record
     const resolvedLoId = group.loanOfficerId;
 
     if (!lafPhotoKey) {
@@ -143,14 +159,11 @@ async function submitLAF(req, res) {
     }
 
     // ── Server-side Government ID uniqueness check ──────────────────────
-    // Run for ALL client types that capture an ID — existingClientId excludes self
-    // FIX: removed client name from error messages — public endpoint must not leak PII
     if (governmentIdType && governmentIdNumber?.trim()) {
         const cleanId   = governmentIdNumber.trim();
         const excludeId = existingClientId || '__none__';
 
         const [dupeClients, dupeLAFs] = await Promise.all([
-            // Check promoted clients
             graph.query(
                 queryQl(CLIENT_ID_TYPE, {
                     where: {
@@ -163,21 +176,19 @@ async function submitLAF(req, res) {
                 })
             ).then(r => r.data?.clients ?? []),
 
-            // Check active LAF pipeline
             graph.query(
                 queryQl(TEMP_ID_TYPE, {
                     where: {
-                        governmentIdType:   { _eq:   governmentIdType      },
-                        governmentIdNumber: { _ilike: cleanId               },
-                        status:             { _in:   ACTIVE_LAF_STATUSES   },
-                        existingClientId:   { _neq:  excludeId             },
+                        governmentIdType:   { _eq:   governmentIdType    },
+                        governmentIdNumber: { _ilike: cleanId             },
+                        status:             { _in:   ACTIVE_LAF_STATUSES },
+                        existingClientId:   { _neq:  excludeId           },
                     },
                     limit: 1,
                 })
             ).then(r => r.data?.temporaryLoanApplications ?? []),
         ]);
 
-        // FIX: generic messages — no names, no CI reference codes exposed
         if (dupeClients.length > 0) {
             return res.status(200).json({
                 success: false,
@@ -195,7 +206,7 @@ async function submitLAF(req, res) {
         }
     }
 
-    // ── Check for existing pending CI application (reloan/pending only) ────────
+    // ── Check for existing pending CI application (reloan/pending/balik) ─
     if ((clientType === 'reloan' || clientType === 'pending' || clientType === 'balik') && existingClientId) {
         const pendingApps = await graph.query(
             queryQl(TEMP_LAF_CHECK_TYPE, {
@@ -216,10 +227,73 @@ async function submitLAF(req, res) {
         }
     }
 
+    // ── Server-side name duplicate check for prospects ─────────────────────
+    // Two distinct cases handled differently:
+    //
+    // CASE 1 — Same name found in `clients` (promoted client):
+    //   → isDuplicateFlagged = true, status = pending_validation
+    //   → Admin must review in CI investigation before the app can proceed
+    //   → duplicateCandidateIds contains the matching client IDs
+    //
+    // CASE 2 — Same name found in `temporaryLoanApplications` (pending LAF):
+    //   → Hard block — return success: false immediately
+    //   → Same pattern as the reloan/pending/balik existingClientId check above
+    //   → Do NOT flag as duplicate — it's just a re-submission, not a real client
+    if (clientType === 'prospect') {
+        const firstUpper = firstName?.trim().toUpperCase();
+        const lastUpper  = lastName?.trim().toUpperCase();
+
+        if (firstUpper && lastUpper) {
+            const [nameMatchClients, nameMatchLAFs] = await Promise.all([
+                // CASE 1: check promoted clients
+                graph.query(
+                    queryQl(CLIENT_NAME_TYPE, {
+                        where: {
+                            firstName: { _eq: firstUpper },
+                            lastName:  { _eq: lastUpper  },
+                            status:    { _nin: ['archived', 'merged'] },
+                        },
+                        limit: 5,
+                    })
+                ).then(r => r.data?.clients ?? []),
+
+                // CASE 2: check pending LAFs — block re-submission for same name
+                graph.query(
+                    queryQl(TEMP_NAME_TYPE, {
+                        where: {
+                            firstName: { _eq: firstUpper },
+                            lastName:  { _eq: lastUpper  },
+                            status:    { _in: ['pending', 'pending_validation', 'ci_approved'] },
+                        },
+                        limit: 1,
+                    })
+                ).then(r => r.data?.temporaryLoanApplications ?? []),
+            ]);
+
+            // CASE 2: pending LAF with same name → hard block
+            if (nameMatchLAFs.length > 0) {
+                const existing = nameMatchLAFs[0];
+                return res.status(200).json({
+                    success: false,
+                    message: `A loan application for this name is already pending processing ` +
+                        `(${existing.ciReferenceCode}). ` +
+                        `The previous application must be completed or declined before submitting a new one. ` +
+                        `If this is a different person, please inform your Loan Officer.`,
+                });
+            }
+
+            // CASE 1: promoted client with same name → flag for admin validation
+            if (nameMatchClients.length > 0) {
+                isDuplicateFlagged    = true;
+                duplicateCandidateIds = nameMatchClients.map(c => c._id);
+            }
+        }
+    }
+
     // ── Generate CI reference code ────────────────────────────────────────
-    const dateStr = moment().format('YYYYMMDD');
-    const suffix  = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const branchCode = group.branch?.code || branchId.slice(-4).toUpperCase();
+    const dateStr     = moment().format('YYYYMMDD');
+    const suffix      = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const branchCode  = group.branch?.code || branchId.slice(-4).toUpperCase();
     const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
 
     // ── Insert into temporaryLoanApplications ─────────────────────────────
@@ -230,7 +304,7 @@ async function submitLAF(req, res) {
                 ciReferenceCode,
                 branchId,
                 groupId: group._id,
-                loId: resolvedLoId,
+                loId:    resolvedLoId,
                 firstName:  firstName?.trim().toUpperCase(),
                 lastName:   lastName?.trim().toUpperCase(),
                 middleName: middleName?.trim().toUpperCase() || '',
@@ -251,52 +325,58 @@ async function submitLAF(req, res) {
                 guarantorLastName:      guarantorLastName?.trim().toUpperCase(),
                 guarantorRelationship,
                 guarantorContactNumber,
+                // FIX: new guarantor extended fields
+                guarantorBirthDate:    guarantorBirthDate    || null,
+                guarantorCivilStatus:  guarantorCivilStatus  || null,
+                guarantorBusiness:     guarantorBusiness     || null,
+                guarantorDailyIncome:  guarantorDailyIncome  || null,
                 lafPhotoKey,
                 status:      'pending',
                 dateAdded:   moment().format('YYYY-MM-DD'),
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
-                // ── Address extras ────────────────────────────────────────
-                landmark:              landmark              || null,
-                distanceFromBranch:    distanceFromBranch    || null,
-                // ── Biometric — captured during LAFBiometricStep ──────────
+                // Address extras
+                landmark:              landmark           || null,
+                distanceFromBranch:    distanceFromBranch || null,
+                // Biometric
                 biometricCredentialId: biometricCredentialId || null,
                 biometricPublicKey:    biometricPublicKey    || null,
                 biometricCounter:      biometricCounter      || 0,
                 biometricRegisteredAt: biometricRegisteredAt || null,
                 biometricDeviceName:   biometricDeviceName   || null,
                 // Government ID
-                governmentIdType:      governmentIdType      || null,
-                governmentIdNumber:    governmentIdNumber    || null,
-                governmentIdPhotoKey:  governmentIdPhotoKey  || null,
-                selfieWithIdPhotoKey:  selfieWithIdPhotoKey  || null,
+                governmentIdType:      governmentIdType     || null,
+                governmentIdNumber:    governmentIdNumber   || null,
+                governmentIdPhotoKey:  governmentIdPhotoKey || null,
+                selfieWithIdPhotoKey:  selfieWithIdPhotoKey || null,
                 // Client type metadata
-                clientType:            clientType            || 'prospect',
-                existingClientId:      existingClientId      || null,
-                existingLoanId:        existingLoanId        || null,
-                isOffline:             false,
-                // Balik history — previous assignment preserved
-                oldGroupId:            oldGroupId            || null,
-                oldLoId:               oldLoId               || null,
-                // Duplicate / Balik flagging
-                isDuplicateFlagged:    isDuplicateFlagged    || false,
-                duplicateCandidateIds: duplicateCandidateIds || [],
-                isBalikUnmatched:      isBalikUnmatched      || false,
-                // FIX: clientChanges was never saved — now persisted to DB
-                // Contains only fields the member explicitly changed in the Confirm step
-                clientChanges:         clientChanges && typeof clientChanges === 'object'
+                clientType:       clientType       || 'prospect',
+                existingClientId: existingClientId || null,
+                existingLoanId:   existingLoanId   || null,
+                isOffline:        false,
+                // Balik history
+                oldGroupId: oldGroupId || null,
+                oldLoId:    oldLoId    || null,
+                // FIX: isDuplicateFlagged and duplicateCandidateIds now use the
+                // server-computed values (overridden above if server found matches)
+                isDuplicateFlagged:    isDuplicateFlagged,
+                duplicateCandidateIds: duplicateCandidateIds,
+                isBalikUnmatched:      isBalikUnmatched || false,
+                // Client changes from Confirm step (reloan/pending/balik)
+                clientChanges: clientChanges && typeof clientChanges === 'object'
                     ? clientChanges
                     : {},
-                // FIX: detailFlags was destructured but never inserted
-                detailFlags:           Array.isArray(detailFlags) ? detailFlags : [],
+                detailFlags: Array.isArray(detailFlags) ? detailFlags : [],
+                // Face liveness
                 faceTemplate:   faceTemplate   || null,
                 faceEnrolledAt: faceEnrolledAt || null,
                 livenessScore:  livenessScore  != null ? livenessScore : null,
-                civilStatus:   civilStatus  || null,
-                yearsOfStay:   yearsOfStay  || null,
-                business:      business     || null,
-                dailyIncome:   dailyIncome  || null,
-                // If prospect has duplicates → requires admin validation before promote
+                // Borrower personal info
+                civilStatus:  civilStatus  || null,
+                yearsOfStay:  yearsOfStay  || null,
+                business:     business     || null,
+                dailyIncome:  dailyIncome  || null,
+                // FIX: if duplicate flagged → route to pending_validation for admin review
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]
         })
@@ -309,12 +389,12 @@ async function submitLAF(req, res) {
         });
     }
 
-    // Send SMS to applicant — non-blocking, never fails the request
+    // Send SMS — non-blocking, never fails the request
     sendLAFSubmittedSMS({
         contactNumber:   contactNumber,
         firstName:       firstName,
         ciReferenceCode: ciReferenceCode,
-        branchName:      group?.branch?.name || branchName || 'our branch',
+        branchName:      group?.branch?.name || 'our branch',
     }).catch(e => console.error('[LAF submit] SMS error:', e.message));
 
     res.status(200).json({

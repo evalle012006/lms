@@ -15,6 +15,7 @@ const graph = new GraphProvider();
 const TEMP_TYPE  = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE    = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const BRANCH_TYPE = createGraphType('branches', '_id name code')('branches');
+const GROUP_TYPE  = createGraphType('groups', '_id name')('groups');
 
 export default apiHandler({ get: listApplications });
 
@@ -73,12 +74,22 @@ async function listApplications(req, res) {
             })
         ).then(r => r.data?.temporaryLoanApplications ?? []),
 
-        // FIX: use aggregateQl (the correct utility for Hasura aggregate queries)
-        // aggregateQl generates: temporaryLoanApplications_aggregate(where: $where) { count }
+        // FIX: use aggregateQl with a dedicated alias so response key is predictable
+        // aggregateQl(type, fields, where) generates:
+        //   {alias}: {name}_aggregate(where: ...) { aggregate { count } }
+        // Since TEMP_TYPE alias = 'temporaryLoanApplications', response key = alias
+        // We pass a custom alias 'tempCount' to make the response key explicit
+        // aggregateQl(type, aggregateFields, where)
+        // GQL: tempCount: temporaryLoanApplications_aggregate(where: ...) { aggregate { count } }
+        // response key = type.alias = 'tempCount'
         graph.query(
-            aggregateQl(TEMP_TYPE, 'aggregate { count }', where)
+            aggregateQl(
+                createGraphType('temporaryLoanApplications', '_id')('tempCount'),
+                'aggregate { count }',
+                where
+            )
         ).then(r =>
-            r.data?.temporaryLoanApplications_aggregate?.aggregate?.count ?? null
+            r.data?.tempCount?.aggregate?.count ?? null
         ).catch(() => null),
     ]);
 
@@ -113,17 +124,22 @@ async function listApplications(req, res) {
         );
     }
 
-    // ── Batch fetch branch names ──────────────────────────────────────────
-    const allBranchIds = [
-        ...new Set(normalizedApps.map(a => a.branchId).filter(Boolean))
-    ];
+    // ── Batch fetch branch names + group names in parallel ───────────────
+    const allBranchIds = [...new Set(normalizedApps.map(a => a.branchId).filter(Boolean))];
+    const allGroupIds  = [...new Set(normalizedApps.map(a => a.groupId).filter(Boolean))];
     let branchMap = {};
-    if (allBranchIds.length > 0) {
-        const branches = await graph.query(
-            queryQl(BRANCH_TYPE, { where: { _id: { _in: allBranchIds } } })
-        ).then(r => r.data?.branches ?? []);
-        branchMap = Object.fromEntries(branches.map(b => [b._id, b]));
-    }
+    let groupMap  = {};
+    await Promise.all([
+        allBranchIds.length > 0
+            ? graph.query(queryQl(BRANCH_TYPE, { where: { _id: { _in: allBranchIds } } }))
+                .then(r => { branchMap = Object.fromEntries((r.data?.branches ?? []).map(b => [b._id, b])); })
+            : Promise.resolve(),
+        // FIX: groupName is not stored on the LAF record — fetch from groups table
+        allGroupIds.length > 0
+            ? graph.query(queryQl(GROUP_TYPE, { where: { _id: { _in: allGroupIds } } }))
+                .then(r => { groupMap = Object.fromEntries((r.data?.groups ?? []).map(g => [g._id, g])); })
+            : Promise.resolve(),
+    ]);
 
     // ── Enrich ───────────────────────────────────────────────────────────
     const enriched = normalizedApps.map(a => {
@@ -132,6 +148,7 @@ async function listApplications(req, res) {
             ...a,
             branchName:     branchMap[a.branchId]?.name || '—',
             branchCode:     branchMap[a.branchId]?.code || '—',
+            groupName:      groupMap[a.groupId]?.name    || '',
             picUserName:    ci?.picUserName    || null,
             decision:       ci?.decision       || null,
             investigatedAt: ci?.investigatedAt || null,

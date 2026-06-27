@@ -981,6 +981,10 @@ const PublicLAFForm = ({
         // loanAmount: '',
         loanPurpose: '',
         guarantorFirstName: '', guarantorLastName: '', guarantorRelationship: '', guarantorContactNumber: '',
+        guarantorBirthDate:   '',
+        guarantorCivilStatus: '',
+        guarantorBusiness:    '',
+        guarantorDailyIncome: '',
         ...preFilledValues,
     };
 
@@ -1556,7 +1560,7 @@ const PublicLAFForm = ({
 
                     {/* Formik — ALWAYS mounted so ref + values persist across steps */}
                     <div style={{ display: (step === si('Personal') || step === si('Address') || step === si('Loan')) ? 'block' : 'none' }}>
-                    <Formik initialValues={initialValues} validationSchema={yup.object()} onSubmit={handleSubmit} innerRef={formikRef} enableReinitialize={!!foundClient}>
+                        <Formik initialValues={initialValues} validationSchema={yup.object()} onSubmit={handleSubmit} innerRef={formikRef} enableReinitialize={!!foundClient}>
                             {({ values, touched, errors, handleChange, handleBlur, submitForm }) => (
                                 <form autoComplete="off">
                                     {step === si('Personal') && (
@@ -1672,6 +1676,46 @@ const PublicLAFForm = ({
                                                         <Field label="Last Name" required error={touched.guarantorLastName && errors.guarantorLastName}><Input name="guarantorLastName" value={values.guarantorLastName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.guarantorLastName && errors.guarantorLastName} /></Field>
                                                         <Field label="Relationship" required error={touched.guarantorRelationship && errors.guarantorRelationship}><Input name="guarantorRelationship" noUppercase value={values.guarantorRelationship} onChange={handleChange} onBlur={handleBlur} placeholder="Spouse, sibling..." error={touched.guarantorRelationship && errors.guarantorRelationship} /></Field>
                                                         <Field label="Contact Number" required error={touched.guarantorContactNumber && errors.guarantorContactNumber}><Input name="guarantorContactNumber" noUppercase value={values.guarantorContactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.guarantorContactNumber && errors.guarantorContactNumber} /></Field>
+                                                        <Field label="Guarantor Birthdate">
+                                                            <Input name="guarantorBirthDate" type="date"
+                                                                noUppercase
+                                                                value={values.guarantorBirthDate}
+                                                                onChange={handleChange} onBlur={handleBlur} />
+                                                        </Field>
+                                                        <Field label="Guarantor Civil Status">
+                                                            <select
+                                                                name="guarantorCivilStatus"
+                                                                value={values.guarantorCivilStatus}
+                                                                onChange={handleChange}
+                                                                onBlur={handleBlur}
+                                                                className="w-full px-3 py-2.5 border border-gray-300
+                                                                    rounded-lg text-sm focus:outline-none
+                                                                    focus:ring-2 focus:ring-blue-500">
+                                                                <option value="">Select...</option>
+                                                                <option value="Single">Single</option>
+                                                                <option value="Married">Married</option>
+                                                                <option value="Widowed">Widowed</option>
+                                                                <option value="Separated">Separated</option>
+                                                            </select>
+                                                        </Field>
+                                                        <Field label="Guarantor Business / Work">
+                                                            <Input name="guarantorBusiness" noUppercase
+                                                                value={values.guarantorBusiness}
+                                                                onChange={handleChange} onBlur={handleBlur}
+                                                                placeholder="e.g. Sari-sari store" />
+                                                        </Field>
+                                                        <Field label="Guarantor Daily Income (₱)">
+                                                            <input
+                                                                name="guarantorDailyIncome"
+                                                                value={values.guarantorDailyIncome}
+                                                                onChange={handleChange}
+                                                                onBlur={handleBlur}
+                                                                inputMode="numeric"
+                                                                placeholder="e.g. 500"
+                                                                className="w-full px-3 py-2.5 border border-gray-300
+                                                                    rounded-lg text-sm focus:outline-none
+                                                                    focus:ring-2 focus:ring-blue-500" />
+                                                        </Field>
                                                     </div>
                                                 </div>
                                             </div>

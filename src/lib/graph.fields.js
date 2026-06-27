@@ -795,6 +795,10 @@ export const TEMP_LOAN_APP_FIELDS = `
   guarantorLastName
   guarantorRelationship
   guarantorContactNumber
+  guarantorBirthDate
+  guarantorCivilStatus
+  guarantorBusiness
+  guarantorDailyIncome
   lafPhotoKey
   status
   promotedClientId
