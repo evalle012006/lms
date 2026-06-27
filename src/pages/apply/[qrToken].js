@@ -23,6 +23,8 @@ const SETTINGS_TYPE = createGraphType('settings', `
     requireClientBiometric
     requireGovernmentId
     requireSelfieWithId
+    qrAllowedStartTime
+    qrAllowedEndTime
 `)('settings');
 
 const USER_TYPE = createGraphType('users', `
