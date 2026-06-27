@@ -29,7 +29,7 @@ const TEMP_LAF_CHECK_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status
 `)('temporaryLoanApplications');
 
-// FIX: used for server-side prospect name duplicate check against both tables
+// Used for server-side prospect name duplicate check against both tables
 const CLIENT_NAME_TYPE = createGraphType('client', `
     _id firstName lastName middleName status
 `)('clients');
@@ -51,16 +51,16 @@ async function submitLAF(req, res) {
         loanAmount, loanPurpose,
         guarantorFirstName, guarantorLastName,
         guarantorRelationship, guarantorContactNumber,
-        // FIX: new guarantor extended fields — captured in PublicLAFForm Loan step
+        // Guarantor extended fields — captured in PublicLAFForm Loan step
         guarantorBirthDate,
         guarantorCivilStatus,
         guarantorBusiness,
         guarantorDailyIncome,
         lafPhotoKey,
-        // ── Address extras ────────────────────────────────────────────────
+        // Address extras
         landmark,
         distanceFromBranch,
-        // ── Biometric fields from LAFBiometricStep ────────────────────────
+        // Biometric fields from LAFBiometricStep
         biometricCredentialId,
         biometricPublicKey,
         biometricCounter,
@@ -93,10 +93,11 @@ async function submitLAF(req, res) {
         isBalikUnmatched,
     } = req.body;
 
-    // FIX: isDuplicateFlagged and duplicateCandidateIds extracted as let
-    // so server can override client-sent values after running its own check
-    let isDuplicateFlagged    = req.body.isDuplicateFlagged    || false;
-    let duplicateCandidateIds = req.body.duplicateCandidateIds || [];
+    // isDuplicateFlagged and duplicateCandidateIds extracted as `let`
+    // so server can override client-sent values after running its own name check.
+    // Client-sent values are NEVER trusted for prospects — server always re-derives.
+    let isDuplicateFlagged    = false; // always reset — server derives below
+    let duplicateCandidateIds = [];
 
     // Basic presence check
     if (!groupId || !qrToken) {
@@ -106,7 +107,7 @@ async function submitLAF(req, res) {
         });
     }
 
-    // ── Step 1: Find group by qrToken directly ──────────────────────────
+    // ── Step 1: Find group by qrToken directly ────────────────────────────
     const [group] = await graph.query(
         queryQl(GROUP_TYPE, {
             where: { qrToken: { _eq: qrToken } }
@@ -128,7 +129,7 @@ async function submitLAF(req, res) {
         });
     }
 
-    // ── Time restriction check — enforce server-side too ─────────────────
+    // ── Time restriction check ────────────────────────────────────────────
     const [sysSettings] = await graph.query(
         queryQl(
             createGraphType('settings', 'qrAllowedStartTime qrAllowedEndTime')('settings'),
@@ -158,7 +159,9 @@ async function submitLAF(req, res) {
         });
     }
 
-    // ── Server-side Government ID uniqueness check ──────────────────────
+    // ── Server-side Government ID uniqueness check ────────────────────────
+    // Runs for ALL client types that capture an ID.
+    // existingClientId excludes self so reloan/pending/balik don't block on their own ID.
     if (governmentIdType && governmentIdNumber?.trim()) {
         const cleanId   = governmentIdNumber.trim();
         const excludeId = existingClientId || '__none__';
@@ -206,7 +209,7 @@ async function submitLAF(req, res) {
         }
     }
 
-    // ── Check for existing pending CI application (reloan/pending/balik) ─
+    // ── Anti-spam: check for existing pending CI application (reloan/pending/balik) ─
     if ((clientType === 'reloan' || clientType === 'pending' || clientType === 'balik') && existingClientId) {
         const pendingApps = await graph.query(
             queryQl(TEMP_LAF_CHECK_TYPE, {
@@ -227,25 +230,25 @@ async function submitLAF(req, res) {
         }
     }
 
-    // ── Server-side name duplicate check for prospects ─────────────────────
-    // Two distinct cases handled differently:
+    // ── Server-side name duplicate check for prospects ────────────────────
+    // Two distinct cases:
     //
     // CASE 1 — Same name found in `clients` (promoted client):
     //   → isDuplicateFlagged = true, status = pending_validation
-    //   → Admin must review in CI investigation before the app can proceed
+    //   → Admin must review before the app can proceed
     //   → duplicateCandidateIds contains the matching client IDs
     //
     // CASE 2 — Same name found in `temporaryLoanApplications` (pending LAF):
     //   → Hard block — return success: false immediately
-    //   → Same pattern as the reloan/pending/balik existingClientId check above
-    //   → Do NOT flag as duplicate — it's just a re-submission, not a real client
+    //   → Prevents spamming of applications for the same name
+    //   → CI reference code NOT exposed — public endpoint must not leak PII
     if (clientType === 'prospect') {
-        const firstUpper = firstName?.trim().toUpperCase();
-        const lastUpper  = lastName?.trim().toUpperCase();
+        const firstUpper   = firstName?.trim().toUpperCase();
+        const lastUpper    = lastName?.trim().toUpperCase();
 
         if (firstUpper && lastUpper) {
             const [nameMatchClients, nameMatchLAFs] = await Promise.all([
-                // CASE 1: check promoted clients
+                // CASE 1: check promoted clients — firstName + lastName match
                 graph.query(
                     queryQl(CLIENT_NAME_TYPE, {
                         where: {
@@ -257,7 +260,7 @@ async function submitLAF(req, res) {
                     })
                 ).then(r => r.data?.clients ?? []),
 
-                // CASE 2: check pending LAFs — block re-submission for same name
+                // CASE 2: check pending LAFs — hard block re-submission of same name
                 graph.query(
                     queryQl(TEMP_NAME_TYPE, {
                         where: {
@@ -271,14 +274,13 @@ async function submitLAF(req, res) {
             ]);
 
             // CASE 2: pending LAF with same name → hard block
+            // FIX: do NOT expose CI reference code — public endpoint must not leak PII
             if (nameMatchLAFs.length > 0) {
-                const existing = nameMatchLAFs[0];
                 return res.status(200).json({
                     success: false,
-                    message: `A loan application for this name is already pending processing ` +
-                        `(${existing.ciReferenceCode}). ` +
-                        `The previous application must be completed or declined before submitting a new one. ` +
-                        `If this is a different person, please inform your Loan Officer.`,
+                    message: 'A loan application for this name is already pending processing. ' +
+                        'The previous application must be completed or declined before submitting a new one. ' +
+                        'If this is a different person, please inform your Loan Officer.',
                 });
             }
 
@@ -291,9 +293,9 @@ async function submitLAF(req, res) {
     }
 
     // ── Generate CI reference code ────────────────────────────────────────
-    const dateStr     = moment().format('YYYYMMDD');
-    const suffix      = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const branchCode  = group.branch?.code || branchId.slice(-4).toUpperCase();
+    const dateStr         = moment().format('YYYYMMDD');
+    const suffix          = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const branchCode      = group.branch?.code || branchId.slice(-4).toUpperCase();
     const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
 
     // ── Insert into temporaryLoanApplications ─────────────────────────────
@@ -325,12 +327,14 @@ async function submitLAF(req, res) {
                 guarantorLastName:      guarantorLastName?.trim().toUpperCase(),
                 guarantorRelationship,
                 guarantorContactNumber,
-                // FIX: new guarantor extended fields
+                // Guarantor extended fields
                 guarantorBirthDate:    guarantorBirthDate    || null,
                 guarantorCivilStatus:  guarantorCivilStatus  || null,
                 guarantorBusiness:     guarantorBusiness     || null,
                 guarantorDailyIncome:  guarantorDailyIncome  || null,
                 lafPhotoKey,
+                // FIX: status starts as 'pending' by default.
+                // Overridden to 'pending_validation' below if server detected a name match.
                 status:      'pending',
                 dateAdded:   moment().format('YYYY-MM-DD'),
                 submittedAt: new Date().toISOString(),
@@ -357,8 +361,7 @@ async function submitLAF(req, res) {
                 // Balik history
                 oldGroupId: oldGroupId || null,
                 oldLoId:    oldLoId    || null,
-                // FIX: isDuplicateFlagged and duplicateCandidateIds now use the
-                // server-computed values (overridden above if server found matches)
+                // FIX: always use server-derived values — client-sent values ignored
                 isDuplicateFlagged:    isDuplicateFlagged,
                 duplicateCandidateIds: duplicateCandidateIds,
                 isBalikUnmatched:      isBalikUnmatched || false,
@@ -376,7 +379,7 @@ async function submitLAF(req, res) {
                 yearsOfStay:  yearsOfStay  || null,
                 business:     business     || null,
                 dailyIncome:  dailyIncome  || null,
-                // FIX: if duplicate flagged → route to pending_validation for admin review
+                // FIX: server-derived flag → override status to pending_validation
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]
         })

@@ -8,6 +8,7 @@ const StatusBadge = ({ status }) => {
         ci_approved: { label: 'CI Approved', cls: 'bg-green-100 text-green-700 border border-green-200' },
         ci_declined: { label: 'CI Declined', cls: 'bg-red-100 text-red-700 border border-red-200' },
         promoted:    { label: 'Promoted',    cls: 'bg-blue-100 text-blue-700 border border-blue-200' },
+        pending_validation: { label: 'Pending Review', cls: 'bg-orange-100 text-orange-700 border border-orange-200' },
     };
     const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' };
     return (

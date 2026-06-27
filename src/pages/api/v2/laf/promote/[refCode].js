@@ -4,15 +4,15 @@
 //        groupId and loId already tied from the LAF QR flow.
 // FIX 2: faceTemplate and faceEnrolledAt now copied to client on promote
 //        for both existing clients (update) and new prospects (insert).
+// FIX 3: ch.lastName and ch.middleName removed from clientChanges update payload.
+//        Name changes now require a dedicated legal name change transaction.
 
 import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
-// FIX: added insertQl for direct client insert in Option A
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS, CLIENT_FIELDS } from '@/lib/graph.fields';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-// FIX: added generateUUID for new client _id
 import { generateUUID } from '@/lib/utils';
 import moment from 'moment';
 
@@ -120,7 +120,7 @@ async function getForPromotion(req, res) {
         queryQl(CI_TYPE, { where: { ciReferenceCode: { _eq: refCode } } })
     ).then(r => r.data?.ciInvestigations ?? []);
 
-    // FIX: fetch existing client so we can check which fields to fill in
+    // Fetch existing client so we can check which fields to fill in
     const existingClient = application.existingClientId
         ? await graph.query(
             queryQl(CLIENT_TYPE, { where: { _id: { _eq: application.existingClientId } } })
@@ -141,15 +141,17 @@ async function getForPromotion(req, res) {
 
         // Apply inline edits from Confirm step (clientChanges)
         const ch = application.clientChanges || {};
-        if (ch.lastName)                updatePayload.lastName                = ch.lastName.trim();
-        if (ch.middleName)              updatePayload.middleName              = ch.middleName.trim();
+
+        // FIX: lastName and middleName intentionally excluded —
+        // these are no longer editable in the LAF Confirm step.
+        // Name changes require a dedicated legal name change transaction.
         if (ch.contactNumber)           updatePayload.contactNumber           = ch.contactNumber.trim();
         if (ch.addressStreetNo)         updatePayload.addressStreetNo         = ch.addressStreetNo.trim();
         if (ch.addressBarangayDistrict) updatePayload.addressBarangayDistrict = ch.addressBarangayDistrict.trim();
         if (ch.addressMunicipalityCity) updatePayload.addressMunicipalityCity = ch.addressMunicipalityCity.trim();
         if (ch.addressProvince)         updatePayload.addressProvince         = ch.addressProvince.trim();
 
-        // Fields from LAF that always override
+        // Fields from LAF that always override (photo, ID, biometric, address)
         if (application.contactNumber && !ch.contactNumber)                         updatePayload.contactNumber           = application.contactNumber;
         if (application.addressStreetNo && !ch.addressStreetNo)                     updatePayload.addressStreetNo         = application.addressStreetNo;
         if (application.addressBarangayDistrict && !ch.addressBarangayDistrict)     updatePayload.addressBarangayDistrict = application.addressBarangayDistrict;
@@ -171,20 +173,19 @@ async function getForPromotion(req, res) {
             updatePayload.biometricDeviceName   = application.biometricDeviceName;
         }
 
-        // FIX: balik clients come from 'offset' status — reset to 'pending' on promote
+        // Balik clients come from 'offset' status — reset to 'pending' on promote
         if (application.clientType === 'balik') {
             updatePayload.status = 'pending';
         }
 
-        // FIX: copy face liveness fields from LAF to client record on promote
+        // Copy face liveness fields from LAF to client record on promote
         if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;
         if (application.faceEnrolledAt) updatePayload.faceEnrolledAt = application.faceEnrolledAt;
-        // FIX: livenessScore missing from previous patch
         if (application.livenessScore != null && !existingClient?.livenessScore) {
             updatePayload.livenessScore = application.livenessScore;
         }
 
-        // FIX: push new personal info fields — only if client has no value yet
+        // Push new personal info fields — only if client has no value yet
         // These are captured in LAF for the first time for many pre-digital clients
         if (application.birthdate    && !existingClient?.birthdate)    updatePayload.birthdate    = application.birthdate;
         if (application.civilStatus  && !existingClient?.civilStatus)  updatePayload.civilStatus  = application.civilStatus;
@@ -240,7 +241,7 @@ async function getForPromotion(req, res) {
         });
     }
 
-    // ── New prospect — FIX: Option A — directly insert client record ──────
+    // ── New prospect — Option A: directly insert client record ────────────
     // Previously returned clientData for AddUpdateClientPage to save manually.
     // Now inserts the client here in one shot — no Add Client page needed.
     // groupId and loId are already tied from the LAF QR flow.
@@ -286,21 +287,20 @@ async function getForPromotion(req, res) {
                 governmentIdNumber:      application.governmentIdNumber      || null,
                 governmentIdPhotoKey:    application.governmentIdPhotoKey    || null,
                 selfieWithIdPhotoKey:    application.selfieWithIdPhotoKey    || null,
-                // WebAuthn biometric (may be null for new flow)
+                // WebAuthn biometric
                 biometricCredentialId:   application.biometricCredentialId   || null,
                 biometricPublicKey:      application.biometricPublicKey      || null,
                 biometricCounter:        application.biometricCounter        || 0,
                 biometricRegisteredAt:   application.biometricRegisteredAt   || null,
                 biometricDeviceName:     application.biometricDeviceName     || null,
-                // FIX: face liveness template from LAF — used for LDF verification
+                // Face liveness template from LAF — used for LDF verification
                 faceTemplate:            application.faceTemplate            || null,
                 faceEnrolledAt:          application.faceEnrolledAt          || null,
-                // FIX: new personal info fields from LAF
+                // New personal info fields from LAF
                 civilStatus:             application.civilStatus             || null,
                 yearsOfStay:             application.yearsOfStay             || null,
                 business:                application.business                || null,
                 dailyIncome:             application.dailyIncome             || null,
-                
                 // CI investigator name
                 ciName:                  investigation?.picUserName          || null,
                 // Client metadata

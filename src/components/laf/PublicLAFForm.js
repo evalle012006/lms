@@ -396,7 +396,6 @@ const PublicLAFForm = ({
     }, [foundClientPhotoUrl]);
     const [duplicates,     setDuplicates]     = useState([]);
     const [dupChecking,    setDupChecking]    = useState(false);
-    const [dupWarningAcked,setDupWarningAcked]= useState(false);
     const [biometricData, setBiometricData] = useState(null);
     const [biometricVerified, setBiometricVerified] = useState(false);
 
@@ -688,11 +687,6 @@ const PublicLAFForm = ({
             return;
         }
 
-        // ── FIX: Personal step — check duplicates BEFORE advancing ──────────────
-        // Previously: validateAndNext() advanced the step first, then checkDuplicates()
-        // was called after — by the time duplicates were found, user was already on
-        // the Address step so the warning was invisible.
-        // Now: validate → check duplicates → only then advance.
         if (cur === si('Personal')) {
             const form = formikRef.current;
             if (!form) return;
@@ -711,24 +705,26 @@ const PublicLAFForm = ({
             }
 
             // Step 2: for Prospect, check name duplicates BEFORE advancing
-            // dupWarningAcked = user already confirmed "this is a different person"
-            if (clientType === 'prospect' && !dupWarningAcked) {
+            if (clientType === 'prospect') {
                 setDupChecking(true);
                 try {
                     const p = new URLSearchParams({
                         firstName: form.values.firstName.trim(),
                         lastName:  form.values.lastName.trim(),
                     });
-                    if (form.values.birthdate) p.set('birthdate', form.values.birthdate);
+                    if (form.values.birthdate)     p.set('birthdate',     form.values.birthdate);
+                    if (form.values.middleName?.trim()) p.set('middleName', form.values.middleName.trim());
+                    if (form.values.contactNumber?.trim()) p.set('contactNumber', form.values.contactNumber.trim());
                     const res  = await publicFetch(`/api/public/laf/check-duplicate?${p}`);
                     const data = await res.json();
                     const found = data.success ? (data.duplicates || []) : [];
                     setDuplicates(found);
                     if (found.length > 0) {
-                        // Block — warning panel is now visible on THIS step
-                        // User must click "This is a different person" to set dupWarningAcked
+                        // Show passive warning banner only — user proceeds without action
                         setDupChecking(false);
-                        return;
+                        // Do NOT return — let the step advance even with duplicates found.
+                        // isDuplicateFlagged will be set in the submit payload.
+                        // Server will independently verify and enforce pending_validation status.
                     }
                 } catch { /* fail open — don't block on network error */ }
                 finally { setDupChecking(false); }
@@ -744,7 +740,7 @@ const PublicLAFForm = ({
         if (cur === si('Loan')) { await validateAndNext(loanSchema, formikRef.current?.values, formikRef.current); return; }
         setStep(s => s + 1);
     }, [step, clientType, lafPhotoFile, lafPhotoPreview, idType, idNumber, idPhotoFile,
-        selfieWithIdFile, requireSelfieWithId, foundClient, si, dupWarningAcked,
+        selfieWithIdFile, requireSelfieWithId, foundClient, si,
         existingClientHasId, isExistingClient]);
 
     const goPrev = () => setStep(s => Math.max(s - 1, 0));
@@ -843,9 +839,7 @@ const PublicLAFForm = ({
                     oldGroupId:            foundClient?.oldGroupId  || null,
                     oldLoId:               foundClient?.oldLoId     || null,
                     // Duplicate / Balik flags
-                    isDuplicateFlagged:    (clientType === 'prospect' && duplicates.length > 0 && !dupWarningAcked)
-                                            ? true
-                                            : (duplicates.length > 0 && dupWarningAcked),
+                    isDuplicateFlagged: duplicates.length > 0,
                     duplicateCandidateIds: duplicates.map(d => d._id),
                     isBalikUnmatched:      clientType === 'balik' && !foundClient,
                     // FIX: face liveness fields — removed old WebAuthn biometric spread
@@ -870,7 +864,7 @@ const PublicLAFForm = ({
     }, [lafPhotoFile, idPhotoFile, selfieWithIdFile, biometricVerified, biometricData,
         groupId, loId, branchId, qrToken, clientType, idType, idNumber,
         foundClient, detailFlags, requireClientBiometric, requireGovernmentId,
-        requireSelfieWithId, biometricRequired, uploadFile, duplicates, dupWarningAcked,
+        requireSelfieWithId, biometricRequired, uploadFile, duplicates,
         clientChanges]);
 
     // ── Reset form for "Add Another Client" ──────────────────────────────
@@ -901,7 +895,6 @@ const PublicLAFForm = ({
         setFoundClient(null);
         setDetailFlags({});
         setDuplicates([]);
-        setDupWarningAcked(false);
         setBiometricData(null);
         setBiometricVerified(false);
         setOfflineConfirmed(false);
@@ -1255,7 +1248,18 @@ const PublicLAFForm = ({
                                         </div>
                                     )}
                                     <Field label="ID Type" required error={idErrors.idType}>
-                                        <select value={idType} onChange={e => { setIdType(e.target.value); setIdDuplicate(null); }}
+                                        <select value={idType} onChange={e => {
+                                                const newType = e.target.value;
+                                                setIdType(newType);
+                                                setIdDuplicate(null);
+                                                // Re-validate existing ID number against new type's format rules
+                                                if (idNumber.trim()) {
+                                                    const fmtError = validateIdNumber(newType, idNumber);
+                                                    setIdErrors(p => ({ ...p, idNumber: fmtError || null }));
+                                                } else {
+                                                    setIdErrors(p => ({ ...p, idNumber: null }));
+                                                }
+                                            }}
                                             className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${idErrors.idType ? 'border-red-400' : 'border-gray-300'}`}>
                                             <option value="">Select ID type...</option>
                                             {PH_ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -1263,7 +1267,14 @@ const PublicLAFForm = ({
                                     </Field>
                                     <Field label="ID Number" required error={idErrors.idNumber || idDuplicate?.message}>
                                         <Input name="idNumber" noUppercase value={idNumber}
-                                            onChange={e => { setIdNumber(e.target.value); setIdDuplicate(null); setIdErrors(p => ({ ...p, idNumber: null })); }}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setIdNumber(val);
+                                                setIdDuplicate(null);
+                                                // Validate format immediately as user types
+                                                const fmtError = idType ? validateIdNumber(idType, val) : null;
+                                                setIdErrors(p => ({ ...p, idNumber: fmtError || null }));
+                                            }}
                                             onBlur={async (e) => {
                                                 const val = e.target.value?.trim();
                                                 if (!val || !idType) return;
@@ -1452,10 +1463,12 @@ const PublicLAFForm = ({
                                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Member Information</p>
                                     {[
-                                        ['First Name',  foundClient.firstName],
-                                        ['Birthdate',   foundClient.birthdate],
-                                        ['Branch',      foundClient.branchName || '—'],
-                                        ['Slot No.',    foundClient.slotNo     || '—'],
+                                        ['First Name',   foundClient.firstName],
+                                        ['Last Name',    foundClient.lastName],
+                                        ['Middle Name',  foundClient.middleName || '—'],
+                                        ['Birthdate',    foundClient.birthdate],
+                                        ['Branch',       foundClient.branchName || '—'],
+                                        ['Slot No.',     foundClient.slotNo     || '—'],
                                     ].map(([label, value]) => (
                                         <div key={label} className="flex justify-between text-sm">
                                             <span className="text-gray-500">{label}</span>
@@ -1467,38 +1480,6 @@ const PublicLAFForm = ({
                                 {/* ── Editable fields ── */}
                                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 mb-1">
                                     Update any details that have changed since your last loan.
-                                </div>
-
-                                {/* Last Name */}
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-600">
-                                        Last Name
-                                        <span className="ml-1 text-gray-400 font-normal">(current: {foundClient.lastName})</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Leave blank if unchanged"
-                                        value={clientChanges.lastName || ''}
-                                        onChange={e => setClientChanges(p => ({ ...p, lastName: e.target.value }))}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
-                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                                    />
-                                </div>
-
-                                {/* Middle Name */}
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-600">
-                                        Middle Name
-                                        <span className="ml-1 text-gray-400 font-normal">(current: {foundClient.middleName || 'none'})</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Leave blank if unchanged"
-                                        value={clientChanges.middleName || ''}
-                                        onChange={e => setClientChanges(p => ({ ...p, middleName: e.target.value }))}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl
-                                            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                                    />
                                 </div>
 
                                 {/* Contact Number */}
@@ -1567,26 +1548,21 @@ const PublicLAFForm = ({
                                         <div>
                                             <h2 className="text-base font-semibold text-gray-800 mb-4">Personal Information</h2>
 
-                                            {/* Duplicate warning — Prospect only */}
-                                            {clientType === 'prospect' && duplicates.length > 0 && !dupWarningAcked && (
+                                            {/* Duplicate warning — Prospect only — passive, no action required */}
+                                            {clientType === 'prospect' && duplicates.length > 0 && (
                                                 <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl">
-                                                    <p className="text-xs font-semibold text-amber-800 mb-2">
-                                                        ⚠ Possible duplicate member found:
+                                                    <p className="text-xs font-semibold text-amber-800 mb-1">
+                                                        ⚠ Possible duplicate detected
                                                     </p>
-                                                    {duplicates.map(d => (
-                                                        <div key={d._id} className="text-xs text-amber-700 py-1 border-b border-amber-100 last:border-0">
-                                                            {d.lastName}, {d.firstName} {d.middleName || ''} · {d.branchName || 'Unknown Branch'} · Status: {d.status}
-                                                        </div>
-                                                    ))}
-                                                    <p className="text-xs text-amber-600 mt-2">
-                                                        If this is the same person, please use Reloan, Pending Member, or Balik instead.
-                                                        Otherwise, tap below to continue as a new Prospect.
+                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                                        A member with a similar name was found in our records.
+                                                        If this is the same person, please go back and select{' '}
+                                                        <strong>Reloan</strong>, <strong>Pending Member</strong>, or <strong>Balik</strong> instead.
                                                     </p>
-                                                    <button type="button"
-                                                        onClick={() => setDupWarningAcked(true)}
-                                                        className="mt-2 px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700">
-                                                        This is a different person — Continue
-                                                    </button>
+                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                                        If this is a <strong>different person</strong>, you may continue.
+                                                        This application will be <strong>flagged for admin review</strong> before it can be processed.
+                                                    </p>
                                                 </div>
                                             )}
                                             {clientType === 'prospect' && dupChecking && (
@@ -1600,8 +1576,8 @@ const PublicLAFForm = ({
                                             )}
 
                                             <div className="space-y-4">
-                                                <Field label="First Name" required error={touched.firstName && errors.firstName}><Input name="firstName" value={values.firstName} onChange={handleChange} onBlur={handleBlur} placeholder="Juan" error={touched.firstName && errors.firstName} readOnly={roFields} /></Field>
-                                                <Field label="Last Name" required error={touched.lastName && errors.lastName}><Input name="lastName" value={values.lastName} onChange={handleChange} onBlur={handleBlur} placeholder="dela Cruz" error={touched.lastName && errors.lastName} readOnly={roFields} /></Field>
+                                                <Field label="First Name" required error={touched.firstName && errors.firstName}><Input name="firstName" value={values.firstName} onChange={e => { handleChange(e); setDuplicates([]); }} onBlur={handleBlur} placeholder="Juan" error={touched.firstName && errors.firstName} readOnly={roFields} /></Field>
+                                                <Field label="Last Name" required error={touched.lastName && errors.lastName}><Input name="lastName" value={values.lastName} onChange={e => { handleChange(e); setDuplicates([]); }} onBlur={handleBlur} placeholder="dela Cruz" error={touched.lastName && errors.lastName} readOnly={roFields} /></Field>
                                                 <Field label="Middle Name" required error={touched.middleName && errors.middleName}><Input name="middleName" value={values.middleName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.middleName && errors.middleName} readOnly={roFields} /></Field>
                                                 <Field label="Birthdate" required error={touched.birthdate && errors.birthdate}><Input name="birthdate" value={values.birthdate} onChange={handleChange} onBlur={handleBlur} type="date" error={touched.birthdate && errors.birthdate} readOnly={roFields} /></Field>
                                                 <Field label="Contact Number" required error={touched.contactNumber && errors.contactNumber}><Input name="contactNumber" noUppercase value={values.contactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.contactNumber && errors.contactNumber} /></Field>
