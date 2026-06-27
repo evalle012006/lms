@@ -22,12 +22,12 @@ const CLIENT_TYPE = createGraphType('client', `
         limit: 1
     ) {
         _id slotNo status loanCycle groupId branchId
-        amountRelease loanBalance dateAdded dateOfRelease
+        amountRelease loanBalance loanRelease dateAdded dateOfRelease
         guarantorFirstName guarantorLastName guarantorMiddleName
     }
 `)('clients');
 
-// For checking existing pending CI applications
+// For checking existing active CI applications
 const TEMP_LAF_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status submittedAt
 `)('temporaryLoanApplications');
@@ -59,59 +59,74 @@ const MODE_ERRORS = {
                 ? 'This member has an active loan. Please select Reloan instead.'
                 : status === 'completed'
                     ? 'This member has a completed loan. Please select Pending Member instead.'
-                    : `Loan status is "${status}" — cannot apply as Balik.`,
+                    : `Client status is "${status}" — cannot apply as Balik.`,
     },
 };
 
-const REQUIRED_STATUS = {
-    reloan:  'active',
-    pending: 'completed',
-    // balik: validated via client.status not loan.status — see status check below
-};
+const REQUIRED_STATUS = { reloan: 'active', pending: 'completed' };
 
-export default async function handler(req, res) {
-    if (req.method !== 'GET') return res.status(405).json({ success: false });
+// Statuses that mean the LAF is still being processed — client cannot submit another
+// FIX: added 'ci_approved' — this means BM is doing CI but hasn't promoted yet.
+// Without this, a client with a ci_approved LAF could re-submit via QR.
+const ACTIVE_CI_STATUSES = ['pending', 'pending_validation', 'ci_approved'];
 
-    const { groupId, branchId, firstName = '', lastName, middleName = '', slotNo, mode = 'reloan' } = req.query;
+export async function handler(req, res) {
+    const {
+        groupId, branchId, lastName, firstName, middleName, slotNo, mode,
+    } = req.query;
 
-    // ── mode=all: pre-load all group clients for offline caching ────────────
+    if (!mode) {
+        return res.status(200).json({ success: false, message: 'mode is required.' });
+    }
+
+    // mode=all — used for offline cache pre-load
     if (mode === 'all') {
-        if (!groupId) return res.status(200).json({ success: false, message: 'groupId required.' });
-        const allClients = await graph.query(
+        if (!groupId) {
+            return res.status(200).json({ success: false, message: 'groupId required for mode=all.' });
+        }
+        const clients = await graph.query(
             queryQl(CLIENT_TYPE, {
-                where: { groupId: { _eq: groupId }, status: { _nin: ['archived', 'merged'] } },
-                limit: 100,
+                where: {
+                    groupId: { _eq: groupId },
+                    status:  { _in: ['active', 'pending'] },
+                },
+                limit: 200,
             })
         ).then(r => r.data?.clients ?? []);
 
         return res.status(200).json({
             success: true,
-            clients: allClients.map(cl => ({
-                _id:                   cl._id,
-                firstName:             cl.firstName,
-                lastName:              cl.lastName,
-                middleName:            cl.middleName,
-                birthdate:             cl.birthdate,
-                contactNumber:         cl.contactNumber,
-                slotNo:                cl.slotNo,
-                status:                cl.status,
-                branchId:              cl.branchId,
-                branchName:            cl.branchName,
-                profile:               cl.profile                || null,
-                governmentIdType:      cl.governmentIdType       || null,
-                governmentIdNumber:    cl.governmentIdNumber     || null,
-                oldGroupId:            cl.oldGroupId             || null,
-                oldLoId:               cl.oldLoId                || null,
-                biometricCredentialId: cl.biometricCredentialId  || null,
-                delinquent:            cl.delinquent             || false,
+            clients: clients.map(cl => ({
+                _id:        cl._id,
+                firstName:  cl.firstName,
+                lastName:   cl.lastName,
+                middleName: cl.middleName,
+                birthdate:  cl.birthdate,
+                branchId:   cl.branchId,
+                delinquent: cl.delinquent || false,
+                status:     cl.status,
+                profile:    cl.profile    || null,
+                contactNumber: cl.contactNumber || '',
+                governmentIdType:   cl.governmentIdType   || null,
+                governmentIdNumber: cl.governmentIdNumber || null,
+                lastLoan: cl.loans?.[0] ? {
+                    _id:          cl.loans[0]._id,
+                    status:       cl.loans[0].status,
+                    amountRelease:cl.loans[0].amountRelease,
+                    loanBalance:  cl.loans[0].loanBalance,
+                    loanRelease:  cl.loans[0].loanRelease,
+                    loanCycle:    cl.loans[0].loanCycle,
+                    slotNo:       cl.loans[0].slotNo,
+                } : null,
             })),
         });
     }
 
-    // Balik requires firstName + lastName; reloan/pending require lastName + slotNo
-    if (mode === 'balik') {
-        if (!firstName?.trim() || !lastName?.trim()) {
-            return res.status(200).json({ success: false, message: 'firstName and lastName are required for Balik lookup.' });
+    const isBalik = mode === 'balik';
+
+    if (isBalik) {
+        if (!lastName || !firstName) {
+            return res.status(200).json({ success: false, message: 'firstName and lastName are required.' });
         }
     } else {
         if (!lastName || !slotNo) {
@@ -123,36 +138,23 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Build loan filter based on mode
         const loanStatusFilter = {
             reloan:  { _in: ['active'] },
             pending: { _in: ['completed'] },
-            // Balik: client.status='offset', their last loan is 'closed'
-            // (loan goes active→completed→closed when offset remarks applied)
-            // Fetch for pre-fill only — status gate uses client.status='offset'
             balik:   { _in: ['closed'] },
         }[mode] || { _in: ['active', 'completed'] };
 
-        // For balik — search by branchId (they may be in a different group now)
-        // For reloan/pending — search by groupId + slotNo
-        const isBalik = mode === 'balik';
-
         const clientWhere = isBalik
             ? (() => {
-                // Balik: firstName + lastName mandatory, middleName + branchId optional
                 const w = {
                     firstName: { _ilike: firstName.trim() },
                     lastName:  { _ilike: lastName.trim() },
                     status:    { _eq: 'offset' },
                 };
-                // middleName — match if provided, otherwise skip
                 if (middleName?.trim() && middleName.trim().toUpperCase() !== 'N/A') {
                     w.middleName = { _ilike: middleName.trim() };
                 }
-                // branchId — offset clients retain their branchId (not nulled on offset)
-                if (branchId) {
-                    w.branchId = { _eq: branchId };
-                }
+                if (branchId) w.branchId = { _eq: branchId };
                 return w;
               })()
             : {
@@ -170,7 +172,6 @@ export default async function handler(req, res) {
         ).then(r => r.data?.clients ?? []);
 
         if (clients.length === 0) {
-            // Try to find them anyway to give a better error message
             if (!isBalik) {
                 const anyClients = await graph.query(
                     queryQl(CLIENT_TYPE, {
@@ -198,7 +199,6 @@ export default async function handler(req, res) {
             });
         }
 
-        // For reloan/pending — match by exact slot
         const matchedClient = isBalik
             ? clients[0]
             : clients.find(c =>
@@ -211,31 +211,31 @@ export default async function handler(req, res) {
                 l => l.slotNo === parseInt(slotNo) && l.groupId === groupId
               ) || matchedClient.loans?.[0];
 
-        // ── Check for existing pending CI application ─────────────────────────
-        // For reloan/pending/balik: block if client already has a LAF pending CI review
+        // ── FIX: Check for existing active CI application ─────────────────
+        // Block if client already has a LAF in the active pipeline.
+        // 'ci_approved' added — means BM is doing CI investigation, not yet promoted.
+        // Without this, a client with ci_approved status could re-submit via QR.
         if (matchedClient) {
-            const pendingApps = await graph.query(
+            const activeApps = await graph.query(
                 queryQl(TEMP_LAF_TYPE, {
                     where: {
                         existingClientId: { _eq: matchedClient._id },
-                        status:           { _in: ['pending', 'pending_validation'] },
+                        status:           { _in: ACTIVE_CI_STATUSES },
                     },
                     limit: 1,
                 })
             ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-            if (pendingApps.length > 0) {
-                const app = pendingApps[0];
+            if (activeApps.length > 0) {
                 return res.status(200).json({
                     success: false,
-                    message: `This member already has a loan application pending CI review (${app.ciReferenceCode}). Please wait for the current application to be processed before submitting a new one.`,
+                    message: 'This member already has a loan application currently being processed. Please wait for it to be completed before submitting a new one.',
                 });
             }
         }
 
         // Final status validation
         if (mode === 'balik') {
-            // Validate client record status directly — loan status is irrelevant for Balik
             if (matchedClient.status !== 'offset') {
                 const errMsg = MODE_ERRORS.balik.wrongStatus(matchedClient.status);
                 return res.status(200).json({ success: false, message: errMsg });
@@ -250,10 +250,9 @@ export default async function handler(req, res) {
         }
 
         // For Balik — multiple offset clients may match same name
-        // Return all matches so the form can show a selection list
         if (isBalik && clients.length > 1) {
             return res.status(200).json({
-                success:      true,
+                success:       true,
                 multipleFound: true,
                 clients: clients.map(cl => ({
                     _id:        cl._id,
@@ -265,11 +264,12 @@ export default async function handler(req, res) {
                     delinquent: cl.delinquent || false,
                     status:     cl.status,
                     profile:    cl.profile    || null,
-                    lastLoan:   cl.loans?.[0] ? {
+                    lastLoan: cl.loans?.[0] ? {
                         _id:          cl.loans[0]._id,
                         status:       cl.loans[0].status,
                         amountRelease:cl.loans[0].amountRelease,
                         loanBalance:  cl.loans[0].loanBalance,
+                        loanRelease:  cl.loans[0].loanRelease,
                         loanCycle:    cl.loans[0].loanCycle,
                     } : null,
                 })),
@@ -293,27 +293,23 @@ export default async function handler(req, res) {
                 ciName:                  matchedClient.ciName,
                 profile:                 matchedClient.profile              || null,
                 governmentIdType:        matchedClient.governmentIdType      || null,
-                governmentIdNumber:      matchedClient.governmentIdNumber     || null,
-                governmentIdPhotoKey:    matchedClient.governmentIdPhotoKey   || null,
-                // Balik display fields — branchId sent so client resolves name from branchList cache
-                branchId:                matchedClient.branchId               || null,
-                branchName:              matchedClient.branchName             || null,
-                delinquent:              matchedClient.delinquent             || false,
-                // Balik history fields — branchId is kept on offset (not nulled)
-                oldGroupId:              matchedClient.oldGroupId             || null,
-                loans:                   matchedClient.loans                  || [],
-                oldLoId:                 matchedClient.oldLoId                || null,
-                guarantorFirstName:      matchedLoan?.guarantorFirstName      || null,
-                guarantorLastName:       matchedLoan?.guarantorLastName       || null,
-                guarantorMiddleName:     matchedLoan?.guarantorMiddleName     || null,
-                guarantorRelationship:   null,
-                guarantorContactNumber:  null,
+                governmentIdNumber:      matchedClient.governmentIdNumber    || null,
+                governmentIdPhotoKey:    matchedClient.governmentIdPhotoKey  || null,
+                branchId:                matchedClient.branchId              || null,
+                branchName:              matchedClient.branchName            || null,
+                delinquent:              matchedClient.delinquent            || false,
+                oldGroupId:              matchedClient.oldGroupId            || null,
+                oldLoId:                 matchedClient.oldLoId               || null,
+                loans:                   matchedClient.loans                 || [],
                 slotNo:                  matchedLoan?.slotNo,
                 loanId:                  matchedLoan?._id,
                 loanCycle:               matchedLoan?.loanCycle,
                 loanStatus:              matchedLoan?.status,
-                amountRelease:           matchedLoan?.amountRelease           || 0,
-                loanBalance:             matchedLoan?.loanBalance             || 0,
+                amountRelease:           matchedLoan?.amountRelease          || 0,
+                loanBalance:             matchedLoan?.loanBalance            || 0,
+                // FIX: added loanRelease — used for "Previous Loan" cell in LAF print
+                // for pending client type (shows full payment amount required)
+                loanRelease:             matchedLoan?.loanRelease            || 0,
             },
         });
 
@@ -322,3 +318,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: false, message: err.message || 'Server error.' });
     }
 }
+
+// Export as public API handler
+import { publicApiHandler } from '@/services/public-api-handler';
+export default publicApiHandler({ get: (req, res) => handler(req, res) });

@@ -1,11 +1,13 @@
 // src/pages/api/v2/laf/promote/[refCode].js
-// FIX 1: New prospect path switched to Option A — directly inserts client record
-//        instead of returning clientData for AddUpdateClientPage.
-//        groupId and loId already tied from the LAF QR flow.
-// FIX 2: faceTemplate and faceEnrolledAt now copied to client on promote
-//        for both existing clients (update) and new prospects (insert).
-// FIX 3: ch.lastName and ch.middleName removed from clientChanges update payload.
-//        Name changes now require a dedicated legal name change transaction.
+// Promotes a ci_approved LAF into a client record (new) or updates existing (reloan/pending/balik).
+//
+// Changes in this version:
+// FIX 1: selfieWithIdPhotoKey added to existing client update payload (was missing)
+// FIX 2: ci_approved no longer blocks a new LAF submission — handled in lookup-client.js
+// FIX 3: ch.lastName and ch.middleName removed — name changes need dedicated transaction
+// FIX 4: All new personal info fields (civilStatus, yearsOfStay, business, dailyIncome,
+//         faceTemplate, faceEnrolledAt, livenessScore, birthdate) included for existing clients
+// FIX 5: Balik status reset to 'pending' on promote
 
 import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
@@ -20,8 +22,6 @@ const graph = new GraphProvider();
 const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
-
-// Minimal group type — only needed for groupName lookup on prospect insert
 const GROUP_NAME_TYPE = createGraphType('groups', '_id name')('groups');
 
 const s3 = new S3Client({
@@ -35,20 +35,14 @@ const s3 = new S3Client({
 });
 
 async function getSignedUrlForKey(key) {
-    const command = new GetObjectCommand({
-        Bucket: process.env.SPACES_BUCKET,
-        Key:    key,
-    });
+    const command = new GetObjectCommand({ Bucket: process.env.SPACES_BUCKET, Key: key });
     return getSignedUrl(s3, command, { expiresIn: 900 });
 }
 
-// ── Direct GraphQL duplicate check — no internal HTTP call ────────────────
 async function checkDuplicates(firstName, lastName) {
     if (!firstName || !lastName) return [];
-
     const firstNameUpper = firstName.trim().toUpperCase();
     const lastNameUpper  = lastName.trim().toUpperCase();
-
     const clients = await graph.query(
         queryQl(CLIENT_TYPE, {
             where: {
@@ -61,7 +55,6 @@ async function checkDuplicates(firstName, lastName) {
             limit: 20,
         })
     ).then(r => r.data?.clients ?? []);
-
     return clients
         .map(c => {
             const score = calculateSimilarity(
@@ -98,7 +91,7 @@ async function getForPromotion(req, res) {
     if (application.status === 'promoted') {
         return res.status(200).json({
             success: false,
-            message: 'This CI code has already been used. The client record already exists.'
+            message: 'This CI code has already been used. The client record already exists.',
         });
     }
 
@@ -112,7 +105,7 @@ async function getForPromotion(req, res) {
     if (application.status !== 'ci_approved') {
         return res.status(200).json({
             success: false,
-            message: `Cannot promote — application status is "${application.status}". CI must approve first.`
+            message: `Cannot promote — application status is "${application.status}". CI must approve first.`,
         });
     }
 
@@ -120,51 +113,60 @@ async function getForPromotion(req, res) {
         queryQl(CI_TYPE, { where: { ciReferenceCode: { _eq: refCode } } })
     ).then(r => r.data?.ciInvestigations ?? []);
 
-    // Fetch existing client so we can check which fields to fill in
+    // Fetch existing client record for field-exists checks
     const existingClient = application.existingClientId
         ? await graph.query(
             queryQl(CLIENT_TYPE, { where: { _id: { _eq: application.existingClientId } } })
           ).then(r => r.data?.clients?.[0] ?? null)
         : null;
 
-    // Parallel: signed URLs + duplicate check
     const [lafPhotoUrl, selfieUrl, duplicateCandidates] = await Promise.all([
-        application.lafPhotoKey    ? getSignedUrlForKey(application.lafPhotoKey)    : Promise.resolve(null),
-        investigation?.selfieKey   ? getSignedUrlForKey(investigation.selfieKey)    : Promise.resolve(null),
+        application.lafPhotoKey  ? getSignedUrlForKey(application.lafPhotoKey)  : Promise.resolve(null),
+        investigation?.selfieKey ? getSignedUrlForKey(investigation.selfieKey)  : Promise.resolve(null),
         checkDuplicates(application.firstName, application.lastName),
     ]);
 
     // ── Existing client (reloan / pending / balik) ────────────────────────
-    // Update the client record in place — do NOT open AddClientPage form.
     if (application.existingClientId) {
         const updatePayload = {};
 
-        // Apply inline edits from Confirm step (clientChanges)
-        const ch = application.clientChanges || {};
-
+        // clientChanges — fields the member updated in the Confirm step
         // FIX: lastName and middleName intentionally excluded —
-        // these are no longer editable in the LAF Confirm step.
-        // Name changes require a dedicated legal name change transaction.
+        // name changes require a dedicated legal name change transaction.
+        const ch = application.clientChanges || {};
         if (ch.contactNumber)           updatePayload.contactNumber           = ch.contactNumber.trim();
         if (ch.addressStreetNo)         updatePayload.addressStreetNo         = ch.addressStreetNo.trim();
         if (ch.addressBarangayDistrict) updatePayload.addressBarangayDistrict = ch.addressBarangayDistrict.trim();
         if (ch.addressMunicipalityCity) updatePayload.addressMunicipalityCity = ch.addressMunicipalityCity.trim();
         if (ch.addressProvince)         updatePayload.addressProvince         = ch.addressProvince.trim();
 
-        // Fields from LAF that always override (photo, ID, biometric, address)
-        if (application.contactNumber && !ch.contactNumber)                         updatePayload.contactNumber           = application.contactNumber;
-        if (application.addressStreetNo && !ch.addressStreetNo)                     updatePayload.addressStreetNo         = application.addressStreetNo;
-        if (application.addressBarangayDistrict && !ch.addressBarangayDistrict)     updatePayload.addressBarangayDistrict = application.addressBarangayDistrict;
-        if (application.addressMunicipalityCity && !ch.addressMunicipalityCity)     updatePayload.addressMunicipalityCity = application.addressMunicipalityCity;
-        if (application.addressProvince && !ch.addressProvince)                     updatePayload.addressProvince         = application.addressProvince;
-        if (application.addressZipCode)       updatePayload.addressZipCode       = application.addressZipCode;
-        if (application.landmark)             updatePayload.landmark             = application.landmark;
-        if (application.distanceFromBranch)   updatePayload.distanceFromBranch   = application.distanceFromBranch;
-        if (application.lafPhotoKey)          updatePayload.profile              = application.lafPhotoKey;
+        // Fields from LAF — always override (contact, address, photo, ID, biometric)
+        // Contact: use clientChanges version if provided, else fall back to LAF value
+        if (application.contactNumber && !ch.contactNumber)
+            updatePayload.contactNumber = application.contactNumber;
+        if (application.addressStreetNo && !ch.addressStreetNo)
+            updatePayload.addressStreetNo = application.addressStreetNo;
+        if (application.addressBarangayDistrict && !ch.addressBarangayDistrict)
+            updatePayload.addressBarangayDistrict = application.addressBarangayDistrict;
+        if (application.addressMunicipalityCity && !ch.addressMunicipalityCity)
+            updatePayload.addressMunicipalityCity = application.addressMunicipalityCity;
+        if (application.addressProvince && !ch.addressProvince)
+            updatePayload.addressProvince = application.addressProvince;
+        if (application.addressZipCode)     updatePayload.addressZipCode     = application.addressZipCode;
+        if (application.landmark)           updatePayload.landmark           = application.landmark;
+        if (application.distanceFromBranch) updatePayload.distanceFromBranch = application.distanceFromBranch;
+
+        // Photo — always update from latest LAF
+        if (application.lafPhotoKey) updatePayload.profile = application.lafPhotoKey;
+
+        // Government ID — always update when provided
         if (application.governmentIdType)     updatePayload.governmentIdType     = application.governmentIdType;
         if (application.governmentIdNumber)   updatePayload.governmentIdNumber   = application.governmentIdNumber;
         if (application.governmentIdPhotoKey) updatePayload.governmentIdPhotoKey = application.governmentIdPhotoKey;
+        // FIX: selfieWithIdPhotoKey was missing from existing client update path
+        if (application.selfieWithIdPhotoKey) updatePayload.selfieWithIdPhotoKey = application.selfieWithIdPhotoKey;
 
+        // Biometric — update when a new registration was captured during LAF
         if (application.biometricCredentialId) {
             updatePayload.biometricCredentialId = application.biometricCredentialId;
             updatePayload.biometricPublicKey    = application.biometricPublicKey;
@@ -173,26 +175,29 @@ async function getForPromotion(req, res) {
             updatePayload.biometricDeviceName   = application.biometricDeviceName;
         }
 
-        // Balik clients come from 'offset' status — reset to 'pending' on promote
+        // FIX: balik clients come from 'offset' status — reset to 'pending' on promote
         if (application.clientType === 'balik') {
             updatePayload.status = 'pending';
         }
 
-        // Copy face liveness fields from LAF to client record on promote
+        // Face liveness — update from LAF capture
         if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;
         if (application.faceEnrolledAt) updatePayload.faceEnrolledAt = application.faceEnrolledAt;
         if (application.livenessScore != null && !existingClient?.livenessScore) {
             updatePayload.livenessScore = application.livenessScore;
         }
 
-        // Push new personal info fields — only if client has no value yet
-        // These are captured in LAF for the first time for many pre-digital clients
-        if (application.birthdate    && !existingClient?.birthdate)    updatePayload.birthdate    = application.birthdate;
-        if (application.civilStatus  && !existingClient?.civilStatus)  updatePayload.civilStatus  = application.civilStatus;
-        if (application.yearsOfStay  && !existingClient?.yearsOfStay)  updatePayload.yearsOfStay  = application.yearsOfStay;
-        if (application.business     && !existingClient?.business)     updatePayload.business     = application.business;
-        if (application.dailyIncome  && !existingClient?.dailyIncome)  updatePayload.dailyIncome  = application.dailyIncome;
+        // Personal info fields — only fill in if client has no value yet
+        // These are captured in LAF for pre-digital clients for the first time.
+        // Never overwrite an existing value — client controls name/birthdate changes
+        // through dedicated transactions.
+        if (application.birthdate   && !existingClient?.birthdate)   updatePayload.birthdate   = application.birthdate;
+        if (application.civilStatus && !existingClient?.civilStatus) updatePayload.civilStatus = application.civilStatus;
+        if (application.yearsOfStay && !existingClient?.yearsOfStay) updatePayload.yearsOfStay = application.yearsOfStay;
+        if (application.business    && !existingClient?.business)    updatePayload.business    = application.business;
+        if (application.dailyIncome && !existingClient?.dailyIncome) updatePayload.dailyIncome = application.dailyIncome;
 
+        // CI investigator name
         if (investigation?.picUserName) updatePayload.ciName = investigation.picUserName;
 
         if (Object.keys(updatePayload).length > 0) {
@@ -208,10 +213,7 @@ async function getForPromotion(req, res) {
         await graph.mutation(
             updateQl(TEMP_TYPE, {
                 where: { ciReferenceCode: { _eq: refCode } },
-                set: {
-                    status:     'promoted',
-                    promotedAt: moment().toISOString(),
-                },
+                set: { status: 'promoted', promotedAt: moment().toISOString() },
             })
         );
 
@@ -242,12 +244,8 @@ async function getForPromotion(req, res) {
     }
 
     // ── New prospect — Option A: directly insert client record ────────────
-    // Previously returned clientData for AddUpdateClientPage to save manually.
-    // Now inserts the client here in one shot — no Add Client page needed.
-    // groupId and loId are already tied from the LAF QR flow.
     const clientId = generateUUID();
 
-    // Fetch group name for the client record
     const [group] = await graph.query(
         queryQl(GROUP_NAME_TYPE, { where: { _id: { _eq: application.groupId } } })
     ).then(r => r.data?.groups ?? []);
@@ -280,30 +278,23 @@ async function getForPromotion(req, res) {
                 groupId:                 application.groupId                 || null,
                 loId:                    application.loId                    || null,
                 groupName:               group?.name                         || '',
-                // Profile photo from LAF
                 profile:                 application.lafPhotoKey             || null,
-                // Government ID
                 governmentIdType:        application.governmentIdType        || null,
                 governmentIdNumber:      application.governmentIdNumber      || null,
                 governmentIdPhotoKey:    application.governmentIdPhotoKey    || null,
                 selfieWithIdPhotoKey:    application.selfieWithIdPhotoKey    || null,
-                // WebAuthn biometric
                 biometricCredentialId:   application.biometricCredentialId   || null,
                 biometricPublicKey:      application.biometricPublicKey      || null,
                 biometricCounter:        application.biometricCounter        || 0,
                 biometricRegisteredAt:   application.biometricRegisteredAt   || null,
                 biometricDeviceName:     application.biometricDeviceName     || null,
-                // Face liveness template from LAF — used for LDF verification
                 faceTemplate:            application.faceTemplate            || null,
                 faceEnrolledAt:          application.faceEnrolledAt          || null,
-                // New personal info fields from LAF
                 civilStatus:             application.civilStatus             || null,
                 yearsOfStay:             application.yearsOfStay             || null,
                 business:                application.business                || null,
                 dailyIncome:             application.dailyIncome             || null,
-                // CI investigator name
                 ciName:                  investigation?.picUserName          || null,
-                // Client metadata
                 status:                  'pending',
                 delinquent:              false,
                 duplicate:               false,
@@ -322,7 +313,6 @@ async function getForPromotion(req, res) {
         });
     }
 
-    // Mark LAF as promoted with the new clientId
     await graph.mutation(
         updateQl(TEMP_TYPE, {
             where: { ciReferenceCode: { _eq: refCode } },

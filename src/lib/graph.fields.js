@@ -105,6 +105,7 @@ export const CLIENT_FIELDS = `
   yearsOfStay
   business
   dailyIncome
+  livenessScore
   `;
 
 export const LOAN_FIELDS = `
@@ -846,6 +847,8 @@ export const TEMP_LOAN_APP_FIELDS = `
   yearsOfStay
   business
   dailyIncome
+  loanRelease
+  amountRelease
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

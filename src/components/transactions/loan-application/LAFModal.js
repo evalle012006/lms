@@ -227,7 +227,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                       <span className="font-semibold">Work/Business:</span> {loanData.guarantorWorkBusiness || client.guarantorWorkBusiness || ''}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      <span className="font-semibold">Daily Income:</span>
+                      <span className="font-semibold">Daily Income:</span> {loanData.guarantorDailyIncome || client.guarantorDailyIncome || ''}
                     </td>
                     <td className="border border-gray-400 px-2 py-1" colSpan="2">
                       <span className="font-semibold">Relation to Borrower:</span> {loanData.guarantorRelation || client.guarantorRelation || ''}

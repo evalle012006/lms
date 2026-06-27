@@ -671,7 +671,13 @@ const PublicLAFForm = ({
             return;
         }
         if (cur === si('Confirm')) {
-            // FIX: require address if client has no address on record
+            // Issue 5: require contact number if missing from existing client record
+            if (foundClient && !foundClient.contactNumber?.trim() && !clientChanges.contactNumber?.trim()) {
+                toast.error('Please provide your contact number — it is not on your existing record.');
+                return;
+            }
+
+            // Require address if client has no address on record
             if (foundClient && !foundClient.addressStreetNo?.trim()) {
                 const missing = [];
                 if (!clientChanges.addressStreetNo?.trim())         missing.push('Street / House No.');
@@ -783,6 +789,8 @@ const PublicLAFForm = ({
                     governmentIdNumber: idNumber || null,
                     // loanAmount: parseFloat(values.loanAmount) || 0,
                     loanAmount: 0,
+                    amountRelease: foundClient?.amountRelease || null,
+                    loanRelease:   foundClient?.loanRelease   || null,
                 },
                 {
                     lafPhoto:     lafPhotoFile,
@@ -854,6 +862,10 @@ const PublicLAFForm = ({
                     yearsOfStay:  values.yearsOfStay  || null,
                     business:     values.business     || null,
                     dailyIncome:  values.dailyIncome ? String(values.dailyIncome) : null,
+                    // Issue 6: pass loan amounts for Previous Loan cell in LAF print
+                    // These come from foundClient (populated by lookup-client API)
+                    amountRelease: foundClient?.amountRelease || null,
+                    loanRelease:   foundClient?.loanRelease   || null,
                 }),
             });
             const data = await res.json();
@@ -1337,7 +1349,7 @@ const PublicLAFForm = ({
                                         <Input name="fn" value={lookupFirstName} onChange={e => setLookupFirstName(e.target.value.toUpperCase())} placeholder="JUAN" />
                                     </Field>
                                     <Field label="Last Name" required>
-                                        <Input name="ln" value={lookupLastName} onChange={e => setLookupLastName(e.target.value.toUpperCase())} placeholder="DELA CRUZ" />
+                                        <Input name="ln" value={lookupLastName} onChange={e => setLookupLastName(e.target.value.toUpperCase())} placeholder="Enter your last name" />
                                     </Field>
                                     <Field label="Middle Name (optional)">
                                         <Input name="mn" value={lookupMiddleName} onChange={e => setLookupMiddleName(e.target.value.toUpperCase())} placeholder="SANTOS or leave blank" />
@@ -1430,12 +1442,14 @@ const PublicLAFForm = ({
                                                         'text-gray-700'
                                                     }`}>{foundClient.loanStatus || '—'}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-400">Amount Released</p>
-                                                    <p className="text-xs font-semibold text-gray-800">
-                                                        ₱{foundClient.amountRelease ? Number(foundClient.amountRelease).toLocaleString() : '—'}
-                                                    </p>
-                                                </div>
+                                                {foundClient.loanStatus === 'active' && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-400">Amount Released</p>
+                                                        <p className="text-xs font-semibold text-gray-800">
+                                                            ₱{foundClient.amountRelease ? Number(foundClient.amountRelease).toLocaleString() : '—'}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </>)}
                                         </div>
                                     </div>
