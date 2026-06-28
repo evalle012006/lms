@@ -25,6 +25,25 @@ const AddLoanPage = ({
     initialGroupId    = null,
     initialLoId       = null,
     initialClientType = null,
+    initialGroupName  = null,
+    initialLoName     = null,
+    // Client identity — lets us build selectedClientObj without fetching clientList
+    initialFirstName  = null,
+    initialLastName   = null,
+    initialMiddleName = null,
+    initialContact    = null,
+    initialAddress    = null,
+    initialSlotNo     = null,
+    // Guarantor from LAF record (authoritative — overrides stale client record)
+    initialGuarantorFN      = null,
+    initialGuarantorLN      = null,
+    initialGuarantorRel     = null,
+    initialGuarantorContact = null,
+    initialGuarantorBD      = null,
+    initialGuarantorCS      = null,
+    initialGuarantorBiz     = null,
+    initialGuarantorDI      = null,
+    initialCiName           = null,
 }) => {
     const dispatch        = useDispatch();
     const formikRef       = useRef();
@@ -94,6 +113,10 @@ const AddLoanPage = ({
     const [pendingCoMakerRestore, setPendingCoMakerRestore] = useState(null);
     const [clientProfileKey, setClientProfileKey] = useState(null);
     const isEdit = mode === 'edit';
+
+    // fromCI: true when arriving from CI Investigation promote flow.
+    // LO, Group, and client type are locked — user must not change them.
+    const fromCI = !!(initialClientId && initialGroupId && initialLoId);
 
     const [hasPreFilled, setHasPreFilled] = useState(false);
 
@@ -369,31 +392,84 @@ const AddLoanPage = ({
     useEffect(() => {
         if (!initialClientId || !initialGroupId || hasPreFilled) return;
         if (mode !== 'add') return;
- 
-        // Step 1: set clientType first
+
         const ct = initialClientType || 'pending';
         setClientType(ct);
- 
-        // Step 2: set LO
         if (initialLoId) setSelectedLo(initialLoId);
- 
-        // Step 3: set group and load client list
+
+        // FIX Issue 2: call getListGroup for the pre-set LO so groupList is populated
+        // for BM (rep=3). This resolves the group name in the read-only display.
+        if (initialLoId && rep === 3) {
+            getListGroup(currentUser.transactionType || 'daily', initialLoId);
+        }
+
         setSelectedGroup(initialGroupId);
         formikRef.current?.setFieldValue('groupId', initialGroupId);
-        getListClient(ct, initialGroupId);
- 
-        // Step 4: set clientId after a small delay so clientList loads first
-        setTimeout(() => {
-            setClientId(initialClientId);
-            formikRef.current?.setFieldValue('clientId', initialClientId);
-            if (initialGroupId && currentDate) {
-                getListCoMaker(initialGroupId, initialClientId);
-            }
-        }, 800);
- 
+
+        // FIX Issue 1 (Select Client blank) + avoid broken getListClient call:
+        // Build selectedClientObj directly from URL params.
+        // getListClient('pending', groupId) fetches clients with loan status='pending'
+        // but Pending Member clients have loan status='completed' in the DB —
+        // so they never appear in the list and selectedClientObj is never set.
+        if (initialLastName && initialFirstName) {
+            setSelectedClientObj({
+                _id:           initialClientId,
+                firstName:     initialFirstName,
+                lastName:      initialLastName,
+                middleName:    initialMiddleName  || '',
+                contactNumber: initialContact     || '',
+                address:       initialAddress     || '',
+                groupName:     initialGroupName   || '',
+                ciName:        initialCiName      || '',   // FIX Issue 3
+                resolvedPhotoUrl: null,
+            });
+        }
+
+        setClientId(initialClientId);
+        formikRef.current?.setFieldValue('clientId', initialClientId);
+
+        // Slot — existing clients already have one
+        if (initialSlotNo) {
+            const slot = parseInt(initialSlotNo);
+            setSlotNo(slot);
+            setSlotReadOnly(true);
+            setTimeout(() => {
+                formikRef.current?.setFieldValue('slotNo', slot);
+            }, 150);
+        }
+
+        // Load co-maker list
+        if (currentDate) getListCoMaker(initialGroupId, initialClientId);
+
         setHasPreFilled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialClientId, initialGroupId, groupList]);
+    }, [initialClientId, initialGroupId]);
+
+    // ── Apply LAF values when arriving from CI flow ───────────────────────
+    // guarantorFirstName on client record may be stale ('.') — LAF record is authoritative.
+    // ciName from LAF investigation.picUserName is the correct CI investigator.
+    useEffect(() => {
+        const hasGuarantor = initialGuarantorFN || initialGuarantorLN;
+        const hasCiName    = initialCiName;
+        if (!hasGuarantor && !hasCiName) return;
+        if (mode === 'edit') return;
+        const applyFields = () => {
+            const form = formikRef.current;
+            if (!form) return;
+            if (initialGuarantorFN)      form.setFieldValue('guarantorFirstName',    initialGuarantorFN);
+            if (initialGuarantorLN)      form.setFieldValue('guarantorLastName',     initialGuarantorLN);
+            if (initialGuarantorBD)      form.setFieldValue('guarantorBirthDate',    initialGuarantorBD);
+            if (initialGuarantorCS)      form.setFieldValue('guarantorCivilStatus',  initialGuarantorCS);
+            if (initialGuarantorBiz)     form.setFieldValue('guarantorBusiness',     initialGuarantorBiz);
+            if (initialGuarantorDI)      form.setFieldValue('guarantorDailyIncome',  initialGuarantorDI);
+            if (initialCiName)           form.setFieldValue('ciName',                initialCiName);
+        };
+        // Run immediately and again after 300ms to ensure Formik is ready
+        applyFields();
+        const t = setTimeout(applyFields, 300);
+        return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialGuarantorFN, initialGuarantorLN, initialCiName]);
 
     // ─────────────────────────────────────────────────────────
     // API helpers — exact mirror of AddUpdateLoanDrawer
@@ -1450,6 +1526,9 @@ const AddLoanPage = ({
                                 touched={touched}
                                 errors={errors}
                                 setFieldTouched={setFieldTouched}
+                                fromCI={fromCI}
+                                initialLoName={initialLoName}
+                                initialGroupName={initialGroupName}
                             />
 
                             {/* RIGHT — loan form */}

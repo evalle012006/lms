@@ -479,11 +479,18 @@ const AddUpdateClientPage = ({
         // Skip the Add Client form entirely; redirect to Add Loan for this client.
         if (result.isExistingClient && result.clientId) {
             toast.success('Member record updated from LAF. Redirecting to Add Loan…');
+            // Resolve names for immediate read-only display (avoids flash of raw IDs)
+            const loEntry    = (loList || []).find(l => l._id === result.loanData?.loId);
+            const groupEntry = (Array.isArray(groupList) ? groupList : [])
+                .find(g => g._id === result.loanData?.groupId);
+
             const q = new URLSearchParams({
                 clientId: result.clientId,
-                ...(result.loanData?.groupId  ? { groupId:  result.loanData.groupId  } : {}),
-                ...(result.loanData?.loId     ? { loId:     result.loanData.loId     } : {}),
+                ...(result.loanData?.groupId    ? { groupId:    result.loanData.groupId    } : {}),
+                ...(result.loanData?.loId       ? { loId:       result.loanData.loId       } : {}),
                 ...(result.loanData?.clientType ? { clientType: result.loanData.clientType } : {}),
+                ...(loEntry?.label              ? { loName:     loEntry.label              } : {}),
+                ...(groupEntry?.name            ? { groupName:  groupEntry.name            } : {}),
             });
             router.push(`/loans/add?${q.toString()}`);
             return;

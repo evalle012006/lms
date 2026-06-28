@@ -78,35 +78,64 @@ const SelectClientPanel = ({
     coMakerPendingName,
     onCoMakerPendingChange,
     onCoMakerPendingNameChange,
+    fromCI = false,
+    initialLoName = null,
+    initialGroupName = null,
 }) => {
 
     if (selectedClientObj && clientType !== 'offset') {
         return (
             <div className="flex flex-col gap-5">
+                {/* LO + Group — read-only when fromCI, locked in edit mode */}
                 {rep === 3 && (
-                    <SectionCard icon={UserIcon} title="Loan Officer &amp; Group">
-                        <SelectDropdown
-                            name="loId" field="loId" value={selectedLo}
-                            label="Loan Officer (Required)" options={loList}
-                            onChange={handleLoIdChange} onBlur={setFieldTouched}
-                            placeholder={loListLoading ? 'Loading...' : 'Select Loan Officer'}
-                            disabled={loListLoading || isEditMode}
-                            errors={touched.loId && errors.loId ? errors.loId : undefined}
-                        />
-                        <div className="mt-4">
+                    fromCI ? (
+                        <SectionCard icon={UserIcon} title="Loan Officer &amp; Group"
+                            subtitle="Pre-filled from LAF application — read only">
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-500 font-medium">Loan Officer</span>
+                                    <span className="text-sm text-gray-900 font-semibold">
+                                        {initialLoName
+                                            || loList.find(l => l._id === selectedLo)?.label
+                                            || '—'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-sm text-gray-500 font-medium">Group</span>
+                                    <span className="text-sm text-gray-900 font-semibold">
+                                        {initialGroupName
+                                            || (Array.isArray(groupList) ? groupList : [])
+                                                .find(g => g._id === selectedGroup)?.name
+                                            || '—'}
+                                    </span>
+                                </div>
+                            </div>
+                        </SectionCard>
+                    ) : (
+                        <SectionCard icon={UserIcon} title="Loan Officer &amp; Group">
                             <SelectDropdown
-                                name="groupId" field="groupId" value={selectedGroup}
-                                label="Group (Required)"
-                                options={Array.isArray(groupList) ? groupList : []}
-                                onChange={handleGroupIdChange} onBlur={setFieldTouched}
-                                placeholder="Select Group"
-                                disabled={isEditMode}
-                                errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                name="loId" field="loId" value={selectedLo}
+                                label="Loan Officer (Required)" options={loList}
+                                onChange={handleLoIdChange} onBlur={setFieldTouched}
+                                placeholder={loListLoading ? 'Loading...' : 'Select Loan Officer'}
+                                disabled={loListLoading || isEditMode}
+                                errors={touched.loId && errors.loId ? errors.loId : undefined}
                             />
-                        </div>
-                    </SectionCard>
+                            <div className="mt-4">
+                                <SelectDropdown
+                                    name="groupId" field="groupId" value={selectedGroup}
+                                    label="Group (Required)"
+                                    options={Array.isArray(groupList) ? groupList : []}
+                                    onChange={handleGroupIdChange} onBlur={setFieldTouched}
+                                    placeholder="Select Group"
+                                    disabled={isEditMode}
+                                    errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                />
+                            </div>
+                        </SectionCard>
+                    )
                 )}
-                {rep === 4 && (
+                {rep === 4 && !fromCI && (
                     <SectionCard icon={UsersIcon} title="Group">
                         <SelectDropdown
                             name="groupId" field="groupId" value={selectedGroup}
@@ -244,25 +273,60 @@ const SelectClientPanel = ({
     return (
         <div className="flex flex-col gap-5">
             {rep === 3 && (
-                <SectionCard icon={UserIcon} title="Loan Officer &amp; Group" subtitle="Select loan officer first">
-                    <SelectDropdown
-                        name="loId" field="loId" value={selectedLo}
-                        label="Loan Officer (Required)" options={loList}
-                        onChange={handleLoIdChange} onBlur={setFieldTouched}
-                        placeholder={loListLoading ? 'Loading...' : 'Select Loan Officer'}
-                        disabled={loListLoading}
-                        errors={touched.loId && errors.loId ? errors.loId : undefined}
-                    />
-                    <div className="mt-4">
-                        <SelectDropdown
-                            name="groupId" field="groupId" value={selectedGroup}
-                            label="Group (Required)"
-                            options={Array.isArray(groupList) ? groupList : []}
-                            onChange={handleGroupIdChange} onBlur={setFieldTouched}
-                            placeholder="Select Group"
-                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                        />
-                    </div>
+                <SectionCard icon={UserIcon} title="Loan Officer &amp; Group" 
+                    subtitle={fromCI
+                    ? 'Pre-filled from LAF application — read only'
+                    : 'Select loan officer first'}
+                >
+                    {fromCI ? (
+                        /* ── Read-only display: coming from CI flow ── */
+                        <div className="space-y-3">
+                            {/* LO — only show for rep=3, rep=4 is always current user */}
+                            {rep === 3 && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-500 font-medium">Loan Officer</span>
+                                    <span className="text-sm text-gray-900 font-semibold">
+                                        {initialLoName
+                                            || loList.find(l => l._id === selectedLo)?.label
+                                            || selectedLo
+                                            || '—'}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center py-2">
+                                <span className="text-sm text-gray-500 font-medium">Group</span>
+                                <span className="text-sm text-gray-900 font-semibold">
+                                    {initialGroupName
+                                        || (Array.isArray(groupList) ? groupList : [])
+                                            .find(g => g._id === selectedGroup)?.name
+                                        || selectedGroup
+                                        || '—'}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        /* ── Normal interactive mode ── */
+                        <>
+                            <SelectDropdown
+                                name="loId" field="loId" value={selectedLo}
+                                label="Loan Officer (Required)" options={loList}
+                                onChange={handleLoIdChange} onBlur={setFieldTouched}
+                                placeholder={loListLoading ? 'Loading...' : 'Select Loan Officer'}
+                                disabled={loListLoading}
+                                errors={touched.loId && errors.loId ? errors.loId : undefined}
+                            />
+                            <div className="mt-4">
+                                <SelectDropdown
+                                    name="groupId" field="groupId" value={selectedGroup}
+                                    label="Group (Required)"
+                                    options={Array.isArray(groupList) ? groupList : []}
+                                    onChange={handleGroupIdChange} onBlur={setFieldTouched}
+                                    placeholder="Select Group"
+                                    errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                />
+                            </div>
+                        </>
+                    )}
                 </SectionCard>
             )}
 
@@ -284,19 +348,21 @@ const SelectClientPanel = ({
                 title="Select Client"
                 subtitle={groupSelected ? 'Choose a client from the list below' : 'Select a group first to see clients'}
             >
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {CLIENT_TYPES.map(ct => (
-                        <button key={ct.value} type="button"
-                            onClick={() => handleClientTypeChange(ct.value)}
-                            className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                                clientType === ct.value
-                                    ? 'bg-teal-600 text-white border-teal-600'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
-                            }`}>
-                            {ct.label}
-                        </button>
-                    ))}
-                </div>
+                {!fromCI && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {CLIENT_TYPES.map(ct => (
+                            <button key={ct.value} type="button"
+                                onClick={() => handleClientTypeChange(ct.value)}
+                                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                                    clientType === ct.value
+                                        ? 'bg-teal-600 text-white border-teal-600'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
+                                }`}>
+                                {ct.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {clientType === 'offset' && (
                     <div className="flex flex-col gap-4">
@@ -343,7 +409,7 @@ const SelectClientPanel = ({
                     </div>
                 )}
 
-                {clientType !== 'offset' && (
+                {(clientType !== 'offset' && !fromCI) && (
                     <>
                         <ClientList
                             clients={Array.isArray(clientList) ? clientList : []}

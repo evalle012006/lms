@@ -1363,7 +1363,7 @@ const PublicLAFForm = ({
                                     </Field>
                                 </>) : (<>
                                     <Field label="Last Name" required>
-                                        <Input name="ln" noUppercase value={lookupLastName} onChange={e => setLookupLastName(e.target.value)} placeholder="Enter your last name" />
+                                        <Input name="ln" noUppercase value={lookupLastName} onChange={e => setLookupLastName(e.target.value.toUpperCase())} placeholder="Enter your last name" />
                                     </Field>
                                     <Field label="Slot Number" required>
                                         <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
@@ -1563,22 +1563,34 @@ const PublicLAFForm = ({
                                             <h2 className="text-base font-semibold text-gray-800 mb-4">Personal Information</h2>
 
                                             {/* Duplicate warning — Prospect only — passive, no action required */}
-                                            {clientType === 'prospect' && duplicates.length > 0 && (
-                                                <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl">
-                                                    <p className="text-xs font-semibold text-amber-800 mb-1">
-                                                        ⚠ Possible duplicate detected
-                                                    </p>
-                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                                                        A member with a similar name was found in our records.
-                                                        If this is the same person, please go back and select{' '}
-                                                        <strong>Reloan</strong>, <strong>Pending Member</strong>, or <strong>Balik</strong> instead.
-                                                    </p>
-                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                                                        If this is a <strong>different person</strong>, you may continue.
-                                                        This application will be <strong>flagged for admin review</strong> before it can be processed.
-                                                    </p>
-                                                </div>
-                                            )}
+                                            {clientType === 'prospect' && duplicates.length > 0 && (() => {
+                                                const hasAppDupe    = duplicates.some(d => d.source === 'application');
+                                                const hasClientDupe = duplicates.some(d => d.source === 'client');
+                                                return (
+                                                    <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+                                                        <p className="text-xs font-semibold text-amber-800 mb-1">
+                                                            ⚠ Possible duplicate detected
+                                                        </p>
+                                                        {hasAppDupe && (
+                                                            <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                                                A loan application with this name is <strong>already being processed</strong>.
+                                                                If this is the same person, do not continue — inform your Loan Officer.
+                                                            </p>
+                                                        )}
+                                                        {hasClientDupe && (
+                                                            <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                                                An existing member with a similar name was found.
+                                                                If this is the same person, go back and select{' '}
+                                                                <strong>Reloan</strong>, <strong>Pending Member</strong>, or <strong>Balik</strong> instead.
+                                                            </p>
+                                                        )}
+                                                        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                                                            If this is a <strong>different person</strong>, you may continue.
+                                                            This application will be <strong>flagged for admin review</strong>.
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })()}
                                             {clientType === 'prospect' && dupChecking && (
                                                 <div className="mb-3 text-xs text-gray-400 flex items-center gap-1.5">
                                                     <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
