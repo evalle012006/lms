@@ -446,19 +446,18 @@ const AddLoanPage = ({
         if (currentDate) getListCoMaker(initialGroupId, initialClientId);
 
         // ── Guard: check if client already has a pending/active loan ──────
-        // Normal Add Loan flow is protected by getListClient filters.
-        // fromCI bypasses that — so we check explicitly here.
+        // Uses loan-history which correctly filters by clientId.
+        // Pending Member (clientType='pending') and Reloan (clientType='reloan'/advance)
+        // are EXPECTED to have prior loans — only block if a NEW pending loan exists.
+        // New prospects (clientType='prospect') should have zero loans.
         if (initialClientId) {
             fetchWrapper.get(
-                getApiBaseUrl() + 'transactions/loans/list?' +
-                new URLSearchParams({
-                    clientId: initialClientId,
-                    status:   'pending',       // check pending first (just created)
-                })
+                getApiBaseUrl() + `clients/loan-history?clientId=${initialClientId}`
             ).then(res => {
-                const hasPending = res.success && (res.loans?.length > 0 || res.total > 0);
-                if (hasPending) {
-                    // Clear the pre-filled state — don't allow submission
+                if (!res.success) return;
+                const loans = res.loans || [];
+                const hasPendingLoan = loans.some(l => l.status === 'pending');
+                if (hasPendingLoan) {
                     setSelectedClientObj(null);
                     setClientId(null);
                     toast.error(
@@ -467,7 +466,7 @@ const AddLoanPage = ({
                         { autoClose: 8000 }
                     );
                 }
-            }).catch(() => { /* non-fatal — server will block anyway */ });
+            }).catch(() => { /* non-fatal — save.js blocks on server */ });
         }
 
         setHasPreFilled(true);
