@@ -1828,7 +1828,15 @@ const LoanApplicationPage = () => {
     }, [forecastedData]);
 
     useEffect(() => {
-        let actBtns = [];
+        let actBtns = [
+            <ButtonSolid
+                label="Add Loan"
+                type="button"
+                className="p-2 mr-3"
+                onClick={() => router.push('/transactions/loan-applications/add')}
+                icon={[<PlusIcon className="w-5 h-5" />, 'left']}
+            />
+        ];
         if (currentUser?.role?.rep < 4 && selectedTab !== 'forecast') {
             if (!ldfBlocked) {
                 actBtns = [
