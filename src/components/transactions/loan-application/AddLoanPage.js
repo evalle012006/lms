@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { useDispatch, useSelector } from 'react-redux';
@@ -37,6 +37,7 @@ const AddLoanPage = ({
     initialContact    = null,
     initialAddress    = null,
     initialSlotNo     = null,
+    initialLoanCycle  = null,
     initialBirthdate  = null,
     initialPhotoUrl   = null,
     // Guarantor from LAF record (authoritative — overrides stale client record)
@@ -81,7 +82,11 @@ const AddLoanPage = ({
     const [selectedGroup, setSelectedGroup]       = useState(null);
     const [clientId, setClientId]                 = useState(null);
     const [selectedClientObj, setSelectedClientObj] = useState(null);
-    const [slotNo, setSlotNo]                     = useState(null);
+    const [slotNo, setSlotNo] = useState(
+        (initialClientId && initialGroupId && initialLoId && initialSlotNo)
+            ? parseInt(initialSlotNo)
+            : null
+    );
     const [slotNumber, setSlotNumber]             = useState([]);
     const [loanTerms, setLoanTerms]               = useState(60);
     const [groupLeader, setGroupLeader]           = useState(false);
@@ -94,7 +99,11 @@ const AddLoanPage = ({
     const [minDate, setMinDate]                   = useState(null);
     const [maxDate, setMaxDate]                   = useState(null);
     const [selectedLoanId, setSelectedLoanId]     = useState(null);
-    const [slotReadOnly, setSlotReadOnly] = useState(false);
+    // Initialize from URL params when coming from CI flow
+    // This avoids async loan-history fetch race conditions entirely
+    const [slotReadOnly, setSlotReadOnly] = useState(
+        !!(initialClientId && initialGroupId && initialLoId && initialSlotNo)
+    );
     const [coMakerReadOnly,      setCoMakerReadOnly]      = useState(false);
     const [coMakerReadOnlyLabel, setCoMakerReadOnlyLabel] = useState('');
 
@@ -125,10 +134,6 @@ const AddLoanPage = ({
     const fromCI = !!(initialClientId && initialGroupId && initialLoId);
 
     const [hasPreFilled, setHasPreFilled] = useState(false);
-    // Async-resolved initial values for fromCI flow — driven by loan-history response
-    // Using state so enableReinitialize picks them up instead of resetting to defaults
-    const [initialLoanCycle, setInitialLoanCycle] = useState(1);
-    const [initialSlotNoFromHistory, setInitialSlotNoFromHistory] = useState(null);
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
@@ -204,10 +209,12 @@ const AddLoanPage = ({
         const group = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
         if (group?.availableSlots?.length) {
             let slots = [...group.availableSlots];
-            // In edit mode OR when clientType is active/advance, the client's
-            // own slotNo is occupied (not in availableSlots) — add it back
-            // so the dropdown has a valid selected option to display
-            if ((isEdit || clientType === 'active' || clientType === 'advance')
+            // Add client's own slot back if it's occupied but should be displayed:
+            // - Edit mode: slot is already taken by this loan
+            // - active/advance: reloan client keeps their slot
+            // - fromCI with slotReadOnly: existing client's slot from URL params
+            if ((isEdit || clientType === 'active' || clientType === 'advance'
+                    || (fromCI && slotReadOnly))
                 && slotNo && !slots.includes(parseInt(slotNo))) {
                 slots.push(parseInt(slotNo));
             }
@@ -217,7 +224,7 @@ const AddLoanPage = ({
         } else {
             setSlotNumber(Array.from({ length: 30 }, (_, i) => ({ value: i + 1, label: i + 1 })));
         }
-    }, [selectedGroup, offsetClient, groupList, isEdit, slotNo, clientType]);
+    }, [selectedGroup, offsetClient, groupList, isEdit, slotNo, clientType, fromCI, slotReadOnly]);
 
     // ── Auto-fill CI Name + Guarantor from client (add mode only) ─
     // In edit mode, guarantor comes from the loan record — never overwrite from client
@@ -454,19 +461,13 @@ const AddLoanPage = ({
         // Load co-maker list
         if (currentDate) getListCoMaker(initialGroupId, initialClientId);
 
-        // ── Guard: check if client already has a pending/active loan ──────
-        // Uses loan-history which correctly filters by clientId.
-        // Pending Member (clientType='pending') and Reloan (clientType='reloan'/advance)
-        // are EXPECTED to have prior loans — only block if a NEW pending loan exists.
-        // New prospects (clientType='prospect') should have zero loans.
         if (initialClientId) {
             fetchWrapper.get(
                 getApiBaseUrl() + `clients/loan-history?clientId=${initialClientId}`
             ).then(res => {
                 if (!res.success) return;
                 const loans = res.loans || [];
-
-                // Block if pending loan already exists
+                // Block if a pending loan already exists for this client
                 const hasPendingLoan = loans.some(l => l.status === 'pending');
                 if (hasPendingLoan) {
                     setSelectedClientObj(null);
@@ -476,33 +477,6 @@ const AddLoanPage = ({
                         'Please check the Loan Applications list.',
                         { autoClose: 8000 }
                     );
-                    return;
-                }
-
-                // Derive slotNo and loanCycle from most recent non-pending loan
-                const latestLoan = [...loans]
-                    .filter(l => l.status !== 'pending')
-                    .sort((a, b) =>
-                        new Date(b.insertedDateTime || b.dateAdded || 0) -
-                        new Date(a.insertedDateTime || a.dateAdded || 0)
-                    )[0];
-
-                if (latestLoan) {
-                    // Drive through state → initialValues → enableReinitialize
-                    // This survives re-renders unlike setFieldValue in async callbacks
-                    if (latestLoan.loanCycle) {
-                        setInitialLoanCycle((latestLoan.loanCycle || 0) + 1);
-                    }
-                    if (latestLoan.slotNo) {
-                        const slot = parseInt(latestLoan.slotNo);
-                        setInitialSlotNoFromHistory(slot);
-                        setSlotNo(slot);
-                        setSlotReadOnly(true);
-                        // Also set formik field immediately
-                        setTimeout(() => {
-                            formikRef.current?.setFieldValue('slotNo', slot);
-                        }, 200);
-                    }
                 }
             }).catch(() => {});
         }
@@ -805,42 +779,49 @@ const AddLoanPage = ({
     const handleClientIdChange = (field, value, resolvedPhotoUrl = null) => {
         const form = formikRef.current;
         setClientId(value);
-        // FIX: refresh co-maker list with fresh clientId immediately
-        // — useEffect closure captures stale clientId so we call directly here
         if (selectedGroup && currentDate) {
             getListCoMaker(selectedGroup, value);
         }
         setCiStatus(null);
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
-        // Attach the already-resolved signed URL so the read-only card can display it
         setSelectedClientObj({ ...c, resolvedPhotoUrl });
-        // Check CI for existing clients — reloan, pending, balik all need recent CI
         if (clientType !== 'pending') {
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
         if (clientType === 'active' || clientType === 'advance') {
-            const sl   = c.loans?.[0]?.slotNo;
-            const lc   = c.loans?.[0]?.loanCycle;
-            const prevCoMaker   = c.loans?.[0]?.coMaker;    // slot number (varchar)
-            const prevCoMakerId = c.loans?.[0]?.coMakerId;  // clientId UUID
-            setSlotNo(sl);
-            setSelectedLoanId(c.loans?.[0]?._id);
-            setSlotReadOnly(true);
-            // Reset co-maker read-only — will be resolved once comakerList loads
-            setCoMakerReadOnly(false);
-            setCoMakerReadOnlyLabel('');
-            setSelectedCoMaker(null);
-            formikRef.current?.setFieldValue('coMaker', null);
-            // Store for resolution after comakerList loads
-            if (prevCoMaker || prevCoMakerId) {
-                setPendingCoMakerRestore({ slotNo: prevCoMaker, coMakerId: prevCoMakerId });
-            }
             setTimeout(() => {
-                formikRef.current?.setFieldValue('slotNo', sl);
-                formikRef.current?.setFieldValue('loanCycle', (lc || 0) + 1);
-            }, 150);
+                fetchWrapper.get(
+                    getApiBaseUrl() + `laf/applications/list?existingClientId=${value}&status=promoted`
+                ).then(res => {
+                    if (!res.success) return;
+                    const apps = res.applications || [];
+                    const latestApp = apps
+                        .filter(a => a.status === 'promoted')
+                        .sort((a, b) =>
+                            new Date(b.promotedAt || b.submittedAt || 0) -
+                            new Date(a.promotedAt || a.submittedAt || 0)
+                        )[0];
+                    if (!latestApp) return;
+                    const form = formikRef.current;
+                    if (!form) return;
+                    if (latestApp.guarantorFirstName && !isPlaceholder(latestApp.guarantorFirstName))
+                        form.setFieldValue('guarantorFirstName', latestApp.guarantorFirstName);
+                    if (latestApp.guarantorLastName && !isPlaceholder(latestApp.guarantorLastName))
+                        form.setFieldValue('guarantorLastName', latestApp.guarantorLastName);
+                    if (latestApp.guarantorBirthDate)
+                        form.setFieldValue('guarantorBirthDate',   latestApp.guarantorBirthDate);
+                    if (latestApp.guarantorCivilStatus)
+                        form.setFieldValue('guarantorCivilStatus', latestApp.guarantorCivilStatus);
+                    if (latestApp.guarantorBusiness)
+                        form.setFieldValue('guarantorBusiness',    latestApp.guarantorBusiness);
+                    if (latestApp.guarantorDailyIncome)
+                        form.setFieldValue('guarantorDailyIncome', latestApp.guarantorDailyIncome);
+                    if (latestApp.guarantorAddress)
+                        form.setFieldValue('guarantorAddress',     latestApp.guarantorAddress);
+                }).catch(() => {});
+            }, 300);
         } else {
             setSlotReadOnly(false);
             setCoMakerReadOnly(false);
@@ -1372,15 +1353,18 @@ const AddLoanPage = ({
     // ─────────────────────────────────────────────────────────
     // Formik config
     // ─────────────────────────────────────────────────────────
-    const initialValues = {
+    const initialValues = useMemo(() => ({
         branchId:            '',
         loId:                rep === 4 ? (currentUser?._id || '') : '',
         groupId:             '',
-        slotNo:              initialSlotNoFromHistory ?? '',
+        slotNo:              (initialClientId && initialGroupId && initialLoId && initialSlotNo)
+                                 ? parseInt(initialSlotNo)
+                                 : '',
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
-        mcbu:                groupOccurence === 'weekly' ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
+        mcbu:                groupOccurence === 'weekly'
+                                 ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
         csf:                 0,
         dateGranted:         null,
         principalLoan:       5000,
@@ -1389,7 +1373,7 @@ const AddLoanPage = ({
         amountRelease:       0,
         noOfPayments:        0,
         coMaker:             null,
-        loanCycle:           initialLoanCycle,
+        loanCycle:           initialLoanCycle ? parseInt(initialLoanCycle) : 1,
         pnNumber:            '',
         guarantorFirstName:  initialGuarantorFN  || '',
         guarantorMiddleName: '',
@@ -1398,13 +1382,12 @@ const AddLoanPage = ({
         guarantorCivilStatus: initialGuarantorCS || '',
         guarantorBusiness:   initialGuarantorBiz || '',
         guarantorDailyIncome: initialGuarantorDI || '',
-        // Guarantor address: not in PublicLAFForm yet — always blank until added
         guarantorAddress:    initialGuarantorAddress || '',
         status:              'pending',
-        // FIX: ciName pre-baked from LAF investigation — survives enableReinitialize
         ciName:              initialCiName || '',
         dateOfRelease:       '',
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), []); 
 
     const validationSchema = yup.object().shape({
         groupId:            yup.string().required('Please select a group'),

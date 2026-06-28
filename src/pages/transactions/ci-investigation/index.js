@@ -477,8 +477,9 @@ const CIInvestigationPage = () => {
                                 {searchResult.application?.status === 'promoted' && (
                                     <CIPromotedClientBanner
                                         application={searchResult.application}
-                                        investigation={searchResult.investigation} 
+                                        investigation={searchResult.investigation}
                                         currentUser={currentUser}
+                                        loanHistory={clientLoanHistory}
                                     />
                                 )}
                                 {searchResult.application?.status === 'ci_declined' && (

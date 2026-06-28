@@ -21,8 +21,8 @@ const AddLoanApplicationPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <AddLoanPage
-                onBack={() => router.push('/clients')}
-                onSuccess={() => router.push('/clients')}
+                onBack={() => router.push('/transactions/loan-applications')}
+                onSuccess={() => router.push('/transactions/loan-applications')}
                 initialClientId={q.clientId    || null}
                 initialGroupId={q.groupId      || null}
                 initialLoId={q.loId            || null}
@@ -37,6 +37,7 @@ const AddLoanApplicationPage = () => {
                 initialContact={q.contactNumber || null}
                 initialAddress={q.address       || null}
                 initialSlotNo={q.slotNo         || null}
+                initialLoanCycle={q.loanCycle      || null}
                 initialCiName={q.ciName         || null}
                 initialGuarantorFN={q.gFN       || null}
                 initialGuarantorLN={q.gLN       || null}

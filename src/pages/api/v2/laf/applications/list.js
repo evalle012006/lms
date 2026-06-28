@@ -61,6 +61,10 @@ async function listApplications(req, res) {
         };
     }
 
+    if (req.query.existingClientId) {
+        where = { ...where, existingClientId: { _eq: req.query.existingClientId } };
+    }
+
     // FIX: run data fetch + total count in parallel
     // Fetch limit+1 records — the extra record tells us if there's a next page
     // without needing the aggregate (which may not be tracked in Hasura yet)

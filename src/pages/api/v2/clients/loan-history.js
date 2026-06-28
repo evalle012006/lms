@@ -14,7 +14,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
     _id delinquent
     loans (order_by: [{ loanCycle: desc }], limit: 20) {
-        _id loanCycle status
+        _id loanCycle status slotNo
         amountRelease loanBalance loanTerms
         dateAdded dateOfRelease
     }
@@ -74,6 +74,7 @@ async function getLoanHistory(req, res) {
         _id:            l._id,
         loanCycle:      l.loanCycle,
         status:         l.status,
+        slotNo:         l.slotNo,
         amountRelease:  l.amountRelease,
         loanBalance:    l.loanBalance,
         dateAdded:      l.dateAdded,
