@@ -176,7 +176,7 @@ const SelectClientPanel = ({
                         <ReadOnlyField label="Contact" value={selectedClientObj.contactNumber} />
                     </div>
                     <ReadOnlyField label="Address" value={selectedClientObj.address} />
-                    {!isEditMode && (
+                    {(!isEditMode && !fromCI) && (
                         <button type="button" onClick={onClearClient}
                             className="mt-4 text-xs text-gray-400 hover:text-gray-600 underline">
                             ← Choose a different client

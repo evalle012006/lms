@@ -849,6 +849,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   dailyIncome
   loanRelease
   amountRelease
+  guarantorAddress
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

@@ -50,6 +50,8 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser }) => 
         if (application?.firstName)     q.set('firstName',     application.firstName);
         if (application?.lastName)      q.set('lastName',      application.lastName);
         if (application?.middleName)    q.set('middleName',    application.middleName);
+        if (application?.birthdate)     q.set('birthdate',     application.birthdate);
+        if (application?.lafPhotoUrl)   q.set('photoUrl',      encodeURIComponent(application.lafPhotoUrl));
         if (application?.contactNumber) q.set('contactNumber', application.contactNumber);
         if (application?.address)       q.set('address',       application.address);
 
@@ -62,6 +64,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser }) => 
         if (application?.guarantorCivilStatus)  q.set('gCS',      application.guarantorCivilStatus);
         if (application?.guarantorBusiness)     q.set('gBiz',     application.guarantorBusiness);
         if (application?.guarantorDailyIncome)  q.set('gDI',      application.guarantorDailyIncome);
+        if (application?.guarantorAddress)      q.set('gAddr',    application.guarantorAddress);
 
         router.push(`/transactions/loan-applications/add?${q.toString()}`);
     };

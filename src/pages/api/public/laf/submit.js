@@ -51,6 +51,7 @@ async function submitLAF(req, res) {
         loanAmount, loanPurpose,
         guarantorFirstName, guarantorLastName,
         guarantorRelationship, guarantorContactNumber,
+        guarantorAddress,
         // Guarantor extended fields — captured in PublicLAFForm Loan step
         guarantorBirthDate,
         guarantorCivilStatus,
@@ -327,6 +328,7 @@ async function submitLAF(req, res) {
                 guarantorLastName:      guarantorLastName?.trim().toUpperCase(),
                 guarantorRelationship,
                 guarantorContactNumber,
+                guarantorAddress:         guarantorAddress?.trim() || null,
                 // Guarantor extended fields
                 guarantorBirthDate:    guarantorBirthDate    || null,
                 guarantorCivilStatus:  guarantorCivilStatus  || null,

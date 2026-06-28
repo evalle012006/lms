@@ -34,6 +34,8 @@ const AddLoanPage = ({
     initialContact    = null,
     initialAddress    = null,
     initialSlotNo     = null,
+    initialBirthdate  = null,
+    initialPhotoUrl   = null,
     // Guarantor from LAF record (authoritative — overrides stale client record)
     initialGuarantorFN      = null,
     initialGuarantorLN      = null,
@@ -43,6 +45,7 @@ const AddLoanPage = ({
     initialGuarantorCS      = null,
     initialGuarantorBiz     = null,
     initialGuarantorDI      = null,
+    initialGuarantorAddress = null,
     initialCiName           = null,
 }) => {
     const dispatch        = useDispatch();
@@ -419,9 +422,10 @@ const AddLoanPage = ({
                 middleName:    initialMiddleName  || '',
                 contactNumber: initialContact     || '',
                 address:       initialAddress     || '',
+                birthdate:     initialBirthdate   || '', 
                 groupName:     initialGroupName   || '',
-                ciName:        initialCiName      || '',   // FIX Issue 3
-                resolvedPhotoUrl: null,
+                ciName:        initialCiName      || '',
+                resolvedPhotoUrl: initialPhotoUrl || null,
             });
         }
 
@@ -440,6 +444,31 @@ const AddLoanPage = ({
 
         // Load co-maker list
         if (currentDate) getListCoMaker(initialGroupId, initialClientId);
+
+        // ── Guard: check if client already has a pending/active loan ──────
+        // Normal Add Loan flow is protected by getListClient filters.
+        // fromCI bypasses that — so we check explicitly here.
+        if (initialClientId) {
+            fetchWrapper.get(
+                getApiBaseUrl() + 'transactions/loans/list?' +
+                new URLSearchParams({
+                    clientId: initialClientId,
+                    status:   'pending',       // check pending first (just created)
+                })
+            ).then(res => {
+                const hasPending = res.success && (res.loans?.length > 0 || res.total > 0);
+                if (hasPending) {
+                    // Clear the pre-filled state — don't allow submission
+                    setSelectedClientObj(null);
+                    setClientId(null);
+                    toast.error(
+                        'This client already has a pending loan application. ' +
+                        'Please check the Loan Applications list.',
+                        { autoClose: 8000 }
+                    );
+                }
+            }).catch(() => { /* non-fatal — server will block anyway */ });
+        }
 
         setHasPreFilled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -920,10 +949,11 @@ const AddLoanPage = ({
         // ── Phase 7: Block loan creation without valid CI ─────────────────
         // Applies to all existing client types (reloan/pending/balik).
         // Prospect (clientType='pending') is excluded — they have no CI yet.
-        const needsCICheck = clientType !== 'pending';
+        // fromCI=true: already arrived from a completed CI investigation —
+        // the CI check is redundant and ciStatus will always be null here.
+        const needsCICheck = clientType !== 'pending' && !fromCI;
         if (needsCICheck) {
             if (!ciStatus) {
-                // CI check hasn't completed yet (still loading)
                 toast.error('Please wait — checking CI investigation status...');
                 return;
             }
@@ -941,6 +971,12 @@ const AddLoanPage = ({
                 );
                 return;
             }
+        }
+
+        // ── Guarantor ID photo is required ────────────────────────────────
+        if (!guarantorIdFile && !guarantorIdPreview) {
+            toast.error('Please upload a Guarantor Valid ID photo.');
+            return;
         }
 
         setLoading(true);
@@ -1318,17 +1354,18 @@ const AddLoanPage = ({
         coMaker:             null,
         loanCycle:           1,
         pnNumber:            '',
-        guarantorFirstName:  '',
+        guarantorFirstName:  initialGuarantorFN  || '',
         guarantorMiddleName: '',
-        guarantorLastName:   '',
-        // FIX: new guarantor fields
-        guarantorBirthDate:   '',
-        guarantorCivilStatus: '',
-        guarantorBusiness:    '',
-        guarantorDailyIncome: '',
-        guarantorAddress:     '',
+        guarantorLastName:   initialGuarantorLN  || '',
+        guarantorBirthDate:  initialGuarantorBD  || '',
+        guarantorCivilStatus: initialGuarantorCS || '',
+        guarantorBusiness:   initialGuarantorBiz || '',
+        guarantorDailyIncome: initialGuarantorDI || '',
+        // Guarantor address: not in PublicLAFForm yet — always blank until added
+        guarantorAddress:    initialGuarantorAddress || '',
         status:              'pending',
-        ciName:              '',
+        // FIX: ciName pre-baked from LAF investigation — survives enableReinitialize
+        ciName:              initialCiName || '',
         dateOfRelease:       '',
     };
 
@@ -1540,6 +1577,7 @@ const AddLoanPage = ({
                                 setFieldValue={setFieldValue}
                                 setFieldTouched={setFieldTouched}
                                 initialDateRelease={initialDateRelease}
+                                fromCI={fromCI}
                                 minDate={minDate}
                                 maxDate={maxDate}
                                 onDateChange={date => formikRef.current?.setFieldValue('dateOfRelease', date)}

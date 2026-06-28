@@ -32,6 +32,8 @@ const AddLoanApplicationPage = () => {
                 initialFirstName={q.firstName   || null}
                 initialLastName={q.lastName     || null}
                 initialMiddleName={q.middleName || null}
+                initialBirthdate={q.birthdate   || null}
+                initialPhotoUrl={q.photoUrl ? decodeURIComponent(q.photoUrl) : null}
                 initialContact={q.contactNumber || null}
                 initialAddress={q.address       || null}
                 initialSlotNo={q.slotNo         || null}
@@ -44,6 +46,7 @@ const AddLoanApplicationPage = () => {
                 initialGuarantorCS={q.gCS       || null}
                 initialGuarantorBiz={q.gBiz     || null}
                 initialGuarantorDI={q.gDI       || null}
+                initialGuarantorAddress={q.gAddr || null}
             />
         </Layout>
     );

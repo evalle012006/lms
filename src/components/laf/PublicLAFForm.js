@@ -990,6 +990,7 @@ const PublicLAFForm = ({
         guarantorCivilStatus: '',
         guarantorBusiness:    '',
         guarantorDailyIncome: '',
+        guarantorAddress: '',
         ...preFilledValues,
     };
 
@@ -1678,6 +1679,16 @@ const PublicLAFForm = ({
                                                         <Field label="Last Name" required error={touched.guarantorLastName && errors.guarantorLastName}><Input name="guarantorLastName" value={values.guarantorLastName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.guarantorLastName && errors.guarantorLastName} /></Field>
                                                         <Field label="Relationship" required error={touched.guarantorRelationship && errors.guarantorRelationship}><Input name="guarantorRelationship" noUppercase value={values.guarantorRelationship} onChange={handleChange} onBlur={handleBlur} placeholder="Spouse, sibling..." error={touched.guarantorRelationship && errors.guarantorRelationship} /></Field>
                                                         <Field label="Contact Number" required error={touched.guarantorContactNumber && errors.guarantorContactNumber}><Input name="guarantorContactNumber" noUppercase value={values.guarantorContactNumber} onChange={handleChange} onBlur={handleBlur} placeholder="09XX XXX XXXX" error={touched.guarantorContactNumber && errors.guarantorContactNumber} /></Field>
+                                                        <Field label="Address">
+                                                            <Input
+                                                                name="guarantorAddress"
+                                                                noUppercase
+                                                                value={values.guarantorAddress}
+                                                                onChange={handleChange}
+                                                                onBlur={handleBlur}
+                                                                placeholder="Complete address of guarantor"
+                                                            />
+                                                        </Field>
                                                         <Field label="Guarantor Birthdate">
                                                             <Input name="guarantorBirthDate" type="date"
                                                                 noUppercase

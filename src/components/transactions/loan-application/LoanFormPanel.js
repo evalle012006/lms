@@ -350,10 +350,7 @@ const LoanFormPanel = ({
                     <div className="mt-3">
                         <p className="text-xs font-semibold text-gray-500 uppercase
                             tracking-wide mb-2">
-                            Guarantor Valid ID
-                            <span className="ml-1 text-xs font-normal text-gray-400">
-                                (optional)
-                            </span>
+                            Guarantor Valid ID <span className="text-red-500">*</span>
                         </p>
                         <label className="block cursor-pointer">
                             <input type="file" accept="image/*" className="hidden"
