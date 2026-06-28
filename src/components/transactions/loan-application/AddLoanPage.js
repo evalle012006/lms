@@ -19,6 +19,9 @@ import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';
 
+// Treat legacy placeholder values as empty
+const isPlaceholder = (v) => !v || v.trim() === '.' || v.trim() === '-';
+
 const AddLoanPage = ({
     onBack, onSuccess, mode = 'add', loanId = null,
     initialClientId   = null,
@@ -122,6 +125,10 @@ const AddLoanPage = ({
     const fromCI = !!(initialClientId && initialGroupId && initialLoId);
 
     const [hasPreFilled, setHasPreFilled] = useState(false);
+    // Async-resolved initial values for fromCI flow — driven by loan-history response
+    // Using state so enableReinitialize picks them up instead of resetting to defaults
+    const [initialLoanCycle, setInitialLoanCycle] = useState(1);
+    const [initialSlotNoFromHistory, setInitialSlotNoFromHistory] = useState(null);
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
@@ -214,9 +221,6 @@ const AddLoanPage = ({
 
     // ── Auto-fill CI Name + Guarantor from client (add mode only) ─
     // In edit mode, guarantor comes from the loan record — never overwrite from client
-    // Helper: treat '.' and similar placeholders as empty
-    const isPlaceholder = (v) => !v || v.trim() === '.' || v.trim() === '-';
-
     useEffect(() => {
         if (!selectedClientObj || mode === 'edit') return;
         formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
@@ -462,7 +466,7 @@ const AddLoanPage = ({
                 if (!res.success) return;
                 const loans = res.loans || [];
 
-                // Block if a pending loan already exists
+                // Block if pending loan already exists
                 const hasPendingLoan = loans.some(l => l.status === 'pending');
                 if (hasPendingLoan) {
                     setSelectedClientObj(null);
@@ -475,29 +479,30 @@ const AddLoanPage = ({
                     return;
                 }
 
-                // FIX: For existing clients (Pending Member / Reloan), derive
-                // slotNo and loanCycle from their most recent loan.
-                // The LAF doesn't carry these — the loan record does.
-                const latestLoan = loans
+                // Derive slotNo and loanCycle from most recent non-pending loan
+                const latestLoan = [...loans]
                     .filter(l => l.status !== 'pending')
                     .sort((a, b) =>
-                        new Date(b.insertedDateTime || b.dateAdded) -
-                        new Date(a.insertedDateTime || a.dateAdded)
+                        new Date(b.insertedDateTime || b.dateAdded || 0) -
+                        new Date(a.insertedDateTime || a.dateAdded || 0)
                     )[0];
 
-                if (latestLoan?.slotNo) {
-                    const slot = parseInt(latestLoan.slotNo);
-                    setSlotNo(slot);
-                    setSlotReadOnly(true);
-                    setTimeout(() => {
-                        formikRef.current?.setFieldValue('slotNo', slot);
-                    }, 150);
-                }
-                if (latestLoan?.loanCycle) {
-                    const nextCycle = (latestLoan.loanCycle || 0) + 1;
-                    setTimeout(() => {
-                        formikRef.current?.setFieldValue('loanCycle', nextCycle);
-                    }, 150);
+                if (latestLoan) {
+                    // Drive through state → initialValues → enableReinitialize
+                    // This survives re-renders unlike setFieldValue in async callbacks
+                    if (latestLoan.loanCycle) {
+                        setInitialLoanCycle((latestLoan.loanCycle || 0) + 1);
+                    }
+                    if (latestLoan.slotNo) {
+                        const slot = parseInt(latestLoan.slotNo);
+                        setInitialSlotNoFromHistory(slot);
+                        setSlotNo(slot);
+                        setSlotReadOnly(true);
+                        // Also set formik field immediately
+                        setTimeout(() => {
+                            formikRef.current?.setFieldValue('slotNo', slot);
+                        }, 200);
+                    }
                 }
             }).catch(() => {});
         }
@@ -1371,7 +1376,7 @@ const AddLoanPage = ({
         branchId:            '',
         loId:                rep === 4 ? (currentUser?._id || '') : '',
         groupId:             '',
-        slotNo:              '',
+        slotNo:              initialSlotNoFromHistory ?? '',
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
@@ -1384,7 +1389,7 @@ const AddLoanPage = ({
         amountRelease:       0,
         noOfPayments:        0,
         coMaker:             null,
-        loanCycle:           1,
+        loanCycle:           initialLoanCycle,
         pnNumber:            '',
         guarantorFirstName:  initialGuarantorFN  || '',
         guarantorMiddleName: '',
