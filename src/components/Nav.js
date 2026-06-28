@@ -260,7 +260,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager", "loan_officer"]
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "Prospect Clients",

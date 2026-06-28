@@ -791,6 +791,32 @@ const AddLoanPage = ({
         }
         setGroupLeader(c.groupLeader || false);
         if (clientType === 'active' || clientType === 'advance') {
+            // ── Restore slot/loanCycle/comaker from the client's existing loan ──
+            const sl             = c.loans?.[0]?.slotNo;
+            const lc             = c.loans?.[0]?.loanCycle;
+            const prevCoMaker    = c.loans?.[0]?.coMaker;
+            const prevCoMakerId  = c.loans?.[0]?.coMakerId;
+
+            setSlotNo(sl);
+            setSelectedLoanId(c.loans?.[0]?._id);
+            setSlotReadOnly(true);
+            setCoMakerReadOnly(false);
+            setCoMakerReadOnlyLabel('');
+            setSelectedCoMaker(null);
+            form?.setFieldValue('coMaker', null);
+
+            if (prevCoMaker || prevCoMakerId) {
+                setPendingCoMakerRestore({ slotNo: prevCoMaker, coMakerId: prevCoMakerId });
+            }
+
+            // Set slotNo + loanCycle in Formik — useMemo on initialValues
+            // ensures enableReinitialize won't wipe these after comakerList loads
+            setTimeout(() => {
+                formikRef.current?.setFieldValue('slotNo', sl);
+                formikRef.current?.setFieldValue('loanCycle', (lc || 0) + 1);
+            }, 150);
+
+            // ── Fetch LAF guarantor data (delayed so slot/loanCycle setTimeout fires first) ──
             setTimeout(() => {
                 fetchWrapper.get(
                     getApiBaseUrl() + `laf/applications/list?existingClientId=${value}&status=promoted`
@@ -809,7 +835,7 @@ const AddLoanPage = ({
                     if (latestApp.guarantorFirstName && !isPlaceholder(latestApp.guarantorFirstName))
                         form.setFieldValue('guarantorFirstName', latestApp.guarantorFirstName);
                     if (latestApp.guarantorLastName && !isPlaceholder(latestApp.guarantorLastName))
-                        form.setFieldValue('guarantorLastName', latestApp.guarantorLastName);
+                        form.setFieldValue('guarantorLastName',  latestApp.guarantorLastName);
                     if (latestApp.guarantorBirthDate)
                         form.setFieldValue('guarantorBirthDate',   latestApp.guarantorBirthDate);
                     if (latestApp.guarantorCivilStatus)
@@ -822,6 +848,7 @@ const AddLoanPage = ({
                         form.setFieldValue('guarantorAddress',     latestApp.guarantorAddress);
                 }).catch(() => {});
             }, 300);
+
         } else {
             setSlotReadOnly(false);
             setCoMakerReadOnly(false);

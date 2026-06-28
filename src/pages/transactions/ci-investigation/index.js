@@ -224,7 +224,7 @@ const CIInvestigationPage = () => {
                     setClientLoanHistory([]);
                 }
             } else {
-                setClientLoanHistory(null);
+                setClientLoanHistory([]);
             }
         } catch {
             toast.error('Failed to load application.');
