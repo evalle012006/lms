@@ -214,18 +214,23 @@ const AddLoanPage = ({
 
     // ── Auto-fill CI Name + Guarantor from client (add mode only) ─
     // In edit mode, guarantor comes from the loan record — never overwrite from client
+    // Helper: treat '.' and similar placeholders as empty
+    const isPlaceholder = (v) => !v || v.trim() === '.' || v.trim() === '-';
+
     useEffect(() => {
         if (!selectedClientObj || mode === 'edit') return;
         formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
         const form = formikRef.current;
         if (!form) return;
         const current = form.values;
-        if (!current.guarantorFirstName) {
-            form.setFieldValue('guarantorFirstName',   selectedClientObj.guarantorFirstName   || '');
-            form.setFieldValue('guarantorMiddleName',  selectedClientObj.guarantorMiddleName  || '');
-            form.setFieldValue('guarantorLastName',    selectedClientObj.guarantorLastName    || '');
-            // FIX: pre-fill extended guarantor fields from LAF data on client record
-            // These are editable — BM can update during loan creation
+        // Use placeholder check — '.' from legacy records is not a real value
+        if (isPlaceholder(current.guarantorFirstName)) {
+            form.setFieldValue('guarantorFirstName',
+                isPlaceholder(selectedClientObj.guarantorFirstName) ? '' : selectedClientObj.guarantorFirstName);
+            form.setFieldValue('guarantorMiddleName',
+                isPlaceholder(selectedClientObj.guarantorMiddleName) ? '' : selectedClientObj.guarantorMiddleName);
+            form.setFieldValue('guarantorLastName',
+                isPlaceholder(selectedClientObj.guarantorLastName) ? '' : selectedClientObj.guarantorLastName);
             form.setFieldValue('guarantorBirthDate',   selectedClientObj.guarantorBirthDate   || '');
             form.setFieldValue('guarantorCivilStatus', selectedClientObj.guarantorCivilStatus || '');
             form.setFieldValue('guarantorBusiness',    selectedClientObj.guarantorBusiness    || '');
@@ -456,6 +461,8 @@ const AddLoanPage = ({
             ).then(res => {
                 if (!res.success) return;
                 const loans = res.loans || [];
+
+                // Block if a pending loan already exists
                 const hasPendingLoan = loans.some(l => l.status === 'pending');
                 if (hasPendingLoan) {
                     setSelectedClientObj(null);
@@ -465,8 +472,34 @@ const AddLoanPage = ({
                         'Please check the Loan Applications list.',
                         { autoClose: 8000 }
                     );
+                    return;
                 }
-            }).catch(() => { /* non-fatal — save.js blocks on server */ });
+
+                // FIX: For existing clients (Pending Member / Reloan), derive
+                // slotNo and loanCycle from their most recent loan.
+                // The LAF doesn't carry these — the loan record does.
+                const latestLoan = loans
+                    .filter(l => l.status !== 'pending')
+                    .sort((a, b) =>
+                        new Date(b.insertedDateTime || b.dateAdded) -
+                        new Date(a.insertedDateTime || a.dateAdded)
+                    )[0];
+
+                if (latestLoan?.slotNo) {
+                    const slot = parseInt(latestLoan.slotNo);
+                    setSlotNo(slot);
+                    setSlotReadOnly(true);
+                    setTimeout(() => {
+                        formikRef.current?.setFieldValue('slotNo', slot);
+                    }, 150);
+                }
+                if (latestLoan?.loanCycle) {
+                    const nextCycle = (latestLoan.loanCycle || 0) + 1;
+                    setTimeout(() => {
+                        formikRef.current?.setFieldValue('loanCycle', nextCycle);
+                    }, 150);
+                }
+            }).catch(() => {});
         }
 
         setHasPreFilled(true);
