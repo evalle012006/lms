@@ -104,9 +104,15 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                     <p className="text-xs text-green-700 mt-0.5">{statusMessage}</p>
 
                     {hasPendingLoan ? (
-                        <p className="text-xs text-green-600 mt-2">
-                            A pending loan application already exists for this client.
-                        </p>
+                        <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs font-semibold text-amber-800">
+                                Loan application already exists
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                                This client already has a pending loan application.
+                                Go to Loan Applications to view or approve it.
+                            </p>
+                        </div>
                     ) : isLoading ? (
                         <div className="flex items-center gap-1.5 mt-2 text-xs text-green-600">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />

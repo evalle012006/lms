@@ -211,19 +211,19 @@ const CIInvestigationPage = () => {
 
             setSearchResult(res);
 
-            const existingClientId = res.application?.existingClientId;
-            if (existingClientId) {
-                try {
-                    const histRes = await fetchWrapper.get(
-                        getApiBaseUrl() + `clients/loan-history?clientId=${existingClientId}`
-                    );
-                    setClientLoanHistory(
-                        histRes.success && histRes.loans?.length ? histRes.loans : []
-                    );
-                } catch {
-                    setClientLoanHistory([]);
-                }
+            // Use existingClientId for reloan/pending/balik (already a client)
+            // Use promotedClientId for prospect (just promoted to client)
+            // Both cases: check for pending loan to control the Add Loan button
+            const clientIdForHistory = res.application?.existingClientId
+                || res.application?.promotedClientId;
+
+            if (clientIdForHistory) {
+                const histRes = await fetchWrapper.get(
+                    getApiBaseUrl() + `clients/loan-history?clientId=${clientIdForHistory}`
+                );
+                setClientLoanHistory(histRes.success ? (histRes.loans || []) : []);
             } else {
+                // Not yet promoted — no clientId exists, no loan possible
                 setClientLoanHistory([]);
             }
         } catch {

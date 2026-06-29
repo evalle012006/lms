@@ -192,10 +192,12 @@ const CIApplicationsList = ({
     });
 
     const statusOptions = [
-        { value: 'pending',     label: 'Pending CI'  },
-        { value: 'ci_approved', label: 'CI Approved' },
-        { value: 'ci_declined', label: 'Declined'    },
-        { value: 'all',         label: 'All'         },
+        { value: 'all',                label: 'All'            },
+        { value: 'pending',            label: 'Pending CI'     },
+        { value: 'ci_approved',        label: 'CI Approved'    },
+        { value: 'ci_declined',        label: 'Declined'       },
+        { value: 'promoted',           label: 'Promoted'       },
+        { value: 'pending_validation', label: 'Pending Review' },
     ];
 
     return (
