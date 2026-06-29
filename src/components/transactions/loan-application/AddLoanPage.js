@@ -1165,30 +1165,35 @@ const AddLoanPage = ({
             return;
         }
 
-        // FIX: upload guarantor photo if a new file was selected
         let guarantorPhotoKey = isEdit ? (loanData?.guarantorPhotoKey || null) : null;
         if (guarantorPhotoFile) {
             try {
                 const fd = new FormData();
                 fd.append('file', guarantorPhotoFile);
-                fd.append('folder', `lmsv2/guarantor-photos/${clientId || 'unknown'}`);
-                const uploadRes = await fetchWrapper.upload(getApiBaseUrl() + 'upload', fd);
-                if (uploadRes.success) guarantorPhotoKey = uploadRes.key;
+                fd.append('origin', 'guarantor-photos');
+                fd.append('uuid', clientId || `guarantor-${Date.now()}`);
+                const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.fileKey) guarantorPhotoKey = uploadData.fileKey;
+                }
             } catch (e) {
                 console.error('Guarantor photo upload failed:', e);
-                // Non-fatal — proceed without photo
             }
         }
 
-        // FIX: upload guarantor ID if a new file was selected
         let guarantorIdPhotoKey = isEdit ? (loanData?.guarantorIdPhotoKey || null) : null;
         if (guarantorIdFile) {
             try {
                 const fd = new FormData();
                 fd.append('file', guarantorIdFile);
-                fd.append('folder', `lmsv2/guarantor-id-photos/${clientId || 'unknown'}`);
-                const uploadRes = await fetchWrapper.upload(getApiBaseUrl() + 'upload', fd);
-                if (uploadRes.success) guarantorIdPhotoKey = uploadRes.key;
+                fd.append('origin', 'guarantor-id-photos');
+                fd.append('uuid', clientId || `guarantor-id-${Date.now()}`);
+                const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.fileKey) guarantorIdPhotoKey = uploadData.fileKey;
+                }
             } catch (e) {
                 console.error('Guarantor ID upload failed:', e);
             }
