@@ -129,15 +129,23 @@ async function getPendingTransfer(_id, branchId) {
         `;
 
         return findTransferClients(filter, fields)
-            .then(rows => rows.map(({
-                client,
-                sourceBranch,
-                sourceGroup,
-                sourceUser,
-                targetBranch,
-                targetGroup,
-                targetUser,
-                ...info
+            .then(rows => rows
+                .filter(({ client, ...info }) => {
+                    if (client === null) {
+                        console.error(`[transfer-client] Skipping transfer ${info._id} — selectedClientId ${info.selectedClientId} has no matching client record.`);
+                        return false;
+                    }
+                    return true;
+                })
+                .map(({
+                    client,
+                    sourceBranch,
+                    sourceGroup,
+                    sourceUser,
+                    targetBranch,
+                    targetGroup,
+                    targetUser,
+                    ...info
             }) => ({
                 ...info,
                 client: [client],
