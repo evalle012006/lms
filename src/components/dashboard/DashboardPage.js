@@ -90,6 +90,7 @@ const DashboardPage = () => {
     const [statusData, setStatusData] = useState({
         closedBranches: 0, totalBranches: 0, activeUsers: 0,
         cashOnHand: 0, bankBalance: 0, managementExpenses: 0,
+        staleBranchesCount: 0, staleBranches: [],
     });
 
     // ── DELINQUENT ALERTS STATE ───────────────────────────────────────────────
@@ -499,7 +500,15 @@ const DashboardPage = () => {
                                     {currentUser?.role?.rep <= 2 ? (
                                         <div className="flex flex-col gap-3">
                                             <h3 className="text-sm font-bold text-gray-800">Status</h3>
-                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100"><p className="text-xs font-bold text-gray-700 mb-1">Branch Status Closing</p><p className="text-base font-bold text-gray-800">{statusData.closedBranches} / {statusData.totalBranches}</p></div>
+                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                                <p className="text-xs font-bold text-gray-700 mb-1">Branch Status Closing</p>
+                                                <p className="text-base font-bold text-gray-800">{statusData.closedBranches} / {statusData.totalBranches}</p>
+                                                {statusData.staleBranchesCount > 0 && (
+                                                    <p className="text-xs font-semibold text-amber-600 mt-1">
+                                                        {statusData.staleBranchesCount} closed branch{statusData.staleBranchesCount > 1 ? 'es' : ''} need{statusData.staleBranchesCount === 1 ? 's' : ''} re-check
+                                                    </p>
+                                                )}
+                                            </div>
                                             <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                                 <p className="text-xs font-bold text-gray-700 mb-1">Available Fund</p>
                                                 <div className="flex justify-between items-center"><span className="text-xs text-gray-500">Cash On Hand:</span><span className="text-xs font-bold text-gray-800">{formatNumber(statusData.cashOnHand)}</span></div>
@@ -513,9 +522,13 @@ const DashboardPage = () => {
                                             <div className="flex flex-col items-center justify-center space-y-3">
                                                 <h3 className="text-sm font-bold text-gray-800 text-center">BRANCH STATUS:</h3>
                                                 {summaryData.branchApprovalStatus === 'closed' ? (
-                                                    <><div className="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center"><CheckCircle2 className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Already Closed</p></>
-                                                ) : (
-                                                    <><div className="w-20 h-20 rounded-full bg-yellow-400 flex items-center justify-center"><XOctagon className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Not Closed</p></>
+                                                    summaryData.documentsStale ? (
+                                                        <><div className="w-20 h-20 rounded-full bg-amber-500 flex items-center justify-center"><AlertTriangle className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Closed — Needs Re-check</p></>
+                                                    ) : (
+                                                        <><div className="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center"><CheckCircle2 className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Already Closed</p></>
+                                                    )
+                                                    ) : (
+                                                        <><div className="w-20 h-20 rounded-full bg-yellow-400 flex items-center justify-center"><XOctagon className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Not Closed</p></>
                                                 )}
                                             </div>
                                             <div>

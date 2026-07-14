@@ -13,6 +13,7 @@ import { buildModernBranchCashCollectionsSourceQuery, getDefaultViewMode, should
 import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
 import CashCollectionsExcelExport from '@/components/transactions/CashCollectionsExcelExport';
+import BranchClosingDocumentsModal from '@/components/transactions/BranchClosingDocumentsModal';
 
 // Row background colors - Tailwind safelist (do not remove):
 // bg-yellow-100 bg-blue-100 bg-orange-100
@@ -70,6 +71,14 @@ const ModernBranchCashCollections = () => {
   const [showRepairDialog, setShowRepairDialog] = useState(false);
   const [selectedRepairGroup, setSelectedRepairGroup] = useState(null);
   const [repairResult, setRepairResult] = useState(null);
+
+  const [showClosingDocsModal, setShowClosingDocsModal] = useState(false);
+  const [closingDocsBranch, setClosingDocsBranch] = useState(null);
+  const [branchReadiness, setBranchReadiness] = useState({ loading: true, readyToUpload: false, readyToClose: false });
+  const [readinessVersion, setReadinessVersion] = useState(0);
+  const [bmBranchStatus, setBmBranchStatus] = useState(null);
+  const [branchCheckLoading, setBranchCheckLoading] = useState({}); // { [branchId]: true }
+  const [reopenWarning, setReopenWarning] = useState(null); // { row, isBranchLevel, branchId, docCount }
 
   /**
    * Check if a group has discrepancies that need repair
@@ -195,6 +204,7 @@ const ModernBranchCashCollections = () => {
       draft: 'bg-orange-100',
       yellow: 'bg-yellow-100',
       blue: 'bg-blue-100',
+      stale: 'bg-purple-100', 
       none: '',
     };
 
@@ -207,6 +217,10 @@ const ModernBranchCashCollections = () => {
     // Draft rows at group level
     if (row.isDraft && currentFilter === 'group') {
       return bgColorMap.draft;
+    }
+
+    if (currentFilter === 'branch' && row.documentsStale) {
+      return bgColorMap.stale;
     }
 
     // Role-based coloring logic
@@ -411,6 +425,12 @@ const ModernBranchCashCollections = () => {
     }
   };
 
+  const cohValid = (() => {
+    if (cohAmount === null || cohAmount === undefined || cohAmount === '') return false;
+    const numeric = Number(String(cohAmount).replace(/,/g, ''));
+    return !isNaN(numeric) && numeric >= 0; // 0 is valid, negative is not
+  })();
+
   const handleCOHDataChange = async (value) => {
     // Validation
     if (value && isNaN(parseFloat(value))) {
@@ -455,7 +475,7 @@ const ModernBranchCashCollections = () => {
   };
 
   // Action handlers for open/close transactions
-  const handleOpen = async (row) => {
+  const performOpen = async (row) => {
     // Determine if we're operating on a branch or loan officer
     const isBranchLevel = currentFilter === 'branch';
     const isAdmin = currentUser.role.rep === 1;
@@ -521,6 +541,7 @@ const ModernBranchCashCollections = () => {
         toast.success(`${row.name} ${entityType.toLowerCase()} transactions are now unlocked!`);
         // Refresh the data
         await fetchCashCollectionsData(dateFilter);
+        setReadinessVersion(v => v + 1);
       } else if (response.error && response.message) {
         toast.error(response.message);
       } else {
@@ -534,24 +555,77 @@ const ModernBranchCashCollections = () => {
     setLoading(false);
   };
 
+  const handleOpen = async (row) => {
+    const isBranchLevel = currentFilter === 'branch';
+    const isAdmin = currentUser.role.rep === 1;
+
+    // Admins bypass the warning too — same pattern as every other
+    // admin-override check already in this file. If you want admins to
+    // still see the warning (arguably they should, since it's informational
+    // not a permission gate), drop the `&& !isAdmin` below.
+    if (!isAdmin) {
+        const branchId = isBranchLevel
+            ? row._id
+            : (router.query.branchId || router.query.id || currentUser.designatedBranchId);
+        const dateFor = dateFilter !== currentDate ? dateFilter : currentDate;
+
+        const listUrl = getApiBaseUrl() + 'transactions/closing-documents/list?' +
+            new URLSearchParams({ branchId, dateFor });
+        const listResponse = await fetchWrapper.get(listUrl);
+
+        if (listResponse.success && listResponse.documents?.length > 0) {
+            setReopenWarning({ row, isBranchLevel, branchId, docCount: listResponse.documents.length });
+            return; // wait for user confirmation via the modal
+        }
+    }
+
+    // No existing documents — nothing to warn about, proceed directly.
+    await performOpen(row);
+  };
+
   const handleClose = async (row) => {
+    if (currentFilter === 'branch' && branchCheckLoading[row._id]) return;
     // Determine if we're operating on a branch or loan officer
     const isBranchLevel = currentFilter === 'branch';  // FIXED: Changed from viewMode === 'branch'
     const isAdmin = currentUser.role.rep === 1;
-
-    console.log('currentFilter:', currentFilter, 'isBranchLevel:', isBranchLevel);
-    
-    // For branch level, check if already closed
-    // Removed this check to allow admins to re-lock branches
-    // if (isBranchLevel && row.approvalStatus === 'closed' && !isAdmin) {
-    //   toast.info('Branch is already locked and approved.');
-    //   return;
-    // }
 
     // For Branch level, check if there are any LO transactions added
     // Allow admins to bypass this check
     if (isBranchLevel && row.groupStatus === null && !isAdmin) {
       toast.error('Cannot lock branch transactions when no Loan Officer transactions added for the day!');
+      return;
+    }
+
+    // ADDED: branch-level close now requires the 5 closing documents.
+    // Route through branch-check + the upload modal instead of calling
+    // update-group-transaction-status directly — the modal itself performs
+    // the final close once all documents are present.
+    if (isBranchLevel) {
+      if (!isAdmin) {
+        // ADDED: per-row loading flag, set BEFORE the await, so the button
+        // disables and shows a spinner immediately on click rather than
+        // only after the response arrives — this is the actual fix for
+        // "nothing visibly happens, so the user spam-clicks."
+        setBranchCheckLoading(prev => ({ ...prev, [row._id]: true }));
+
+        const checkUrl = getApiBaseUrl() + 'transactions/closing-documents/branch-check?' +
+          new URLSearchParams({ branchId: row._id, dateFor: dateFilter !== currentDate ? dateFilter : currentDate });
+        const checkResponse = await fetchWrapper.get(checkUrl);
+
+        setBranchCheckLoading(prev => ({ ...prev, [row._id]: false }));
+
+        if (!checkResponse.success) {
+          toast.error(checkResponse.message || 'Unable to verify branch closing readiness.');
+          return;
+        }
+        if (!checkResponse.readyToUpload) {
+          toast.error('Some Loan Officers still have open or pending transactions. All LO transactions must be closed first.');
+          return;
+        }
+      }
+
+      setClosingDocsBranch(row);
+      setShowClosingDocsModal(true);
       return;
     }
 
@@ -614,6 +688,7 @@ const ModernBranchCashCollections = () => {
         toast.success(`${row.name} ${entityType.toLowerCase()} transactions are now ${actionText}!`);
         // Refresh the data
         await fetchCashCollectionsData(dateFilter);
+        setReadinessVersion(v => v + 1);
       } else if (response.error && response.message) {
         toast.error(response.message);
       } else {
@@ -779,6 +854,7 @@ const ModernBranchCashCollections = () => {
   };
 
   const fetchCashCollectionsData = async (date) => {
+    console.log('Fetching cash collections data for date:', date);
     setLoading(true);
     try {
       const formattedDate = date ? moment(date).format('YYYY-MM-DD') : currentDate;
@@ -972,7 +1048,6 @@ const ModernBranchCashCollections = () => {
       }
   
       if (response && response.data) {
-
         const mapTotal = (name, loNo, acc, item) => ({
           csf: (acc.csf || 0) + (item.csf || 0),
           mcbu: (acc.mcbu || 0) + (item.mcbu || 0),
@@ -1190,7 +1265,7 @@ const ModernBranchCashCollections = () => {
         });
 
         // If viewing branches, fetch approval status
-        if (currentFilter === 'branch' && processedData.length > 0) {
+        if (filter === 'branch' && processedData.length > 0) {
           const branchIds = processedData.map(item => item._id).filter(id => id);
           const approvalStatus = await fetchBranchApprovalStatus(branchIds, formattedDate);
           
@@ -1200,6 +1275,9 @@ const ModernBranchCashCollections = () => {
             if (approval) {
               item.approvalStatus = approval.status; // 'open' or 'closed'
               item.approvedBy = approval.userName;
+              // ADDED: carry stale flag through for row/button/badge logic
+              item.documentsStale = approval.documentsStale || false;
+              item.staleReason = approval.staleReason || null;
             }
           });
         }
@@ -1488,6 +1566,47 @@ const ModernBranchCashCollections = () => {
       return () => clearTimeout(timer);
     }
   }, [currentFilter, router.query.filter, isHoliday, isWeekend, currentDate, router.query.id, data, currentUser]);
+
+  useEffect(() => {
+    const checkReadiness = async () => {
+        // ADDED: skip the network call entirely if this tab isn't visible.
+        // The focus listener (already in this file) triggers an immediate
+        // refetch the moment the user comes back, so nothing is lost —
+        // this only cuts wasted requests from tabs sitting in the background.
+        if (document.hidden) return;
+
+        if (currentUser.role.rep !== 3 || currentFilter !== 'lo' || !currentUser.designatedBranchId) return;
+        setBranchReadiness(prev => ({ ...prev, loading: true }));
+
+        const dateFor = dateFilter !== currentDate ? dateFilter : currentDate;
+        const checkUrl = getApiBaseUrl() + 'transactions/closing-documents/branch-check?' +
+            new URLSearchParams({ branchId: currentUser.designatedBranchId, dateFor });
+        const checkResponse = await fetchWrapper.get(checkUrl);
+
+        setBranchReadiness({
+          loading: false,
+          readyToUpload: checkResponse.success && checkResponse.readyToUpload,
+          readyToClose: checkResponse.success && checkResponse.readyToClose,
+        });
+
+        if (checkResponse.success) {
+            setBmBranchStatus(
+                checkResponse.approvalStatus
+                    ? { status: checkResponse.approvalStatus, documentsStale: checkResponse.documentsStale }
+                    : null
+            );
+        }
+    };
+    checkReadiness();
+    const interval = setInterval(checkReadiness, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser, currentFilter, dateFilter, currentDate, readinessVersion]);
+
+  useEffect(() => {
+    const handleFocus = () => setReadinessVersion(v => v + 1);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
   
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -1996,6 +2115,19 @@ const ModernBranchCashCollections = () => {
     });
   }, [filteredData, sortConfig, currentFilter]);
 
+  const handleBmCloseBranchClick = async () => {
+    if (!branchReadiness.readyToUpload) {
+        toast.error('Some Loan Officers still have open or pending transactions.');
+        return;
+    }
+    if (!cohValid) {
+        toast.error('Please enter Cash on Hand before closing the branch.');
+        return;
+    }
+    
+    setClosingDocsBranch({ _id: currentUser.designatedBranchId, name: currentBranch?.name || 'Your Branch' });
+    setShowClosingDocsModal(true);
+  };
 
   const [visibleColumns, setVisibleColumns] = useState({
     name: true,
@@ -2228,6 +2360,63 @@ const ModernBranchCashCollections = () => {
                         </div>
                       </div>
                     )}
+                    
+                    {(currentUser.role.rep === 3 && currentFilter === 'lo') && (() => {
+                      const isClosed = bmBranchStatus?.status === 'closed';
+                      console.log('bmBranchStatus?.status:', bmBranchStatus?.status);
+                      // ADDED: distinguish "closed and fine" from "closed but stale" — the
+                      // latter means something changed since AM's review and BM may need to
+                      // upload a correction. Without this, both states looked identical and
+                      // BM had no path back into the modal once status flipped to 'closed'.
+                      const isStale = isClosed && bmBranchStatus?.documentsStale;
+                      console.log('isStale:', isStale);
+                      const isPendingApproval = !isClosed && branchReadiness.readyToClose;
+                      console.log('isPendingApproval:', isPendingApproval);
+
+                      console.log('branchReadiness.loading:', branchReadiness.loading);
+                      console.log('branchReadiness.readyToUpload:', branchReadiness.readyToUpload);
+                      console.log('cohValid:', cohValid);
+
+                      const label = isStale
+                          ? 'Documents Need Update'
+                          : isClosed
+                              ? 'Branch Already Closed'
+                              : isPendingApproval
+                                  ? 'Pending AM Approval'
+                                  : 'Upload & Close Branch';
+
+                      const disabled =
+                          branchReadiness.loading ||
+                          !branchReadiness.readyToUpload ||
+                          !cohValid ||
+                          (isClosed && !isStale); 
+
+                      const title =
+                          branchReadiness.loading ? 'Checking branch status...'
+                          : !branchReadiness.readyToUpload ? 'All Loan Officers with active clients must be closed first'
+                          : !cohValid ? 'Enter Cash on Hand before closing the branch'
+                          : isStale ? 'A Loan Officer transaction was reopened after closing — review and re-upload documents if needed'
+                          : isPendingApproval ? 'Documents uploaded — waiting for Area Manager to finalize'
+                          : 'Upload closing documents and close the branch';
+
+                      return (
+                          <button
+                              onClick={handleBmCloseBranchClick}
+                              disabled={disabled}
+                              title={title}
+                              className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 ${
+                                  disabled
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : isStale
+                                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
+                          >
+                              {isStale ? <AlertTriangle size={16} /> : <Lock size={16} />}
+                              {label}
+                          </button>
+                      );
+                  })()}
                 </div>
                 
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -2439,10 +2628,7 @@ const ModernBranchCashCollections = () => {
                                           {((currentFilter === 'lo' || currentFilter === 'branch') && !row.hideLock) && (
                                             <>
                                               <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleOpen(row);
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); handleOpen(row); }}
                                                 className={`p-1 rounded ${
                                                   (currentFilter === 'branch' && row.approvalStatus === 'open') || loading
                                                     ? 'text-gray-400 cursor-not-allowed' 
@@ -2453,26 +2639,46 @@ const ModernBranchCashCollections = () => {
                                               >
                                                 <Unlock size={16} />
                                               </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleClose(row);
-                                                }}
-                                                className={`p-1 rounded ${
-                                                  (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading
+
+                                              {currentFilter === 'branch' && row.documentsStale ? (
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); handleClose(row); }}
+                                                  className="p-1 rounded text-amber-600 hover:text-amber-900 hover:bg-amber-50 animate-pulse"
+                                                  title="Documents need re-check — click to re-upload and re-close"
+                                                  disabled={loading}
+                                                >
+                                                  <AlertTriangle size={16} />
+                                                </button>
+                                              ) : (
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); handleClose(row); }}
+                                                  className={`p-1 rounded ${
+                                                  (currentFilter === 'branch' && row.approvalStatus === 'closed') || loading || branchCheckLoading[row._id]
                                                     ? 'text-gray-400 cursor-not-allowed'
                                                     : 'text-red-600 hover:text-red-900 hover:bg-red-50'
                                                 }`}
-                                                title={currentFilter === 'branch' ? "Lock and Approve Branch" : "Close Transaction"}
-                                                disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed') || loading}
-                                              >
-                                                <Lock size={16} />
-                                              </button>
+                                                  title={
+                                                    branchCheckLoading[row._id] ? "Checking readiness..."
+                                                    : currentFilter === 'branch'
+                                                      ? (row.documentsStale ? "Re-check required — documents may be outdated" : "Lock and Approve Branch")
+                                                      : "Close Transaction"
+                                                  }
+                                                  disabled={(currentFilter === 'branch' && row.approvalStatus === 'closed' && !row.documentsStale) || loading || branchCheckLoading[row._id]}
+                                                >
+                                                  {branchCheckLoading[row._id] ? (
+                                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                    </svg>
+                                                  ) : (
+                                                    <Lock size={16} />
+                                                  )}
+                                                </button>
+                                              )}
                                             </>
                                           )}
                                           
-                                          {/* NEW: Repair button for group level */}
-                                          {currentFilter === 'group' && !row.hideLock (
+                                          {currentFilter === 'group' && !row.hideLock && (
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
@@ -2709,6 +2915,63 @@ const ModernBranchCashCollections = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {reopenWarning && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="text-amber-500" size={24} />
+                      <h3 className="text-lg font-semibold text-gray-900">Reopen Transaction?</h3>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-gray-700">
+                      {reopenWarning.docCount} closing document{reopenWarning.docCount > 1 ? 's have' : ' has'} already
+                      been uploaded for this branch on this date. Reopening will flag the branch as needing
+                      re-check, and the documents will need to be reviewed and re-uploaded before it can be
+                      closed again.
+                    </p>
+                  </div>
+                  <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                    <button
+                      onClick={() => setReopenWarning(null)}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const row = reopenWarning.row;
+                        setReopenWarning(null);
+                        await performOpen(row);
+                      }}
+                      className="px-4 py-2 text-white bg-amber-600 hover:bg-amber-700 rounded-md"
+                    >
+                      Reopen Anyway
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showClosingDocsModal && closingDocsBranch && (
+              <BranchClosingDocumentsModal
+                isOpen={showClosingDocsModal}
+                onClose={() => {
+                  setShowClosingDocsModal(false);
+                  setClosingDocsBranch(null);
+                }}
+                branchId={closingDocsBranch._id}
+                branchName={closingDocsBranch.name}
+                dateFor={dateFilter !== currentDate ? dateFilter : currentDate}
+                currentUser={currentUser}
+                onClosed={() => {
+                  fetchCashCollectionsData(dateFilter);
+                  setReadinessVersion(v => v + 1);
+                }}
+              />
             )}
     </Layout>
   );
