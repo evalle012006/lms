@@ -12,6 +12,7 @@ module.exports = {
     'bg-yellow-100',
     'bg-blue-100',
     'bg-orange-100',
+    'bg-purple-100',
   ],
   theme: {
     screens: {

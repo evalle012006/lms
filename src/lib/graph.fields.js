@@ -548,6 +548,9 @@ export const BRANCH_APPROVAL_FIELDS = `
   dateFor
   dateAdded
   dateModified
+  documentsStale
+  staleReason
+  staleAt
 `;
 
 export const MANAGEMENT_ACCOUNT_TYPE_FIELD = `
@@ -729,4 +732,32 @@ export const CLIENT_PROGRAM_ATTACHMENT_FIELDS = `
   file_type
   uploaded_by
   uploaded_at
+`;
+ 
+export const CLOSING_DOCUMENTS_FIELDS = `
+  _id
+  branch_id
+  date_for
+  doc_type
+  file_key
+  version
+  is_active
+  uploaded_by
+  uploaded_by_name
+  uploaded_at
+`;
+
+export const CLOSING_DOCUMENT_REVIEWS_FIELDS = `
+  _id
+  branch_id
+  date_for
+  doc_type
+  version
+  reviewed_by
+  reviewed_by_name
+  first_viewed_at
+  last_viewed_at
+  view_count
+  acknowledged
+  acknowledged_at
 `;

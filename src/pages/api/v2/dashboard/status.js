@@ -1,3 +1,10 @@
+// PATCH: src/pages/api/v2/dashboard/status.js
+// Adds staleBranches count + list to the existing response, using the same
+// query pattern already used for closedBranches. This is the correct home
+// for the "closed — needs re-check" signal — NOT BranchNotCloseTool.js,
+// which only lists branches that are not yet closed (mutually exclusive
+// with stale, which only applies to already-closed branches).
+
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -6,7 +13,10 @@ const graph = new GraphProvider();
 
 const USER_TYPE        = createGraphType('users', `_id areaId divisionId designatedBranchId regionId root`)('users');
 const BRANCH_TYPE      = createGraphType('branches', `_id code`)('branches');
-const BRANCH_APPR_TYPE = createGraphType('branchApprovals', `_id`)('branchApprovals');
+const BRANCH_APPR_TYPE = createGraphType(
+    'branchApprovals',
+    `_id branchId documentsStale staleReason staleAt`,
+)('branchApprovals');
 const ACTIVE_USER_TYPE = createGraphType('users', `_id`)('users');
 
 export default apiHandler({
@@ -49,6 +59,8 @@ async function getDashboardStatus(req, res) {
 
     // ── Closed branches count for the given date ─────────────────
     let closedBranches = 0;
+    // ADDED
+    let staleBranches = [];
     if (branchIds.length > 0 && date) {
         const closedList = await graph
             .query(
@@ -62,6 +74,11 @@ async function getDashboardStatus(req, res) {
             )
             .then((res) => res.data.branchApprovals ?? []);
         closedBranches = closedList.length;
+
+        // ADDED: filter the same result set for stale ones — no second
+        // query needed, documentsStale/staleReason/staleAt were already
+        // fetched above alongside status/branchId.
+        staleBranches = closedList.filter((b) => b.documentsStale);
     }
 
     // ── Active users in scope ────────────────────────────────────
@@ -83,6 +100,13 @@ async function getDashboardStatus(req, res) {
                     closedBranches,
                     totalBranches,
                     activeUsers,
+                    // ADDED
+                    staleBranchesCount: staleBranches.length,
+                    staleBranches: staleBranches.map(b => ({
+                        branchId: b.branchId,
+                        staleReason: b.staleReason,
+                        staleAt: b.staleAt,
+                    })),
                     cashOnHand:         0,
                     bankBalance:        0,
                     managementExpenses: 0,

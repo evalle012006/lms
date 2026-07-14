@@ -6,6 +6,8 @@ import { gql } from 'node_modules/apollo-boost/lib/index';
 import moment from 'moment';
 import { notifyTransactionClosed, notifyBranchTransactionApproved, isNotificationEnabled } from '@/lib/notification-service';
 import { findBranches, findUserById } from '@/lib/graph.functions';
+// ADDED: shared list of required closing document types
+import { CLOSING_DOC_KEYS } from '@/lib/closing-documents.constants';
 
 let response = {};
 let statusCode = 200;
@@ -13,6 +15,23 @@ let statusCode = 200;
 const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `_id`)('collections');
 const BRANCH_APPROVAL_TYPE = createGraphType('branchApprovals', `_id`)('approvals');
 const graph = new GraphProvider();
+
+// CHANGED: split from the old shared BRANCH_CLOSE_ALLOWED_SHORTCODES.
+// Uploading documents and finalizing the close are now different
+// permissions — BM can do the former, only AM+ can do the latter. Before
+// this split, branch_manager was included in the list gating the actual
+// mode:'close' mutation below, meaning a BM could self-approve their own
+// branch closing via this same modal/endpoint with no AM involved at all —
+// a real gap, not just a labeling issue, since the UI's "Pending AM
+// Approval" state meant nothing if the underlying API still let BM finish
+// the job themselves.
+const BRANCH_FINAL_CLOSE_ALLOWED_SHORTCODES = [
+    'admin', 'deputy_director', 'regional_manager', 'area_admin'
+];
+
+function isAuthorizedForBranchClose(role) {
+    return !!role && BRANCH_FINAL_CLOSE_ALLOWED_SHORTCODES.includes(role.shortCode);
+}
 
 export default apiHandler({
     post: processGroupTransactionStatus,
@@ -27,11 +46,21 @@ async function processGroupTransactionStatus(req, res) {
     const isNotificationEnabledFlag = await isNotificationEnabled();
 
     if (isBranchLevel) {
-        // BRANCH-LEVEL APPROVAL
-        await processBranchApproval(branchId, currentDate, mode, userId, userName, isAdmin, isNotificationEnabledFlag);
+        // ADDED: authoritative server-side role check, using the
+        // authenticated session (req.auth.sub) — not req.body.userId, which
+        // is client-supplied and could name any user regardless of who's
+        // actually logged in.
+        const requestingUser = await findUserById(req.auth?.sub);
+        if (!isAuthorizedForBranchClose(requestingUser?.role)) {
+            response = { error: true, message: "You are not authorized to open or close branch transactions." };
+            statusCode = 403;
+        } else {
+            // BRANCH-LEVEL APPROVAL
+            await processBranchApproval(branchId, currentDate, mode, userId, userName, isAdmin, isNotificationEnabledFlag);
+        }
     } else if (loId) {
         // LO-LEVEL APPROVAL (existing logic)
-        await processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin, isNotificationEnabledFlag);
+        await processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin, isNotificationEnabledFlag, userName);
     } else {
         response = { error: true, message: "Either Branch ID or Loan Officer ID is required." };
         statusCode = 400;
@@ -64,6 +93,34 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
                 response = {
                     error: true,
                     message: "Cannot approve branch. There are pending Fund Transfers. Please check and approve or contact Finance Admin."
+                };
+                return;
+            }
+
+            // ADDED: Require all 5 branch closing documents before allowing close.
+            // Client-side (branch-check.js) enforces this too for UX, but this is
+            // the authoritative server-side gate — never trust the client alone.
+            const missingDocTypes = await checkMissingClosingDocuments(branchId, dateFor);
+
+            if (missingDocTypes.length > 0) {
+                response = {
+                    error: true,
+                    message: `Cannot approve branch. Missing closing documents: ${missingDocTypes.join(', ')}`
+                };
+                return;
+            }
+
+            // ADDED: require all 5 documents to be acknowledged BY THE
+            // PERSON FINALIZING (userId), matched to their currently active
+            // version. This is the authoritative gate for the review
+            // checkboxes — the modal disabling "Confirm final closing" is
+            // UX only, exactly like the document-presence check above.
+            const unacknowledgedDocTypes = await checkUnacknowledgedClosingDocuments(branchId, dateFor, userId);
+
+            if (unacknowledgedDocTypes.length > 0) {
+                response = {
+                    error: true,
+                    message: `Cannot approve branch. You must review and acknowledge: ${unacknowledgedDocTypes.join(', ')}`
                 };
                 return;
             }
@@ -114,7 +171,7 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
     }
 }
 
-async function processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin = false, isNotificationEnabledFlag) {
+async function processLOApproval(loId, branchId, currentDate, currentTime, mode, transactionType, isAdmin = false, isNotificationEnabledFlag, userName) {
     const dayName = moment(currentDate).format('dddd').toLowerCase();
     const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
 
@@ -258,6 +315,15 @@ async function processLOApproval(loId, branchId, currentDate, currentTime, mode,
         if (result.data.collections.affected_rows === 0) {
             response = { error: true, message: "No transactions found for this Loan Officer." };
         } else {
+            // ADDED: If an LO transaction is reopened after the branch was already
+            // closed for this date, flag the branch's uploaded closing documents as
+            // stale rather than touching branchApprovals.status. Status stays
+            // 'closed' by design — reopening one LO does not unlock branch-level
+            // records or re-run the full precondition chain.
+            if (mode === 'open' && branchId) {
+                await flagBranchDocumentsStale(branchId, currentDate, loId, userName);
+            }
+
             // Create notification for LO transaction close
             if (isNotificationEnabledFlag && mode === 'close') {
                 try {
@@ -322,7 +388,12 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                                 status: 'closed',
                                 userId: userId,
                                 userName: userName,
-                                dateModified: new Date().toISOString()
+                                dateModified: new Date().toISOString(),
+                                // ADDED: clear any stale flag on a fresh/re-close —
+                                // documents were just validated as complete above.
+                                documentsStale: false,
+                                staleReason: null,
+                                staleAt: null
                             },
                             where: {
                                 _id: { _eq: approval._id }
@@ -348,7 +419,11 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                                 userName: userName,
                                 status: 'closed',
                                 dateFor: dateFor,
-                                dateAdded: new Date().toISOString()
+                                dateAdded: new Date().toISOString(),
+                                // ADDED
+                                documentsStale: false,
+                                staleReason: null,
+                                staleAt: null
                             }]
                         }
                     )
@@ -362,6 +437,11 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
             }
         } else {
             // mode === 'open'
+            // ADDED: was this branch previously closed? Only matters in
+            // that case — reopening an already-open branch has nothing to
+            // reset. Captured before the update below overwrites status.
+            const wasClosed = approval?.status === 'closed';
+
             if (approval) {
                 // Update existing record
                 const result = await graph.mutation(
@@ -382,6 +462,30 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
                 );
 
                 if (result.data.approvals.affected_rows > 0) {
+                    // ADDED: same reset as the LO-level reopen path — a
+                    // direct branch-level reopen is at least as consequential
+                    // as reopening a single LO, so it must invalidate prior
+                    // acknowledgments too. Previously this path had no reset
+                    // at all, meaning re-closing after a full branch reopen
+                    // would silently reuse stale sign-offs.
+                    if (wasClosed) {
+                        await graph.mutation(
+                            updateQl(
+                                createGraphType('closing_document_reviews', `_id`)('reviews'),
+                                {
+                                    set: {
+                                        acknowledged: false,
+                                        acknowledged_at: null,
+                                    },
+                                    where: {
+                                        branch_id: { _eq: branchId },
+                                        date_for: { _eq: dateFor },
+                                        acknowledged: { _eq: true },
+                                    },
+                                },
+                            ),
+                        );
+                    }
                     return { success: true };
                 } else {
                     return { error: true, message: "Failed to update branch approval." };
@@ -505,6 +609,159 @@ async function checkBranchFundTransfers(branchId, currentDate) {
     } catch (error) {
         console.error('Error checking branch fund transfers:', error);
         throw error;
+    }
+}
+
+/**
+ * ADDED: Returns the doc types from CLOSING_DOC_KEYS that do NOT have an
+ * active (isActive: true) row for this branch/date. Empty array = complete.
+ */
+async function checkMissingClosingDocuments(branchId, dateFor) {
+    try {
+        const result = await graph.query(
+            queryQl(
+                createGraphType('closing_documents', `doc_type`)('closingDocuments'),
+                {
+                    where: {
+                        branch_id: { _eq: branchId },
+                        date_for: { _eq: dateFor },
+                        is_active: { _eq: true }
+                    }
+                }
+            )
+        );
+
+        const uploadedTypes = (result?.data?.closingDocuments || []).map(d => d.doc_type);
+        return CLOSING_DOC_KEYS.filter(k => !uploadedTypes.includes(k));
+    } catch (error) {
+        console.error('Error checking closing documents:', error);
+        throw error;
+    }
+}
+
+/**
+ * ADDED: Returns the doc types not yet acknowledged BY THIS SPECIFIC
+ * USER, matched against each document's currently active version — a
+ * re-upload bumps the version and correctly un-acknowledges it, since
+ * the old review row simply won't match anymore.
+ */
+async function checkUnacknowledgedClosingDocuments(branchId, dateFor, userId) {
+    try {
+        const activeDocs = await graph.query(
+            queryQl(
+                createGraphType('closing_documents', `doc_type version`)('closingDocuments'),
+                {
+                    where: {
+                        branch_id: { _eq: branchId },
+                        date_for: { _eq: dateFor },
+                        is_active: { _eq: true },
+                    },
+                },
+            ),
+        );
+        const docs = activeDocs?.data?.closingDocuments || [];
+        if (docs.length === 0) return CLOSING_DOC_KEYS; // nothing uploaded — handled by the earlier check, but be safe
+
+        const reviews = await graph.query(
+            queryQl(
+                createGraphType('closing_document_reviews', `doc_type version acknowledged`)('reviews'),
+                {
+                    where: {
+                        branch_id: { _eq: branchId },
+                        date_for: { _eq: dateFor },
+                        reviewed_by: { _eq: userId },
+                        acknowledged: { _eq: true },
+                    },
+                },
+            ),
+        );
+        const acknowledgedRows = reviews?.data?.reviews || [];
+
+        return docs
+            .filter(doc => !acknowledgedRows.some(r => r.doc_type === doc.doc_type && r.version === doc.version))
+            .map(doc => doc.doc_type);
+    } catch (error) {
+        console.error('Error checking document acknowledgments:', error);
+        throw error;
+    }
+}
+
+/**
+ * ADDED: Flags an already-closed branch's approval row as stale when one of
+ * its LO transactions is reopened. status is left untouched ('closed' stays
+ * 'closed') — this is purely advisory, surfaced on the dashboard.
+ */
+async function flagBranchDocumentsStale(branchId, currentDate, loId, reopenedByName) {
+    try {
+        const existingApproval = await graph.query(
+            queryQl(
+                createGraphType('branchApprovals', `_id status`)('approvals'),
+                {
+                    where: {
+                        branchId: { _eq: branchId },
+                        dateFor: { _eq: currentDate },
+                        status: { _eq: 'closed' }
+                    }
+                }
+            )
+        );
+
+        const approval = existingApproval?.data?.approvals?.[0];
+        if (!approval) return; // branch was never closed for this date — nothing to flag
+
+        const lo = await findUserById(loId);
+
+        await graph.mutation(
+            updateQl(BRANCH_APPROVAL_TYPE, {
+                set: {
+                    documentsStale: true,
+                    // FIXED: was JSON.stringify(...) — that pre-serializes
+                    // the object into a string, and the jsonb column then
+                    // stores that string AS the JSON value (a valid but
+                    // wrong shape: a JSON scalar string, not an object).
+                    // Every future read of staleReason.loName etc. would
+                    // silently get undefined. Pass the object directly —
+                    // Hasura's jsonb input handles serialization itself.
+                    staleReason: {
+                        loId,
+                        loName: lo ? `${lo.firstName} ${lo.lastName}` : null,
+                        reopenedBy: reopenedByName || null,
+                        reopenedAt: new Date().toISOString()
+                    },
+                    staleAt: new Date().toISOString()
+                },
+                where: { _id: { _eq: approval._id } }
+            })
+        );
+
+        // ADDED: the badge alone was cosmetic — nothing was actually
+        // invalidating AM's prior acknowledgments. checkUnacknowledgedClosingDocuments
+        // matches on (doc_type, version), and an LO reopen changes neither,
+        // so the finalize gate would silently pass a second time on data
+        // that was never re-reviewed. Reset every review row for this
+        // branch/date to unacknowledged regardless of version — the thing
+        // that went stale is "AM's confirmation these numbers were correct,"
+        // not the files themselves, so acknowledgment is what must reset.
+        await graph.mutation(
+            updateQl(
+                createGraphType('closing_document_reviews', `_id`)('reviews'),
+                {
+                    set: {
+                        acknowledged: false,
+                        acknowledged_at: null,
+                    },
+                    where: {
+                        branch_id: { _eq: branchId },
+                        date_for: { _eq: currentDate },
+                        acknowledged: { _eq: true },
+                    },
+                },
+            ),
+        );
+    } catch (error) {
+        // Don't fail the LO reopen just because the stale-flag write failed —
+        // log and move on, but this is worth alerting on if it happens often.
+        console.error('Error flagging branch documents stale:', error);
     }
 }
 
