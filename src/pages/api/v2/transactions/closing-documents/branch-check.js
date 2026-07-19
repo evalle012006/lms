@@ -19,14 +19,10 @@ async function branchCheck(req, res) {
     }
 
     try {
-        // CHANGED (again): limit:1 threw away real information — loId and
-        // groupId are genuinely useful (e.g. for a future "which LO is
-        // still open" message), the actual problem was never those fields,
-        // it was that this table is per-CLIENT, so the same loId/groupId
-        // pair repeated once per active client instead of once per LO.
-        // distinct_on collapses that at the database level — one row per
-        // unique (loId, groupId) combination, not one per client. Hasura
-        // requires order_by on the same leading columns as distinct_on.
+        // distinct_on collapses per-client rows at the database level —
+        // one row per unique (loId, groupId) combination, not one per
+        // client. Hasura requires order_by on the same leading columns as
+        // distinct_on.
         const unclosed = await graph.query(
             queryQl(
                 createGraphType('cashCollections', `loId groupId`)('cashCollections'),
@@ -45,9 +41,11 @@ async function branchCheck(req, res) {
         const unclosedLos = unclosed?.data?.cashCollections || [];
         const allLosClosed = unclosedLos.length === 0;
 
+        // Also selects uploaded_at — needed below to compute whether any
+        // currently-active document still predates the last reopen.
         const docs = await graph.query(
             queryQl(
-                createGraphType('closing_documents', `doc_type`)('closingDocuments'),
+                createGraphType('closing_documents', `doc_type uploaded_at`)('closingDocuments'),
                 {
                     where: {
                         branch_id: { _eq: branchId },
@@ -57,11 +55,11 @@ async function branchCheck(req, res) {
                 },
             ),
         );
-
-        const uploadedTypes = (docs?.data?.closingDocuments || []).map(d => d.doc_type);
+        const activeDocs = docs?.data?.closingDocuments || [];
+        const uploadedTypes = activeDocs.map(d => d.doc_type);
         const missingDocTypes = CLOSING_DOC_KEYS.filter(k => !uploadedTypes.includes(k));
 
-        // ADDED: pull current approval status alongside readiness, so the
+        // Pull current approval status alongside readiness, so the
         // frontend doesn't need a second call to branches/get-approval-status
         // just to answer "is this branch already closed / is it stale."
         // branchApprovals is camelCase (legacy Mongo-migrated table) — do not
@@ -77,7 +75,26 @@ async function branchCheck(req, res) {
                 },
             ),
         );
+        // FIXED: this line was missing entirely — everything below it
+        // referenced approvalRecord, which was never declared, throwing a
+        // ReferenceError caught by the outer try/catch and masked as a
+        // generic "Error checking branch closing readiness." with no
+        // indication of the real cause.
         const approvalRecord = approval?.data?.approvals?.[0] || null;
+
+        // documentsStale (the raw DB flag) only ever gets cleared by AM's
+        // next finalize — it does NOT reflect whether BM has already fixed
+        // things. This computes the question the BM button actually needs
+        // answered: "is there still at least one file that predates the
+        // reopen," using the same predatesReopen comparison list.js already
+        // does per file, aggregated here. Once every file has been
+        // replaced, this correctly flips to false even while documentsStale
+        // stays true as a permanent audit record.
+        const documentsNeedReupload = !!(
+            approvalRecord?.documentsStale &&
+            approvalRecord?.staleAt &&
+            activeDocs.some(d => new Date(d.uploaded_at) < new Date(approvalRecord.staleAt))
+        );
 
         return res.status(200).json({
             success: true,
@@ -88,6 +105,7 @@ async function branchCheck(req, res) {
             readyToClose: allLosClosed && missingDocTypes.length === 0,
             approvalStatus: approvalRecord?.status || null,
             documentsStale: approvalRecord?.documentsStale || false,
+            documentsNeedReupload,
             staleReason: approvalRecord?.staleReason || null,
             staleAt: approvalRecord?.staleAt || null,
         });

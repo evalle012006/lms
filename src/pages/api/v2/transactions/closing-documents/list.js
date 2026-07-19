@@ -41,12 +41,6 @@ async function listClosingDocuments(req, res) {
 
         const rawDocs = result?.data?.closingDocuments || [];
 
-        // CHANGED: keyed by `${docType}::${version}`, not docType alone —
-        // the old keying was already wrong (if any doc_type ever had more
-        // than one review row across versions, one silently overwrote the
-        // other in this map), it just never surfaced with exactly one
-        // active file per type. Multiple simultaneous files per type makes
-        // that collision guaranteed, not theoretical.
         let reviewsByDocVersion = {};
         if (authenticatedUserId && rawDocs.length > 0) {
             const reviewResult = await graph.query(
@@ -69,9 +63,14 @@ async function listClosingDocuments(req, res) {
             });
         }
 
+        // CHANGED: added `status` to this selection — it was previously
+        // only fetching staleAt/documentsStale, so this endpoint had no
+        // way to know or report whether the branch was actually closed.
+        // That's why branchClosed never appeared in the response despite
+        // being referenced everywhere on the frontend.
         const approvalResult = await graph.query(
             queryQl(
-                createGraphType('branchApprovals', `staleAt documentsStale`)('approvals'),
+                createGraphType('branchApprovals', `status staleAt documentsStale`)('approvals'),
                 {
                     where: {
                         branchId: { _eq: branchId },
@@ -80,14 +79,12 @@ async function listClosingDocuments(req, res) {
                 },
             ),
         );
-        const staleAt = approvalResult?.data?.approvals?.[0]?.documentsStale
-            ? approvalResult?.data?.approvals?.[0]?.staleAt
-            : null;
+        const approvalRow = approvalResult?.data?.approvals?.[0];
+        const staleAt = approvalRow?.documentsStale ? approvalRow?.staleAt : null;
+        // ADDED — the actual field the modal reads to gate
+        // Remove/Replace/Add File(s)/Upload selected.
+        const branchClosed = approvalRow?.status === 'closed';
 
-        // CHANGED: was a flat array mapped 1:1 from rawDocs (one object per
-        // doc_type, implicitly). Now grouped into arrays per doc_type,
-        // since multiple files can be simultaneously active for the same
-        // type. Frontend consumes `documentsByType[docType]` as an array.
         const documentsByType = {};
         rawDocs.forEach(d => {
             const review = reviewsByDocVersion[`${d.doc_type}::${d.version}`];
@@ -111,11 +108,10 @@ async function listClosingDocuments(req, res) {
             documentsByType[d.doc_type].push(shaped);
         });
 
-        // Sort each type's files by version, most recent first — matters
-        // now that a type can have several.
         Object.values(documentsByType).forEach(arr => arr.sort((a, b) => b.version - a.version));
 
-        return res.status(200).json({ success: true, documentsByType });
+        // CHANGED: branchClosed added to the response.
+        return res.status(200).json({ success: true, documentsByType, branchClosed });
     } catch (error) {
         console.error('Error listing closing documents:', error.message);
         return res.status(200).json({ success: false, message: 'Error listing closing documents.' });

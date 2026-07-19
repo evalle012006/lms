@@ -10,15 +10,6 @@ const graph = new GraphProvider();
 
 const CLOSING_DOC_TYPE = createGraphType('closing_documents', `_id`)('closingDocuments');
 
-// CHANGED: previously included area_admin/regional_manager/deputy_director
-// alongside branch_manager. That let AM+ upload a document AND then
-// acknowledge their own upload — the same self-certification problem the
-// finalize-permission split (BRANCH_FINAL_CLOSE_ALLOWED_SHORTCODES in
-// update-group-transaction-status.js) was built to prevent, just one step
-// earlier in the workflow. Upload is now restricted to the preparer role
-// (branch_manager) plus admin as a full override for genuine exceptions —
-// if an AM spots a bad file, the correct path is admin re-upload or kicking
-// it back to BM, not the reviewer quietly doing both halves of the control.
 const CLOSING_DOC_UPLOAD_ALLOWED_SHORTCODES = [
     'admin', 'branch_manager'
 ];
@@ -45,9 +36,6 @@ async function saveClosingDocument(req, res) {
 
     const uploader = await findUserById(authenticatedUserId);
 
-    // CHANGED: role is an embedded JSON object on the user record
-    // ({_id, rep, shortCode, ...}), confirmed via actual sample data — not a
-    // foreign key requiring a lookup against a separate "roles" table.
     if (!uploader?.role || !CLOSING_DOC_UPLOAD_ALLOWED_SHORTCODES.includes(uploader.role.shortCode)) {
         return res.status(403).json({ success: false, message: 'You are not authorized to upload closing documents.' });
     }
@@ -56,12 +44,31 @@ async function saveClosingDocument(req, res) {
     const uploadedByName = `${uploader.firstName} ${uploader.lastName}`;
 
     try {
-        // Deactivate any existing active version for this branch/date/docType
-        // CHANGED: was querying/deactivating "the" active row for this
-        // doc_type, assuming exactly one existed. Now multiple files can be
-        // simultaneously active per type, so this queries ALL active rows
-        // to find the current max version — no deactivation happens here
-        // anymore, every upload is additive.
+        // ADDED: this was the actual gap — remove.js has always checked
+        // this, upload.js never did. That asymmetry is exactly what
+        // produced the orphaned-file scenario during Replace testing:
+        // the upload half of Replace succeeded on a closed branch with no
+        // check at all, and only the subsequent remove call (which does
+        // check) correctly failed, leaving two active files behind. This
+        // closes the actual gap — the client-side branchClosed gating is
+        // UX only, this is the real boundary, same as remove.js.
+        const approval = await graph.query(
+            queryQl(
+                createGraphType('branchApprovals', `status`)('approvals'),
+                { where: { branchId: { _eq: branchId }, dateFor: { _eq: dateFor } } },
+            ),
+        );
+        if (approval?.data?.approvals?.[0]?.status === 'closed') {
+            return res.status(200).json({
+                success: false,
+                message: 'This branch is already closed. Reopen the affected Loan Officer transaction to make changes to closing documents.',
+            });
+        }
+
+        // CHANGED: comment previously said "Deactivate any existing active
+        // version" — stale leftover from before multi-file support. This
+        // no longer deactivates anything; every upload is additive, and
+        // this query only exists to find the current max version.
         const existing = await graph.query(
             queryQl(
                 createGraphType('closing_documents', `version`)('closingDocuments'),

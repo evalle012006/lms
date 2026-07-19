@@ -714,6 +714,7 @@ async function flagBranchDocumentsStale(branchId, currentDate, loId, reopenedByN
         await graph.mutation(
             updateQl(BRANCH_APPROVAL_TYPE, {
                 set: {
+                    status: 'open',
                     documentsStale: true,
                     // FIXED: was JSON.stringify(...) — that pre-serializes
                     // the object into a string, and the jsonb column then
