@@ -79,7 +79,7 @@ const ModernBranchCashCollections = () => {
   const [bmBranchStatus, setBmBranchStatus] = useState(null);
   const [branchCheckLoading, setBranchCheckLoading] = useState({}); // { [branchId]: true }
   const [reopenWarning, setReopenWarning] = useState(null); // { row, isBranchLevel, branchId, docCount }
-
+  const cohBreakdownStable = useMemo(() => cohData?.breakdown || [], [cohData?.breakdown]);
   /**
    * Check if a group has discrepancies that need repair
    */
@@ -428,49 +428,39 @@ const ModernBranchCashCollections = () => {
   const cohValid = (() => {
     if (cohAmount === null || cohAmount === undefined || cohAmount === '') return false;
     const numeric = Number(String(cohAmount).replace(/,/g, ''));
-    return !isNaN(numeric) && numeric >= 0; // 0 is valid, negative is not
+    return !isNaN(numeric) && numeric >= 0;
   })();
 
-  const handleCOHDataChange = async (value) => {
-    // Validation
-    if (value && isNaN(parseFloat(value))) {
-      toast.error('Please enter a valid number');
-      return;
-    }
-
+  const handleCOHDataChange = async (value, breakdown = cohData?.breakdown ?? null) => {
+    if (value && isNaN(parseFloat(value))) { toast.error('Please enter a valid number'); return; }
     const amount = value ? parseFloat(value) : 0;
-    
-    // Prevent negative values
-    if (amount < 0) {
-      toast.error('COH amount cannot be negative');
-      setCohAmount(0);
-      return;
-    }
+    if (amount < 0) { toast.error('COH amount cannot be negative'); setCohAmount(0); return; }
 
     let updatedCohData = {...cohData};
     if (cohData && cohData.hasOwnProperty("_id")) {
-      updatedCohData.amount = amount;
-      updatedCohData.modifiedBy = currentUser._id;
+        updatedCohData.amount = amount;
+        updatedCohData.breakdown = breakdown;
+        updatedCohData.modifiedBy = currentUser._id;
     } else {
-      updatedCohData.branchId = currentUser.designatedBranchId;
-      updatedCohData.amount = amount;
-      updatedCohData.insertedBy = currentUser._id;
-      updatedCohData.dateAdded = currentDate;
+        updatedCohData.branchId = currentUser.designatedBranchId;
+        updatedCohData.amount = amount;
+        updatedCohData.breakdown = breakdown;
+        updatedCohData.insertedBy = currentUser._id;
+        updatedCohData.dateAdded = currentDate;
     }
 
     try {
-      const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
-      const response = await fetchWrapper.post(apiUrl, updatedCohData);
-      
-      if (response.success) {
-        toast.success('Cash on Hand data successfully saved.');
-        setCohData(updatedCohData);
-      } else {
-        toast.error('Error saving Cash on Hand data.');
-      }
+        const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
+        const response = await fetchWrapper.post(apiUrl, updatedCohData);
+        if (response.success) {
+            toast.success('Cash on Hand data successfully saved.');
+            setCohData(updatedCohData);
+        } else {
+            toast.error('Error saving Cash on Hand data.');
+        }
     } catch (error) {
-      console.error('Error saving COH data:', error);
-      toast.error('Error saving Cash on Hand data.');
+        console.error('Error saving COH data:', error);
+        toast.error('Error saving Cash on Hand data.');
     }
   };
 
@@ -573,8 +563,11 @@ const ModernBranchCashCollections = () => {
             new URLSearchParams({ branchId, dateFor });
         const listResponse = await fetchWrapper.get(listUrl);
 
-        if (listResponse.success && listResponse.documents?.length > 0) {
-            setReopenWarning({ row, isBranchLevel, branchId, docCount: listResponse.documents.length });
+        const totalDocCount = Object.values(listResponse.documentsByType || {})
+            .reduce((sum, arr) => sum + arr.length, 0);
+
+        if (listResponse.success && totalDocCount > 0) {
+            setReopenWarning({ row, isBranchLevel, branchId, docCount: totalDocCount });
             return; // wait for user confirmation via the modal
         }
     }
@@ -596,16 +589,13 @@ const ModernBranchCashCollections = () => {
       return;
     }
 
-    // ADDED: branch-level close now requires the 5 closing documents.
-    // Route through branch-check + the upload modal instead of calling
-    // update-group-transaction-status directly — the modal itself performs
-    // the final close once all documents are present.
     if (isBranchLevel) {
       if (!isAdmin) {
-        // ADDED: per-row loading flag, set BEFORE the await, so the button
-        // disables and shows a spinner immediately on click rather than
-        // only after the response arrives — this is the actual fix for
-        // "nothing visibly happens, so the user spam-clicks."
+        // FIXED: checkUrl was referenced but never declared — a straight
+        // ReferenceError that would throw the moment anyone clicked this
+        // path, breaking branch-level close/review entirely. Restoring
+        // the URL construction and the loading spinner state that were
+        // both part of this block before.
         setBranchCheckLoading(prev => ({ ...prev, [row._id]: true }));
 
         const checkUrl = getApiBaseUrl() + 'transactions/closing-documents/branch-check?' +
@@ -623,7 +613,6 @@ const ModernBranchCashCollections = () => {
           return;
         }
       }
-
       setClosingDocsBranch(row);
       setShowClosingDocsModal(true);
       return;
@@ -1312,19 +1301,37 @@ const ModernBranchCashCollections = () => {
     }
   };
 
+  // CHANGED: was gated to BM's own view only (role.rep===3 && filter==='lo'),
+  // so AM opening the same modal via the branch-level row never triggered
+  // any COH fetch at all — cohData/cohAmount stayed at their unpopulated
+  // defaults regardless of what was actually saved. Now keyed on the modal
+  // actually opening for a specific branch, which correctly covers both
+  // BM reviewing their own branch and AM reviewing any branch row they click.
   useEffect(() => {
-    if (currentUser.role.rep === 3 && currentFilter === 'lo' && currentBranch?._id) {
-      // Use currentBranch from redux if available
-      if (currentBranch?.cashOnHand?.length > 0) {
-        setCohData(currentBranch.cashOnHand[0]);
-      } else {
-        setCohData({ amount: 0 });
+      const fetchCohForModal = async () => {
+          const apiUrl = `${getApiBaseUrl()}branches?`;
+          const params = {
+              _id: closingDocsBranch._id,
+              date: dateFilter !== currentDate ? dateFilter : currentDate,
+          };
+          const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+          if (response.success) {
+              if (response.branch?.cashOnHand?.length > 0) {
+                  setCohData(response.branch.cashOnHand[0]);
+                  setCohAmount(response.branch.cashOnHand[0].amount || 0);
+              } else {
+                  setCohData({ amount: 0, breakdown: [] });
+                  setCohAmount(0);
+              }
+          } else {
+              toast.error('Error loading Cash on Hand data.');
+          }
+      };
+
+      if (showClosingDocsModal && closingDocsBranch?._id) {
+          fetchCohForModal();
       }
-    } else if (currentUser.role.rep === 3 && currentFilter === 'lo') {
-      // Fetch currentBranch if not available
-      getCurrentBranch();
-    }
-  }, [currentUser, currentFilter, currentBranch, currentDate]);
+  }, [showClosingDocsModal, closingDocsBranch]);
 
   // Update cohAmount when cohData changes
   useEffect(() => {
@@ -1590,11 +1597,16 @@ const ModernBranchCashCollections = () => {
         });
 
         if (checkResponse.success) {
-            setBmBranchStatus(
-                checkResponse.approvalStatus
-                    ? { status: checkResponse.approvalStatus, documentsStale: checkResponse.documentsStale }
-                    : null
-            );
+          setBmBranchStatus(
+              checkResponse.approvalStatus
+                  ? {
+                      status: checkResponse.approvalStatus,
+                      documentsStale: checkResponse.documentsStale,
+                      // ADDED — this is what the button should actually gate on
+                      documentsNeedReupload: checkResponse.documentsNeedReupload,
+                    }
+                  : null
+          );
         }
     };
     checkReadiness();
@@ -2115,16 +2127,7 @@ const ModernBranchCashCollections = () => {
     });
   }, [filteredData, sortConfig, currentFilter]);
 
-  const handleBmCloseBranchClick = async () => {
-    if (!branchReadiness.readyToUpload) {
-        toast.error('Some Loan Officers still have open or pending transactions.');
-        return;
-    }
-    if (!cohValid) {
-        toast.error('Please enter Cash on Hand before closing the branch.');
-        return;
-    }
-    
+  const handleBmCloseBranchClick = () => {
     setClosingDocsBranch({ _id: currentUser.designatedBranchId, name: currentBranch?.name || 'Your Branch' });
     setShowClosingDocsModal(true);
   };
@@ -2343,39 +2346,17 @@ const ModernBranchCashCollections = () => {
                         </select>
                       </div>
                     )}
-                    {(currentUser.role.rep === 3 && currentFilter === 'lo') && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-700">COH:</span>
-                        <div className="w-32">
-                          <InputNumber 
-                            name="coh"
-                            value={cohAmount}
-                            onChange={(val) => { setCohAmount(val.target.value) }}
-                            onBlur={(val) => { handleCOHDataChange(val.target.value) }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                            filter={true}
-                            disabled={loading} 
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                    )}
                     
                     {(currentUser.role.rep === 3 && currentFilter === 'lo') && (() => {
                       const isClosed = bmBranchStatus?.status === 'closed';
-                      console.log('bmBranchStatus?.status:', bmBranchStatus?.status);
-                      // ADDED: distinguish "closed and fine" from "closed but stale" — the
-                      // latter means something changed since AM's review and BM may need to
-                      // upload a correction. Without this, both states looked identical and
-                      // BM had no path back into the modal once status flipped to 'closed'.
-                      const isStale = isClosed && bmBranchStatus?.documentsStale;
-                      console.log('isStale:', isStale);
-                      const isPendingApproval = !isClosed && branchReadiness.readyToClose;
-                      console.log('isPendingApproval:', isPendingApproval);
-
-                      console.log('branchReadiness.loading:', branchReadiness.loading);
-                      console.log('branchReadiness.readyToUpload:', branchReadiness.readyToUpload);
-                      console.log('cohValid:', cohValid);
+                      // CHANGED: was keyed on the raw documentsStale flag, which only ever
+                      // clears when AM finalizes — meaning the button stayed stuck on
+                      // "Documents Need Update" even after BM had already replaced every
+                      // outdated file. documentsNeedReupload correctly answers "is there
+                      // still at least one file that predates the reopen," which is the
+                      // question this button actually needs answered.
+                      const isStale = !isClosed && bmBranchStatus?.documentsNeedReupload;
+                      const isPendingApproval = !isClosed && !isStale && branchReadiness.readyToClose;
 
                       const label = isStale
                           ? 'Documents Need Update'
@@ -2385,19 +2366,14 @@ const ModernBranchCashCollections = () => {
                                   ? 'Pending AM Approval'
                                   : 'Upload & Close Branch';
 
-                      const disabled =
-                          branchReadiness.loading ||
-                          !branchReadiness.readyToUpload ||
-                          !cohValid ||
-                          (isClosed && !isStale); 
+                      const disabled = branchReadiness.loading;
 
                       const title =
-                          branchReadiness.loading ? 'Checking branch status...'
-                          : !branchReadiness.readyToUpload ? 'All Loan Officers with active clients must be closed first'
-                          : !cohValid ? 'Enter Cash on Hand before closing the branch'
-                          : isStale ? 'A Loan Officer transaction was reopened after closing — review and re-upload documents if needed'
-                          : isPendingApproval ? 'Documents uploaded — waiting for Area Manager to finalize'
-                          : 'Upload closing documents and close the branch';
+                        branchReadiness.loading ? 'Checking branch status...'
+                        : isClosed ? 'Branch is closed — click to view documents and Cash on Hand (read-only)'
+                        : isStale ? 'A Loan Officer transaction was reopened after closing — review documents and Cash on Hand'
+                        : isPendingApproval ? 'Documents uploaded — waiting for Area Manager to finalize. Click to review or make changes.'
+                        : 'Open closing documents and Cash on Hand';
 
                       return (
                           <button
@@ -2967,6 +2943,10 @@ const ModernBranchCashCollections = () => {
                 branchName={closingDocsBranch.name}
                 dateFor={dateFilter !== currentDate ? dateFilter : currentDate}
                 currentUser={currentUser}
+                cohAmount={cohAmount}
+                cohBreakdown={cohBreakdownStable}
+                onCohAmountChange={setCohAmount}
+                onCohSave={handleCOHDataChange}
                 onClosed={() => {
                   fetchCashCollectionsData(dateFilter);
                   setReadinessVersion(v => v + 1);

@@ -27,12 +27,22 @@ async function save(req, res) {
 
     let updatedData;
 
+    // ADDED: breakdown is optional — the confirmed design keeps `amount`
+    // as the directly-typed, authoritative total. breakdown is supporting
+    // detail only, never validated against amount, and can be null/empty.
+    const breakdown = Array.isArray(data.breakdown) ? data.breakdown : null;
+
     if (branchCOH.length > 0) {
         const cohId = branchCOH[0]._id;
 
         [updatedData] = await graph.mutation(
             updateQl(BRANCH_COH_TYPE, {
-                set: { amount: data.amount, modifiedBy: data.modifiedBy, modifiedDateTime: new Date() },
+                set: {
+                    amount: data.amount,
+                    breakdown,
+                    modifiedBy: data.modifiedBy,
+                    modifiedDateTime: new Date(),
+                },
                 where: { _id: { _eq: cohId } },
             })
         ).then(res => res.data.results.returning);
@@ -42,6 +52,7 @@ async function save(req, res) {
                 objects: [{
                     _id: generateUUID(),
                     amount: data.amount,
+                    breakdown,
                     branchId: data.branchId,
                     insertedBy: data.insertedBy,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),

@@ -449,6 +449,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   export const BRANCH_COH_FIELDS = `
   _id
   amount
+  breakdown
   branchId
   insertedBy
   dateAdded
