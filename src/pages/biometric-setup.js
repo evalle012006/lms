@@ -17,6 +17,18 @@ const BiometricSetupPage = () => {
 
     const [done, setDone] = useState(false);
 
+    const handleSkip = () => {
+        try {
+            const stored = JSON.parse(localStorage.getItem('acuser') || '{}');
+            stored.biometricSkipped = true;
+            // loginDirect calls userSubject.next({ success: true, user })
+            // which is what RouteGuard reads via userService.userValue
+            userService.loginDirect(stored);
+            dispatch(setUser(stored));
+        } catch (e) { /* ignore */ }
+        router.push('/');
+    };
+
     // ── Redirect if already registered ─────────────────────────────────
     useEffect(() => {
         if (currentUser?.biometricCredentialId) {
@@ -229,6 +241,31 @@ const BiometricSetupPage = () => {
                                     </button>
                                 </div>
                             )}
+
+                            {/* LO warning — rep > 3 means Loan Officer */}
+                            {currentUser?.role?.rep > 3 && (
+                                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <p className="text-xs font-semibold text-amber-800">
+                                        ⚠ Loan approval requires biometric
+                                    </p>
+                                    <p className="text-xs text-amber-700 mt-0.5">
+                                        You will not be able to approve loan disbursements
+                                        without a registered fingerprint.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Skip button */}
+                            <button
+                                type="button"
+                                onClick={handleSkip}
+                                disabled={loading}
+                                className="mt-3 w-full py-3 text-sm font-medium rounded-xl
+                                    border border-gray-200 text-gray-500
+                                    hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            >
+                                Skip for now
+                            </button>
 
                             <p className="text-center text-xs text-gray-300 mt-5 leading-relaxed">
                                 Your biometric never leaves this device.{'\n'}

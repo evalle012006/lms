@@ -238,6 +238,7 @@ const PublicLAFForm = ({
 }) => {
     const formikRef = useRef();
     const [clientType, setClientType] = useState(null);
+    const [reviewAgreed, setReviewAgreed] = useState(false);
 
     // Build steps based on clientType
     // ── Online status — must be declared BEFORE STEPS useMemo ──────────────
@@ -266,23 +267,22 @@ const PublicLAFForm = ({
         const addBiometric = requireClientBiometric && isOnline;
         if (isExisting) {
             const s = ['Type', 'Lookup', 'Confirm', 'Photo'];
-            // Show ID step if: settings require it OR client has no ID yet
             if (requireGovernmentId || idStepNeeded) s.push('ID');
-            s.push('Loan');
+            s.push('Loan', 'Review');
             if (addBiometric) s.push('Biometric');
             return s;
         }
         if (clientType === 'balik') {
             const s = ['Type', 'Lookup'];
             if (requireGovernmentId) s.push('ID');
-            s.push('Photo', 'Personal', 'Address', 'Loan');
+            s.push('Photo', 'Personal', 'Address', 'Loan', 'Review');
             if (addBiometric) s.push('Biometric');
             return s;
         }
         // Prospect
         const s = ['Type', 'Photo'];
         if (requireGovernmentId) s.push('ID');
-        s.push('Personal', 'Address', 'Loan');
+        s.push('Personal', 'Address', 'Loan', 'Review');
         if (addBiometric) s.push('Biometric');
         return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -693,6 +693,15 @@ const PublicLAFForm = ({
             return;
         }
 
+        if (cur === si('Review')) {
+            if (!reviewAgreed) {
+                toast.error('Please confirm that all information is true and correct.');
+                return;
+            }
+            setStep(s => s + 1);
+            return;
+        }
+
         if (cur === si('Personal')) {
             const form = formikRef.current;
             if (!form) return;
@@ -749,7 +758,10 @@ const PublicLAFForm = ({
         selfieWithIdFile, requireSelfieWithId, foundClient, si,
         existingClientHasId, isExistingClient]);
 
-    const goPrev = () => setStep(s => Math.max(s - 1, 0));
+    const goPrev = () => {
+        if (step === si('Biometric')) setReviewAgreed(false);
+        setStep(s => Math.max(s - 1, 0));
+    };
 
     const handleSubmit = useCallback(async (values) => {
         // ── Validate: same existing client already queued offline ─────────
@@ -1736,7 +1748,7 @@ const PublicLAFForm = ({
                                     )}
                                     <div className="mt-6 flex justify-between">
                                         <button type="button" onClick={goPrev} className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">Back</button>
-                                        {step === si('Loan') && bioIdx === -1 ? (
+                                        {false ? (
                                             <button type="button" onClick={() => submitForm()} disabled={submitting}
                                                 className="px-6 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
                                                 {submitting ? (<><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Submitting…</>) : 'Submit Application'}
@@ -1749,6 +1761,174 @@ const PublicLAFForm = ({
                             )}
                         </Formik>
                     </div>
+
+                    {/* Review & Confirm — shown for all client types before biometric/submit */}
+                    {step === si('Review') && (
+                        <div>
+                            <h2 className="text-base font-semibold text-gray-800 mb-1">
+                                Review Your Application
+                            </h2>
+                            <p className="text-xs text-gray-500 mb-4">
+                                Please verify all information before submitting.
+                            </p>
+
+                            {/* For existing clients — show foundClient data */}
+                            {foundClient ? (
+                                <div className="bg-white border border-gray-200 rounded-xl mb-3 overflow-hidden">
+                                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Member Information</p>
+                                    </div>
+                                    <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                                        {[
+                                            ['Name', `${foundClient.lastName}, ${foundClient.firstName} ${foundClient.middleName || ''}`],
+                                            ['Birthdate', foundClient.birthdate || '—'],
+                                            ['Contact', clientChanges.contactNumber || foundClient.contactNumber || '—'],
+                                            ['Branch', foundClient.branchName || '—'],
+                                        ].map(([label, value]) => (
+                                            <div key={label}>
+                                                <p className="text-xs text-gray-400">{label}</p>
+                                                <p className="text-sm font-medium text-gray-800">{value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* For prospects — show form values */
+                                <>
+                                    <div className="bg-white border border-gray-200 rounded-xl mb-3 overflow-hidden">
+                                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Personal Information</p>
+                                        </div>
+                                        <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                                            {[
+                                                ['Last Name',   formikRef.current?.values?.lastName  || '—'],
+                                                ['First Name',  formikRef.current?.values?.firstName || '—'],
+                                                ['Middle Name', formikRef.current?.values?.middleName || '—'],
+                                                ['Birthdate',   formikRef.current?.values?.birthdate  || '—'],
+                                                ['Contact',     formikRef.current?.values?.contactNumber || '—'],
+                                                ['Civil Status',formikRef.current?.values?.civilStatus || '—'],
+                                            ].map(([label, value]) => (
+                                                <div key={label}>
+                                                    <p className="text-xs text-gray-400">{label}</p>
+                                                    <p className="text-sm font-medium text-gray-800">{value}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white border border-gray-200 rounded-xl mb-3 overflow-hidden">
+                                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Address</p>
+                                        </div>
+                                        <div className="px-4 py-3">
+                                            <p className="text-sm font-medium text-gray-800">
+                                                {[
+                                                    formikRef.current?.values?.addressStreetNo,
+                                                    formikRef.current?.values?.addressBarangayDistrict,
+                                                    formikRef.current?.values?.addressMunicipalityCity,
+                                                    formikRef.current?.values?.addressProvince,
+                                                    formikRef.current?.values?.addressZipCode,
+                                                ].filter(Boolean).join(', ') || '—'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Loan Purpose */}
+                            <div className="bg-white border border-gray-200 rounded-xl mb-3 overflow-hidden">
+                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Loan Details</p>
+                                </div>
+                                <div className="px-4 py-3">
+                                    <p className="text-xs text-gray-400">Loan Purpose</p>
+                                    <p className="text-sm font-medium text-gray-800">
+                                        {formikRef.current?.values?.loanPurpose || '—'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Guarantor */}
+                            <div className="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
+                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Guarantor</p>
+                                </div>
+                                <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                                    {[
+                                        ['First Name',   formikRef.current?.values?.guarantorFirstName  || '—'],
+                                        ['Last Name',    formikRef.current?.values?.guarantorLastName   || '—'],
+                                        ['Relationship', formikRef.current?.values?.guarantorRelationship || '—'],
+                                        ['Contact',      formikRef.current?.values?.guarantorContactNumber || '—'],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <p className="text-xs text-gray-400">{label}</p>
+                                            <p className="text-sm font-medium text-gray-800">{value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Agreement checkbox */}
+                            <label className="flex items-start gap-3 cursor-pointer p-3
+                                bg-blue-50 border border-blue-200 rounded-xl">
+                                <input
+                                    type="checkbox"
+                                    checked={reviewAgreed}
+                                    onChange={e => setReviewAgreed(e.target.checked)}
+                                    className="mt-0.5 w-4 h-4 rounded border-gray-300
+                                        text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                                />
+                                <span className="text-xs text-blue-800 leading-relaxed">
+                                    I confirm that all the information I have provided is{' '}
+                                    <strong>true and correct</strong> to the best of my knowledge.
+                                    I understand that false information may result in rejection
+                                    of my application.
+                                </span>
+                            </label>
+
+                            <div className="mt-5 flex justify-between">
+                                <button type="button" onClick={goPrev}
+                                    className="px-5 py-2.5 border border-gray-300 text-gray-700
+                                        text-sm font-medium rounded-lg hover:bg-gray-50">
+                                    Back
+                                </button>
+                                {/* If no biometric step, this is the final Submit */}
+                                {bioIdx === -1 ? (
+                                    <button type="button"
+                                        onClick={() => {
+                                            if (!reviewAgreed) {
+                                                toast.error('Please confirm that all information is true and correct.');
+                                                return;
+                                            }
+                                            handleSubmit(formikRef.current?.values || {});
+                                        }}
+                                        disabled={!reviewAgreed || submitting}
+                                        className="px-6 py-2.5 bg-green-600 text-white text-sm
+                                            font-medium rounded-lg hover:bg-green-700
+                                            disabled:opacity-50 flex items-center gap-2">
+                                        {submitting ? (
+                                            <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Submitting…</>
+                                        ) : 'Submit Application'}
+                                    </button>
+                                ) : (
+                                    <button type="button"
+                                        onClick={() => {
+                                            if (!reviewAgreed) {
+                                                toast.error('Please confirm that all information is true and correct.');
+                                                return;
+                                            }
+                                            setStep(s => s + 1);
+                                        }}
+                                        disabled={!reviewAgreed}
+                                        className="px-6 py-2.5 bg-blue-600 text-white text-sm
+                                            font-medium rounded-lg hover:bg-blue-700
+                                            disabled:opacity-50 transition-colors">
+                                        Confirm & Continue
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Biometric — skipped entirely in offline mode */}
                     {bioIdx !== -1 && step === bioIdx && isOnline && (

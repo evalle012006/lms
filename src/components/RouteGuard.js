@@ -72,9 +72,10 @@ function RouteGuard({ children }) {
                 user &&
                 !biometricCredentialId &&
                 !user.root &&
+                !user.biometricSkipped &&
                 !bypassBiometric
             ) {
-                // Authenticated but no biometric — force setup
+                // Authenticated but no biometric and not skipped — force setup
                 setAuthorized(false);
                 router.replace('/biometric-setup');
             } else {
