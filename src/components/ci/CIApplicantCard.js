@@ -94,6 +94,14 @@ const CIApplicantCard = ({ application, loanHistory }) => {
                     ? moment(application.submittedAt).format('MMM DD, YYYY h:mm A')
                     : null} />
 
+                {/* Group + Slot — for existing clients (reloan/pending/balik) */}
+                {application.groupName && (
+                    <Row label="Group" value={application.groupName} />
+                )}
+                {loanHistory?.[0]?.slotNo && (
+                    <Row label="Slot No." value={loanHistory[0].slotNo} />
+                )}
+
                 {/* ── Personal Information ──────────────────────────────── */}
                 <SectionHeader title="Personal Information" />
                 <Row label="Full Name"     value={`${application.lastName}, ${application.firstName} ${application.middleName || ''}`.trim()} />
@@ -208,6 +216,33 @@ const CIApplicantCard = ({ application, loanHistory }) => {
                                     <div className="flex justify-between text-gray-500">
                                         <span>₱{Number(loan.principalLoan || 0).toLocaleString()}</span>
                                         <span>{loan.status}</span>
+                                    </div>
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-100
+                                        grid grid-cols-2 gap-x-2 gap-y-0.5 text-gray-400">
+                                        {loan.loanTerms && (
+                                            <>
+                                                <span>Terms</span>
+                                                <span className="text-right font-medium text-gray-600">
+                                                    {loan.loanTerms} days
+                                                </span>
+                                            </>
+                                        )}
+                                        {loan.occurence && (
+                                            <>
+                                                <span>Occurrence</span>
+                                                <span className="text-right font-medium text-gray-600 capitalize">
+                                                    {loan.occurence}
+                                                </span>
+                                            </>
+                                        )}
+                                        {loan.pnNumber && (
+                                            <>
+                                                <span>PN No.</span>
+                                                <span className="text-right font-medium text-gray-600">
+                                                    {loan.pnNumber}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             );

@@ -487,15 +487,15 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
               )}
               {item.label === 'Generate QR' && (
                 // FIX: hide QR button when group is full (no available slots)
-                !row.original.availableSlots?.length ? (
-                  <span className="px-2 text-xs text-gray-400" title="Group is full">
-                    —
-                  </span>
-                ) : (
+                // !row.original.availableSlots?.length ? (
+                //   <span className="px-2 text-xs text-gray-400" title="Group is full">
+                //     —
+                //   </span>
+                // ) : (
                   <div className="px-2" onClick={() => safeCallAction(item, row)} title="Manage QR Code">
                     <QrCode className={`${ic} text-indigo-600`} />
                   </div>
-                )
+                // )
               )}
             </React.Fragment>
           );

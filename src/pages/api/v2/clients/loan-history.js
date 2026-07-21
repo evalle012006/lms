@@ -16,6 +16,7 @@ const CLIENT_TYPE = createGraphType('client', `
     loans (order_by: [{ loanCycle: desc }], limit: 20) {
         _id loanCycle status slotNo
         amountRelease loanBalance loanTerms
+        principalLoan pnNumber occurence
         dateAdded dateOfRelease
     }
 `)('clients');
@@ -77,6 +78,9 @@ async function getLoanHistory(req, res) {
         slotNo:         l.slotNo,
         amountRelease:  l.amountRelease,
         loanBalance:    l.loanBalance,
+        principalLoan:  l.principalLoan,
+        pnNumber:       l.pnNumber,
+        occurence:      l.occurence,
         dateAdded:      l.dateAdded,
         dateOfRelease:  l.dateOfRelease,
         missedPayments: missedMap[l._id] || 0,

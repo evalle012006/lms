@@ -477,6 +477,13 @@ const AddLoanPage = ({
                         'Please check the Loan Applications list.',
                         { autoClose: 8000 }
                     );
+                    return;
+                }
+                // Set selectedLoanId from the most recent non-pending loan
+                // so handleSaveUpdate can send oldLoanId for reloan mode
+                const latestLoan = loans.find(l => l.status !== 'pending');
+                if (latestLoan?._id) {
+                    setSelectedLoanId(latestLoan._id);
                 }
             }).catch(() => {});
         }
@@ -1044,9 +1051,14 @@ const AddLoanPage = ({
         values.branchName = branch?.name  || currentUser.designatedBranch   || '';
 
         if (clientType === 'advance' || clientType === 'active') {
-            values.mode              = clientType;
-            values.oldLoanId         = selectedLoanId;
+            values.mode               = clientType;
+            values.oldLoanId          = selectedLoanId;
             values.advanceTransaction = true;
+        } else if (clientType === 'pending' && selectedLoanId) {
+            // Pending Member (completed loan) re-applying via CI flow
+            // Treat as reloan so save.js closes old loan and updates MCBU correctly
+            values.mode      = 'reloan';
+            values.oldLoanId = selectedLoanId;
         }
 
         values.slotNo      = slotNo;

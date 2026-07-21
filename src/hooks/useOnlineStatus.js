@@ -3,6 +3,7 @@
 // Uses navigator.onLine as initial value, then listens for browser events.
 // Same pattern as CI offline mode but no manual override.
 
+import { checkRealConnectivity } from '@/lib/check-online';
 import { useState, useEffect } from 'react';
 
 /**
@@ -19,8 +20,10 @@ export function useOnlineStatus() {
     const [wasOffline, setWasOffline] = useState(false);
 
     useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
+        const handleOnline = async () => {
+            // Browser says online — verify with real probe before trusting it
+            const confirmed = await checkRealConnectivity(2000);
+            setIsOnline(confirmed);
         };
 
         const handleOffline = () => {

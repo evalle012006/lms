@@ -49,9 +49,10 @@ async function save(req, res) {
 
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
-        slotNo: { _eq: loanData.slotNo },
-        groupId: { _eq: loanData.groupId },
-        status: { _in: ['active', 'completed', 'pending']}
+        slotNo:   { _eq:  loanData.slotNo   },
+        groupId:  { _eq:  loanData.groupId  },
+        status:   { _in:  ['active', 'completed', 'pending'] },
+        clientId: { _neq: loanData.clientId },   // exclude client's own loans
       }
     }))).data?.loans;
 

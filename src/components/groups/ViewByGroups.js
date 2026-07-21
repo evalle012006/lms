@@ -29,18 +29,18 @@ import { PlusIcon }                    from '@heroicons/react/24/solid';
 // ── QR status badge ───────────────────────────────────────────────────────
 const QRBadge = ({ group, onClick }) => {
     // FIX: use both status AND availableSlots — either signals full
-    const isFull = group.status === 'full' || !group.availableSlots?.length;
+    // const isFull = group.status === 'full' || !group.availableSlots?.length;
 
     // Full group — always show non-clickable badge regardless of QR state
-    if (isFull) {
-        return (
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                bg-gray-100 text-gray-500 border border-gray-200">
-                <Users className="w-3 h-3" />
-                Group Full
-            </div>
-        );
-    }
+    // if (isFull) {
+    //     return (
+    //         <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
+    //             bg-gray-100 text-gray-500 border border-gray-200">
+    //             <Users className="w-3 h-3" />
+    //             Group Full
+    //         </div>
+    //     );
+    // }
 
     if (!group.qrToken) {
         return (

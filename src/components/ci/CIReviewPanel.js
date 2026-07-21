@@ -12,6 +12,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
+import { checkRealConnectivity } from '@/lib/check-online';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -153,7 +154,9 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
         setSaving(true);
         try {
             // ── OFFLINE PATH ─────────────────────────────────────────────
-            if (!isOnline) {
+            // Real probe — navigator.onLine unreliable on mobile networks
+            const reallyOnline = isOnline ? await checkRealConnectivity() : false;
+            if (!reallyOnline) {
                 let selfieBase64 = null;
                 if (selfieFile) selfieBase64 = await compressToBase64(selfieFile);
                 const saveResult = saveDraft({ ...buildPayload(null), selfieBase64, savedOfflineAt: Date.now() });

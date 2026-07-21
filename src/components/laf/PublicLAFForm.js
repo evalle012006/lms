@@ -14,6 +14,7 @@ import PhotoCapture        from '@/components/clients/PhotoCapture';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLAFOfflineQueue, MAX_ENTRIES } from '@/hooks/useLAFOfflineQueue';
 import { usePublicSignedUrl }               from '@/hooks/usePublicSignedUrl';
+import { checkRealConnectivity } from '@/lib/check-online';
 
 // ID number format validation — regex + friendly hint per type
 const ID_FORMAT_RULES = {
@@ -541,7 +542,9 @@ const PublicLAFForm = ({
 
     const handleLookup = async () => {
         // Offline: search cached clients instead of hitting API
-        if (!isOnline) {
+        // Use real probe — navigator.onLine returns true on WiFi-with-no-internet
+        const reallyOnline = isOnline ? await checkRealConnectivity() : false;
+        if (!reallyOnline) {
             if (!cachedClients) {
                 toast.error('No cached data. Please use Prepare for Field while online first.');
                 return;
@@ -780,7 +783,10 @@ const PublicLAFForm = ({
         }
 
         // ── Offline mode: save to queue instead of submitting ─────────────
-        if (!isOnline) {
+        // Use real connectivity probe — navigator.onLine is unreliable
+        const reallyOnline = isOnline ? await checkRealConnectivity() : false;
+
+        if (!reallyOnline) {
             if (stats.isFull) {
                 toast.error('Queue is full (30 clients). Please sync before adding more.');
                 return;
