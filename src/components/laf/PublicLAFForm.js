@@ -429,7 +429,8 @@ const PublicLAFForm = ({
     const isExistingClient  = clientType === 'reloan' || clientType === 'pending';
     // For biometric: only Prospect requires it mandatorily.
     // Balik, Reloan, Pending — attempt but skippable (captured at disbursement if missed)
-    const biometricRequired = clientType === 'prospect';
+    const existingHasBiometric = !!(foundClient?.biometricCredentialId);
+    const biometricRequired    = !existingHasBiometric;
 
     const uploadFile = useCallback(async (file, origin, uuid) => {
         const compressed = await compressImage(file);
