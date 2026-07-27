@@ -1,35 +1,49 @@
+// src/components/clients/PhotoCapture.js
+// Smart photo input that adapts to device camera availability.
+//
+// Detection: enumerateDevices() to find actual videoinput devices.
+// This correctly detects MacBook FaceTime camera, USB webcams, etc.
+// — unlike userAgent which classifies all desktops as "no camera".
+//
+// Camera mechanism: native file input with capture attribute.
+// - Mobile: opens native camera app (best UX — familiar, has flash/zoom)
+// - Desktop: opens browser camera picker or file dialog (browser-dependent)
+// - No camera: upload only
+
 import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Upload, X, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-/**
- * PhotoCapture
- *
- * Smart photo input that adapts to the device:
- * - Mobile: shows "Take Photo" (native camera) + "Upload File" (gallery)
- * - Desktop: shows "Upload Photo" only (capture attr is useless on desktop)
- *
- * Detection: uses userAgent to determine mobile vs desktop.
- * enumerateDevices alone is unreliable — desktops with webcams would
- * incorrectly show "Take Photo" which just opens a file picker anyway.
- */
 const PhotoCapture = ({
     onFileReady,
-    label = 'Capture or upload a photo',
-    maxMB = 10,
-    facingMode = 'environment',
+    label            = 'Capture or upload a photo',
+    maxMB            = 10,
+    facingMode       = 'environment',
     preview: controlledPreview = null,
+    existingPhotoKey = null,   // accepted for API compatibility — used by parent for signed URLs
 }) => {
     const cameraInputRef = useRef();
     const fileInputRef   = useRef();
     const [localPreview, setLocalPreview] = useState(null);
-    const [isMobile, setIsMobile]         = useState(null); // null = not yet determined
+    const [hasCamera,    setHasCamera]    = useState(null); // null = still detecting
 
-    // Detect mobile via userAgent — most reliable for camera capture support
+    // ── Detect camera via enumerateDevices ────────────────────────────────
+    // More reliable than userAgent — correctly finds MacBook FaceTime,
+    // USB webcams, and any videoinput device regardless of OS.
     useEffect(() => {
-        const ua = navigator.userAgent || '';
-        const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-        setIsMobile(mobile);
+        if (
+            typeof navigator === 'undefined' ||
+            !navigator.mediaDevices?.enumerateDevices
+        ) {
+            setHasCamera(false);
+            return;
+        }
+        navigator.mediaDevices
+            .enumerateDevices()
+            .then(devices => {
+                setHasCamera(devices.some(d => d.kind === 'videoinput'));
+            })
+            .catch(() => setHasCamera(false));
     }, []);
 
     const preview = controlledPreview || localPreview;
@@ -49,99 +63,115 @@ const PhotoCapture = ({
     const handleReset = () => {
         setLocalPreview(null);
         if (cameraInputRef.current) cameraInputRef.current.value = '';
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (fileInputRef.current)   fileInputRef.current.value   = '';
         onFileReady?.(null);
     };
 
+    // ── Preview state ─────────────────────────────────────────────────────
+    if (preview) {
+        return (
+            <div className="w-full">
+                <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                    <img src={preview} alt="Captured"
+                        className="w-full max-h-52 object-contain" />
+                </div>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                    {/* Retake — only if camera available */}
+                    {hasCamera && (
+                        <button type="button"
+                            onClick={() => cameraInputRef.current?.click()}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs
+                                border border-gray-200 text-gray-600 rounded-lg
+                                hover:bg-gray-50 transition-colors">
+                            <Camera className="w-3.5 h-3.5" />
+                            {hasCamera ? 'Retake' : 'Take Again'}
+                        </button>
+                    )}
+                    <button type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs
+                            border border-gray-200 text-gray-600 rounded-lg
+                            hover:bg-gray-50 transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        Replace with file
+                    </button>
+                    <button type="button"
+                        onClick={handleReset}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs
+                            border border-red-100 text-red-500 rounded-lg
+                            hover:bg-red-50 transition-colors ml-auto">
+                        <X className="w-3.5 h-3.5" />
+                        Remove
+                    </button>
+                </div>
+
+                {/* Hidden inputs */}
+                <input ref={cameraInputRef} type="file" accept="image/*"
+                    capture={facingMode} className="hidden"
+                    onChange={e => processFile(e.target.files?.[0])} />
+                <input ref={fileInputRef} type="file" accept="image/*"
+                    className="hidden"
+                    onChange={e => processFile(e.target.files?.[0])} />
+            </div>
+        );
+    }
+
+    // ── Empty state ───────────────────────────────────────────────────────
     return (
         <div className="w-full">
-            {preview ? (
-                /* Preview with retake / remove */
-                <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-                    <img src={preview} alt="Captured photo"
-                        className="w-full max-h-72 object-contain" style={{ display: 'block' }} />
-                    <div className="absolute top-2 right-2 flex gap-2">
-                        {isMobile && (
-                            <button type="button" onClick={() => cameraInputRef.current?.click()}
-                                className="bg-white rounded-full p-1.5 shadow border border-gray-200
-                                    text-gray-600 hover:bg-gray-50" title="Retake photo">
-                                <Camera className="w-4 h-4" />
-                            </button>
-                        )}
-                        <button type="button" onClick={() => fileInputRef.current?.click()}
-                            className="bg-white rounded-full p-1.5 shadow border border-gray-200
-                                text-gray-600 hover:bg-gray-50" title="Upload different file">
-                            <RefreshCw className="w-4 h-4" />
-                        </button>
-                        <button type="button" onClick={handleReset}
-                            className="bg-white rounded-full p-1.5 shadow border border-red-200
-                                text-red-500 hover:bg-red-50" title="Remove">
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
+            {hasCamera === null ? (
+                // Detecting — show neutral placeholder
+                <div className="w-full h-28 border-2 border-dashed border-gray-200
+                    rounded-xl flex items-center justify-center">
+                    <p className="text-xs text-gray-400">Checking camera…</p>
+                </div>
+            ) : hasCamera ? (
+                // Camera detected — Take Photo (primary) + Upload (secondary)
+                <div className="flex flex-col gap-2">
+                    <button type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 py-3 px-4
+                            bg-teal-600 text-white text-sm font-semibold rounded-xl
+                            hover:bg-teal-700 active:scale-95 transition-all">
+                        <Camera className="w-4 h-4" />
+                        Take Photo
+                    </button>
+                    <button type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 py-2.5 px-4
+                            border-2 border-gray-200 text-gray-600 text-sm font-medium
+                            rounded-xl hover:border-teal-400 hover:bg-teal-50
+                            active:scale-95 transition-all">
+                        <Upload className="w-4 h-4" />
+                        Upload File
+                    </button>
+                    <p className="text-xs text-center text-gray-400">
+                        JPG, PNG · Max {maxMB}MB
+                    </p>
                 </div>
             ) : (
-                /* No preview — show buttons */
-                <div className="w-full border-2 border-dashed border-gray-300 rounded-xl
-                    min-h-48 flex flex-col items-center justify-center gap-4 p-6">
-
-                    <p className="text-sm text-gray-500 text-center">{label}</p>
-
-                    {/* Still detecting */}
-                    {isMobile === null && (
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10"
-                                    stroke="currentColor" strokeWidth="4"/>
-                                <path className="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8v8H4z"/>
-                            </svg>
-                            Loading...
-                        </div>
-                    )}
-
-                    {/* Mobile — camera + upload */}
-                    {isMobile === true && (
-                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                            <button type="button" onClick={() => cameraInputRef.current?.click()}
-                                className="flex-1 flex items-center justify-center gap-2
-                                    py-3 px-4 bg-blue-600 text-white text-sm font-semibold
-                                    rounded-xl hover:bg-blue-700 active:scale-95 transition-all">
-                                <Camera className="w-4 h-4" />
-                                Take Photo
-                            </button>
-                            <button type="button" onClick={() => fileInputRef.current?.click()}
-                                className="flex-1 flex items-center justify-center gap-2
-                                    py-3 px-4 border-2 border-gray-200 text-gray-600 text-sm
-                                    font-semibold rounded-xl hover:border-blue-400 hover:bg-blue-50
-                                    active:scale-95 transition-all">
-                                <Upload className="w-4 h-4" />
-                                Upload File
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Desktop — upload only */}
-                    {isMobile === false && (
-                        <button type="button" onClick={() => fileInputRef.current?.click()}
-                            className="flex items-center justify-center gap-2
-                                py-3 px-6 bg-blue-600 text-white text-sm font-semibold
-                                rounded-xl hover:bg-blue-700 active:scale-95 transition-all">
-                            <Upload className="w-4 h-4" />
-                            Upload Photo
-                        </button>
-                    )}
-
-                    <p className="text-xs text-gray-400">JPG, PNG · Max {maxMB}MB</p>
+                // No camera — upload only
+                <div className="flex flex-col gap-2">
+                    <button type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 py-3 px-4
+                            bg-teal-600 text-white text-sm font-semibold rounded-xl
+                            hover:bg-teal-700 active:scale-95 transition-all">
+                        <Upload className="w-4 h-4" />
+                        Upload Photo
+                    </button>
+                    <p className="text-xs text-center text-gray-400">
+                        JPG, PNG · Max {maxMB}MB
+                    </p>
                 </div>
             )}
 
-            {/* Camera input — capture triggers native camera on mobile only */}
+            {/* Camera input — capture opens native camera on mobile */}
             <input ref={cameraInputRef} type="file" accept="image/*"
                 capture={facingMode} className="hidden"
                 onChange={e => processFile(e.target.files?.[0])} />
 
-            {/* File input — no capture, opens gallery/file picker */}
+            {/* File input — no capture, opens gallery / file picker */}
             <input ref={fileInputRef} type="file" accept="image/*"
                 className="hidden"
                 onChange={e => processFile(e.target.files?.[0])} />
