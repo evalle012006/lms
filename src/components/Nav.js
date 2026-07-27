@@ -160,7 +160,17 @@ const normUrl = (u) => {
   const s = String(u);
   // Hash-only URLs are parent menu anchors — keep them unique so they never match a real path
   if (s.startsWith('#')) return s;
-  return s.split('?')[0].replace(/\/$/, '') || '/';
+
+  const [pathAndQuery] = s.split('#');       // drop hash fragment
+  const [rawPath, rawQuery] = pathAndQuery.split('?');
+  const path = rawPath.replace(/\/$/, '') || '/';
+
+  if (!rawQuery) return path;
+
+  const params = new URLSearchParams(rawQuery);
+  params.sort(); // stable ordering regardless of param sequence
+  const qs = params.toString();
+  return qs ? `${path}?${qs}` : path;
 };
 
 // Menu configuration

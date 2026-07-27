@@ -43,8 +43,7 @@ export const BRANCH_FIELDS = `
   regionId
   divisionId
   lockTransaction
-  qrToken
-  qrGeneratedAt
+  clientFlowVersion
   `;
 
 export const CLIENT_FIELDS = `

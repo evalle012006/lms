@@ -32,6 +32,24 @@ const BranchesPage = () => {
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
+    const handleClientFlowVersionChange = async (branchRow, newValue) => {
+        const updatedBranch = { ...branchRow, clientFlowVersion: newValue };
+
+        const apiUrl = getApiBaseUrl() + 'branches';
+        fetchWrapper.post(apiUrl, updatedBranch)
+            .then(response => {
+                if (response.success) {
+                    toast.success(`Client flow version updated to ${newValue}.`);
+                    getListBranch();
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
+            }).catch(error => {
+                console.log(error);
+                toast.error('Failed to update client flow version.');
+            });
+    }
+
     const handleLockBranchTransaction = async (row) => {
         const branch = { ...row.original };
         let updatedBranch = { ...branch, lockTransaction: !branch.lockTransaction };
@@ -116,6 +134,18 @@ const BranchesPage = () => {
         {
             Header: "Email",
             accessor: 'email',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Client Flow Version",
+            accessor: 'clientFlowVersion',
+            Cell: SelectCell,
+            Options: [
+                { value: 'v1', label: 'v1' },
+                { value: 'v2', label: 'v2' },
+            ],
+            selectOnChange: handleClientFlowVersionChange,
             Filter: SelectColumnFilter,
             filter: 'includes'
         },

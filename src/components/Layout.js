@@ -10,6 +10,7 @@ import { getLastFiveWeekdaysOfMonth, getLastWeekdayOfTheMonth } from "@/lib/date
 import { getApiBaseUrl } from '@/lib/constants';
 import useIsMobile from "@/lib/useIsMobile";
 import HeaderComponent from "@/lib/header-component";
+import { setBranch } from "@/redux/actions/branchActions";
 
 const Layout = ({ 
     children, 
@@ -25,6 +26,7 @@ const Layout = ({
     const state = useSelector(state => state.global);
     const pageTitle = state.title;
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const holidayList = useSelector(state => state.holidays.list);
     const systemSettingsData = useSelector(state => state.systemSettings?.data);
@@ -44,6 +46,15 @@ const Layout = ({
             window.removeEventListener('navCollapseChange', handleNavCollapse);
         };
     }, []);
+
+    const getCurrentBranch = async (branchId) => {
+        const apiUrl = `${getApiBaseUrl()}branches?`;
+        const params = { _id: branchId, date: currentDate };
+        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+        if (response.success) {
+            dispatch(setBranch(response.branch));
+        }
+    }
 
     const getCurrentDate = async () => {
         const apiURL = `${getApiBaseUrl()}settings/current-date`;
@@ -159,9 +170,13 @@ const Layout = ({
             return; // Skip the API call
         }
 
+        if (currentUser?.role?.rep >= 3 ) {
+            getCurrentBranch(currentUser?.designatedBranchId);
+        }
+
         // Only fetch if holidays not yet loaded
         getListHoliday();
-    }, [currentDate]);
+    }, [currentDate, currentUser]);
 
     useEffect(() => {
         const holidays = (holidayList || []).map(h => {

@@ -30,13 +30,13 @@ import { useRouter } from "next/router";
 const ViewClientsByGroupPage = ({
     groupId, status, client, setClientParent, setMode,
     handleShowAddDrawer,
-    handleEditClient, 
     handleShowCoMakerDrawer
 }) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const list = useSelector(state => state.client.list);
     const [activeList, setActiveList] = useState();
     const [excludedList, setExcludedList] = useState();
@@ -449,7 +449,14 @@ const ViewClientsByGroupPage = ({
     const [duplicateColumns, setDuplicateColumns] = useState([]);
 
     const handleEditAction = (row) => {
-        router.push(`/clients/edit/${row._id}`);
+        if (currentBranch?.clientFlowVersion === 'v1') {
+            setMode("edit");
+            let clientData = row;
+            setClientParent(clientData);
+            handleShowAddDrawer();
+        } else {
+            router.push(`/clients/edit/${row._id}`);
+        }
     };
 
     const handleCoMakerAction = (row) => {

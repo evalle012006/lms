@@ -17,8 +17,8 @@ const EditClientPage = () => {
             <AddUpdateClientPage
                 mode="edit"
                 clientId={clientId}
-                onBack={() => router.push('/clients')}
-                onSuccess={() => router.push('/clients')}
+                onBack={() => router.push('/clients?status=pending')}
+                onSuccess={() => router.push('/clients?status=pending')}
             />
         </Layout>
     );

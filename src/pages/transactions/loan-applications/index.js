@@ -1224,12 +1224,6 @@ const LoanApplicationPage = () => {
             if (validation.length > 0) {
                 selectedLoanList = [];
             }
-
-            // if (origin == 'ldf' && validation.length === 0 && selectedLoanList.length > 0) {
-            //     setPendingLdfLoans(selectedLoanList);
-            //     setShowDisbursementModal(true);
-            //     return;   // stop here — modal's onConfirm will continue the approval
-            // }
         } else if (origin == 'application') {
             selectedLoanList = pendingList && pendingList.filter(loan => loan.selected === true);
 
@@ -1240,7 +1234,7 @@ const LoanApplicationPage = () => {
             }
 
             // Open disbursement modal before final approval
-            if (validation.length === 0 && selectedLoanList.length > 0) {
+            if (currentBranch?.clientFlowVersion === 'v2' && validation.length === 0 && selectedLoanList.length > 0) {
                 setPendingLdfLoans(selectedLoanList);
                 setPendingLdfOrigin(origin);
                 setShowDisbursementModal(true);

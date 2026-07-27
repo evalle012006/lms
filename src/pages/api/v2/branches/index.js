@@ -54,9 +54,9 @@ async function getBranch(req, res) {
     ).then(res => res.data.branches?.[0])
       .then(res => ({
         ... res,
-        branchManager: res.branchManager?.[0],
+        branchManager: res?.branchManager?.[0],
         noOfLO: {
-            count: res.noOfLO.aggregate.count
+            count: res?.noOfLO?.aggregate?.count
         },
       }))
 

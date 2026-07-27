@@ -25,9 +25,13 @@ import Dialog                          from '@/lib/ui/Dialog';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ButtonSolid   from '@/lib/ui/ButtonSolid';
 import { PlusIcon }                    from '@heroicons/react/24/solid';
+import { setBranch } from '@/redux/actions/branchActions';
 
 // ── QR status badge ───────────────────────────────────────────────────────
-const QRBadge = ({ group, onClick }) => {
+const QRBadge = ({ currentBranch, group, onClick }) => {
+    if (currentBranch?.clientFlowVersion === 'v1') {
+        return null;
+    }
     // FIX: use both status AND availableSlots — either signals full
     // const isFull = group.status === 'full' || !group.availableSlots?.length;
 
@@ -98,57 +102,63 @@ const QRBadge = ({ group, onClick }) => {
 };
 
 // ── Group row ─────────────────────────────────────────────────────────────
-const GroupRow = ({ group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClick }) => (
-    <div onClick={() => onRowClick(group)}
-        className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 items-center
-            px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50
-            last:border-0 transition-colors group/row">
-        <div>
-            <p className="text-sm font-medium text-gray-900 group-hover/row:text-blue-700">
-                {group.name}
-            </p>
-            <p className="text-xs text-gray-400">
-                {group.occurence} · {group.day} · {group.time || '—'}
-            </p>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Users className="w-3.5 h-3.5" />
-            {group.noOfClients ?? '—'} / {group.capacity ?? '—'}
-        </div>
-        <div>
-            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                group.status === 'open'      ? 'bg-green-100 text-green-700'  :
-                group.status === 'close'     ? 'bg-red-100 text-red-700'      :
-                group.status === 'full'      ? 'bg-amber-100 text-amber-700'  :
-                group.status === 'available' ? 'bg-blue-50 text-blue-600'     :
-                'bg-gray-100 text-gray-500'
-            }`}>
-                {group.status || '—'}
-            </span>
-        </div>
-        <div onClick={e => e.stopPropagation()}>
-            <QRBadge group={group} onClick={() => onQR(group)} />
-        </div>
-        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-            {canEdit && (
-                <button type="button" onClick={() => onEdit(group)}
-                    className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
-                    <Edit2 className="w-3.5 h-3.5" />
-                </button>
+const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClick }) => {
+    const showQR = currentBranch?.clientFlowVersion === 'v2';
+    return (
+        <div onClick={() => onRowClick(group)}
+            className={`grid ${showQR ? 'grid-cols-[2fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_auto]'} gap-3 items-center
+                px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50
+                last:border-0 transition-colors group/row"`}>
+            <div>
+                <p className="text-sm font-medium text-gray-900 group-hover/row:text-blue-700">
+                    {group.name}
+                </p>
+                <p className="text-xs text-gray-400">
+                    {group.occurence} · {group.day} · {group.time || '—'}
+                </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Users className="w-3.5 h-3.5" />
+                {group.noOfClients ?? '—'} / {group.capacity ?? '—'}
+            </div>
+            <div>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                    group.status === 'open'      ? 'bg-green-100 text-green-700'  :
+                    group.status === 'close'     ? 'bg-red-100 text-red-700'      :
+                    group.status === 'full'      ? 'bg-amber-100 text-amber-700'  :
+                    group.status === 'available' ? 'bg-blue-50 text-blue-600'     :
+                    'bg-gray-100 text-gray-500'
+                }`}>
+                    {group.status || '—'}
+                </span>
+            </div>
+            {showQR && (
+                <div onClick={e => e.stopPropagation()}>
+                    <QRBadge currentBranch={currentBranch} group={group} onClick={() => onQR(group)} />
+                </div>
             )}
-            {canDelete && (
-                <button type="button" onClick={() => onDelete(group)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                </button>
-            )}
+            <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                {canEdit && (
+                    <button type="button" onClick={() => onEdit(group)}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                        <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
+                {canDelete && (
+                    <button type="button" onClick={() => onDelete(group)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ── LO section (accordion) ────────────────────────────────────────────────
-const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
+const LOSection = ({ currentBranch, loName, groups, defaultOpen = true, ...rowProps }) => {
     const [open, setOpen] = useState(defaultOpen);
+    const showQR = currentBranch?.clientFlowVersion === 'v2';
     const now     = moment();
     const qrCount = groups.filter(g =>
         g.qrToken && now.isBefore(moment(g.qrExpiresAt))
@@ -171,38 +181,40 @@ const LOSection = ({ loName, groups, defaultOpen = true, ...rowProps }) => {
                         <p className="text-sm font-semibold text-gray-900">{loName}</p>
                         <p className="text-xs text-gray-400">
                             {groups.length} group{groups.length !== 1 ? 's' : ''}
-                            {qrCount > 0 && ` · ${qrCount} with active QR`}
+                            {showQR && qrCount > 0 && ` · ${qrCount} with active QR`}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {qrCount > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                            text-xs bg-green-100 text-green-700 border border-green-200">
-                            <CheckCircle className="w-3 h-3" />
-                            {qrCount} QR active
-                        </span>
-                    )}
-                    {noQRCount > 0 && (
-                        <span className="text-xs text-gray-400 tabular-nums">
-                            {noQRCount} without QR
-                        </span>
-                    )}
-                </div>
+                {showQR && (
+                    <div className="flex items-center gap-2">
+                        {qrCount > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                                text-xs bg-green-100 text-green-700 border border-green-200">
+                                <CheckCircle className="w-3 h-3" />
+                                {qrCount} QR active
+                            </span>
+                        )}
+                        {noQRCount > 0 && (
+                            <span className="text-xs text-gray-400 tabular-nums">
+                                {noQRCount} without QR
+                            </span>
+                        )}
+                    </div>
+                )}
             </button>
 
             {open && (
                 <>
-                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-2
+                    <div className={`grid ${showQR ? 'grid-cols-[2fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_auto]'} gap-3 px-4 py-2
                         bg-gray-50 border-t border-gray-100 text-xs font-semibold
-                        text-gray-500 uppercase tracking-wide">
+                        text-gray-500 uppercase tracking-wide"`}>
                         <span>Group Name</span>
                         <span>Members</span>
                         <span>Status</span>
-                        <span>QR Code</span>
+                        {showQR && <span>QR Code</span>}
                         <span />
                     </div>
-                    {groups.map(g => <GroupRow key={g._id} group={g} {...rowProps} />)}
+                    {groups.map(g => <GroupRow key={g._id} currentBranch={currentBranch} group={g} {...rowProps} />)}
                 </>
             )}
         </div>
@@ -220,12 +232,15 @@ const BranchHeader = ({ branchName, totalGroups }) => (
 );
 
 // ── Main component ────────────────────────────────────────────────────────
-const ViewByGroupsPage = ({ uuid }) => {
+const ViewByGroupsPage = ({ origin, uuid }) => {
     const dispatch    = useDispatch();
     const router      = useRouter();
     const currentUser = useSelector(s => s.user.data);
     const branchList  = useSelector(s => s.branch.list);
     const groupList   = useSelector(s => s.group.list);
+    const currentBranch = useSelector(state => state.branch.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const selectedLO = useSelector(s => s.user.selectedLO);
 
     const [loading,    setLoading]    = useState(true);
     const [mode,       setMode]       = useState('add');
@@ -246,6 +261,21 @@ const ViewByGroupsPage = ({ uuid }) => {
     const isLO    = currentUser?.role?.rep === 4;
     const canEdit  = currentUser?.role?.rep <= 3;
     const canDelete = currentUser?.role?.rep === 1;
+
+    const getCurrentBranch = async (branchId) => {
+        const apiUrl = `${getApiBaseUrl()}branches?`;
+        const params = { _id: branchId, date: currentDate };
+        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+        if (response.success) {
+            dispatch(setBranch(response.branch));
+        }
+    }
+
+    useEffect(() => {
+        if (origin === 'lo-groups' && selectedLO?.designatedBranchId) {
+            getCurrentBranch(selectedLO.designatedBranchId);
+        }
+    }, [origin, selectedLO])
 
     // ── Fetch ─────────────────────────────────────────────────────────────
     const fetchGroups = useCallback(async () => {
@@ -457,49 +487,51 @@ const ViewByGroupsPage = ({ uuid }) => {
             icon={[<PlusIcon key="icon" className="w-5 h-5" />, 'left']} />,
     ] : [];
 
-    return (
-        <Layout actionButtons={actionButtons}>
-            <div className="pb-6 space-y-4">
+    const content = (
+        <div className="pb-6 space-y-4">
 
-                {/* Stats strip */}
-                <div className="flex gap-4 flex-wrap">
-                    {[
-                        { label: 'Total Groups',  val: total },
+            {/* Stats strip */}
+            <div className="flex gap-4 flex-wrap">
+                {[
+                    { label: 'Total Groups',  val: total },
+                    ...(currentBranch?.clientFlowVersion === 'v2' ? [
                         { label: 'QR Active',     val: hasQR, cls: 'text-green-700' },
                         { label: 'No/Expired QR', val: noQR,  cls: 'text-amber-700' },
-                    ].map(({ label, val, cls }) => (
-                        <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-2">
-                            <p className="text-xs text-gray-400">{label}</p>
-                            <p className={`text-lg font-bold ${cls || 'text-gray-900'}`}>{val}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Filters */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3">
-                    <div className="flex-1 min-w-[180px] relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="text" value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Search group, LO or branch..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm
-                                focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    ] : []),
+                ].map(({ label, val, cls }) => (
+                    <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-2">
+                        <p className="text-xs text-gray-400">{label}</p>
+                        <p className={`text-lg font-bold ${cls || 'text-gray-900'}`}>{val}</p>
                     </div>
-                    {!isLO && (
-                        <select value={filterLO} onChange={e => setFilterLO(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm
-                                focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Loan Officers</option>
-                            {loOptions.map(lo => <option key={lo} value={lo}>{lo}</option>)}
-                        </select>
-                    )}
-                    <select value={filterSt} onChange={e => setFilterSt(e.target.value)}
+                ))}
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[180px] relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type="text" value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search group, LO or branch..."
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm
+                            focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                {!isLO && (
+                    <select value={filterLO} onChange={e => setFilterLO(e.target.value)}
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm
                             focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Statuses</option>
-                        {['open','close','full','available'].map(s =>
-                            <option key={s} value={s}>{s}</option>)}
+                        <option value="">All Loan Officers</option>
+                        {loOptions.map(lo => <option key={lo} value={lo}>{lo}</option>)}
                     </select>
+                )}
+                <select value={filterSt} onChange={e => setFilterSt(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Statuses</option>
+                    {['open','close','full','available'].map(s =>
+                        <option key={s} value={s}>{s}</option>)}
+                </select>
+                {currentBranch?.clientFlowVersion === 'v2' && (
                     <select value={filterQR} onChange={e => setFilterQR(e.target.value)}
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm
                             focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -508,60 +540,74 @@ const ViewByGroupsPage = ({ uuid }) => {
                         <option value="none">No / Expired QR</option>
                         <option value="expiring">Expiring Soon (≤2d)</option>
                     </select>
-                    <button type="button" onClick={fetchGroups}
-                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
-
-                {/* Group list */}
-                {loading ? (
-                    <div className="flex justify-center py-16"><Spinner /></div>
-                ) : grouped.length === 0 ? (
-                    <div className="text-center py-16 text-gray-400">
-                        <QrCode className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                        <p className="text-sm">No groups found</p>
-                    </div>
-                ) : grouped.map((item, i) => {
-                    // ── Higher role view: item has branchName + sections ──
-                    if (item.branchName) {
-                        const totalGroups = item.sections.reduce(
-                            (t, s) => t + s.groups.length, 0
-                        );
-                        return (
-                            <div key={item.branchName + i}>
-                                <BranchHeader
-                                    branchName={item.branchName}
-                                    totalGroups={totalGroups}
-                                />
-                                {item.sections.map(({ loName, groups }) => (
-                                    <LOSection
-                                        key={loName}
-                                        loName={loName}
-                                        groups={groups}
-                                        defaultOpen={
-                                            grouped.length <= 2 &&
-                                            item.sections.length <= 4
-                                        }
-                                        {...rowProps}
-                                    />
-                                ))}
-                            </div>
-                        );
-                    }
-
-                    // ── LO/BM self-view: item has loName + groups ─────────
-                    return (
-                        <LOSection
-                            key={item.loName + i}
-                            loName={item.loName}
-                            groups={item.groups}
-                            defaultOpen={grouped.length <= 3}
-                            {...rowProps}
-                        />
-                    );
-                })}
+                )}
+                <button type="button" onClick={fetchGroups}
+                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
+
+            {/* Group list */}
+            {loading ? (
+                <div className="flex justify-center py-16"><Spinner /></div>
+            ) : grouped.length === 0 ? (
+                <div className="text-center py-16 text-gray-400">
+                    <QrCode className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                    <p className="text-sm">No groups found</p>
+                </div>
+            ) : grouped.map((item, i) => {
+                if (item.branchName) {
+                    const totalGroups = item.sections.reduce(
+                        (t, s) => t + s.groups.length, 0
+                    );
+                    return (
+                        <div key={item.branchName + i}>
+                            <BranchHeader
+                                branchName={item.branchName}
+                                totalGroups={totalGroups}
+                            />
+                            {item.sections.map(({ loName, groups }) => (
+                                <LOSection
+                                    currentBranch={currentBranch}
+                                    key={loName}
+                                    loName={loName}
+                                    groups={groups}
+                                    defaultOpen={
+                                        grouped.length <= 2 &&
+                                        item.sections.length <= 4
+                                    }
+                                    {...rowProps}
+                                />
+                            ))}
+                        </div>
+                    );
+                }
+
+                return (
+                    <LOSection
+                        currentBranch={currentBranch}
+                        key={item.loName + i}
+                        loName={item.loName}
+                        groups={item.groups}
+                        defaultOpen={grouped.length <= 3}
+                        {...rowProps}
+                    />
+                );
+            })}
+        </div>
+    );
+
+    return (
+        <React.Fragment>
+            {origin === 'lo-groups' ? (
+                <div className="p-6">
+                    {content}
+                </div>
+            ) : (
+                <Layout actionButtons={actionButtons}>
+                    {content}
+                </Layout>
+            )}
 
             {/* Add/Edit drawer */}
             <AddUpdateGroup
@@ -607,7 +653,7 @@ const ViewByGroupsPage = ({ uuid }) => {
                     )}
                 />
             )}
-        </Layout>
+        </React.Fragment>
     );
 };
 

@@ -23,6 +23,7 @@ const ClientsProspectPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const [showCoMakerModal, setShowCoMakerModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -223,19 +224,27 @@ const ClientsProspectPage = () => {
         }
     }
 
-    // const handleShowAddDrawer = () => {
-    //     setShowAddDrawer(true);
-    // }
-
-    const handleShowAddDrawer = () => router.push('/clients/add');
-
-    const handleEditClient = (client) => router.push(`/clients/edit/${client._id}`);
+    const handleShowAddDrawer = () => {
+        if (currentBranch?.clientFlowVersion === 'v1') {
+            setShowAddDrawer(true);
+        } else {
+            router.push('/clients/add');
+        }
+    }
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
         setMode('add');
         setClient({});
         window.location.reload();
+    }
+
+    const handleShowSearchModal = () => {
+        setShowSearchModal(true);
+    }
+
+    const handleCloseSearchModal = () => {
+        setShowSearchModal(false);
     }
 
     const handleShowCoMakerDrawer = () => {
@@ -248,13 +257,7 @@ const ClientsProspectPage = () => {
 
 
     const actionButtons = [
-        // <ButtonSolid 
-        //     label="Add Client" 
-        //     type="button" 
-        //     className="p-2 mr-3" 
-        //     onClick={() => router.push('/clients/add')}
-        //     icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
-        // />
+        <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowSearchModal} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
 
@@ -276,7 +279,7 @@ const ClientsProspectPage = () => {
     }, [branchList]);
 
     return (
-        <Layout>
+        <Layout actionButtons={(currentUser.role.rep > 2 && currentBranch?.clientFlowVersion === 'v1') && actionButtons}>
             {loading ? (
                 // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
@@ -284,7 +287,11 @@ const ClientsProspectPage = () => {
             ) : (
                 <React.Fragment>
                     <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
-                    {/* <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} /> */}
+                    { currentBranch?.clientFlowVersion === 'v1' && (
+                        <>
+                            <ClientSearchV2 origin="client_list" show={showSearchModal} onClose={handleCloseSearchModal} handleShowAddDrawer={handleShowAddDrawer} mode={mode} showAddDrawer={showAddDrawer} setShowAddDrawer={setShowAddDrawer} handleCloseAddDrawer={handleCloseAddDrawer} client={client} />
+                        </>
+                    )}
                     <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} setMode={setMode} onClose={handleCloseCoMakerDrawer} />
                 </React.Fragment>
             )}
