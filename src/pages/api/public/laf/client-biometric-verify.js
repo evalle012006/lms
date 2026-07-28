@@ -25,7 +25,25 @@ export default async function handler(req, res) {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
 
-    const { loanId, credential, challengeToken } = req.body;
+    const { loanId, credential, challengeToken, faceTemplateOnly } = req.body;
+
+    // faceTemplateOnly path — no WebAuthn credential, just mark verified
+    if (faceTemplateOnly && loanId) {
+        try {
+            await graph.mutation(
+                updateQl(LOAN_UPDATE_TYPE('client_bio_verify'), {
+                    where: { _id: { _eq: loanId } },
+                    set: {
+                        clientBiometricVerified:   true,
+                        clientBiometricVerifiedAt: moment().toISOString(),
+                    },
+                })
+            );
+            return res.status(200).json({ success: true });
+        } catch (err) {
+            return res.status(200).json({ success: false, message: err.message || 'Failed.' });
+        }
+    }
 
     if (!loanId || !credential || !challengeToken) {
         return res.status(200).json({

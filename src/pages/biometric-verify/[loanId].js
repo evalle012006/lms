@@ -55,6 +55,7 @@ const ClientBiometricVerifyPage = () => {
     const [status, setStatus]   = useState('loading'); // loading | ready | verifying | success | error | no-biometric
     const [message, setMessage] = useState('');
     const [loanInfo, setLoanInfo] = useState(null);
+    const [faceTemplateOnly, setFaceTemplateOnly] = useState(false);
     const verifyingRef = useRef(false);
 
     // Load loan + check client biometric
@@ -65,9 +66,10 @@ const ClientBiometricVerifyPage = () => {
             .then(safeJson)
             .then(data => {
                 if (data.faceTemplateOnly) {
-                    // Client has face template but no WebAuthn — show simple confirm
+                    // Has face template but no WebAuthn — use simple confirm flow
                     setLoanInfo(data.loanInfo);
-                    setStatus('face-confirm');
+                    setFaceTemplateOnly(true);
+                    setStatus('ready');
                     return;
                 }
                 if (!data.success) {
@@ -98,6 +100,29 @@ const ClientBiometricVerifyPage = () => {
         setStatus('verifying');
 
         try {
+            // faceTemplate-only clients: skip WebAuthn entirely
+            // POST directly to verify with a faceTemplateOnly flag
+            if (faceTemplateOnly) {
+                const verifyRes = await fetch(
+                    '/api/public/laf/client-biometric-verify',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ loanId, faceTemplateOnly: true }),
+                    }
+                ).then(safeJson);
+
+                if (verifyRes.success) {
+                    setStatus('success');
+                    setMessage('Presence confirmed. You may proceed.');
+                } else {
+                    setStatus('error');
+                    setMessage(verifyRes.message || 'Confirmation failed. Please try again.');
+                    verifyingRef.current = false;
+                }
+                return;
+            }
+
             // Step 1 — Get challenge
             const challengeRes = await fetch(
                 `/api/public/laf/client-biometric-challenge?loanId=${loanId}`
@@ -106,6 +131,7 @@ const ClientBiometricVerifyPage = () => {
             if (!challengeRes.success) {
                 setStatus('error');
                 setMessage(challengeRes.message || 'Failed to get challenge.');
+                verifyingRef.current = false;
                 return;
             }
 
@@ -237,7 +263,7 @@ const ClientBiometricVerifyPage = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                             d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
                                     </svg>
-                                    Scan Fingerprint / Face ID
+                                    {faceTemplateOnly ? 'Confirm My Presence' : 'Verify My Identity'}
                                 </button>
                             </>
                         )}
