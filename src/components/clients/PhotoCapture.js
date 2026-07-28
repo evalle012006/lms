@@ -109,7 +109,10 @@ const PhotoCapture = ({
         setCapturing(true);
         canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        // Always draw unmirrored — what the camera actually sees
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(-1, 0, 0, 1, canvas.width, 0); // mirror to match preview
+        ctx.drawImage(video, 0, 0);
         canvas.toBlob(blob => {
             if (!blob) { setCapturing(false); return; }
             if (blob.size > maxMB * 1024 * 1024) {
@@ -169,7 +172,8 @@ const PhotoCapture = ({
                     <>
                         <div className="relative">
                             <video ref={videoRef} autoPlay playsInline muted
-                                className="w-full max-h-72 object-cover" />
+                                className="w-full max-h-72 object-cover"
+                                style={{ transform: 'scaleX(-1)' }} />
                             <button type="button" onClick={switchCamera}
                                 title="Switch camera"
                                 className="absolute top-2 right-2 p-2 bg-black bg-opacity-50

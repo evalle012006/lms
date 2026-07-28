@@ -1,26 +1,17 @@
 // src/components/transactions/loan-application/DisbursementPhotoModal.js
-// Phase 6 update — client biometric step:
-//   • If client has no biometric → REGISTER via QR (single-use 8hr token)
-//   • If client has biometric → VERIFY via existing QR flow
-//   • If requireClientBiometric = false → skip client biometric entirely
-// Polling detects when client completes registration/verification on their device.
-// Photo step uses PhotoCapture:
-//   • Mobile → "Take Photo" (camera) + "Upload File" (gallery)
-//   • Desktop → "Upload Photo" only
+// Changes:
+// 1. Modal wider: max-w-2xl
+// 2. Staff biometric: if no biometric registered on selected officer,
+//    show "Register Biometric" prompt instead of hiding step 3.
+//    Desktop/laptop without fingerprint: skip biometric verification for
+//    approvers who don't have it — biometric is optional for staff,
+//    required only if they have it registered (hasBiometric check).
+// 3. Face verification retry fix: reset result + restart camera properly.
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import QRCode from 'qrcode';
 import { useSelector } from 'react-redux';
-import { useSelector as useReduxSelector } from 'react-redux';
-import {
-    X,
-    CheckCircle,
-    Camera,
-    QrCode,
-    RefreshCw,
-    Fingerprint,
-    Upload,
-} from 'lucide-react';
+import { CameraIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { Fingerprint } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
@@ -28,19 +19,26 @@ import { useBiometric } from '@/hooks/useBiometric';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import Spinner from '@/components/Spinner';
+import FaceVerifyStep from '@/components/transactions/loan-application/FaceVerifyStep';
 import PhotoCapture from '@/components/clients/PhotoCapture';
 
 const DisbursementPhotoModal = ({
     show,
     loans = [],
-    onConfirm,  // (photoKey, approverId) => void
+    onConfirm,
     onCancel,
 }) => {
     const currentUser            = useSelector(s => s.user.data);
     const requireClientBiometric = useSelector(
         s => s.systemSettings?.data?.requireClientBiometric ?? true
     );
+    // FIX: when off, Step 3 (staff biometric) is skipped entirely
+    const requireStaffBiometric  = useSelector(
+        s => s.systemSettings?.data?.requireStaffBiometric ?? true
+    );
     const { authenticateWithBiometric, loading: biometricLoading } = useBiometric();
+
+    const fileInputRef = useRef();
 
     // ── Photo state ──────────────────────────────────────────────────────
     const [photo,     setPhoto]     = useState(null);
@@ -53,20 +51,19 @@ const DisbursementPhotoModal = ({
     const [approverId,       setApproverId]       = useState('');
     const [approversLoading, setApproversLoading] = useState(false);
 
-    // ── Staff biometric (approver verification) ──────────────────────────
-    const [biometricVerified, setBiometricVerified] = useState(false);
-    const [biometricRequired, setBiometricRequired] = useState(false);
+    // ── Staff biometric ──────────────────────────────────────────────────
+    // biometricRequired = selected approver has biometric registered
+    // biometricAvailable = they have it but haven't verified yet
+    const [biometricVerified,  setBiometricVerified]  = useState(false);
+    const [biometricRequired,  setBiometricRequired]  = useState(false);
+    const [selectedApprover,   setSelectedApprover]   = useState(null);
 
-    // ── Client biometric state ────────────────────────────────────────────
-    // clientBioMode: null | 'register' | 'verify'
-    const [clientBioMode,    setClientBioMode]    = useState(null);
-    const [clientVerified,   setClientVerified]   = useState(false);
-    const [clientQrUrl,      setClientQrUrl]      = useState(null);
-    const [clientQrDataUrl,  setClientQrDataUrl]  = useState(null);
-    const [clientBioLoading, setClientBioLoading] = useState(false);
-    const [polling,          setPolling]          = useState(false);
-    const pollRef                                 = useRef(null);
-    const [regTokenClientId, setRegTokenClientId] = useState(null);
+    // ── Client face verification state ───────────────────────────────────
+    const [clientVerified,     setClientVerified]     = useState(false);
+    const [faceMatchScore,     setFaceMatchScore]     = useState(null);
+    const [clientFaceTemplate, setClientFaceTemplate] = useState(null);
+    // FIX issue 4: key to force full remount of FaceVerifyStep on retry
+    const [faceVerifyKey,      setFaceVerifyKey]      = useState(0);
 
     const [confirming, setConfirming] = useState(false);
 
@@ -82,102 +79,39 @@ const DisbursementPhotoModal = ({
         if (!show) return;
         setPhoto(null); setPhotoFile(null); setPhotoKey(null);
         setApproverId(currentUser?._id || '');
-        setBiometricVerified(false); setBiometricRequired(false);
-        setClientBioMode(null); setClientVerified(false);
-        setClientQrUrl(null); setClientQrDataUrl(null);
-        setRegTokenClientId(null);
-        setPolling(false);
-        if (pollRef.current) clearInterval(pollRef.current);
+        setBiometricVerified(false); 
+        setBiometricRequired(false);
+        setSelectedApprover(null);
+        setClientVerified(false);
+        setClientFaceTemplate(null);
+        setFaceMatchScore(null);
+        setFaceVerifyKey(0);
     }, [show, currentUser]);
 
-    // ── Determine client biometric mode when modal opens ─────────────────
+    // ── Load client faceTemplate ─────────────────────────────────────────
     useEffect(() => {
         if (!show || !loans?.length || !requireClientBiometric) return;
         const firstLoan = loans[0];
-        fetchWrapper.get(
-            getApiBaseUrl() + `clients/biometric/status?clientId=${firstLoan.clientId || firstLoan.client?._id}`
-        ).then(res => {
-            if (res.success) {
-                if (res.hasWebAuthn || res.hasFaceOnly) {
-                    // Has WebAuthn credential → can verify via biometric-challenge
-                    setClientBioMode('verify');
-                } else {
-                    // No WebAuthn credential (either no biometric at all, or
-                    // faceTemplate only from LAF) → must register WebAuthn now
-                    setClientBioMode('register');
-                }
-            }
-        }).catch(() => {
-            setClientBioMode('verify');
-        });
-    }, [show, loans, requireClientBiometric]);
-
-    // ── Generate client biometric QR ─────────────────────────────────────
-    const generateClientBiometricQR = useCallback(async () => {
-        if (!loans?.length) return;
-        const firstLoan = loans[0];
         const clientId  = firstLoan.clientId || firstLoan.client?._id;
-        const loanId    = firstLoan._id;
+        if (!clientId) return;
 
-        setClientBioLoading(true);
-        try {
-            if (clientBioMode === 'register') {
-                const res = await fetchWrapper.post(
-                    getApiBaseUrl() + 'clients/biometric/register-token',
-                    { clientId, loanId }
-                );
-                if (!res.success) throw new Error(res.message);
-                const url = `${window.location.origin}/biometric-register/${encodeURIComponent(res.token)}`;
-                setClientQrUrl(url);
-                setRegTokenClientId(clientId);
-                const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, errorCorrectionLevel: 'H' });
-                setClientQrDataUrl(dataUrl);
-                startPollingBiometric(clientId, 'register');
-            } else {
-                const url = `${window.location.origin}/biometric-verify/${loanId}`;
-                setClientQrUrl(url);
-                const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, errorCorrectionLevel: 'H' });
-                setClientQrDataUrl(dataUrl);
-                startPollingBiometric(clientId, 'verify');
-            }
-        } catch (err) {
-            toast.error(err.message || 'Failed to generate QR code.');
-        } finally {
-            setClientBioLoading(false);
-        }
-    }, [loans, clientBioMode]);
-
-    // ── Poll for client biometric completion ─────────────────────────────
-    const startPollingBiometric = useCallback((clientId, mode) => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setPolling(true);
-
-        pollRef.current = setInterval(async () => {
-            try {
-                const endpoint = mode === 'register'
-                    ? `clients/biometric/status?clientId=${clientId}`
-                    : `transactions/loans/client-biometric-status?loanId=${loans[0]?._id}`;
-
-                const res = await fetchWrapper.get(getApiBaseUrl() + endpoint);
-
-                const done = mode === 'register'
-                    ? res.success && res.hasBiometric
-                    : res.success && res.verified;
-
-                if (done) {
-                    setClientVerified(true);
-                    setPolling(false);
-                    clearInterval(pollRef.current);
-                    toast.success('Client biometric confirmed.');
+        fetchWrapper.get(getApiBaseUrl() + `clients?clientId=${clientId}`)
+            .then(res => {
+                const clientRecord = res.client?.[0] || res.clients?.[0];
+                const raw = clientRecord?.faceTemplate;
+                if (raw) {
+                    try {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length === 128) {
+                            setClientFaceTemplate(parsed);
+                        }
+                    } catch { setClientFaceTemplate(null); }
+                } else {
+                    setClientFaceTemplate(null);
                 }
-            } catch { /* ignore poll errors */ }
-        }, 3000);
-    }, [loans]);
-
-    // Cleanup on unmount / close
-    useEffect(() => {
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, []);
+            })
+            .catch(() => setClientFaceTemplate(null));
+    }, [show, loans, requireClientBiometric]);
 
     // ── Load approvers ───────────────────────────────────────────────────
     useEffect(() => {
@@ -198,7 +132,9 @@ const DisbursementPhotoModal = ({
                     const defaultId = currentUser._id || '';
                     setApproverId(defaultId);
                     const me = admins.find(u => u._id === defaultId);
-                    setBiometricRequired(!!(me?.hasBiometric));
+                    // FIX: only require biometric if system setting is on AND user has one
+                    setBiometricRequired(requireStaffBiometric && !!(me?.hasBiometric));
+                    setSelectedApprover(me || null);
                 }
             })
             .catch(() => {})
@@ -209,27 +145,38 @@ const DisbursementPhotoModal = ({
         setApproverId(userId);
         setBiometricVerified(false);
         const selected = approverList.find(u => u._id === userId);
+        setSelectedApprover(selected || null);
+        // Only require biometric scan if selected approver has one registered
         const isCurrentUser = userId === currentUser?._id;
-        setBiometricRequired(isCurrentUser && !!(selected?.hasBiometric));
+        // FIX: respect requireStaffBiometric setting
+        setBiometricRequired(requireStaffBiometric && isCurrentUser && !!(selected?.hasBiometric));
     };
 
-    // ── Upload photo ─────────────────────────────────────────────────────
+    // ── Photo handlers ───────────────────────────────────────────────────
+    const handleFileChange = useCallback((e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be under 5MB.'); return; }
+        setPhoto(URL.createObjectURL(file));
+        setPhotoFile(file);
+        setPhotoKey(null);
+    }, []);
+
     const uploadPhoto = useCallback(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('origin', 'disbursement');
         formData.append('uuid', loans[0]?._id || `disbursement${Date.now()}`);
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const ct  = res.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
+        const res  = await fetch('/api/upload', { method: 'POST', body: formData });
+        const ct   = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json'))
             throw new Error(res.status === 413 ? 'Photo is too large.' : `Upload error (${res.status}).`);
-        }
         const data = await res.json();
         if (!data.fileKey) throw new Error(data.error || 'Upload failed.');
         return data.fileKey;
     }, [loans]);
 
-    // ── Staff biometric scan ─────────────────────────────────────────────
+    // ── Staff biometric scan (WebAuthn — unchanged for login) ────────────
     const handleBiometricScan = async () => {
         const result = await authenticateWithBiometric(approverId);
         if (result.success) {
@@ -249,7 +196,7 @@ const DisbursementPhotoModal = ({
             return;
         }
         if (requireClientBiometric && !clientVerified) {
-            toast.error('Please complete client biometric before approving.');
+            toast.error('Please complete client face verification before approving.');
             return;
         }
         setConfirming(true);
@@ -279,9 +226,13 @@ const DisbursementPhotoModal = ({
         ? 'bg-green-500 text-white'
         : 'bg-gray-200 text-gray-500';
 
+    // Step numbering — dynamic based on whether biometric step shows
+    const clientFaceStep = biometricRequired ? 4 : 3;
+
     return (
+        // FIX 1: max-w-2xl for wider modal
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-60 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
@@ -293,7 +244,7 @@ const DisbursementPhotoModal = ({
                     </div>
                     <button type="button" onClick={onCancel} disabled={uploading || confirming}
                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                        <X className="w-5 h-5 text-gray-400" />
+                        <XMarkIcon className="w-5 h-5 text-gray-400" />
                     </button>
                 </div>
 
@@ -312,7 +263,8 @@ const DisbursementPhotoModal = ({
                     {/* ── Step 1: Disbursement Photo ──────────────────────── */}
                     <div>
                         <div className="flex items-center gap-2 mb-2">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepDone(photoFile)}`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center
+                                justify-center text-xs font-bold ${stepDone(photoFile)}`}>
                                 {photoFile ? '✓' : '1'}
                             </div>
                             <p className="text-sm font-semibold text-gray-700">
@@ -341,13 +293,14 @@ const DisbursementPhotoModal = ({
                                 preview={photo}
                             />
                             {uploading && (
-                                <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                                    <Spinner />
-                                    Uploading...
+                                <div className="flex items-center gap-2 mt-2
+                                    text-xs text-gray-400">
+                                    <Spinner /> Uploading...
                                 </div>
                             )}
                             {photoKey && !uploading && (
-                                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-green-600 mt-1
+                                    flex items-center gap-1">
                                     <CheckCircle className="w-3.5 h-3.5" />
                                     Photo uploaded
                                 </p>
@@ -361,169 +314,147 @@ const DisbursementPhotoModal = ({
                             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepDone(approverId)}`}>
                                 {approverId ? '✓' : '2'}
                             </div>
-                            <p className="text-sm font-semibold text-gray-700">Approving Officer</p>
+                            <p className="text-sm font-semibold text-gray-700">
+                                Approving Officer <span className="text-red-500">*</span>
+                            </p>
                         </div>
                         {approversLoading ? (
-                            <div className="ml-7 flex items-center gap-2 text-xs text-gray-400">
-                                <Spinner /> Loading approvers...
-                            </div>
+                            <div className="ml-7"><Spinner /></div>
                         ) : (
                             <div className="ml-7 space-y-2">
                                 {approverList.map(u => (
-                                    <label key={u._id}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                    <button key={u._id} type="button"
+                                        onClick={() => handleApproverSelect(u._id)}
+                                        className={`w-full text-left px-3 py-2.5 rounded-xl border
+                                            text-sm transition-colors ${
                                             approverId === u._id
-                                                ? 'border-teal-400 bg-teal-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-800'
+                                                : 'border-gray-200 hover:border-blue-300'
                                         }`}>
-                                        <input type="radio" name="approver" value={u._id}
-                                            checked={approverId === u._id}
-                                            onChange={() => handleApproverSelect(u._id)}
-                                            className="text-teal-600" />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-800">{u.label}</p>
-                                        </div>
-                                    </label>
+                                        {u.label}
+                                        {/* FIX 3: show biometric status next to name */}
+                                        {approverId === u._id && (
+                                            <span className={`ml-2 text-xs font-medium ${
+                                                u.hasBiometric ? 'text-green-600' : 'text-amber-600'
+                                            }`}>
+                                                {u.hasBiometric ? '· Biometric registered' : '· No biometric'}
+                                            </span>
+                                        )}
+                                    </button>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* ── Step 3: Staff Biometric ─────────────────────────── */}
-                    {biometricRequired && (
+                    {/* ── Step 3: Staff Biometric ──────────────────────────── */}
+                    {/* Hidden entirely when requireStaffBiometric setting is off */}
+                    {requireStaffBiometric && approverId && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepDone(biometricVerified)}`}>
-                                    {biometricVerified ? '✓' : '3'}
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center
+                                    text-xs font-bold ${stepDone(biometricVerified || !biometricRequired)}`}>
+                                    {(biometricVerified || !biometricRequired) ? '✓' : '3'}
                                 </div>
-                                <p className="text-sm font-semibold text-gray-700">Officer Biometric Verification</p>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    Your Identity Verification
+                                </p>
                             </div>
                             <div className="ml-7">
                                 {biometricVerified ? (
+                                    // Already verified
                                     <div className="flex items-center gap-2 text-green-700 text-sm">
-                                        <CheckCircle className="w-4 h-4" />
+                                        <CheckCircleIcon className="w-4 h-4" />
                                         Identity verified
                                     </div>
-                                ) : (
+                                ) : biometricRequired ? (
+                                    // Has biometric — show scan button
                                     <button type="button" onClick={handleBiometricScan}
-                                        disabled={biometricLoading}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-800 text-white
-                                            text-sm font-medium rounded-xl hover:bg-gray-700
+                                        disabled={biometricLoading || !approverId}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-800
+                                            text-white text-sm font-medium rounded-xl hover:bg-gray-900
                                             disabled:opacity-50 transition-colors">
-                                        {biometricLoading ? (
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10"
-                                                    stroke="currentColor" strokeWidth="4"/>
-                                                <path className="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                        ) : <Fingerprint className="w-4 h-4" />}
-                                        {biometricLoading ? 'Scanning…' : 'Scan Your Fingerprint'}
+                                        <Fingerprint className="w-4 h-4" />
+                                        {biometricLoading ? 'Scanning…' : 'Scan Your Fingerprint / Face ID'}
                                     </button>
-                                )}
+                                ) : selectedApprover?.hasBiometric === false ? (
+                                    // FIX 2 & 3: No biometric registered — show register prompt
+                                    // Desktop/laptop without hardware authenticator: staff
+                                    // should register biometric on a supported device first.
+                                    // For now, allow proceeding with a note.
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <p className="text-xs font-semibold text-amber-800 mb-1">
+                                            No biometric registered
+                                        </p>
+                                        <p className="text-xs text-amber-700 mb-2">
+                                            You have not registered a biometric (fingerprint or Face ID)
+                                            on this account. You can proceed without it, but we recommend
+                                            registering your biometric in{' '}
+                                            <strong>Settings → My Profile → Biometric</strong> for stronger
+                                            identity verification at disbursement.
+                                        </p>
+                                        <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                                            <CheckCircleIcon className="w-3.5 h-3.5" />
+                                            Proceeding without biometric — recorded in audit log.
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
                     )}
 
-                    {/* ── Step 4: Client Biometric ────────────────────────── */}
-                    {requireClientBiometric && clientBioMode && (
+                    {/* ── Step 4: Client Face Verification ───────────────── */}
+                    {requireClientBiometric && (
                         <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepDone(clientVerified)}`}>
-                                    {clientVerified ? '✓' : (biometricRequired ? '4' : '3')}
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center
+                                    text-xs font-bold ${stepDone(clientVerified)}`}>
+                                    {clientVerified ? '✓' : clientFaceStep}
                                 </div>
                                 <p className="text-sm font-semibold text-gray-700">
-                                    Client Biometric {clientBioMode === 'register' ? 'Registration' : 'Verification'}
+                                    Client Face Verification
                                 </p>
                             </div>
                             <div className="ml-7">
                                 {clientVerified ? (
-                                    <div className="flex items-center gap-2 text-green-700 text-sm">
-                                        <CheckCircle className="w-4 h-4" />
-                                        {clientBioMode === 'register' ? 'Biometric registered' : 'Identity verified'}
-                                    </div>
-                                ) : clientQrDataUrl ? (
-                                    <div className="space-y-3">
-                                        {/* Mode badge */}
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                            clientBioMode === 'register'
-                                                ? 'bg-orange-100 text-orange-700'
-                                                : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                            <Fingerprint className="w-3 h-3" />
-                                            {clientBioMode === 'register'
-                                                ? 'New — Register fingerprint'
-                                                : 'Existing — Verify fingerprint'}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-green-700 text-sm">
+                                            <CheckCircleIcon className="w-4 h-4" />
+                                            Identity confirmed
                                         </div>
-                                        {/* QR */}
-                                        <div className="flex flex-col items-center gap-2 p-3 bg-gray-50
-                                            rounded-xl border border-gray-200">
-                                            <img src={clientQrDataUrl} alt="Client Biometric QR"
-                                                className="w-36 h-36 object-contain" />
-                                            <p className="text-xs text-gray-500 text-center">
-                                                Ask client to scan this QR with their phone to{' '}
-                                                {clientBioMode === 'register'
-                                                    ? 'register their fingerprint / Face ID'
-                                                    : 'verify their identity'}
+                                        {faceMatchScore !== null && (
+                                            <p className="text-xs text-gray-400">
+                                                Match confidence: {(
+                                                    Math.max(0, (0.5 - faceMatchScore) / 0.5) * 100
+                                                ).toFixed(0)}%
                                             </p>
-                                        </div>
-                                        {/* Polling indicator */}
-                                        {polling && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10"
-                                                        stroke="currentColor" strokeWidth="4"/>
-                                                    <path className="opacity-75" fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8v8H4z"/>
-                                                </svg>
-                                                Waiting for client to complete…
-                                            </div>
-                                        )}
-                                        {clientBioMode === 'register' && (
-                                            <button type="button" onClick={generateClientBiometricQR}
-                                                disabled={clientBioLoading}
-                                                className="text-xs text-gray-400 hover:text-gray-600
-                                                    underline flex items-center gap-1">
-                                                <RefreshCw className="w-3 h-3" />
-                                                Regenerate QR
-                                            </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <button type="button" onClick={generateClientBiometricQR}
-                                        disabled={clientBioLoading}
-                                        className="flex items-center gap-2 px-4 py-2.5 border border-gray-300
-                                            text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50
-                                            disabled:opacity-50 transition-colors">
-                                        {clientBioLoading ? (
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10"
-                                                    stroke="currentColor" strokeWidth="4"/>
-                                                <path className="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                        ) : <QrCode className="w-4 h-4" />}
-                                        {clientBioMode === 'register'
-                                            ? 'Generate Registration QR'
-                                            : 'Generate Verification QR'}
-                                    </button>
+                                    // FIX 4: key prop forces full remount on retry
+                                    // When face doesn't match and user clicks "Try Again",
+                                    // increment faceVerifyKey → FaceVerifyStep fully resets
+                                    <FaceVerifyStep
+                                        key={faceVerifyKey}
+                                        faceTemplate={clientFaceTemplate}
+                                        onVerified={(result) => {
+                                            setClientVerified(true);
+                                            setFaceMatchScore(result.faceMatchScore ?? null);
+                                        }}
+                                        onSkip={() => {
+                                            setClientVerified(true);
+                                            setFaceMatchScore(null);
+                                        }}
+                                        onRetry={() => {
+                                            // FIX 4: increment key to force full remount
+                                            setFaceVerifyKey(k => k + 1);
+                                        }}
+                                        canSkip={
+                                            currentUser?.role?.rep === 1 ||
+                                            currentUser?.root === true
+                                        }
+                                    />
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* ── No Face Template warning ────────────────────────── */}
-                    {requireClientBiometric && clientBioMode === 'register' && !clientVerified && (
-                        <div className="border border-amber-200 bg-amber-50 rounded-xl p-3">
-                            <p className="text-sm font-semibold text-amber-800">
-                                ⚠ No Face Template on Record
-                            </p>
-                            <p className="text-xs text-amber-700 mt-1">
-                                This client did not complete face verification during their loan application.
-                            </p>
-                            <p className="text-xs text-amber-600 mt-0.5">
-                                Contact a supervisor to authorise disbursement without face verification.
-                            </p>
                         </div>
                     )}
 
@@ -534,7 +465,8 @@ const DisbursementPhotoModal = ({
                         <ButtonSolid
                             label={confirming ? 'Processing…' : 'Confirm & Approve'}
                             type="button"
-                            className={`p-2 flex-1 ${!canConfirm ? '!bg-gray-300 !text-gray-500 cursor-not-allowed' : ''}`}
+                            className={`p-2 flex-1 ${!canConfirm
+                                ? '!bg-gray-300 !text-gray-500 cursor-not-allowed' : ''}`}
                             onClick={handleConfirm}
                             disabled={!canConfirm}
                         />

@@ -36,15 +36,10 @@ async function checkStatus(req, res) {
         return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
-    const hasWebAuthn = !!client.biometricCredentialId;
-    const hasFaceOnly = !!(client.faceTemplate && !client.biometricCredentialId);
-
     return res.status(200).json({
         success:      true,
         hasBiometric: !!(client.faceTemplate || client.biometricCredentialId),
-        hasWebAuthn,   // true = can use WebAuthn verify QR flow
-        hasFaceOnly,   // true = has face but needs WebAuthn register
-        registeredAt:  client.faceEnrolledAt || client.biometricRegisteredAt || null,
-        deviceName:    client.biometricDeviceName || null,
+        registeredAt: client.faceEnrolledAt || client.biometricRegisteredAt || null,
+        deviceName:   client.biometricDeviceName || null,
     });
 }
