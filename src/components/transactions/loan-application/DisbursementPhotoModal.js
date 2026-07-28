@@ -98,7 +98,14 @@ const DisbursementPhotoModal = ({
             getApiBaseUrl() + `clients/biometric/status?clientId=${firstLoan.clientId || firstLoan.client?._id}`
         ).then(res => {
             if (res.success) {
-                setClientBioMode(res.hasBiometric ? 'verify' : 'register');
+                if (res.hasWebAuthn || res.hasFaceOnly) {
+                    // Has WebAuthn credential → can verify via biometric-challenge
+                    setClientBioMode('verify');
+                } else {
+                    // No WebAuthn credential (either no biometric at all, or
+                    // faceTemplate only from LAF) → must register WebAuthn now
+                    setClientBioMode('register');
+                }
             }
         }).catch(() => {
             setClientBioMode('verify');

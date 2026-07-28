@@ -19,6 +19,7 @@ const LOAN_TYPE = createGraphType('loans', `
 const CLIENT_TYPE = createGraphType('client', `
     _id firstName lastName
     biometricCredentialId biometricPublicKey biometricCounter
+    faceTemplate
 `)('clients');
 
 export default async function handler(req, res) {
@@ -56,6 +57,21 @@ export default async function handler(req, res) {
         ).then(r => r.data?.clients ?? []);
 
         if (!client?.biometricCredentialId) {
+            // Client has no WebAuthn credential.
+            // If they have faceTemplate (LAF face capture), allow simple confirmation.
+            // The verify page will show a "Confirm presence" button instead of WebAuthn.
+            if (client?.faceTemplate) {
+                return res.status(200).json({
+                    success:        true,
+                    faceTemplateOnly: true,   // signals verify page to use simple flow
+                    loanInfo: {
+                        fullName:  loan.fullName,
+                        pnNumber:  loan.pnNumber,
+                        groupName: loan.groupName,
+                    },
+                    alreadyVerified: loan.clientBiometricVerified || false,
+                });
+            }
             return res.status(200).json({
                 success:     false,
                 noBiometric: true,

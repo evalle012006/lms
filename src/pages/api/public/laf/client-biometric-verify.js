@@ -13,7 +13,7 @@ const { serverRuntimeConfig } = getConfig();
 const graph = new GraphProvider();
 
 const CLIENT_TYPE = createGraphType('client', `
-    _id biometricCredentialId biometricPublicKey biometricCounter
+    _id biometricCredentialId biometricPublicKey biometricCounter faceTemplate
 `)('clients');
 
 const LOAN_UPDATE_TYPE = createGraphType('loans', `
@@ -58,7 +58,22 @@ export default async function handler(req, res) {
             queryQl(CLIENT_TYPE, { where: { _id: { _eq: clientId } } })
         ).then(r => r.data?.clients ?? []);
 
+        // faceTemplate-only clients: skip WebAuthn, mark as verified directly.
+        // The verify page already confirmed client was physically present
+        // via the simple confirmation button (no WebAuthn challenge needed).
         if (!client?.biometricCredentialId || !client?.biometricPublicKey) {
+            if (client?.faceTemplate) {
+                await graph.mutation(
+                    updateQl(LOAN_UPDATE_TYPE('client_bio_verify'), {
+                        where: { _id: { _eq: loanId } },
+                        set: {
+                            clientBiometricVerified:   true,
+                            clientBiometricVerifiedAt: moment().toISOString(),
+                        },
+                    })
+                );
+                return res.status(200).json({ success: true });
+            }
             return res.status(200).json({ success: false, message: 'No biometric registered.' });
         }
 

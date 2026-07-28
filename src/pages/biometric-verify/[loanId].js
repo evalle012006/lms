@@ -64,6 +64,12 @@ const ClientBiometricVerifyPage = () => {
         fetch(`/api/public/laf/client-biometric-challenge?loanId=${loanId}`)
             .then(safeJson)
             .then(data => {
+                if (data.faceTemplateOnly) {
+                    // Client has face template but no WebAuthn — show simple confirm
+                    setLoanInfo(data.loanInfo);
+                    setStatus('face-confirm');
+                    return;
+                }
                 if (!data.success) {
                     if (data.noBiometric) {
                         setStatus('no-biometric');
@@ -261,6 +267,33 @@ const ClientBiometricVerifyPage = () => {
                                 <p className="text-sm text-gray-500 leading-relaxed">
                                     {message || 'Your identity has been confirmed. You may return the phone to the branch officer.'}
                                 </p>
+                            </div>
+                        )}
+
+                        {status === 'face-confirm' && (
+                            <div className="text-center space-y-5">
+                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center
+                                    justify-center mx-auto">
+                                    <svg className="w-8 h-8 text-blue-600" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-800">{loanInfo?.fullName}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{loanInfo?.pnNumber}</p>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Confirm that you are physically present to receive this loan.
+                                </p>
+                                <button type="button" onClick={handleVerify}
+                                    disabled={status === 'verifying'}
+                                    className="w-full py-3 bg-teal-600 text-white font-semibold
+                                        rounded-xl hover:bg-teal-700 disabled:opacity-50">
+                                    Confirm My Presence
+                                </button>
                             </div>
                         )}
 

@@ -4,9 +4,10 @@
 // Called by DisbursementPhotoModal to determine register vs verify mode,
 // and polled every 3s to detect when registration completes.
 //
-// Migration note: system moved from biometricCredentialId to faceTemplate.
-// hasBiometric checks faceTemplate first (current), falls back to
-// biometricCredentialId (legacy) so old records still work.
+// Migration note: system uses two separate biometric systems:
+//   faceTemplate     — face embedding from LAF face capture (cannot do WebAuthn verify)
+//   biometricCredentialId — WebAuthn credential (can do challenge/verify flow)
+// hasWebAuthn tells the modal which QR flow to show.
 
 import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
@@ -35,10 +36,15 @@ async function checkStatus(req, res) {
         return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
+    const hasWebAuthn = !!client.biometricCredentialId;
+    const hasFaceOnly = !!(client.faceTemplate && !client.biometricCredentialId);
+
     return res.status(200).json({
         success:      true,
         hasBiometric: !!(client.faceTemplate || client.biometricCredentialId),
-        registeredAt: client.faceEnrolledAt || client.biometricRegisteredAt || null,
-        deviceName:   client.biometricDeviceName || null,
+        hasWebAuthn,   // true = can use WebAuthn verify QR flow
+        hasFaceOnly,   // true = has face but needs WebAuthn register
+        registeredAt:  client.faceEnrolledAt || client.biometricRegisteredAt || null,
+        deviceName:    client.biometricDeviceName || null,
     });
 }
