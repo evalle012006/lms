@@ -34,7 +34,7 @@ async function validateDuplicate(req, res) {
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
     // Role check — admin (rep=1) only
-    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true;
+    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true || currentUser.role?.rep === 3; // allow BM (rep=3) to validate duplicates
     if (!isAdmin) {
         return res.status(200).json({
             success: false,

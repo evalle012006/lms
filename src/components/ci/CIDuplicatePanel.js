@@ -294,7 +294,7 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
     const [savingRemark, setSavingRemark] = useState(false);
     const [note,         setNote]         = useState('');
 
-    const canValidate = currentUser?.role?.rep === 1 || currentUser?.root === true;
+    const canValidate = currentUser?.role?.rep === 1 || currentUser?.root === true || currentUser?.role?.rep === 3;
     const isBM        = currentUser?.role?.rep === 3;
 
     const isDuplicateFlagged  = application?.isDuplicateFlagged;
