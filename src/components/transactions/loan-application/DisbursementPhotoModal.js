@@ -290,6 +290,7 @@ const DisbursementPhotoModal = ({
                                 label="Take or upload disbursement photo"
                                 maxMB={5}
                                 facingMode="environment"
+                                allowUpload={true}
                                 preview={photo}
                             />
                             {uploading && (

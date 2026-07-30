@@ -21,7 +21,6 @@ export function useOnlineStatus() {
 
     useEffect(() => {
         const handleOnline = async () => {
-            // Browser says online — verify with real probe before trusting it
             const confirmed = await checkRealConnectivity(2000);
             setIsOnline(confirmed);
         };
@@ -34,9 +33,16 @@ export function useOnlineStatus() {
         window.addEventListener('online',  handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Sync with current state on mount (handles race between
-        // SSR-rendered false and actual browser state)
-        setIsOnline(navigator.onLine);
+        // Probe on mount — navigator.onLine is unreliable as initial state
+        if (navigator.onLine) {
+            checkRealConnectivity(3000).then(confirmed => {
+                setIsOnline(confirmed);
+                if (!confirmed) setWasOffline(true);
+            });
+        } else {
+            setIsOnline(false);
+            setWasOffline(true);
+        }
 
         return () => {
             window.removeEventListener('online',  handleOnline);

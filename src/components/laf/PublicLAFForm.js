@@ -18,13 +18,19 @@ import { checkRealConnectivity } from '@/lib/check-online';
 
 // ID number format validation — regex + friendly hint per type
 const ID_FORMAT_RULES = {
-    philsys:    { pattern: /^\d{4}-\d{4}-\d{4}$/, hint: 'Format: 1234-5678-9012' },
+    philsys:    {
+        pattern: /^[\d\-]{12,16}$/,
+        hint: 'Format: 1234-5678-9012 (digits and dashes)',
+    },
     passport:   { pattern: /^[A-Z]{1,2}\d{6,8}[A-Z0-9]?$/, hint: 'Format: A1234567 or AA1234567' },
     drivers:    { pattern: /^[A-Z]\d{2}-\d{2}-\d{6}$/, hint: 'Format: A01-23-456789' },
     sss:        { pattern: /^\d{2}-\d{7}-\d{1}$/, hint: 'Format: 12-3456789-0' },
     gsis:       { pattern: /^\d{11}$/, hint: '11-digit GSIS number' },
     philhealth: { pattern: /^\d{2}-\d{9}-\d{1}$/, hint: 'Format: 12-345678901-2' },
-    voters:     { pattern: /^\d{13}$/, hint: '13-digit voter ID number' },
+    voters:     {
+        pattern: /^[A-Z0-9\-\s]{6,20}$/i,
+        hint: 'Enter your Voter ID number as printed on your ID',
+    },
     umid:       { pattern: /^\d{4}-\d{7}-\d{1}$/, hint: 'Format: 1234-5678901-2' },
     tin:        { pattern: /^\d{3}-\d{3}-\d{3}(-\d{3})?$/, hint: 'Format: 123-456-789 or 123-456-789-000' },
     prc:        { pattern: /^\d{7}$/, hint: '7-digit PRC number' },
@@ -157,20 +163,26 @@ const NavBtns = ({ onBack, onNext, nextLabel = 'Next', nextDisabled, submitting,
 );
 
 const personalSchema = yup.object().shape({
-    firstName: yup.string().required('Required'), lastName: yup.string().required('Required'),
-    middleName: yup.string().required('Required'), birthdate: yup.string().required('Required'),
-    contactNumber: yup.string().required('Required'),
-    civilStatus: yup.string().required('Required'),
+    firstName:     yup.string().trim().required('Required'),
+    lastName:      yup.string().trim().required('Required'),
+    middleName:    yup.string().trim().required('Required'),
+    birthdate:     yup.string().trim().required('Required'),
+    contactNumber: yup.string().trim().required('Required'),
+    civilStatus:   yup.string().trim().required('Required'),
 });
 const addressSchema = yup.object().shape({
-    addressStreetNo: yup.string().required('Required'), addressBarangayDistrict: yup.string().required('Required'),
-    addressMunicipalityCity: yup.string().required('Required'), addressProvince: yup.string().required('Required'),
+    addressStreetNo:         yup.string().trim().required('Street / House No. is required'),
+    addressBarangayDistrict: yup.string().trim().required('Barangay is required'),
+    addressMunicipalityCity: yup.string().trim().required('Municipality / City is required'),
+    addressProvince:         yup.string().trim().required('Province is required'),
 });
 const loanSchema = yup.object().shape({
     // loanAmount: yup.number().typeError('Must be a number').positive().required('Required'),
-    loanPurpose: yup.string().required('Required'),
-    guarantorFirstName: yup.string().required('Required'), guarantorLastName: yup.string().required('Required'),
-    guarantorRelationship: yup.string().required('Required'), guarantorContactNumber: yup.string().required('Required'),
+    loanPurpose:            yup.string().trim().required('Required'),
+    guarantorFirstName:     yup.string().trim().required('Required'),
+    guarantorLastName:      yup.string().trim().required('Required'),
+    guarantorRelationship:  yup.string().trim().required('Required'),
+    guarantorContactNumber: yup.string().trim().required('Required'),
 });
 
 // ── ClientPhoto — profile photo with broken URL fallback to initials ────────
@@ -1240,6 +1252,7 @@ const PublicLAFForm = ({
                                             maxMB={10}
                                             preview={idPhotoPreview}
                                             existingPhotoKey={foundClient?.governmentIdPhotoKey}
+                                            allowUpload={true}
                                         />
                                         {idPhotoFile && (
                                             <p className="text-xs text-blue-600 mt-1">✓ New ID photo captured — will replace the existing one</p>
@@ -1334,14 +1347,14 @@ const PublicLAFForm = ({
                                         <PhotoCapture
                                             onFileReady={file => { setIdPhotoFile(file); setIdPhotoPreview(file ? URL.createObjectURL(file) : null); }}
                                             label="Take/upload ID photo" facingMode="environment" maxMB={10}
-                                            preview={idPhotoPreview}
+                                            preview={idPhotoPreview} allowUpload={true}
                                         />
                                         {idPhotoFile && <p className="text-xs text-green-600 mt-1">✓ ID photo captured</p>}
                                     </Field>
                                     {requireSelfieWithId && (
                                         <Field label="Selfie Holding ID" required error={idErrors.selfieWithId}>
                                             <p className="text-xs text-gray-500 mb-2">Take a selfie holding your ID next to your face.</p>
-                                            <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} />
+                                            <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} allowUpload={true} />
                                             {selfieWithIdFile && <p className="text-xs text-green-600 mt-1">✓ Selfie captured</p>}
                                         </Field>
                                     )}

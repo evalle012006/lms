@@ -24,6 +24,7 @@ const LAFPhotoStep = ({ onPhotoReady, uploading, preview }) => (
             facingMode="user"
             maxMB={10}
             preview={preview}
+            allowUpload={true}
         />
 
         {uploading && (
