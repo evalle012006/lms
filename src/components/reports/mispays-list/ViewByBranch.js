@@ -57,10 +57,14 @@ const ViewByBranchPage = ({ dateFilter, remarks }) => {
     const getList = async () => {
         setLoading(true);
         let url = getApiBaseUrl() + 'reports/get-all-mispays';
+        const baseParams = { remarks: remarks };
+        if (dateFilter) {
+            baseParams.date = dateFilter;
+        }
         if (currentUser.role.rep == 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, date: dateFilter, remarks: remarks });
+            url = url + '?' + new URLSearchParams({ ...baseParams, currentUserId: currentUser._id });
         } else {
-            url = url + '?' + new URLSearchParams({ date: dateFilter, remarks: remarks });
+            url = url + '?' + new URLSearchParams(baseParams);
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {

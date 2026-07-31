@@ -16,6 +16,12 @@ export default apiHandler({
     get: logout
 });
 
+// TODO: SHOULD BE ADDED IN SETTINGS
+// ── Login lockout config ────────────────────────────────────────────────────
+const MAX_ATTEMPTS  = 5;   // lock after 5 failures
+const LOCK_MINUTES  = 15;  // locked for 15 minutes
+// ───────────────────────────────────────────────────────────────────────────
+
 let settingsCache = {
     data: null,
     lastFetched: null,
