@@ -1381,93 +1381,96 @@ const CashCollectionDetailsPage = () => {
                     cashCollection[index] = {...cashCollection[index], loanFor: loan?.loanFor, dateOfRelease: loan?.dateOfRelease};
                 } else if (loan && (currentLoan == null || currentLoan?.status !== 'active')) {
                     const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
-                    let pendingTomorrow = {
-                        _id: loan._id,
-                        client: loan.client,
-                        coMaker: normalizeCoMaker(loan.coMakerId),
-                        slotNo: loan.slotNo,
-                        loanId: loan._id,
-                        group: prevLoan ? prevLoan.group : loan.group,
-                        groupId: loan.groupId,
-                        branchId: loan.branchId,
-                        clientId: loan.clientId,
-                        loId: loan.loId,
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        loanCycle: loan.loanCycle,
-                        amountReleaseStr: '-',
-                        loanBalanceStr: '-',
-                        targetCollectionStr: '-',
-                        mispayment: false,
-                        mispaymentStr: '-',
-                        noMispaymentStr: '-',
-                        currentReleaseAmount: loan.amountRelease,
-                        currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
-                        noOfPayments: '-',
-                        noOfPaymentStr: '-',
-                        mcbu: loan.mcbu,
-                        mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
-                        mcbuCol: loan.mcbuCollection,
-                        mcbuColStr: loan.mcbuCollection > 0 ? formatPricePhp(loan.mcbuCollection) : '-',
-                        mcbuWithdrawal: loan?.mcbuWithdrawal ? loan.mcbuWithdrawal : 0,
-                        mcbuWithdrawalStr: loan?.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: prevLoan?.mcbuReturnAmt ? prevLoan?.mcbuReturnAmt : 0,
-                        mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan?.mcbuReturnAmt) : '-',
-                        mcbuInterest: loan.mcbuInterest,
-                        mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                        hasMcbuInterest: (prevLoan && safeNumber(prevLoan?.mcbuInterest) > 0) ? true : false,
-                        targetCollectionStr: '-',
-                        excessStr: '-',
-                        paymentCollectionStr: '-',
-                        remarks: prevLoan ? prevLoan?.history?.remarks : '-',
-                        pastDueStr: '-',
-                        fullPaymentStr: '-',
-                        status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                        loanTerms: loan.loanTerms,
-                        selected: false,
-                        loanFor: loan.loanFor ? loan.loanFor : 'today',
-                        dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null,
-                        advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
-                        prevLoanId: loan?.prevLoanId,
-                        admissionCollection: loan.admissionCollection,
-                        lrfCollection: loan.lrfCollection,
-                        cbhbCollection: loan.cbhbCollection,
-                        addHospitalization: loan.addHospitalization,
-                        otherPassbookCollection: loan.otherPassbookCollection,
-                        otherPictureCollection: loan.otherPictureCollection,
-                        otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
-                        csf: loan.csf,
-                        csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
-                        csfCollection: 0,
-                        csfCollectionStr: '-',
-                        csfWithdrawal: 0,
-                        csfWithdrawalStr: '-',
-                        csfReturnAmt: 0,
-                        csfReturnAmtStr: '-',
-                        maturedPD: loan.maturedPD,
-                        maturedPDPrevTransaction: loan.maturedPD,
-                        editHistory: loan.editHistory ? loan.editHistory : [],
-                    };
+                    const clientObj = loan.client ? loan.client : null;
+                    if (clientObj) {
+                        let pendingTomorrow = {
+                            _id: loan._id,
+                            client: loan.client,
+                            coMaker: normalizeCoMaker(loan.coMakerId),
+                            slotNo: loan.slotNo,
+                            loanId: loan._id,
+                            group: prevLoan ? prevLoan.group : loan.group,
+                            groupId: loan.groupId,
+                            branchId: loan.branchId,
+                            clientId: loan.clientId,
+                            loId: loan.loId,
+                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                            loanCycle: loan.loanCycle,
+                            amountReleaseStr: '-',
+                            loanBalanceStr: '-',
+                            targetCollectionStr: '-',
+                            mispayment: false,
+                            mispaymentStr: '-',
+                            noMispaymentStr: '-',
+                            currentReleaseAmount: loan.amountRelease,
+                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
+                            noOfPayments: '-',
+                            noOfPaymentStr: '-',
+                            mcbu: loan.mcbu,
+                            mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                            mcbuCol: loan.mcbuCollection,
+                            mcbuColStr: loan.mcbuCollection > 0 ? formatPricePhp(loan.mcbuCollection) : '-',
+                            mcbuWithdrawal: loan?.mcbuWithdrawal ? loan.mcbuWithdrawal : 0,
+                            mcbuWithdrawalStr: loan?.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: prevLoan?.mcbuReturnAmt ? prevLoan?.mcbuReturnAmt : 0,
+                            mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan?.mcbuReturnAmt) : '-',
+                            mcbuInterest: loan.mcbuInterest,
+                            mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
+                            hasMcbuInterest: (prevLoan && safeNumber(prevLoan?.mcbuInterest) > 0) ? true : false,
+                            targetCollectionStr: '-',
+                            excessStr: '-',
+                            paymentCollectionStr: '-',
+                            remarks: prevLoan ? prevLoan?.history?.remarks : '-',
+                            pastDueStr: '-',
+                            fullPaymentStr: '-',
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                            loanTerms: loan.loanTerms,
+                            selected: false,
+                            loanFor: loan.loanFor ? loan.loanFor : 'today',
+                            dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null,
+                            advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
+                            prevLoanId: loan?.prevLoanId,
+                            admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                            csfCollection: 0,
+                            csfCollectionStr: '-',
+                            csfWithdrawal: 0,
+                            csfWithdrawalStr: '-',
+                            csfReturnAmt: 0,
+                            csfReturnAmtStr: '-',
+                            maturedPD: loan.maturedPD,
+                            maturedPDPrevTransaction: loan.maturedPD,
+                            editHistory: loan.editHistory ? loan.editHistory : [],
+                        };
 
-                    const current = loan.current.length > 0 ? loan.current[0] : null;
-                    if (current) {
-                        pendingTomorrow.loanId = loan._id;
-                        pendingTomorrow._id = current?._id ? current?._id : loan._id;
-                    }
-
-                    if (prevLoan) {
-                        if (loan?.transferred) {
-                            pendingTomorrow.transferred = true;
-                            pendingTomorrow.transferStr = 'TCG';
-                        } else if (loan?.transfer) {
-                            pendingTomorrow.transfer = true;
-                            pendingTomorrow.transferStr = 'TCR';
-                        } else {
-                            // pendingTomorrow.prevLoanId = prevLoan._id;
+                        const current = loan.current.length > 0 ? loan.current[0] : null;
+                        if (current) {
                             pendingTomorrow.loanId = loan._id;
+                            pendingTomorrow._id = current?._id ? current?._id : loan._id;
                         }
-                    }
 
-                    cashCollection.push(pendingTomorrow);
+                        if (prevLoan) {
+                            if (loan?.transferred) {
+                                pendingTomorrow.transferred = true;
+                                pendingTomorrow.transferStr = 'TCG';
+                            } else if (loan?.transfer) {
+                                pendingTomorrow.transfer = true;
+                                pendingTomorrow.transferStr = 'TCR';
+                            } else {
+                                // pendingTomorrow.prevLoanId = prevLoan._id;
+                                pendingTomorrow.loanId = loan._id;
+                            }
+                        }
+
+                        cashCollection.push(pendingTomorrow);
+                    }
                 }
             });
             

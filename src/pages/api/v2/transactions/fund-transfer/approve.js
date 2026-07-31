@@ -47,11 +47,11 @@ async function approveFundTransfer(req, res) {
         const isFinanceApprover = user.role.shortCode === 'finance';
         
         if (!isBranchApprover && !isFinanceApprover) {
-            console.log('DEBUG - Role validation failed:', {
-                userRole: user.role?.shortCode,
-                userRoleRep: user.role?.rep,
-                allowedRoles: 'rep=3 or finance'
-            });
+            // console.log('DEBUG - Role validation failed:', {
+            //     userRole: user.role?.shortCode,
+            //     userRoleRep: user.role?.rep,
+            //     allowedRoles: 'rep=3 or finance'
+            // });
             return res.status(403).send({
                 success: false,
                 message: 'Access denied. Only branch managers (rep=3/4) and finance can approve/reject fund transfers.'
@@ -67,7 +67,7 @@ async function approveFundTransfer(req, res) {
         }
 
         // Fetch the fund transfer
-        console.log('DEBUG - Fetching fund transfer with ID:', _id);
+        // console.log('DEBUG - Fetching fund transfer with ID:', _id);
         const [data] = await graph.query(
             queryQl(FUND_TRANSFER_TYPE, {
                 where: {
@@ -79,7 +79,7 @@ async function approveFundTransfer(req, res) {
         ).then(res => res.data.results);
 
         if (!data) {
-            console.log('DEBUG - Fund transfer not found or not pending');
+            // console.log('DEBUG - Fund transfer not found or not pending');
             return res.status(404).send({
                 success: false,
                 message: 'Fund transfer not found or no longer pending.'
@@ -87,14 +87,14 @@ async function approveFundTransfer(req, res) {
         }
 
         // DEBUG: Log transfer data
-        console.log('DEBUG - Transfer Data:', {
-            transferId: data._id,
-            giverBranchId: data.giverBranchId,
-            receiverBranchId: data.receiverBranchId,
-            currentStatus: data.status,
-            giverApprovalStatus: data.giverApprovalStatus,
-            receiverApprovalStatus: data.receiverApprovalStatus
-        });
+        // console.log('DEBUG - Transfer Data:', {
+        //     transferId: data._id,
+        //     giverBranchId: data.giverBranchId,
+        //     receiverBranchId: data.receiverBranchId,
+        //     currentStatus: data.status,
+        //     giverApprovalStatus: data.giverApprovalStatus,
+        //     receiverApprovalStatus: data.receiverApprovalStatus
+        // });
 
         let updateSet = {
             modifiedById: user._id,
@@ -119,16 +119,16 @@ async function approveFundTransfer(req, res) {
             const isReceiverBranch = data.receiverBranchId === userBranchId;
             
             // DEBUG: Log branch matching
-            console.log('DEBUG - Branch Matching:', {
-                userDesignatedBranch: userBranchId,
-                transferGiverBranch: data.giverBranchId,
-                transferReceiverBranch: data.receiverBranchId,
-                isGiverBranch,
-                isReceiverBranch
-            });
+            // console.log('DEBUG - Branch Matching:', {
+            //     userDesignatedBranch: userBranchId,
+            //     transferGiverBranch: data.giverBranchId,
+            //     transferReceiverBranch: data.receiverBranchId,
+            //     isGiverBranch,
+            //     isReceiverBranch
+            // });
             
             if (!isGiverBranch && !isReceiverBranch) {
-                console.log('DEBUG - Branch validation failed for branch manager');
+                // console.log('DEBUG - Branch validation failed for branch manager');
                 return res.status(403).send({
                     success: false,
                     message: 'You can only approve/reject transfers involving your designated branch.'
@@ -155,21 +155,21 @@ async function approveFundTransfer(req, res) {
                     updateSet.giverApprovalStatus = 'rejected';
                     updateSet.giverRejectReason = `Transfer rejected by receiver branch: ${rejectReason.trim()}`;
                 }
-                console.log('DEBUG - Branch rejection set');
+                // console.log('DEBUG - Branch rejection set');
             } else {
                 // Branch manager approval - both branches can approve independently
                 if (isGiverBranch && data.giverApprovalStatus === 'pending') {
                     updateSet.giverApprovalStatus = 'approved';
                     updateSet.giverApprovalId = user._id;
                     updateSet.giverApproveRejectDate = 'now()';
-                    console.log('DEBUG - Giver branch approval set');
+                    // console.log('DEBUG - Giver branch approval set');
                 } else if (isReceiverBranch && data.receiverApprovalStatus === 'pending') {
                     updateSet.receiverApprovalStatus = 'approved';
                     updateSet.receiverApprovalId = user._id;
                     updateSet.receiverApproveRejectDate = 'now()';
-                    console.log('DEBUG - Receiver branch approval set');
+                    // console.log('DEBUG - Receiver branch approval set');
                 } else {
-                    console.log('DEBUG - Branch approval step not available or already completed');
+                    // console.log('DEBUG - Branch approval step not available or already completed');
                     return res.status(400).send({
                         success: false,
                         message: 'This approval step is not available or has already been completed.'
@@ -185,7 +185,7 @@ async function approveFundTransfer(req, res) {
             if (status === 'approved') {
                 // Check if both giver and receiver have approved
                 if (data.giverApprovalStatus !== 'approved' || data.receiverApprovalStatus !== 'approved') {
-                    console.log('DEBUG - Finance cannot approve - branches have not approved yet');
+                    // console.log('DEBUG - Finance cannot approve - branches have not approved yet');
                     return res.status(400).send({
                         success: false,
                         message: 'Fund transfer must be approved by both giver and receiver branches before finance can provide final approval.'
@@ -195,7 +195,7 @@ async function approveFundTransfer(req, res) {
                 // Finance final approval
                 updateSet.status = 'approved';
                 updateSet.approvedRejectedDate = 'now()';
-                console.log('DEBUG - Finance final approval set');
+                // console.log('DEBUG - Finance final approval set');
             } else {
                 // Finance can reject at any time
                 updateSet.status = 'rejected';
@@ -208,12 +208,12 @@ async function approveFundTransfer(req, res) {
                 updateSet.receiverRejectReason = `Rejected by finance: ${rejectReason.trim()}`;
                 updateSet.giverApproveRejectDate = 'now()';
                 updateSet.receiverApproveRejectDate = 'now()';
-                console.log('DEBUG - Finance rejection set');
+                // console.log('DEBUG - Finance rejection set');
             }
         }
 
         // DEBUG: Log update set
-        console.log('DEBUG - Update Set:', updateSet);
+        // console.log('DEBUG - Update Set:', updateSet);
 
         // Update the fund transfer
         const [result] = await graph.mutation(
@@ -264,7 +264,7 @@ async function approveFundTransfer(req, res) {
                             createdByName: `${user.firstName} ${user.lastName}`
                         });
                         
-                        console.log('Notifications created for fund transfer approval');
+                        // console.log('Notifications created for fund transfer approval');
                     } else if (updateSet.status === 'rejected') {
                         // Determine rejection reason
                         const reason = rejectReason || updateSet.giverRejectReason || updateSet.receiverRejectReason || 'Not specified';
@@ -297,7 +297,7 @@ async function approveFundTransfer(req, res) {
                             rejectReason: reason
                         });
                         
-                        console.log('Notifications created for fund transfer rejection');
+                        // console.log('Notifications created for fund transfer rejection');
                     }
                 }
             } catch (notifError) {

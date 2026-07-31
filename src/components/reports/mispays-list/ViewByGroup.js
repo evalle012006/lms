@@ -88,7 +88,11 @@ const ViewByGroupsPage = ({ dateFilter, remarks }) => {
 
     const getList = async (loId) => {
         setLoading(true);
-        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, date: dateFilter, remarks: remarks});
+        const params = { loId: currentUser.role.rep == 4 ? currentUser._id : loId, remarks: remarks };
+        if (dateFilter) {
+            params.date = dateFilter;
+        }
+        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams(params);
         const response = await fetchWrapper.get(url);
         if (response.success) {
             setList(response.data);

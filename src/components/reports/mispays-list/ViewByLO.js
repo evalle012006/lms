@@ -52,7 +52,11 @@ const ViewByLOPage = ({ dateFilter, remarks }) => {
 
     const getList = async (branchId) => {
         setLoading(true);
-        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, date: dateFilter, remarks: remarks});
+        const params = { branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, remarks: remarks };
+        if (dateFilter) {
+            params.date = dateFilter;
+        }
+        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams(params);
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const responseData = response.data;
