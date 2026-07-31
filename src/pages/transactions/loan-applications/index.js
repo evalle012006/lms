@@ -116,7 +116,10 @@ const LoanApplicationPage = () => {
     const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);
     const [selectedYear, setSelectedYear] = useState(moment().year());
     const [selectedBranch, setSelectedBranch] = useState();
-
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPageSize] = useState(100);
+    const [historyPagination, setHistoryPagination] = useState({ page: 1, pageSize: 100, total: 0, totalPages: 1 });
+    
     const [isLoanFetching, setLoanFetching] = useState(false);
     const [isBranchFetching, setBranchFetching] = useState(false);
 
@@ -309,9 +312,17 @@ const LoanApplicationPage = () => {
                 case 'forecast':
                     dataToExport = isForecastedFiltering ? filteredForcastedList : forecastedList;
                     break;
-                case 'history':
-                    dataToExport = historyList.length > 0 ? historyList : [];
+                case 'history': {
+                    // historyList only holds the current page after pagination was
+                    // added — fetch the full month fresh rather than exporting a
+                    // partial page silently.
+                    const fullHistory = await getFullHistoryForExport();
+                    if (fullHistory === null) {
+                        return; // error already toasted inside getFullHistoryForExport
+                    }
+                    dataToExport = fullHistory;
                     break;
+                }
                 default:
                     dataToExport = list;
             }
@@ -825,12 +836,13 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const getHistoyListLoan = async () => {
+    const getHistoyListLoan = async (targetPage = historyPage) => {
         setLoading(true);;
         let url = getApiBaseUrl() + 'transactions/loans/list-history';
         const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
+        const pageParams = { page: targetPage + "", pageSize: historyPageSize + "" };
         if (currentUser.root !== true && currentUser?.role?.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence, month: fMonth, year: selectedYear + "" });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence, month: fMonth, year: selectedYear + "", ...pageParams });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -849,13 +861,17 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                if (response.pagination) {
+                    setHistoryPagination(response.pagination);
+                }
+                setHistoryPage(targetPage);
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser?.role?.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, month: fMonth, year: selectedYear + "" });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, month: fMonth, year: selectedYear + "", ...pageParams });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -874,13 +890,17 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                if (response.pagination) {
+                    setHistoryPagination(response.pagination);
+                }
+                setHistoryPage(targetPage);
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         } else if (currentUser?.role?.rep == 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, month: fMonth, year: selectedYear + "" });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, month: fMonth, year: selectedYear + "", ...pageParams });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -899,13 +919,17 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                if (response.pagination) {
+                    setHistoryPagination(response.pagination);
+                }
+                setHistoryPage(targetPage);
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }   
         } else {
-            url = url + '?' + new URLSearchParams({ month: fMonth, year: selectedYear + "" });
+            url = url + '?' + new URLSearchParams({ month: fMonth, year: selectedYear + "", ...pageParams });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -924,6 +948,10 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                if (response.pagination) {
+                    setHistoryPagination(response.pagination);
+                }
+                setHistoryPage(targetPage);
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -931,6 +959,45 @@ const LoanApplicationPage = () => {
             }   
         }
     }
+
+    const getFullHistoryForExport = async () => {
+        const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
+        let url = getApiBaseUrl() + 'transactions/loans/list-history';
+        let params = { month: fMonth, year: selectedYear + "", all: 'true' };
+
+        if (currentUser.root !== true && currentUser?.role?.rep === 4 && branchList.length > 0) {
+            params = { ...params, branchId: branchList[0]._id, loId: currentUser._id, mode: occurence };
+        } else if (currentUser.root !== true && currentUser?.role?.rep === 3 && branchList.length > 0) {
+            params = { ...params, branchId: branchList[0]._id };
+        } else if (currentUser?.role?.rep === 2) {
+            params = { ...params, currentUserId: currentUser._id };
+        }
+
+        url = url + '?' + new URLSearchParams(params);
+        const response = await fetchWrapper.get(url);
+
+        if (response.success) {
+            let loanList = [];
+            await response.loans && response.loans.map(loan => {
+                loanList.push({
+                    ...loan,
+                    groupName: loan.group.name,
+                    principalLoanStr: formatPricePhp(loan.principalLoan),
+                    mcbuStr: formatPricePhp(loan.mcbu),
+                    activeLoanStr: formatPricePhp(loan.activeLoan),
+                    loanBalanceStr: formatPricePhp(loan.loanBalance),
+                    fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                    profile: loan?.client?.profile || '',
+                    selected: false,
+                    ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName)
+                });
+            });
+            return loanList;
+        } else {
+            toast.error(response.message || 'Error fetching full history for export.');
+            return null;
+        }
+    };
 
     const updateClientStatus = async (data, updatedValue, rejectReason) => {
         setLoading(true);
@@ -1625,14 +1692,14 @@ const LoanApplicationPage = () => {
         let mounted = true;
         mounted && fetchData();
 
-        if (currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) {
+        if ((currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) && selectedTab == 'history') {
             mounted && getHistoyListLoan();
         }
 
         return () => {
             mounted = false;
         };
-    }, [currentDate, currentUser]);
+    }, [currentDate, currentUser, selectedTab]);
 
     useEffect(() => {
         if (isFiltering) {
@@ -1870,7 +1937,8 @@ const LoanApplicationPage = () => {
 
     useEffect(() => {
         if (selectedTab === 'history') {
-            getHistoyListLoan();
+            setHistoryPage(1);
+            getHistoyListLoan(1);
         }
     }, [selectedTab, selectedMonth, selectedYear]);
 
@@ -2332,7 +2400,36 @@ const LoanApplicationPage = () => {
                                             <ExportButtonWrapper />
                                         </div>
                                     </div>
-                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
+                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={historyPageSize} />
+                                    <div className="flex flex-row items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
+                                        <span className="text-sm text-gray-500">
+                                            Page {historyPagination.page} of {Math.max(historyPagination.totalPages, 1)} · {historyPagination.total} total records
+                                        </span>
+                                        <div className="flex flex-row gap-2">
+                                            <ButtonOutline
+                                                label="Previous"
+                                                type="button"
+                                                className="p-2"
+                                                disabled={historyPage <= 1}
+                                                onClick={() => {
+                                                    const prevPage = historyPage - 1;
+                                                    setHistoryPage(prevPage);
+                                                    getHistoyListLoan(prevPage);
+                                                }}
+                                            />
+                                            <ButtonOutline
+                                                label="Next"
+                                                type="button"
+                                                className="p-2"
+                                                disabled={historyPage >= historyPagination.totalPages}
+                                                onClick={() => {
+                                                    const nextPage = historyPage + 1;
+                                                    setHistoryPage(nextPage);
+                                                    getHistoyListLoan(nextPage);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
                                 </TabPanel>
                                 {currentUser?.role?.rep <= 3 && (
                                     <TabPanel hidden={selectedTab !== "guarantor-review"}>
