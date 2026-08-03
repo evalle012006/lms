@@ -35,16 +35,20 @@ const BranchesPage = () => {
     const handleClientFlowVersionChange = async (branchRow, newValue) => {
         const updatedBranch = { ...branchRow, clientFlowVersion: newValue };
 
-        const apiUrl = getApiBaseUrl() + 'branches';
-        fetchWrapper.post(apiUrl, updatedBranch)
+        fetchWrapper.post(getApiBaseUrl() + 'branches', updatedBranch)
             .then(response => {
                 if (response.success) {
                     toast.success(`Client flow version updated to ${newValue}.`);
-                    getListBranch();
+                    // merge the confirmed record into the existing list, no refetch race
+                    const updatedList = list.map(b =>
+                        b._id === updatedBranch._id ? { ...b, ...response.branch } : b
+                    );
+                    dispatch(setBranchList(updatedList));
                 } else if (response.error) {
                     toast.error(response.message);
                 }
-            }).catch(error => {
+            })
+            .catch(error => {
                 console.log(error);
                 toast.error('Failed to update client flow version.');
             });

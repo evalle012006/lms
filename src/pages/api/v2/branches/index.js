@@ -35,6 +35,12 @@ const BRANCH_TYPE = (date) => createGraphType('branches', `
         
 `)('branches');
 
+const BRANCH_UPDATE_RETURN_TYPE = createGraphType('branches', `
+    _id
+    clientFlowVersion
+    lockTransaction
+`)('branches');
+
 export default apiHandler({
     get: getBranch,
     post: updateBranch
@@ -83,13 +89,9 @@ async function updateBranch(req, res) {
     let resp = null;
     if (!branchlock) {
         resp = await graph.mutation(
-            updateQl(createGraphType('branches', `_id`)('branches'), {
-                set: {
-                    ... branch
-                },
-                where: {
-                    _id: { _eq: branchId }
-                }
+            updateQl(BRANCH_UPDATE_RETURN_TYPE, {
+                set: { ...branch },
+                where: { _id: { _eq: branchId } }
             }),
             updateQl(USER_TYPE(), {
                 set: {
@@ -97,25 +99,23 @@ async function updateBranch(req, res) {
                     regionId: branch.regionId,
                     divisionId: branch.divisionId,
                 },
-                where: {
-                    designatedBranchId: { _eq: branchId } 
-                }
+                where: { designatedBranchId: { _eq: branchId } }
             })
-        )
+        );
     } else {
         resp = await graph.mutation(
-            updateQl(createGraphType('branches', `_id`)('branches'), {
-                set: {
-                    ... branch
-                },
-                where: {
-                    _id: { _eq: branchId }
-                }
+            updateQl(BRANCH_UPDATE_RETURN_TYPE, {
+                set: { ...branch },
+                where: { _id: { _eq: branchId } }
             })
-        )
+        );
     }
 
-    response = { success: true, branch: resp };
+    // check the actual shape graph.mutation returns for a batched call —
+    // likely resp.data.update_branches.returning[0]
+    const updatedBranch = resp?.data?.update_branches?.returning?.[0];
+
+    response = { success: true, branch: updatedBranch };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
