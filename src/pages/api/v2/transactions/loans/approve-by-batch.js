@@ -93,7 +93,8 @@ async function processData(req, res) {
   let response = {};
   const errorMsg = [];
 
-  let { loanData, origin } = req.body;
+  let { loanData, origin, skippedClientIds = [] } = req.body;
+  const skippedDetails = []; // { loanId, clientId, clientName } — returned to frontend
 
   if (origin === "ldf") {
     const promise = await new Promise(async (resolve) => {
@@ -122,12 +123,10 @@ async function processData(req, res) {
               const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
               errorMsg.push(error);
           } else {
-              // Set LDF approval fields
               loan.ldfApproved     = true;
               loan.ldfApprovedDate = currentDate;
               await updateLoan(loanId, loan, addToMutationList);
 
-              // SMS to client on loan release — non-blocking
               sendLoanReleasedSMS({
                   contactNumber: loan.contactNumber || loan.client?.contactNumber,
                   firstName:     loan.fullName?.split(',')[1]?.trim() || loan.client?.firstName || 'Client',
@@ -143,12 +142,8 @@ async function processData(req, res) {
     });
 
     if (promise) {
-
       if(mutationList.length && errorMsg.length == 0) {
-
-        await graph.mutation(
-          ... mutationList,
-        );
+        await graph.mutation(... mutationList);
       }
 
       response = {
@@ -248,9 +243,26 @@ async function processData(req, res) {
               loan.endDate = getEndDate(currentDate, loan.loanTerms);
 
               await updateLoan(loanId, { ... loan }, addToMutationList);
-              
+
               loan._id = loanId;
-              
+
+              // FIX: skip-tracking moved here — this is the branch actually
+              // used by DisbursementPhotoModal (origin: 'application')
+              if (skippedClientIds.includes(loan.clientId)) {
+                  logger.debug({
+                      page: 'Disbursement — Face Verification Skipped',
+                      message: 'Client face verification skipped: legacy client, no promoted temporaryLoanApplications record.',
+                      loanId: loanId,
+                      clientId: loan.clientId,
+                      approvedBy: req?.auth?.sub,
+                  });
+                  skippedDetails.push({
+                      loanId: loanId,
+                      clientId: loan.clientId,
+                      clientName: loan.fullName || null,
+                  });
+              }
+
               await saveCashCollection(loan, groupData, currentDate, addToMutationList);
               if (isNotificationEnabledFlag) {
                 await createLoanApprovalNotification(loan, loanId, req?.auth?.sub);
@@ -270,10 +282,7 @@ async function processData(req, res) {
     );
 
     if(mutationList.length && errorMsg.length == 0) {
-
-      await graph.mutation(
-        ... mutationList,
-      );
+      await graph.mutation(... mutationList);
     }
 
     if (result) {
@@ -281,6 +290,7 @@ async function processData(req, res) {
         success: true,
         withError: errorMsg.length > 0,
         errorMsg: errorMsg,
+        skippedFaceVerification: skippedDetails, // ← now returned on the branch actually used
       };
     }
   }

@@ -1446,12 +1446,9 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const handleLdfApprovalConfirm = async (disbursementPhotoKey, approverId) => {
+    const handleLdfApprovalConfirm = async (disbursementPhotoKey, approverId, skippedClientIds = []) => {
         setShowDisbursementModal(false);
 
-        // Attach disbursement photo + approver to each loan before sending
-        // FIX: set status to 'active' so approve-by-batch processes it correctly
-        // The application path only activates loans where status === 'active'
         const loansWithPhoto = pendingLdfLoans.map(loan => ({
             ...loan,
             status: 'active',
@@ -1460,10 +1457,12 @@ const LoanApplicationPage = () => {
             ldfApprovedBy: approverId,
         }));
 
-        // FIX: use the origin that triggered the modal — not always 'ldf'
-        // 'application' tab → sets status active, saves cash collection
-        // 'ldf' tab → sets ldfApproved, activates loan
-        const params = { loanData: loansWithPhoto, origin: pendingLdfOrigin, user: currentUser };
+        const params = {
+            loanData: loansWithPhoto,
+            origin: pendingLdfOrigin,
+            user: currentUser,
+            skippedClientIds,
+        };
         const response = await fetchWrapper.post(
             getApiBaseUrl() + 'transactions/loans/approve-by-batch', params
         );
@@ -1476,8 +1475,18 @@ const LoanApplicationPage = () => {
             } else {
                 toast.success('Selected loans successfully updated');
             }
-            // FIX: window.location.reload() was crashing the page due to ExcelExportModal
-            // selector error on remount — use getListLoan() only to refresh data in place
+
+            // Surface which clients had face verification skipped, if any
+            if (response.skippedFaceVerification?.length > 0) {
+                const names = response.skippedFaceVerification
+                    .map(s => s.clientName || s.clientId)
+                    .join(', ');
+                toast.warning(
+                    `Face verification was skipped for: ${names} (legacy client, no new-flow record).`,
+                    { autoClose: 8000 }
+                );
+            }
+
             setTimeout(() => { getListLoan(); }, 1000);
         }
 

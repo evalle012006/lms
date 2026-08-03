@@ -6,6 +6,7 @@ import {
   CLIENT_FIELDS, DIVISION_FIELDS,
   GROUP_FIELDS,
   LOAN_FIELDS, LOS_TOTALS_FIELDS, REGION_FIELDS,
+  TEMP_LOAN_APP_FIELDS,
   TRANSFER_CLIENT_FIELDS,
   USER_FIELDS,
 } from "@/lib/graph.fields";
@@ -120,4 +121,9 @@ export async function loadSettingsSystemDate() {
   }
   
   return system_date;
+}
+
+export async function findTemporaryLoanApplications(filter, fields = TEMP_LOAN_APP_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('temporaryLoanApplications', fields)(), { where: filter })))
+    .data?.temporaryLoanApplications ?? [];
 }
