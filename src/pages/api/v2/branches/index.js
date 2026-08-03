@@ -111,11 +111,7 @@ async function updateBranch(req, res) {
         );
     }
 
-    // check the actual shape graph.mutation returns for a batched call —
-    // likely resp.data.update_branches.returning[0]
-    const updatedBranch = resp?.data?.update_branches?.returning?.[0];
-
-    response = { success: true, branch: updatedBranch };
+    response = { success: true, branch: branch };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

@@ -39,11 +39,9 @@ const BranchesPage = () => {
             .then(response => {
                 if (response.success) {
                     toast.success(`Client flow version updated to ${newValue}.`);
-                    // merge the confirmed record into the existing list, no refetch race
-                    const updatedList = list.map(b =>
-                        b._id === updatedBranch._id ? { ...b, ...response.branch } : b
-                    );
-                    dispatch(setBranchList(updatedList));
+                    setTimeout(() => {
+                        getListBranch();
+                    }, 3000);
                 } else if (response.error) {
                     toast.error(response.message);
                 }
