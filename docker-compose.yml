@@ -7,7 +7,7 @@ networks:
 
 services:
   lms:
-    image: node:18
+    image: node:24
     platform: linux/amd64
     # deploy:
     #   replicas: 3
