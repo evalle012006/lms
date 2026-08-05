@@ -49,54 +49,37 @@ async function getFundTransfers(req, res) {
             };
         }
     } else {
-        // For other roles (area, region, division), filter based on their jurisdiction OR if they are the creator
-        const branch_conditions = [];
-
-        if (user.areaId) {
-            branch_conditions.push({
-                areaId: { _eq: user.areaId }
-            });
-        }
-
-        if (user.regionId) {
-            branch_conditions.push({
-                regionId: { _eq: user.regionId }
-            });
-        }
-
-        if (user.divisionId) {
-            branch_conditions.push({
-                divisionId: { _eq: user.divisionId }
-            });
-        }
-
-        // Build the main filter conditions
         const jurisdiction_conditions = [];
-        
-        if (branch_conditions.length > 0) {
-            jurisdiction_conditions.push(
-                {
-                    giverBranch: {
-                        _and: branch_conditions
-                    }
-                },
-                {
-                    receiverBranch: {
-                        _and: branch_conditions
-                    }
+        let scopeCondition = null;
+
+        switch (user.role?.shortCode) {
+            case 'area_admin':
+                if (user.areaId) {
+                    scopeCondition = { areaId: { _eq: user.areaId } };
                 }
+                break;
+            case 'regional_manager':
+                if (user.regionId) {
+                    scopeCondition = { regionId: { _eq: user.regionId } };
+                }
+                break;
+            case 'deputy_director':
+                if (user.divisionId) {
+                    scopeCondition = { divisionId: { _eq: user.divisionId } };
+                }
+                break;
+        }
+
+        if (scopeCondition) {
+            jurisdiction_conditions.push(
+                { giverBranch: scopeCondition },
+                { receiverBranch: scopeCondition }
             );
         }
 
-        // Add condition for transfers created by this user
-        jurisdiction_conditions.push({
-            insertedById: { _eq: user._id }
-        });
+        jurisdiction_conditions.push({ insertedById: { _eq: user._id } });
 
-        where = {
-            ...status_condition,
-            _or: jurisdiction_conditions
-        };
+        where = { ...status_condition, _or: jurisdiction_conditions };
     }
 
     // Apply mode-specific filtering if provided
