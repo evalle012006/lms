@@ -36,10 +36,6 @@ async function save(req, res) {
     delete loanData.pendings;
     delete loanData.origin;
 
-    // TODO: confirm with donie, migrated data has mixed types
-    // the mixed type from mongo during migration
-    loanData.coMaker = loanData.coMaker?.toString();
-
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
         oldLoanId = loanData.oldLoanId;
@@ -53,9 +49,10 @@ async function save(req, res) {
 
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
-        slotNo: { _eq: loanData.slotNo },
-        groupId: { _eq: loanData.groupId },
-        status: { _in: ['active', 'completed', 'pending']}
+        slotNo:   { _eq:  loanData.slotNo   },
+        groupId:  { _eq:  loanData.groupId  },
+        status:   { _in:  ['active', 'completed', 'pending'] },
+        clientId: { _neq: loanData.clientId },   // exclude client's own loans
       }
     }))).data?.loans;
 
@@ -120,6 +117,12 @@ async function save(req, res) {
                 finalData.modifiedDateTime = new Date();
             }
 
+            // coMaker = slot number (integer), coMakerId = client UUID
+            // Keep coMaker as integer — do NOT toString() it
+            finalData.coMaker = finalData.coMaker?.toString() || null;
+            finalData.slotNo = finalData.slotNo ? parseInt(finalData.slotNo) : null;
+            finalData.dateAdded = finalData.dateAdded ||currentDate || moment(new Date()).format('YYYY-MM-DD');
+
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
             // if (finalData?.loanFor == 'tomorrow') {
@@ -178,14 +181,48 @@ async function save(req, res) {
             );
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
-            // console.log(hasExistingCC)
             if (hasExistingCC) {
                 await savePendingLoans(user_id, [finalData], loanId);
             }
 
-            response = {
-                success: true,
-                loan: loan
+            // ── Co-maker duplicate check — post-insert ────────────────────────
+            // Flag if the same coMakerId is used on another pending/active loan
+            // in the same group (excluding this loan just created)
+            if (finalData.coMakerId && finalData.groupId) {
+                const coMakerDupes = (await graph.query(queryQl(loansType(), {
+                    where: {
+                        groupId:   { _eq: finalData.groupId },
+                        coMakerId: { _eq: finalData.coMakerId },
+                        status:    { _in: ['pending', 'active'] },
+                        _id:       { _neq: loanId },
+                    }
+                }))).data?.loans ?? [];
+
+                if (coMakerDupes.length > 0) {
+                    // Non-blocking — flag the loan and let client show warning
+                    await graph.mutation(
+                        updateQl(loansType('flag_comaker'), {
+                            where: { _id: { _eq: loanId } },
+                            set: { coMakerDuplicate: true },
+                        })
+                    );
+                    response = {
+                        success: true,
+                        loan: { ...loan, coMakerDuplicate: true },
+                        coMakerDuplicateWarning: true,
+                        coMakerDuplicateLoans: coMakerDupes.map(l => ({
+                            _id:      l._id,
+                            fullName: l.fullName,
+                            slotNo:   l.slotNo,
+                            pnNumber: l.pnNumber,
+                            status:   l.status,
+                        })),
+                    };
+                } else {
+                    response = { success: true, loan };
+                }
+            } else {
+                response = { success: true, loan };
             }
         }
     }

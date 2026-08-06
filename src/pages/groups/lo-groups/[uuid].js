@@ -50,7 +50,7 @@ const GroupGroupsPage = () => {
                 <div className="overflow-x-auto">
                     {selectedLO && <DetailsHeaderGroupMain page={'groups'} />}
                     <div className="mt-[6rem]">
-                        <ViewByGroupsPage />
+                        <ViewByGroupsPage origin="lo-groups" uuid={uuid} />
                     </div>
                 </div>
             )}

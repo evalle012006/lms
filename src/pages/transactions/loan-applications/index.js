@@ -34,10 +34,18 @@ import ForeCastApplication from "@/components/transactions/loan-application/Fore
 import { useExcelExport } from '@/hooks/useExcelExport';
 import ExcelExportModal from "@/components/modals/ExcelExportModal";
 import LAFModal from "@/components/transactions/loan-application/LAFModal";
+import { useRouter } from "next/router";
+import DisbursementPhotoModal from '@/components/transactions/loan-application/DisbursementPhotoModal';
+import LDFApprovalDetailsModal from "@/components/transactions/loan-application/LDFApprovalDetailsModal";
+import { approvalBlockedMessage, isApprovalBlocked } from "@/lib/approval-restriction-utils";
+import { ClockIcon } from "lucide-react";
+import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 
 const LoanApplicationPage = () => {
+    const router = useRouter();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const transactionSettings = useSelector(state => state.transactionsSettings?.data || {});
     const dispatch = useDispatch();
     const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
@@ -80,6 +88,7 @@ const LoanApplicationPage = () => {
         'application',
         'history',
         'duplicate',
+        'guarantor-review',
         'forecast'
     ]);
 
@@ -126,6 +135,28 @@ const LoanApplicationPage = () => {
 
     const [showLAFModal, setShowLAFModal] = useState(false);
     const [selectedLoanForLAF, setSelectedLoanForLAF] = useState(null);
+
+    const [guarantorReviewList, setGuarantorReviewList] = useState([]);
+
+    const [showDisbursementModal, setShowDisbursementModal] = useState(false);
+    const [pendingLdfLoans, setPendingLdfLoans]             = useState([]);
+    const [pendingLdfOrigin, setPendingLdfOrigin] = useState('ldf');
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [selectedApprovalLoan, setSelectedApprovalLoan] = useState(null);
+
+    const ldfBlocked  = isApprovalBlocked(
+        transactionSettings.enableLdfApprovalRestriction,
+        transactionSettings.ldfApprovalCutoffTime
+    );
+    const loanBlocked = isApprovalBlocked(
+        transactionSettings.enableLoanApprovalRestriction,
+        transactionSettings.loanApprovalCutoffTime
+    );
+
+    const handleViewApprovalDetails = (row) => {
+        setSelectedApprovalLoan(row.original);
+        setShowApprovalModal(true);
+    };
 
     const handleShowLAF = (row) => {
         setSelectedLoanForLAF(row.original);
@@ -548,7 +579,10 @@ const LoanApplicationPage = () => {
                                 allowApproved: allowApproved,
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
-                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName)
+                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
+                                guarantorDuplicate: loan.guarantorDuplicate || false,
+                                coMakerPending: loan.coMakerPending || false,
+                                coMakerPendingName: loan.coMakerPendingName || null,
                             });
                         });
                         loanList.sort((a, b) => {
@@ -568,6 +602,7 @@ const LoanApplicationPage = () => {
                         dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                         dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                         dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setGuarantorReviewList(loanList.filter(l => l?.guarantorDuplicate === true));
 
                         setLoading(false);
                     } else if (response.error) {
@@ -628,7 +663,10 @@ const LoanApplicationPage = () => {
                                 hasActiveLoan: hasActiveLoan,
                                 hasTdaLoan: hasTdaLoan,
                                 ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                                transactionClosed: transactionClosed
+                                transactionClosed: transactionClosed,
+                                guarantorDuplicate: loan.guarantorDuplicate || false,
+                                coMakerPending: loan.coMakerPending || false,
+                                coMakerPendingName: loan.coMakerPendingName || null,
                             });
                         });
                         loanList.sort((a, b) => {
@@ -648,6 +686,7 @@ const LoanApplicationPage = () => {
                         dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                         dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                         dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setGuarantorReviewList(loanList.filter(l => l?.guarantorDuplicate === true));
                         setLoading(false);
                     } else if (response.error) {
                         setLoading(false);
@@ -693,7 +732,10 @@ const LoanApplicationPage = () => {
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
                                 ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                                transactionClosed: transactionClosed
+                                transactionClosed: transactionClosed,
+                                guarantorDuplicate: loan.guarantorDuplicate || false,
+                                coMakerPending: loan.coMakerPending || false,
+                                coMakerPendingName: loan.coMakerPendingName || null,
                             });
                         });
                         loanList.sort((a, b) => {
@@ -713,6 +755,7 @@ const LoanApplicationPage = () => {
                         dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                         dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                         dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setGuarantorReviewList(loanList.filter(l => l?.guarantorDuplicate === true));
                         setLoading(false);
                     } else if (response.error) {
                         setLoading(false);
@@ -758,7 +801,10 @@ const LoanApplicationPage = () => {
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
                                 ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                                transactionClosed: transactionClosed
+                                transactionClosed: transactionClosed,
+                                guarantorDuplicate: loan.guarantorDuplicate || false,
+                                coMakerPending: loan.coMakerPending || false,
+                                coMakerPendingName: loan.coMakerPendingName || null,
                             });
                         });
                         loanList.sort((a, b) => {
@@ -777,6 +823,7 @@ const LoanApplicationPage = () => {
                         dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                         dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                         dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setGuarantorReviewList(loanList.filter(l => l?.guarantorDuplicate === true));
                         setLoading(false);
                     } else if (response.error) {
                         setLoading(false);
@@ -787,7 +834,6 @@ const LoanApplicationPage = () => {
                 setLoanFetching(false);
             });
         }
-        
     }
 
     const getHistoyListLoan = async (targetPage = historyPage) => {
@@ -1209,6 +1255,22 @@ const LoanApplicationPage = () => {
             if (clientData?.duplicate && selectedTab !== 'duplicate') {
                 errorMsg.add(`${clientName} in group ${groupName} has been marked as duplicate client. Please contact your RM for approval of this client loan.`);
             }
+
+            if (loan.guarantorDuplicate) {
+                errorMsg.add(`${clientName} in group ${groupName} has a flagged guarantor duplicate. Admin review required before LDF approval.`);
+            }
+
+            if (loan.coMakerPending) {
+                errorMsg.add(`${clientName} in group ${groupName} has no co-maker assigned yet. Edit the loan to assign a co-maker before approving.`);
+            }
+
+            // if (!loan.client?.faceTemplate) {
+            //     errorMsg.add(`${clientName} in group ${groupName} has no face template registered. Face verification is required before LDF approval.`);
+            // }
+
+            if (!loan.ciName || !loan.ciName.trim()) {
+                errorMsg.add(`${clientName} in group ${groupName} has no CI name recorded. Please complete CI investigation before LDF approval.`);
+            }
         });
 
         return Array.from(errorMsg);
@@ -1236,6 +1298,14 @@ const LoanApplicationPage = () => {
 
             if (validation.length > 0) {
                 selectedLoanList = [];
+            }
+
+            // Open disbursement modal before final approval
+            if (currentBranch?.clientFlowVersion === 'v2' && validation.length === 0 && selectedLoanList.length > 0) {
+                setPendingLdfLoans(selectedLoanList);
+                setPendingLdfOrigin(origin);
+                setShowDisbursementModal(true);
+                return;
             }
         } else if (origin == 'duplicate') {
             selectedLoanList = duplicateList && duplicateList.filter(loan => loan.selected === true);
@@ -1354,7 +1424,7 @@ const LoanApplicationPage = () => {
                             toast.error(errors);
                             setTimeout(() => {
                                 getListLoan();
-                                window.location.reload();
+                                // window.location.reload();
                             }, 1000);
                         } else {
                             if (origin == 'ldf') {
@@ -1365,7 +1435,7 @@ const LoanApplicationPage = () => {
     
                             setTimeout(() => {
                                 getListLoan();
-                                window.location.reload();
+                                // window.location.reload();
                             }, 1000);
                         }
                     }
@@ -1376,28 +1446,72 @@ const LoanApplicationPage = () => {
         }
     }
 
-    // const actionButtons = currentUser?.role?.rep < 4 ? [
-    //     <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-    //     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    // ] : [
-    //     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    // ];
+    const handleLdfApprovalConfirm = async (disbursementPhotoKey, approverId, skippedClientIds = []) => {
+        setShowDisbursementModal(false);
+
+        const loansWithPhoto = pendingLdfLoans.map(loan => ({
+            ...loan,
+            status: 'active',
+            disbursementPhotoKey,
+            disbursementPhotoAt: new Date().toISOString(),
+            ldfApprovedBy: approverId,
+        }));
+
+        const params = {
+            loanData: loansWithPhoto,
+            origin: pendingLdfOrigin,
+            user: currentUser,
+            skippedClientIds,
+        };
+        const response = await fetchWrapper.post(
+            getApiBaseUrl() + 'transactions/loans/approve-by-batch', params
+        );
+
+        if (response.success) {
+            if (response.withError) {
+                let errors = '';
+                response.errorMsg.forEach(err => { errors += err + '\n'; });
+                toast.error(errors);
+            } else {
+                toast.success('Selected loans successfully updated');
+            }
+
+            // Surface which clients had face verification skipped, if any
+            if (response.skippedFaceVerification?.length > 0) {
+                const names = response.skippedFaceVerification
+                    .map(s => s.clientName || s.clientId)
+                    .join(', ');
+                toast.warning(
+                    `Face verification was skipped for: ${names} (legacy client, no new-flow record).`,
+                    { autoClose: 8000 }
+                );
+            }
+
+            setTimeout(() => { getListLoan(); }, 1000);
+        }
+
+        setPendingLdfLoans([]);
+    };
 
     const [actionButtons, setActionButtons] = useState();
 
     const handleEditAction = (row) => {
-        setMode("edit");
-        setLoan(row.original);
-        const updatedClient = {
-            ...row.original.client,
-            label: `${row.original.client.lastName}, ${row.original.client.firstName} ${row.original.client.middleName || ''}`,
-            value: row.original.client._id
-        };
-        const updatedClientList = [...clientList, updatedClient];
-        dispatch(setClientList(updatedClientList));
-        setOccurence(row.original.occurence);
-        handleShowAddDrawer();
+        router.push(`/transactions/loan-applications/edit/${row.original._id}`);
     }
+
+    // const handleEditAction = (row) => {
+    //     setMode("edit");
+    //     setLoan(row.original);
+    //     const updatedClient = {
+    //         ...row.original.client,
+    //         label: `${row.original.client.lastName}, ${row.original.client.firstName} ${row.original.client.middleName || ''}`,
+    //         value: row.original.client._id
+    //     };
+    //     const updatedClientList = [...clientList, updatedClient];
+    //     dispatch(setClientList(updatedClientList));
+    //     setOccurence(row.original.occurence);
+    //     handleShowAddDrawer();
+    // }
 
     const handleDeleteAction = (row) => {
         setLoan(row.original);
@@ -1725,13 +1839,15 @@ const LoanApplicationPage = () => {
                         { label: 'Reject', action: handleShowWarningModal},
                         // { label: 'Delete Loan', action: handleDeleteAction},
                         { label: 'View Disclosure', action: handleShowNDSAction},
-                        { label: 'View LAF', action: handleShowLAF}
+                        { label: 'View LAF', action: handleShowLAF},
+                        { label: 'View Approval Details', action: handleViewApprovalDetails },
                     ];
                 } else {
                     rowActionBtn = [
                         { label: 'Edit Loan', action: handleEditAction},
                         { label: 'View Disclosure', action: handleShowNDSAction},
-                        { label: 'View LAF', action: handleShowLAF}
+                        { label: 'View LAF', action: handleShowLAF},
+                        { label: 'View Approval Details', action: handleViewApprovalDetails },
                     ];
                 }
             } else if (currentUser?.role?.rep === 4) {
@@ -1739,7 +1855,8 @@ const LoanApplicationPage = () => {
                     { label: 'Edit Loan', action: handleEditAction},
                     // { label: 'Delete Loan', action: handleDeleteAction}
                     { label: 'View Disclosure', action: handleShowNDSAction},
-                    { label: 'View LAF', action: handleShowLAF}
+                    { label: 'View LAF', action: handleShowLAF},
+                    { label: 'View Approval Details', action: handleViewApprovalDetails },
                 ];
             }
 
@@ -1781,21 +1898,36 @@ const LoanApplicationPage = () => {
     }, [forecastedData]);
 
     useEffect(() => {
-        let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
+        let actBtns = [
+            <ButtonSolid
+                label="Add Loan"
+                type="button"
+                className="p-2 mr-3"
+                onClick={() => router.push('/transactions/loan-applications/add')}
+                icon={[<PlusIcon className="w-5 h-5" />, 'left']}
+            />
+        ];
         if (currentUser?.role?.rep < 4 && selectedTab !== 'forecast') {
-            actBtns = [
-                <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
-                <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
-            ];
+            if (!ldfBlocked) {
+                actBtns = [
+                    <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
+                    <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
+                ];
+            }
 
             if (currentUser?.role?.rep > 2)  {
                 actBtns.push(
-                    <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                    <ButtonSolid
+                        label="Add Loan"
+                        type="button"
+                        className="p-2 mr-3"
+                        onClick={() => router.push('/transactions/loan-applications/add')}
+                        icon={[<PlusIcon className="w-5 h-5" />, 'left']}
+                    />
                 );
             }
 
-            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction) {
-                // actBtns.splice(0, 1);
+            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate && !currentBranch.lockTransaction && !loanBlocked) {
                 actBtns.splice(0, 2);
                 if (selectedTab == 'application') {
                     actBtns.unshift(
@@ -1810,7 +1942,7 @@ const LoanApplicationPage = () => {
         }
         
         setActionButtons(actBtns);
-    }, [selectedTab, list, pendingList, duplicateList]);
+    }, [selectedTab, list, pendingList, duplicateList, ldfBlocked, loanBlocked]);
 
     useEffect(() => {
         if (selectedTab === 'history') {
@@ -1818,6 +1950,25 @@ const LoanApplicationPage = () => {
             getHistoyListLoan(1);
         }
     }, [selectedTab, selectedMonth, selectedYear]);
+
+    // Poll transaction settings every 60s to keep approval restriction config fresh.
+    // Scoped to this page only — no impact on other pages.
+    useEffect(() => {
+        const fetchTxnSettings = async () => {
+            try {
+                const response = await fetchWrapper.get(`${getApiBaseUrl()}settings/transactions`);
+                if (response.success && response.transactions) {
+                    dispatch(setTransactionSettings(response.transactions));
+                }
+            } catch (e) {
+                // silent
+            }
+        };
+
+        const interval = setInterval(fetchTxnSettings, 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, []); // empty deps — self-contained, runs once on mount
 
     return (
         <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
@@ -1855,6 +2006,23 @@ const LoanApplicationPage = () => {
                                         isActive={selectedTab === "duplicate"}
                                         onClick={() => handleSelectTab("duplicate")}>
                                         Duplicate Clients Applications
+                                        {duplicateList?.length > 0 && (
+                                            <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-600">
+                                                {duplicateList.length}
+                                            </span>
+                                        )}
+                                    </TabSelector>
+                                )}
+                                {currentUser?.role?.rep <= 3 && (
+                                    <TabSelector
+                                        isActive={selectedTab === "guarantor-review"}
+                                        onClick={() => handleSelectTab("guarantor-review")}>
+                                        Guarantor Review
+                                        {guarantorReviewList?.length > 0 && (
+                                            <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600">
+                                                {guarantorReviewList.length}
+                                            </span>
+                                        )}
                                     </TabSelector>
                                 )}
                                 <TabSelector
@@ -1944,6 +2112,79 @@ const LoanApplicationPage = () => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* ── Co-maker Pending / Guarantor Review filter pills ───────────── */}
+                                    {(() => {
+                                        const baseList = isFiltering ? filteredList : list;
+                                        const coMakerPendingCount   = baseList.filter(l => l.coMakerPending).length;
+                                        const guarantorDuplicateCount = baseList.filter(l => l.guarantorDuplicate).length;
+                                        if (coMakerPendingCount === 0 && guarantorDuplicateCount === 0) return null;
+                                        return (
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
+                                                <span className="text-xs text-gray-500 font-medium mr-1">Quick filter:</span>
+
+                                                {coMakerPendingCount > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            dispatch(setFilteredLoanList(list.filter(l => l.coMakerPending)));
+                                                            setIsFiltering(true);
+                                                        }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+                                                            bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
+                                                    >
+                                                        ⚠ Co-maker Pending
+                                                        <span className="bg-amber-500 text-white rounded-full min-w-[16px] h-4 px-1
+                                                            flex items-center justify-center text-[10px] font-bold">
+                                                            {coMakerPendingCount}
+                                                        </span>
+                                                    </button>
+                                                )}
+
+                                                {guarantorDuplicateCount > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            dispatch(setFilteredLoanList(list.filter(l => l.guarantorDuplicate)));
+                                                            setIsFiltering(true);
+                                                        }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+                                                            bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 transition-colors"
+                                                    >
+                                                        🔴 Guarantor Review
+                                                        <span className="bg-red-500 text-white rounded-full min-w-[16px] h-4 px-1
+                                                            flex items-center justify-center text-[10px] font-bold">
+                                                            {guarantorDuplicateCount}
+                                                        </span>
+                                                    </button>
+                                                )}
+
+                                                {isFiltering && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            dispatch(setFilteredLoanList([]));
+                                                            setIsFiltering(false);
+                                                        }}
+                                                        className="text-xs text-gray-400 hover:text-gray-600 underline ml-2"
+                                                    >
+                                                        ✕ Clear filter
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* LDF tab banner */}
+                                    {ldfBlocked && transactionSettings.enableLdfApprovalRestriction && (
+                                        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                                            <ClockIcon className="h-5 w-5 text-red-500 shrink-0" />
+                                            <p className="text-sm text-red-700">
+                                                {approvalBlockedMessage('LDF', transactionSettings.ldfApprovalCutoffTime)}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="mb-6">
                                         <TableComponent 
                                             columns={columns} 
@@ -2081,6 +2322,16 @@ const LoanApplicationPage = () => {
                                                 placeholder={'Group Filter'}/>
                                         </div>
                                     </div>
+
+                                    {/* Application tab banner */}
+                                    {loanBlocked && transactionSettings.enableLoanApprovalRestriction && (
+                                        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                                            <ClockIcon className="h-5 w-5 text-red-500 shrink-0" />
+                                            <p className="text-sm text-red-700">
+                                                {approvalBlockedMessage('Loan', transactionSettings.loanApprovalCutoffTime)}
+                                            </p>
+                                        </div>
+                                    )}
                                     <TableComponent 
                                         columns={columns} 
                                         data={pendingData} 
@@ -2189,6 +2440,59 @@ const LoanApplicationPage = () => {
                                         </div>
                                     </div>
                                 </TabPanel>
+                                {currentUser?.role?.rep <= 3 && (
+                                    <TabPanel hidden={selectedTab !== "guarantor-review"}>
+                                        <div className="p-4">
+                                            {guarantorReviewList.length === 0 ? (
+                                                <div className="text-center py-12 text-gray-400 text-sm">
+                                                    No loans pending guarantor review
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {guarantorReviewList.map(loan => (
+                                                        <div key={loan._id}
+                                                            className="bg-white border border-red-200 rounded-xl p-4 flex items-center justify-between gap-4">
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-semibold text-gray-900">
+                                                                    {loan.fullName}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                                    {loan.groupName} · Slot {loan.slotNo} · {loan.pnNumber || 'No PN'}
+                                                                </p>
+                                                                <p className="text-xs text-amber-600 mt-1">
+                                                                    Guarantor: {loan.guarantorFirstName} {loan.guarantorLastName}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex-shrink-0">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    loan.status === 'active'
+                                                                        ? 'bg-green-100 text-green-700'
+                                                                        : 'bg-yellow-100 text-yellow-700'
+                                                                }`}>
+                                                                    {loan.status}
+                                                                </span>
+                                                            </div>
+                                                            {/* Rep ≤ 2: full review, Rep 3: read-only view */}
+                                                            {currentUser?.role?.rep <= 3 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => router.push(`/transactions/loan-applications/edit/${loan._id}`)}
+                                                                    className={`px-3 py-1.5 rounded-lg text-white text-xs font-medium transition-colors ${
+                                                                        currentUser?.role?.rep <= 2
+                                                                            ? 'bg-red-600 hover:bg-red-700'
+                                                                            : 'bg-gray-500 hover:bg-gray-600'
+                                                                    }`}
+                                                                >
+                                                                    {currentUser?.role?.rep <= 2 ? 'Review' : 'View'}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabPanel>
+                                )}
                             </div>
                         </React.Fragment>
                     )
@@ -2245,6 +2549,23 @@ const LoanApplicationPage = () => {
                 isOpen={showLAFModal}
                 onClose={handleCloseLAF}
                 loanData={selectedLoanForLAF}
+            />
+            <DisbursementPhotoModal
+                show={showDisbursementModal}
+                loans={pendingLdfLoans}
+                onConfirm={handleLdfApprovalConfirm}
+                onCancel={() => {
+                    setShowDisbursementModal(false);
+                    setPendingLdfLoans([]);
+                }}
+            />
+            <LDFApprovalDetailsModal
+                show={showApprovalModal}
+                loan={selectedApprovalLoan}
+                onClose={() => {
+                    setShowApprovalModal(false);
+                    setSelectedApprovalLoan(null);
+                }}
             />
         </Layout>
     );

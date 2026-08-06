@@ -17,8 +17,8 @@ import { checkFileSize } from "@/lib/utils";
 import Select from 'react-select';
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import { getApiBaseUrl } from "@/lib/constants";
-// ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
+import moment from "moment";
 
 const DEFAULT_USER = {};
 const DEFAULT_ROLES = [];
@@ -41,6 +41,8 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
     const [selectedBranchFilter, setSelectedBranchFilter] = useState([]);
 
     const [selectedBranches, setSelectedBranches] = useState([]);
+    const [removingBiometric, setRemovingBiometric] = useState(false);
+    const [biometricRemoved, setBiometricRemoved]   = useState(false);
 
     const [role, setRole] = useState();
 
@@ -554,6 +556,110 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                             </div>
                                         </div>
                                     </React.Fragment>
+                                )}
+                                
+                                {/* ── Edit mode: Biometric Management + Account Lock ──────────────── */}
+                                {mode === 'edit' && (
+                                    <div className="mt-4 space-y-3">
+
+                                        {/* Biometric status */}
+                                        <div className="p-4 border border-gray-200 rounded-xl">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                        user.biometricCredentialId && !biometricRemoved
+                                                            ? 'bg-teal-100' : 'bg-gray-100'
+                                                    }`}>
+                                                        <svg className={`w-4 h-4 ${
+                                                            user.biometricCredentialId && !biometricRemoved
+                                                                ? 'text-teal-600' : 'text-gray-400'
+                                                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                                                d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                                                        </svg>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-gray-700">Fingerprint Login</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5">
+                                                            {user.biometricCredentialId && !biometricRemoved
+                                                                ? `Registered${user.biometricDeviceName ? ` · ${user.biometricDeviceName}` : ''}${user.biometricRegisteredAt ? ` · ${moment(user.biometricRegisteredAt).format('MMM D, YYYY')}` : ''}`
+                                                                : 'Not registered'
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {user.biometricCredentialId && !biometricRemoved ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled={removingBiometric}
+                                                        onClick={async () => {
+                                                            if (!confirm(`Remove fingerprint login for ${user.firstName} ${user.lastName}? They will need to re-register on next login.`)) return;
+                                                            setRemovingBiometric(true);
+                                                            try {
+                                                                const res = await fetchWrapper.post(
+                                                                    getApiBaseUrl() + 'users/biometric-remove',
+                                                                    { userId: user._id }
+                                                                );
+                                                                if (res.success) {
+                                                                    setBiometricRemoved(true);
+                                                                    toast.success('Fingerprint login removed. User will be prompted to re-register on next login.');
+                                                                } else {
+                                                                    toast.error('Failed to remove fingerprint.');
+                                                                }
+                                                            } catch {
+                                                                toast.error('An error occurred.');
+                                                            } finally {
+                                                                setRemovingBiometric(false);
+                                                            }
+                                                        }}
+                                                        className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-red-600
+                                                            border border-red-200 rounded-lg hover:bg-red-50
+                                                            disabled:opacity-50 transition-colors"
+                                                    >
+                                                        {removingBiometric ? 'Removing...' : 'Remove'}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 italic">
+                                                        User registers on login
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Account lock status */}
+                                        {user?.lockedUntil && moment().isBefore(moment(user.lockedUntil)) && (
+                                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-red-700">🔒 Account Locked</p>
+                                                    <p className="text-xs text-red-500 mt-0.5">
+                                                        Unlocks at {moment(user.lockedUntil).format('MMM D, h:mm A')}
+                                                        {' · '}{user.loginAttempts || 0} failed attempt{user.loginAttempts !== 1 ? 's' : ''}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await fetchWrapper.post(getApiBaseUrl() + 'users/', {
+                                                                _id:          user._id,
+                                                                loginAttempts: 0,
+                                                                lockedUntil:  null,
+                                                                role:         JSON.stringify(user.role),
+                                                            });
+                                                            toast.success('Account unlocked successfully.');
+                                                            performClose();
+                                                        } catch {
+                                                            toast.error('Failed to unlock account.');
+                                                        }
+                                                    }}
+                                                    className="flex-shrink-0 px-3 py-2 bg-red-600 text-white text-xs
+                                                        font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                                                >
+                                                    Unlock Now
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                                 <div className="flex flex-row mt-5 pb-6">
                                     <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

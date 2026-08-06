@@ -7,13 +7,13 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl, insertQl } from '@/lib/graph/graph.util';
 import { getCurrentDate } from '@/lib/date-utils';
 
-const jwt = require('jsonwebtoken');
+const jwt    = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { serverRuntimeConfig } = getConfig();
 
 export default apiHandler({
     post: authenticate,
-    get: logout
+    get:  logout
 });
 
 // TODO: SHOULD BE ADDED IN SETTINGS
@@ -23,15 +23,13 @@ const LOCK_MINUTES  = 15;  // locked for 15 minutes
 // ───────────────────────────────────────────────────────────────────────────
 
 let settingsCache = {
-    data: null,
-    lastFetched: null,
-    cacheTimeout: 5 * 60 * 1000
+    data: null, lastFetched: null, cacheTimeout: 5 * 60 * 1000
 };
 
 const graph = new GraphProvider();
 
 const USER_TYPE = createGraphType('users', `
-_id 
+_id
 password
 firstName
 lastName
@@ -53,144 +51,173 @@ regionId
 divisionId
 profile
 loNo
+biometricCredentialId
+biometricPublicKey
+biometricCounter
+biometricRegisteredAt
+biometricDeviceName
+loginAttempts
+lockedUntil
 `)('users');
 
 const SETTINGS_TYPE = createGraphType('settings', `
-_id
-superPwd
-companyName
-companyEmail
-companyAddress
-companyPhoneNumber
-branchCode
-branchName
-branchAddress
-branchPhoneNumber
+_id superPwd companyName companyEmail companyAddress
+companyPhoneNumber branchCode branchName branchAddress branchPhoneNumber allowLoCI
 `)('settings');
 
-// ── NEW: Audit log type ──────────────────────────────────────────────────────
 const LOG_TYPE = createGraphType('user_activity_logs', `
 id user_id action field old_value new_value created_at
 `);
 
-// Helper: fire-and-forget log insert (never throws, never blocks response)
 async function writeLog(payload) {
-    console.log('Attempting to write log:', payload);
     try {
         await graph.mutation(
             insertQl(LOG_TYPE('log_login'), { objects: [payload] })
         );
     } catch (err) {
-        console.error('Failed to write activity log:', err);
         logger.error({ page: 'login', message: 'Failed to write activity log', error: err });
     }
 }
-// ────────────────────────────────────────────────────────────────────────────
 
 async function getSettings() {
     const now = Date.now();
     if (settingsCache.data && settingsCache.lastFetched &&
         (now - settingsCache.lastFetched) < settingsCache.cacheTimeout) {
-        logger.debug({page: 'login', message: 'Using cached settings'});
         return settingsCache.data;
     }
     try {
-        const settingsData = await graph.query(
-            queryQl(SETTINGS_TYPE, { limit: 1 })
-        );
+        const settingsData = await graph.query(queryQl(SETTINGS_TYPE, { limit: 1 }));
         const settings = settingsData?.data?.settings?.[0];
         if (settings) {
             settingsCache.data = settings;
             settingsCache.lastFetched = now;
-            logger.debug({page: 'login', message: 'Settings fetched and cached'});
             return settings;
         }
         return null;
     } catch (error) {
-        logger.error({page: 'login', message: 'Error fetching settings', error});
+        logger.error({ page: 'login', message: 'Error fetching settings', error });
         return null;
     }
 }
 
 async function authenticate(req, res) {
     let statusCode = 200;
-    let response = {};
+    let response   = {};
     const { username, password } = req.body;
 
     try {
         const [user] = await graph.query(
             queryQl(USER_TYPE, {
                 where: {
-                    email: { _eq: username },
-                    status: { _eq: 'active' }
+                    email:  { _eq: username },
+                    status: { _eq: 'active' },
                 }
             })
-        ).then(res => res.data.users);
+        ).then(r => r.data.users);
 
         if (!user) {
             response = { error: true, message: 'Email or Password is incorrect' };
-            logger.debug({page: 'login', message: 'User not found'});
             return sendResponse(res, response, statusCode);
         }
 
-        if (user && !user.password) {
+        // ── Lockout check ────────────────────────────────────────────────────
+        if (user.lockedUntil && moment().isBefore(moment(user.lockedUntil))) {
+            const remainingMins = moment(user.lockedUntil).diff(moment(), 'minutes') + 1;
+            response = {
+                error:  true,
+                locked: true,
+                message: `Account locked due to too many failed attempts. Try again in ${remainingMins} minute${remainingMins !== 1 ? 's' : ''}.`,
+            };
+            return sendResponse(res, response, statusCode);
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+        if (!user.password) {
             response = { success: false, error: 'NO_PASS', user: user._id };
             return sendResponse(res, response, statusCode);
         }
 
-        const settings = await getSettings();
-        let superPassword = null;
-        if (settings && settings.superPwd) {
+        const settings      = await getSettings();
+        let superPassword   = null;
+        if (settings?.superPwd) {
             superPassword = bcrypt.hashSync(settings.superPwd, bcrypt.genSaltSync(8), null);
         }
 
-        let success = false;
+        let success    = false;
         let authMethod = null;
 
-        if (superPassword && user && !user.root && bcrypt.compareSync(password, superPassword)) {
-            success = true;
+        if (superPassword && !user.root && bcrypt.compareSync(password, superPassword)) {
+            success    = true;
             authMethod = 'super_password';
-            logger.info({ page: 'login', message: 'Super password authentication used', userId: user._id, userEmail: user.email });
-        } else if (user && user.password && bcrypt.compareSync(password, user.password)) {
-            success = true;
+        } else if (user.password && bcrypt.compareSync(password, user.password)) {
+            success    = true;
             authMethod = 'user_password';
-            logger.debug({page: 'login', message: 'User authentication successful'});
-        } else {
-            success = false;
-            logger.debug({page: 'login', message: 'Authentication failed'});
         }
 
         if (success) {
             const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '4h' });
             delete user.password;
 
+            // Reset lockout counters on successful login
             await graph.mutation(
                 updateQl(USER_TYPE, {
                     set: {
-                        logged: true,
-                        lastLogin: moment(getCurrentDate()).format('YYYY-MM-DD')
+                        logged:        true,
+                        lastLogin:     moment(getCurrentDate()).format('YYYY-MM-DD'),
+                        loginAttempts: 0,
+                        lockedUntil:   null,
                     },
                     where: { _id: { _eq: user._id } }
                 })
             );
 
-            // ── Log the login ────────────────────────────────────────────────
             await writeLog({ user_id: user._id, action: 'login' });
-            // ────────────────────────────────────────────────────────────────
 
             response = {
                 success: true,
-                user: { ...user, __api_version: 'v2', token }
+                user: { ...user, loginAttempts: 0, lockedUntil: null, __api_version: 'v2', token }
             };
-
             logger.info({ page: 'login', message: 'Login successful', userId: user._id, authMethod });
         } else {
-            response = { error: true, message: 'Email or Password is incorrect' };
+            // ── Increment failure counter ────────────────────────────────────
+            const attempts = (user.loginAttempts || 0) + 1;
+            const locked   = attempts >= MAX_ATTEMPTS;
+            const lockedUntil = locked
+                ? moment().add(LOCK_MINUTES, 'minutes').toISOString()
+                : null;
+
+            await graph.mutation(
+                updateQl(USER_TYPE, {
+                    set: {
+                        loginAttempts: attempts,
+                        lockedUntil:   lockedUntil,
+                    },
+                    where: { _id: { _eq: user._id } }
+                })
+            );
+
+            const remaining = MAX_ATTEMPTS - attempts;
+
+            if (locked) {
+                response = {
+                    error:   true,
+                    locked:  true,
+                    message: `Account locked after ${MAX_ATTEMPTS} failed attempts. Try again in ${LOCK_MINUTES} minutes.`,
+                };
+            } else {
+                response = {
+                    error:   true,
+                    message: remaining === 1
+                        ? `Email or Password is incorrect. 1 attempt remaining before lockout.`
+                        : `Email or Password is incorrect. ${remaining} attempts remaining.`,
+                };
+            }
+            // ─────────────────────────────────────────────────────────────────
         }
 
     } catch (error) {
-        logger.error({page: 'login', message: 'Authentication error', error});
-        response = { error: true, message: 'An error occurred during authentication' };
+        logger.error({ page: 'login', message: 'Authentication error', error });
+        response  = { error: true, message: 'An error occurred during authentication' };
         statusCode = 500;
     }
 
@@ -199,26 +226,21 @@ async function authenticate(req, res) {
 
 async function logout(req, res) {
     let statusCode = 200;
-    let response = {};
+    let response   = {};
     const { user } = req.query;
 
     try {
         await graph.mutation(
             updateQl(USER_TYPE, {
-                set: { logged: false },
+                set:   { logged: false },
                 where: { _id: { _eq: user } }
             })
         );
-
-        // ── Log the logout ───────────────────────────────────────────────────
         await writeLog({ user_id: user, action: 'logout' });
-        // ────────────────────────────────────────────────────────────────────
-
         response = { success: true, query: { acknowledged: true }, user };
-        logger.debug({page: 'login', message: 'User successfully logged out', userId: user});
     } catch (error) {
-        logger.error({page: 'login', message: 'Logout error', error});
-        response = { success: false, error: 'Logout failed' };
+        logger.error({ page: 'login', message: 'Logout error', error });
+        response  = { success: false, error: 'Logout failed' };
         statusCode = 500;
     }
 
@@ -232,7 +254,6 @@ function sendResponse(res, response, statusCode) {
 }
 
 export function clearSettingsCache() {
-    settingsCache.data = null;
+    settingsCache.data        = null;
     settingsCache.lastFetched = null;
-    logger.debug({page: 'settings', message: 'Settings cache cleared'});
 }

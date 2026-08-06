@@ -22,6 +22,7 @@ import {
   BellIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
+import CIQuestionsSettings from '@/components/settings/CIQuestionsSettings';
 
 const ModernInput = ({ 
   name, 
@@ -84,7 +85,7 @@ const ModernInput = ({
   );
 };
 
-const FeatureEnablementCard = ({ values, setFieldValue }) => (
+const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         {/* Card Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-700 px-6 py-4">
@@ -193,6 +194,309 @@ const FeatureEnablementCard = ({ values, setFieldValue }) => (
                     </div>
                 )}
             </div>
+
+            {/* Allow LO CI Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-teal-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-teal-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Allow LO to Conduct CI Investigations
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, Loan Officers can access the CI Investigation page
+                                and conduct field investigations. By default, only Branch Managers
+                                and above are allowed.
+                            </p>
+                            {values.allowLoCI && (
+                                <div className="mt-2 flex items-start gap-2 text-amber-600
+                                    bg-amber-50 p-2 rounded-lg text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        LOs will only see applications for their assigned branch.
+                                        Ensure this is agreed upon with management before enabling.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Root-only toggle */}
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('allowLoCI', !values.allowLoCI)}
+                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-600
+                                focus:ring-offset-2 ${values.allowLoCI ? 'bg-teal-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.allowLoCI ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.allowLoCI
+                                ? 'bg-teal-100 text-teal-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.allowLoCI ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Require Client Biometric Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-purple-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Require Client Face Verification
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, clients must complete face liveness verification
+                                (look left, right, camera) during the loan application process,
+                                and their face is matched at disbursement. Disable for branches
+                                where camera access is unavailable.
+                            </p>
+                            {!values.requireClientBiometric && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Biometric step will be hidden in LAF form and skipped
+                                        during disbursement confirmation.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('requireClientBiometric', !values.requireClientBiometric)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-600
+                                focus:ring-offset-2 ${values.requireClientBiometric ? 'bg-purple-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.requireClientBiometric ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.requireClientBiometric
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.requireClientBiometric ? 'Required' : 'Optional'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Require Staff Biometric Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                className="h-6 w-6 text-blue-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Require Staff Biometric Verification
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, staff with registered biometrics must scan their
+                                fingerprint or Face ID to approve LDF disbursements, and
+                                the biometric login button appears on the login page.
+                                Disable for branches where staff devices do not have
+                                fingerprint sensors (e.g. desktop PCs, some laptops).
+                            </p>
+                            {!values.requireStaffBiometric && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Staff biometric step will be hidden in disbursement
+                                        confirmation and the biometric login button will not appear.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('requireStaffBiometric', !values.requireStaffBiometric)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0
+                                cursor-pointer rounded-full border-2 border-transparent
+                                transition-colors duration-200 ease-in-out focus:outline-none
+                                focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                                values.requireStaffBiometric ? 'bg-blue-600' : 'bg-gray-200'
+                            }`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200
+                                ease-in-out ${
+                                values.requireStaffBiometric ? 'translate-x-7' : 'translate-x-0'
+                            }`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full
+                            text-xs font-semibold ${
+                            values.requireStaffBiometric
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.requireStaffBiometric ? 'Required' : 'Optional'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* QR Application Time Restriction */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                    QR Application Hours
+                </p>
+                <p className="text-sm text-gray-500 mb-3">
+                    Only allow loan applications via QR code within this time window (Manila time).
+                    Outside of these hours, scanning the QR will show a "closed" message.
+                </p>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                        <input
+                            type="time"
+                            value={values.qrAllowedStartTime || '06:00'}
+                            onChange={e => setFieldValue('qrAllowedStartTime', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                    <span className="text-gray-400 mt-4">—</span>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                        <input
+                            type="time"
+                            value={values.qrAllowedEndTime || '22:00'}
+                            onChange={e => setFieldValue('qrAllowedEndTime', e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* SMS Notifications Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-green-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                SMS Notifications
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Send SMS to clients on LAF submission, CI approval/decline,
+                                and loan release. Requires <code className="text-xs bg-gray-200 px-1 rounded">SEMAPHORE_API_KEY</code> in environment variables.
+                            </p>
+                            {values.smsEnabled && (
+                                <div className="mt-2 grid grid-cols-1 gap-1">
+                                    {[
+                                        'LAF submitted — reference code sent to applicant',
+                                        'CI approved — client notified to wait for LO',
+                                        'CI declined — client notified with reason',
+                                        'Loan released — disbursement confirmed via SMS',
+                                    ].map(item => (
+                                        <div key={item} className="flex items-center text-sm text-gray-600">
+                                            <svg className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                            {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {!values.smsEnabled && (
+                                <div className="mt-2 flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-lg text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>SMS is disabled. Clients will not receive text notifications.</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('smsEnabled', !values.smsEnabled)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-green-600
+                                focus:ring-offset-2 ${values.smsEnabled ? 'bg-green-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.smsEnabled ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.smsEnabled
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.smsEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
             
             {/* Placeholder for future features */}
             <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 opacity-60">
@@ -237,14 +541,20 @@ const ProfileSettingsPage = (props) => {
         branchPhoneNumber: state.branchPhoneNumber || '',
         superPwd: state.superPwd || '',
         enableNotifications: state.enableNotifications ?? false,
+        allowLoCI: state.allowLoCI ?? false,
+        requireClientBiometric:  state.requireClientBiometric  ?? true,
+        requireStaffBiometric:  state.requireStaffBiometric  ?? true,
+        smsEnabled:              state.smsEnabled              ?? false,
+        qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
+        qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }
 
     const validationSchema = yup.object().shape({
-        companyName: yup.string().required('Company name is required'),
-        companyEmail: yup.string().email('Invalid email format').required('Company email is required'),
-        companyPhoneNumber: yup.string().required('Company phone number is required'),
-        branchCode: yup.string().required('Branch code is required'),
-        branchName: yup.string().required('Branch name is required'),
+        // companyName: yup.string().required('Company name is required'),
+        // companyEmail: yup.string().email('Invalid email format').required('Company email is required'),
+        // companyPhoneNumber: yup.string().required('Company phone number is required'),
+        // branchCode: yup.string().required('Branch code is required'),
+        // branchName: yup.string().required('Branch name is required'),
         superPwd: yup.string()
     });
 
@@ -277,8 +587,7 @@ const ProfileSettingsPage = (props) => {
             const response = await fetchWrapper.post(apiURL, updatedValues);
 
             if (response.success) {
-                // Update Redux with the new values
-                dispatch(setSystemSettings({...values}));
+                dispatch(setSystemSettings(response.system || { ...state, ...values }));
                 setSaved(true);
                 toast.success('System Profile updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
@@ -305,15 +614,6 @@ const ProfileSettingsPage = (props) => {
         fetchSystemSettings();
     }, []);
 
-    useEffect(() => {
-        let mounted = true;
-        setLoading(false);
-
-        return () => {
-            mounted = false;
-        };
-    }, [state]);
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
             {loading ? (
@@ -326,7 +626,7 @@ const ProfileSettingsPage = (props) => {
                     validationSchema={validationSchema}
                     onSubmit={handleUpdate}
                     enableReinitialize={true}
-                    key={JSON.stringify(initialValues)} // Force re-render when data changes
+                    //key={JSON.stringify(initialValues)} // Force re-render when data changes
                 >
                     {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
                         <form onSubmit={handleSubmit} autoComplete="off" autoCorrect="off" spellCheck="false">
@@ -395,7 +695,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.companyEmail && errors.companyEmail}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -407,7 +706,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.companyPhoneNumber && errors.companyPhoneNumber}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -443,7 +741,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.branchCode && errors.branchCode}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -455,7 +752,6 @@ const ProfileSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.branchName && errors.branchName}
-                                                required
                                             />
                                             
                                             <ModernInput
@@ -484,7 +780,11 @@ const ProfileSettingsPage = (props) => {
                                 </div>
 
                                 <div className="mt-8">
-                                    <FeatureEnablementCard values={values} setFieldValue={setFieldValue} />
+                                    <FeatureEnablementCard values={values} setFieldValue={setFieldValue} currentUser={currentUser} />
+                                </div>
+
+                                <div className="mt-8">
+                                    <CIQuestionsSettings />
                                 </div>
 
                                 {/* Action Buttons */}

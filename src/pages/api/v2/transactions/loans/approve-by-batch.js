@@ -21,9 +21,10 @@ import {
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 import moment from "moment";
-import { getCurrentDate, getEndDate } from "@/lib/date-utils";
+import { getCurrentDate, getCurrentDateV2, getEndDate } from "@/lib/date-utils";
 import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-service';
 import { findUserById, findBranches } from '@/lib/graph.functions';
+import { sendLoanReleasedSMS } from '@/lib/sms-service';
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -92,13 +93,15 @@ async function processData(req, res) {
   let response = {};
   const errorMsg = [];
 
-  let { loanData, origin } = req.body;
+  let { loanData, origin, skippedClientIds = [] } = req.body;
+  const skippedDetails = []; // { loanId, clientId, clientName } — returned to frontend
 
   if (origin === "ldf") {
     const promise = await new Promise(async (resolve) => {
       const response = await Promise.all(
         loanData.map(async (loan) => {
           const loanId = loan._id;
+          const currentDate = loan.currentDate || moment(getCurrentDateV2()).format("YYYY-MM-DD");
           logger.debug({ page: `LDF Approved Loan: ${loanId}` });
           delete loan._id;
           delete loan.loanOfficer;
@@ -117,10 +120,20 @@ async function processData(req, res) {
           });
 
           if (active.length > 0) {
-            const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
-            errorMsg.push(error);
+              const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
+              errorMsg.push(error);
           } else {
-            await updateLoan(loanId, loan, addToMutationList);
+              loan.ldfApproved     = true;
+              loan.ldfApprovedDate = currentDate;
+              await updateLoan(loanId, loan, addToMutationList);
+
+              sendLoanReleasedSMS({
+                  contactNumber: loan.contactNumber || loan.client?.contactNumber,
+                  firstName:     loan.fullName?.split(',')[1]?.trim() || loan.client?.firstName || 'Client',
+                  amountRelease: loan.amountRelease,
+                  loanCycle:     loan.loanCycle,
+                  branchName:    loan.branchName || 'our branch',
+              }).catch(e => console.error('[LDF] SMS error:', e.message));
           }
         })
       );
@@ -129,12 +142,8 @@ async function processData(req, res) {
     });
 
     if (promise) {
-
       if(mutationList.length && errorMsg.length == 0) {
-
-        await graph.mutation(
-          ... mutationList,
-        );
+        await graph.mutation(... mutationList);
       }
 
       response = {
@@ -170,6 +179,26 @@ async function processData(req, res) {
           delete loan.pendings;
           delete loan.origin;
           delete loan.hasActiveLoan;
+          delete loan.hasTdaLoan;
+          delete loan.transactionClosed;
+          delete loan.selected;
+          delete loan.profile;
+          delete loan.clientName;
+          delete loan.branch;
+          delete loan.client;
+          delete loan.loanOfficer;
+          delete loan.group;
+          delete loan.selected;
+          delete loan.profile;
+          delete loan.principalLoanStr;
+          delete loan.mcbuStr;
+          delete loan.activeLoanStr;
+          delete loan.loanBalanceStr;
+          delete loan.loanReleaseStr;
+          delete loan.allowApproved;
+          delete loan.hasActiveLoan;
+          delete loan.hasTdaLoan;
+          delete loan.transactionClosed;
 
           let groupData = await checkGroupStatus(loan.groupId);
           if (groupData.length > 0) {
@@ -214,9 +243,26 @@ async function processData(req, res) {
               loan.endDate = getEndDate(currentDate, loan.loanTerms);
 
               await updateLoan(loanId, { ... loan }, addToMutationList);
-              
+
               loan._id = loanId;
-              
+
+              // FIX: skip-tracking moved here — this is the branch actually
+              // used by DisbursementPhotoModal (origin: 'application')
+              if (skippedClientIds.includes(loan.clientId)) {
+                  logger.debug({
+                      page: 'Disbursement — Face Verification Skipped',
+                      message: 'Client face verification skipped: legacy client, no promoted temporaryLoanApplications record.',
+                      loanId: loanId,
+                      clientId: loan.clientId,
+                      approvedBy: req?.auth?.sub,
+                  });
+                  skippedDetails.push({
+                      loanId: loanId,
+                      clientId: loan.clientId,
+                      clientName: loan.fullName || null,
+                  });
+              }
+
               await saveCashCollection(loan, groupData, currentDate, addToMutationList);
               if (isNotificationEnabledFlag) {
                 await createLoanApprovalNotification(loan, loanId, req?.auth?.sub);
@@ -236,10 +282,7 @@ async function processData(req, res) {
     );
 
     if(mutationList.length && errorMsg.length == 0) {
-
-      await graph.mutation(
-        ... mutationList,
-      );
+      await graph.mutation(... mutationList);
     }
 
     if (result) {
@@ -247,6 +290,7 @@ async function processData(req, res) {
         success: true,
         withError: errorMsg.length > 0,
         errorMsg: errorMsg,
+        skippedFaceVerification: skippedDetails, // ← now returned on the branch actually used
       };
     }
   }
@@ -258,7 +302,7 @@ async function updateLoan(loanId, loan, addToMutationList) {
   addToMutationList(alias => updateQl(loanType(alias), {
     set: filterGraphFields(LOAN_FIELDS, { 
       ...loan, 
-      coMaker: loan.coMaker + "",
+      coMaker: loan.coMaker ? loan.coMaker.toString() : null,
       ldfApprovedDate: loan.ldfApprovedDate || null,
     }),
     where: { _id: { _eq: loanId } },

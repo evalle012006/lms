@@ -7,26 +7,77 @@ import { setUser } from '@/redux/actions/userActions';
 export { RouteGuard };
 
 function RouteGuard({ children }) {
-    const dispatch = useDispatch();
+    const dispatch  = useDispatch();
     const userState = useSelector(state => state.user.data);
-    const mounted = useRef(false);
-    const router = useRouter();
+    const mounted   = useRef(false);
+    const router    = useRouter();
     const [authorized, setAuthorized] = useState(false);
     const { redirect } = router.query;
 
     useEffect(() => {
         mounted.current = true;
-        function authCheck(url) {
-            const publicPaths = process.env.NEXT_PUBLIC_PATHS.split(',');
-            const path = url.split('?')[0];
-            const user = userService.userValue;
 
-            if (!user && !publicPaths.includes(path)) {
+        function authCheck(url) {
+            const publicPaths    = process.env.NEXT_PUBLIC_PATHS.split(',');
+            const path           = url.split('?')[0];
+            const publicPrefixes = ['/apply/', '/biometric-verify/'];
+
+            const isPublicPath = publicPaths.includes(path) ||
+                publicPrefixes.some(prefix => path.startsWith(prefix));
+
+            // Unwrap userService value shape:
+            // After login  → { success, user: { _id, root, biometricCredentialId, ... } }
+            // After reload  → plain user object from localStorage
+            let rawUser = userService.userValue;
+            const user = (rawUser && rawUser.hasOwnProperty('user'))
+                ? rawUser.user
+                : rawUser;
+
+            // FIX: read biometricCredentialId directly from localStorage as source of truth.
+            // userService.userValue shape is inconsistent after reload (login wraps in
+            // { success, user } but update() merges flat) causing biometricCredentialId
+            // to be lost on window.location.reload(). localStorage always has the latest value.
+            const getStoredBiometric = () => {
+                try {
+                    const raw = localStorage.getItem('acuser');
+                    if (!raw) return null;
+                    const parsed = JSON.parse(raw);
+                    // Handle both flat { biometricCredentialId } and nested { user: { biometricCredentialId } }
+                    return parsed?.biometricCredentialId
+                        || parsed?.user?.biometricCredentialId
+                        || null;
+                } catch { return null; }
+            };
+
+            const biometricCredentialId = userState?.biometricCredentialId
+                || user?.biometricCredentialId
+                || getStoredBiometric();
+
+            // Paths that bypass the biometric check
+            const biometricBypassPaths = ['/biometric-setup', '/logout'];
+            const bypassBiometric = biometricBypassPaths.includes(path) || isPublicPath;
+
+            if (!user && !isPublicPath) {
                 setAuthorized(false);
+                // FIX: router.asPath returns template '/laf/[ciCode]' before hydration.
+                // window.location.pathname always has the real resolved path.
+                const redirectPath = typeof window !== 'undefined'
+                    ? window.location.pathname + window.location.search
+                    : router.asPath;
                 router.push({
                     pathname: '/login',
-                    // query: { returnUrl: router.asPath }
+                    query: { redirect: redirectPath },
                 });
+            } else if (
+                user &&
+                !biometricCredentialId &&
+                !user.root &&
+                !user.biometricSkipped &&
+                !bypassBiometric
+            ) {
+                // Authenticated but no biometric and not skipped — force setup
+                setAuthorized(false);
+                router.replace('/biometric-setup');
             } else {
                 setAuthorized(true);
             }
@@ -34,7 +85,9 @@ function RouteGuard({ children }) {
 
         function setUserState() {
             if (userService.userValue) {
-                const userData = Object.keys(userState).length > 0 ? userState : userService.userValue;
+                const userData = Object.keys(userState).length > 0
+                    ? userState
+                    : userService.userValue;
                 dispatch(setUser(userData));
             }
         }
@@ -50,9 +103,8 @@ function RouteGuard({ children }) {
             router.events.off('routeChangeStart', hideContent);
             router.events.off('routeChangeComplete', authCheck);
             mounted.current = false;
-        }
+        };
     }, [userState]);
-
 
     return (authorized && children);
 }

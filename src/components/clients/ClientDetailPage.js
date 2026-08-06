@@ -42,7 +42,6 @@ import { formatPricePhp, checkFileSize } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import { setClient } from "@/redux/actions/clientActions";
 import PaymentHistoryModal from "./PaymentHistoryModal";
-// ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
 import { GraduationCap } from 'lucide-react';
@@ -52,7 +51,6 @@ const ClientDetailPage = () => {
     const dispatch = useDispatch();
     const client = useSelector(state => state.client.data);
     
-    // Local state for loan data instead of Redux
     const [loanList, setLoanList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [guarantorName, setGuarantorName] = useState('');
@@ -60,30 +58,26 @@ const ClientDetailPage = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [showAddLoanDrawer, setShowAddLoanDrawer] = useState(false);
     const [showUpdateClientDrawer, setShowUpdateClientDrawer] = useState(false);
-
-    // ✅ Removed: imageError + imageSrc states (handled by PrivateImage / useSignedUrl)
-    
-    // Payment History Modal state
     const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
     const [selectedLoanForHistory, setSelectedLoanForHistory] = useState(null);
-    
-    // Image preview state
     const [showImagePreview, setShowImagePreview] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     
     const fileInputRef = useRef(null);
 
-    // ✅ Get signed URL for the full-screen preview modal
-    const { signedUrl: profileSignedUrl } = useSignedUrl(client?.profile);
+    // ── FIX: signed URLs for all client photos ────────────────────────────
+    const { signedUrl: profileSignedUrl }     = useSignedUrl(client?.profile                 || null);
+    const { signedUrl: govIdPhotoUrl }        = useSignedUrl(client?.governmentIdPhotoKey    || null);
+    const { signedUrl: selfieWithIdUrl }      = useSignedUrl(client?.selfieWithIdPhotoKey    || null);
+    // disbursementPhotoKey lives on the loan record — resolved after activeLoan is set
+    const { signedUrl: disbursementPhotoUrl } = useSignedUrl(activeLoan?.disbursementPhotoKey || null);
 
-    // Fetch client details (including loans) when client changes
     useEffect(() => {
         if (client?._id) {
             getClientDetails();
         }
     }, [client?._id]);
 
-    // API function to get client details and loan data
     const getClientDetails = async () => {
         if (!client?._id) return;
         
@@ -95,7 +89,6 @@ const ClientDetailPage = () => {
             if (response.success) {
                 let loanData = [];
                 
-                // Process loan data from API response
                 if (response.client && response.client.length > 0) {
                     response.client.forEach(clientItem => {
                         if (clientItem.loans && clientItem.loans.length > 0) {
@@ -110,7 +103,6 @@ const ClientDetailPage = () => {
                     });
                 }
                 
-                // Sort loans by loanCycle in descending order (latest first)
                 loanData.sort((a, b) => (b.loanCycle || 0) - (a.loanCycle || 0));
                 setLoanList(loanData);
             }
@@ -130,13 +122,11 @@ const ClientDetailPage = () => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // Check file size (max 5MB)
         if (!checkFileSize(file, 5)) {
             toast.error('File size must be less than 5MB');
             return;
         }
 
-        // Check file type
         if (!file.type.startsWith('image/')) {
             toast.error('Please select an image file');
             return;
@@ -144,7 +134,6 @@ const ClientDetailPage = () => {
 
         setLoading(true);
         try {
-            // Step 1: Upload file to /api/upload
             const formData = new FormData();
             formData.append('file', file);
             formData.append('origin', 'clients');
@@ -161,12 +150,10 @@ const ClientDetailPage = () => {
 
             const uploadResult = await uploadResponse.json();
             
-            // ✅ API now returns fileKey (storage path), not a public URL
             if (!uploadResult.fileKey) {
                 throw new Error('No file key returned');
             }
 
-            // Step 2: Prepare sanitized client data for update
             const sanitizedClientData = {
                 _id: client._id,
                 firstName: client.firstName,
@@ -186,7 +173,7 @@ const ClientDetailPage = () => {
                 groupId: client.groupId,
                 groupName: client.groupName || '',
                 ciName: client.ciName || '',
-                profile: uploadResult.fileKey,  // ✅ store key, not public URL
+                profile: uploadResult.fileKey,
                 delinquent: client.delinquent === true,
                 duplicate: client.duplicate === true,
                 groupLeader: client.groupLeader === true,
@@ -197,14 +184,12 @@ const ClientDetailPage = () => {
                 sanitizedClientData.archivedBy = client.archivedBy;
             }
 
-            // Step 3: Update client record
             const updateResponse = await fetchWrapper.sendData(
                 getApiBaseUrl() + 'clients/', 
                 sanitizedClientData
             );
 
             if (updateResponse.success) {
-                // ✅ Update Redux with the fileKey — PrivateImage will fetch the signed URL
                 dispatch(setClient({ ...client, profile: uploadResult.fileKey }));
                 toast.success('Photo successfully updated.');
             } else {
@@ -221,7 +206,6 @@ const ClientDetailPage = () => {
         }
     };
 
-    // Handle View Payment History
     const handleViewPaymentHistory = (loan) => {
         setSelectedLoanForHistory(loan);
         setShowPaymentHistoryModal(true);
@@ -232,20 +216,14 @@ const ClientDetailPage = () => {
         setSelectedLoanForHistory(null);
     };
 
-    // Status pill component for loan status
     const LoanStatusPill = ({ status }) => {
         const getStatusStyle = (status) => {
             switch (status?.toLowerCase()) {
-                case 'pending':
-                    return 'bg-yellow-100 text-yellow-800';
-                case 'completed':
-                    return 'bg-green-100 text-green-800';
-                case 'closed':
-                    return 'bg-gray-100 text-gray-800';
-                case 'active':
-                    return 'bg-blue-100 text-blue-800';
-                default:
-                    return 'bg-gray-100 text-gray-800';
+                case 'pending':   return 'bg-yellow-100 text-yellow-800';
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'closed':    return 'bg-gray-100 text-gray-800';
+                case 'active':    return 'bg-blue-100 text-blue-800';
+                default:          return 'bg-gray-100 text-gray-800';
             }
         };
 
@@ -256,23 +234,21 @@ const ClientDetailPage = () => {
         );
     };
 
-    // Boolean badge component
-    const BooleanBadge = ({ value, trueLabel = 'Yes', falseLabel = 'No', trueColor = 'green', falseColor = 'gray' }) => {
+    const BooleanBadge = ({ value, trueLabel = 'Yes', falseLabel = 'No', trueColor = 'green' }) => {
         const colorClasses = {
-            green: value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600',
-            red: value ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600',
+            green:  value ? 'bg-green-100 text-green-800'   : 'bg-gray-100 text-gray-600',
+            red:    value ? 'bg-red-100 text-red-800'       : 'bg-gray-100 text-gray-600',
             yellow: value ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600',
-            blue: value ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600',
+            blue:   value ? 'bg-blue-100 text-blue-800'     : 'bg-gray-100 text-gray-600',
         };
         
         return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value ? colorClasses[trueColor].split(' ')[0] + ' ' + colorClasses[trueColor].split(' ')[1] : 'bg-gray-100 text-gray-600'}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClasses[trueColor]}`}>
                 {value ? trueLabel : falseLabel}
             </span>
         );
     };
 
-    // Tab configurations
     const tabs = [
         { id: 'overview',   label: 'Overview',      icon: UserIcon },
         { id: 'loans',      label: 'Loan History',  icon: CurrencyDollarIcon },
@@ -280,14 +256,12 @@ const ClientDetailPage = () => {
         { id: 'programs',   label: 'Programs',      icon: GraduationCap },
     ];
 
-    // Process guarantor name and active loan when loanList changes
     useEffect(() => {
         if (loanList && loanList.length > 0) {
-            // Find active loan first, if none found, get the most recent (first after sorting)
             const currentActiveLoan = loanList.find(loan => loan.status === 'active') || loanList[0];
             
             if (currentActiveLoan) {
-                const firstName = currentActiveLoan.guarantorFirstName || '';
+                const firstName  = currentActiveLoan.guarantorFirstName || '';
                 const middleName = (currentActiveLoan.guarantorMiddleName && currentActiveLoan.guarantorMiddleName?.trim().length > 0 && currentActiveLoan.guarantorMiddleName !== '.') 
                     ? ` ${currentActiveLoan.guarantorMiddleName.charAt(0)}.` 
                     : '';
@@ -301,7 +275,6 @@ const ClientDetailPage = () => {
         }
     }, [loanList]);
 
-    // Helper function to format full address
     const formatFullAddress = () => {
         const parts = [
             client?.addressStreetNo,
@@ -314,16 +287,13 @@ const ClientDetailPage = () => {
         return parts.length > 0 ? parts.join(', ') : (client?.address || '-');
     };
 
-    // Helper function to calculate age from birthdate
     const calculateAge = (birthdate) => {
         if (!birthdate) return '-';
         const years = moment().diff(moment(birthdate), 'years');
         return years > 0 ? years : '-';
     };
 
-    // Image preview handlers
     const handleOpenImagePreview = () => {
-        // ✅ Check client.profile (key) instead of imageSrc state
         if (client?.profile) {
             setShowImagePreview(true);
             setZoomLevel(1);
@@ -335,18 +305,12 @@ const ClientDetailPage = () => {
         setZoomLevel(1);
     };
 
-    const handleZoomIn = () => {
-        setZoomLevel(prev => Math.min(prev + 0.25, 3));
-    };
+    const handleZoomIn  = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
 
-    const handleZoomOut = () => {
-        setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
-    };
-
-    // Get slot number from active loan or client
     const getSlotNumber = () => {
         if (activeLoan?.slotNo) return activeLoan.slotNo;
-        if (client?.slotNo) return client.slotNo;
+        if (client?.slotNo)    return client.slotNo;
         return '-';
     };
 
@@ -364,7 +328,6 @@ const ClientDetailPage = () => {
             <div className="bg-white border-b border-gray-200">
                 <div className="px-6 py-6">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-                        {/* Client Info */}
                         <div className="flex items-start space-x-4">
                             {/* Profile Image */}
                             <div className="relative group">
@@ -372,7 +335,6 @@ const ClientDetailPage = () => {
                                     className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg cursor-pointer"
                                     onClick={handleOpenImagePreview}
                                 >
-                                    {/* ✅ PrivateImage fetches a signed URL automatically */}
                                     <PrivateImage
                                         src={client.profile}
                                         alt={`${client.firstName} ${client.lastName}`}
@@ -557,23 +519,13 @@ const ClientDetailPage = () => {
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Group Leader</label>
                                         <p className="mt-1">
-                                            <BooleanBadge 
-                                                value={client.groupLeader} 
-                                                trueLabel="Yes" 
-                                                falseLabel="No"
-                                                trueColor="yellow"
-                                            />
+                                            <BooleanBadge value={client.groupLeader} trueLabel="Yes" falseLabel="No" trueColor="yellow" />
                                         </p>
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Delinquent</label>
                                         <p className="mt-1">
-                                            <BooleanBadge 
-                                                value={client.delinquent} 
-                                                trueLabel="Yes" 
-                                                falseLabel="No"
-                                                trueColor="red"
-                                            />
+                                            <BooleanBadge value={client.delinquent} trueLabel="Yes" falseLabel="No" trueColor="red" />
                                         </p>
                                     </div>
                                     <div>
@@ -585,12 +537,7 @@ const ClientDetailPage = () => {
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Archived</label>
                                         <p className="mt-1">
-                                            <BooleanBadge 
-                                                value={client.archived} 
-                                                trueLabel="Yes" 
-                                                falseLabel="No"
-                                                trueColor="red"
-                                            />
+                                            <BooleanBadge value={client.archived} trueLabel="Yes" falseLabel="No" trueColor="red" />
                                         </p>
                                     </div>
                                 </div>
@@ -732,7 +679,7 @@ const ClientDetailPage = () => {
                     </div>
                 )}
 
-                {/* Loans Tab */}
+                {/* Loans Tab — unchanged */}
                 {activeTab === 'loans' && (
                     <div className="bg-white rounded-lg border border-gray-200">
                         <div className="p-6 border-b border-gray-200">
@@ -746,9 +693,7 @@ const ClientDetailPage = () => {
                         </div>
                         <div className="p-6">
                             {loading ? (
-                                <div className="flex justify-center py-8">
-                                    <Spinner />
-                                </div>
+                                <div className="flex justify-center py-8"><Spinner /></div>
                             ) : loanList.length > 0 ? (
                                 <div className="overflow-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
@@ -811,21 +756,73 @@ const ClientDetailPage = () => {
                     </div>
                 )}
 
-                {/* Documents Tab */}
+                {/* ── FIX: Documents Tab — now shows all client photos ──────────────── */}
                 {activeTab === 'documents' && (
                     <div className="bg-white rounded-lg border border-gray-200">
                         <div className="p-6 border-b border-gray-200">
                             <div className="flex items-center">
-                                <DocumentTextIcon className="w-5 h-5 text-gray-400 mr-2" />
-                                <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+                                <CameraIcon className="w-5 h-5 text-gray-400 mr-2" />
+                                <h3 className="text-lg font-semibold text-gray-900">Client Photos</h3>
                             </div>
                         </div>
                         <div className="p-6">
-                            <div className="text-center py-8">
-                                <DocumentTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No documents</h3>
-                                <p className="text-gray-500">No documents uploaded for this client.</p>
+                            {/* Government ID info banner */}
+                            {(client?.governmentIdType || client?.governmentIdNumber) && (
+                                <div className="mb-5 p-3 bg-teal-50 border border-teal-200 rounded-xl
+                                    flex items-center gap-3">
+                                    <ShieldCheckIcon className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                                    <div className="text-xs text-teal-700">
+                                        <span className="font-semibold">Government ID: </span>
+                                        {client.governmentIdType?.toUpperCase()}
+                                        {client.governmentIdNumber ? ` · ${client.governmentIdNumber}` : ''}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Photo grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                                {/* Profile / LAF photo — always show */}
+                                <PhotoCard
+                                    label="Profile Photo"
+                                    sublabel="Captured at LAF"
+                                    url={profileSignedUrl}
+                                />
+
+                                {/* Government ID photo */}
+                                <PhotoCard
+                                    label="Government ID"
+                                    sublabel={client?.governmentIdType
+                                        ? `${client.governmentIdType.toUpperCase()}${client.governmentIdNumber ? ` · ${client.governmentIdNumber}` : ''}`
+                                        : null}
+                                    url={govIdPhotoUrl}
+                                />
+
+                                {/* Selfie with ID */}
+                                <PhotoCard
+                                    label="Selfie with ID"
+                                    sublabel="Captured at LAF"
+                                    url={selfieWithIdUrl}
+                                />
+
+                                {/* Disbursement photo — from active/latest loan */}
+                                <PhotoCard
+                                    label="Disbursement Photo"
+                                    sublabel={activeLoan?.disbursementPhotoAt
+                                        ? moment(activeLoan.disbursementPhotoAt).format('MMM D, YYYY')
+                                        : activeLoan ? 'Not yet captured' : 'No loan on record'}
+                                    url={disbursementPhotoUrl}
+                                />
                             </div>
+
+                            {/* Empty state — no photos at all */}
+                            {!client?.profile && !client?.governmentIdPhotoKey
+                                && !client?.selfieWithIdPhotoKey
+                                && !activeLoan?.disbursementPhotoKey && (
+                                <div className="mt-6 text-center py-8 text-gray-400">
+                                    <CameraIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                                    <p className="text-sm">No photos on record for this client.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -842,7 +839,7 @@ const ClientDetailPage = () => {
                 loan={selectedLoanForHistory}
             />
 
-            {/* Image Preview Modal */}
+            {/* Profile Image Preview Modal — unchanged */}
             {showImagePreview && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
@@ -862,7 +859,6 @@ const ClientDetailPage = () => {
                                     <XMarkIcon className="w-6 h-6" />
                                 </button>
                             </div>
-                            {/* ✅ Use signed URL for the raw <img> in the preview modal */}
                             <img
                                 src={profileSignedUrl || placeholder.src}
                                 alt="Client Profile"

@@ -160,7 +160,17 @@ const normUrl = (u) => {
   const s = String(u);
   // Hash-only URLs are parent menu anchors — keep them unique so they never match a real path
   if (s.startsWith('#')) return s;
-  return s.split('?')[0].replace(/\/$/, '') || '/';
+
+  const [pathAndQuery] = s.split('#');       // drop hash fragment
+  const [rawPath, rawQuery] = pathAndQuery.split('?');
+  const path = rawPath.replace(/\/$/, '') || '/';
+
+  if (!rawQuery) return path;
+
+  const params = new URLSearchParams(rawQuery);
+  params.sort(); // stable ordering regardless of param sequence
+  const qs = params.toString();
+  return qs ? `${path}?${qs}` : path;
 };
 
 // Menu configuration
@@ -248,8 +258,20 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: ["admin", "branch_manager", "loan_officer"],
+        roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager", "loan_officer"],
         subMenuItems: [
+            {
+                label: "CI Investigation",
+                url: "/transactions/ci-investigation",
+                icon: {
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+            },
             {
                 label: "Prospect Clients",
                 url: "/clients?status=pending",
@@ -1321,7 +1343,8 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
       {/* Mobile menu toggle */}
       {isMobile && (
         <button
-          className="fixed top-4 right-4 z-50 bg-main p-2 rounded-md transition-all duration-300 ease-in-out"
+          className="fixed top-4 right-4 z-[60] bg-main p-2 rounded-md transition-all duration-300 ease-in-out"
+          style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
           onClick={toggleNav}
           aria-label="Toggle menu"
         >
@@ -1333,11 +1356,21 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
         </button>
       )}
 
+      {/* Safari-compatible backdrop — tapping outside closes nav */}
+      {isMobile && isVisible && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-[54]"
+          onClick={toggleNav}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
-      <div className={`bg-main fixed top-0 left-0 h-full overflow-y-auto transition-all duration-300 ease-in-out transform z-50 
+      <div className={`bg-main fixed top-0 left-0 h-full overflow-y-auto transition-all duration-300 ease-in-out transform z-[55] 
         ${isVisible || !isMobile ? 'translate-x-0' : '-translate-x-full'}
-        ${isCollapsed && !isMobile ? 'w-16' : 'w-64'}
-      `}>
+        ${isCollapsed && !isMobile ? 'w-16' : 'w-64'}`}
+        style={{ height: '100dvh', WebkitOverflowScrolling: 'touch' }}
+      >
         
         {/* Header */}
         <div className={`relative py-4 border-b border-gray-200 ${isCollapsed ? 'px-2' : 'px-4'}`}>

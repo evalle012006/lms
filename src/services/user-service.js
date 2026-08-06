@@ -14,7 +14,15 @@ export const userService = {
     get userValue() { return userSubject.value },
     login,
     logout,
-    update
+    update,
+    loginDirect,
+}
+
+function loginDirect(user) {
+    // Same as what login() does internally after password verification
+    localStorage.setItem('acuser', JSON.stringify(user));
+    localStorage.setItem('api_version', user?.__api_version ?? '');
+    userSubject.next({ success: true, user }); // ← this is what was missing
 }
 
 function login(username, password) {

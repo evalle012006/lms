@@ -15,9 +15,9 @@ async function checkPNNumber(req, res) {
 
   const loans = (await graph.query(queryQl(loansType, {
     where: {
-      branchId: { _eq: branchId },
-      pnNumber: { _eq: pnNumber },
-      status: { _eq: 'active' },
+        branchId: { _eq: branchId },
+        pnNumber: { _eq: pnNumber },
+        status: { _in: ['pending', 'active'] },
     }
   })))?.data?.loans;
 

@@ -62,14 +62,16 @@ async function save(req, res) {
     } else {
         const loans = await db
             .collection('loans')
-            .find({ clientId: loanData.clientId, status: 'active' })
+            .find({ clientId: loanData.clientId, status: { $in: ['active', 'pending'] } })
             .toArray();
 
         if (loans.length > 0 && mode !== 'advance') {
             response = {
                 error: true,
                 fields: ['clientId'],
-                message: `Client ${loanData.fullName} already have an active loan`
+                message: loans[0].status === 'pending'
+                    ? `Client ${loanData.fullName} already has a pending loan application. Cannot add another.`
+                    : `Client ${loanData.fullName} already has an active loan.`
             };
         } else {
             let finalData = {...loanData};

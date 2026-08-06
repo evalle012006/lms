@@ -23,6 +23,7 @@ import {
   ShieldExclamationIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { Clock1Icon } from 'lucide-react';
 
 const ModernInput = ({ 
   name, 
@@ -160,6 +161,11 @@ const TransactionsSettingsPage = (props) => {
         minWeeklyMcbuWithdrawal:  transactionState.minWeeklyMcbuWithdrawal  ?? 1000,
         minDailyMcbuWithdrawalGL:  transactionState.minDailyMcbuWithdrawalGL  ?? 3000,
         minWeeklyMcbuWithdrawalGL: transactionState.minWeeklyMcbuWithdrawalGL ?? 3000,
+
+        enableLdfApprovalRestriction:  transactionState.enableLdfApprovalRestriction  ?? false,
+        ldfApprovalCutoffTime:         transactionState.ldfApprovalCutoffTime         || '17:00',
+        enableLoanApprovalRestriction: transactionState.enableLoanApprovalRestriction ?? false,
+        loanApprovalCutoffTime:        transactionState.loanApprovalCutoffTime        || '17:00',
     }
 
     const validationSchema = yup.object().shape({
@@ -206,6 +212,9 @@ const TransactionsSettingsPage = (props) => {
         minWeeklyMcbuWithdrawal:  yup.number().min(0, 'Cannot be negative').required('Required'),
         minDailyMcbuWithdrawalGL:  yup.number().min(0, 'Cannot be negative').required('Required'),
         minWeeklyMcbuWithdrawalGL: yup.number().min(0, 'Cannot be negative').required('Required'),
+
+        ldfApprovalCutoffTime:  yup.string().matches(/^\d{2}:\d{2}$/, 'Invalid time format').required('Required'),
+        loanApprovalCutoffTime: yup.string().matches(/^\d{2}:\d{2}$/, 'Invalid time format').required('Required'),
     });
 
     const handleUpdate = async (values, action) => {
@@ -636,6 +645,77 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.mcbuCsfMinimumBalance && errors.mcbuCsfMinimumBalance}
                                                 required
                                             />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Approval Restrictions Card */}
+                                <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                    <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
+                                        <div className="flex items-center">
+                                            <ClockIcon className="h-6 w-6 text-white mr-3" />
+                                            <h2 className="text-xl font-semibold text-white">Approval Restrictions</h2>
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                            {/* LDF Approval */}
+                                            <div className="p-4 border border-gray-200 rounded-xl space-y-4">
+                                                <h3 className="font-semibold text-gray-700">LDF Approval</h3>
+                                                <div className="p-4 bg-gray-50 rounded-xl">
+                                                    <ModernToggle
+                                                        name="enableLdfApprovalRestriction"
+                                                        value={values.enableLdfApprovalRestriction}
+                                                        label="Enable Time Restriction"
+                                                        description="Block LDF approvals after the cutoff time"
+                                                        onChange={handleChange}
+                                                        setFieldValue={setFieldValue}
+                                                    />
+                                                </div>
+                                                {values.enableLdfApprovalRestriction && (
+                                                    <ModernInput
+                                                        name="ldfApprovalCutoffTime"
+                                                        value={values.ldfApprovalCutoffTime}
+                                                        label="Cutoff Time (24hr)"
+                                                        icon={Clock1Icon}
+                                                        type="time"
+                                                        onChange={handleChange}
+                                                        setFieldValue={setFieldValue}
+                                                        errors={touched.ldfApprovalCutoffTime && errors.ldfApprovalCutoffTime}
+                                                        required
+                                                    />
+                                                )}
+                                            </div>
+
+                                            {/* Loan Approval */}
+                                            <div className="p-4 border border-gray-200 rounded-xl space-y-4">
+                                                <h3 className="font-semibold text-gray-700">Loan Approval</h3>
+                                                <div className="p-4 bg-gray-50 rounded-xl">
+                                                    <ModernToggle
+                                                        name="enableLoanApprovalRestriction"
+                                                        value={values.enableLoanApprovalRestriction}
+                                                        label="Enable Time Restriction"
+                                                        description="Block loan approvals after the cutoff time"
+                                                        onChange={handleChange}
+                                                        setFieldValue={setFieldValue}
+                                                    />
+                                                </div>
+                                                {values.enableLoanApprovalRestriction && (
+                                                    <ModernInput
+                                                        name="loanApprovalCutoffTime"
+                                                        value={values.loanApprovalCutoffTime}
+                                                        label="Cutoff Time (24hr)"
+                                                        icon={Clock1Icon}
+                                                        type="time"
+                                                        onChange={handleChange}
+                                                        setFieldValue={setFieldValue}
+                                                        errors={touched.loanApprovalCutoffTime && errors.loanApprovalCutoffTime}
+                                                        required
+                                                    />
+                                                )}
+                                            </div>
+
                                         </div>
                                     </div>
                                 </div>

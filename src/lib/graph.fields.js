@@ -22,6 +22,13 @@ export const USER_FIELDS = `
   areaId
   regionId
   divisionId
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
+  loginAttempts
+  lockedUntil
   `;
 
 export const BRANCH_FIELDS = `
@@ -36,6 +43,7 @@ export const BRANCH_FIELDS = `
   regionId
   divisionId
   lockTransaction
+  clientFlowVersion
   `;
 
 export const CLIENT_FIELDS = `
@@ -65,13 +73,38 @@ export const CLIENT_FIELDS = `
   addressProvince
   addressStreetNo
   addressZipCode
-  ciName,
-  groupLeader,
-  duplicate,
-  similarityScore,
-  archived,
-  archivedBy,
-  archivedDate,
+  ciName
+  groupLeader
+  duplicate
+  similarityScore
+  archived
+  archivedBy
+  archivedDate
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
+  biometricUpdateRequestedAt
+  biometricUpdateRequestedBy
+  biometricUpdateApprovedAt
+  biometricUpdateApprovedBy
+  governmentIdType
+  governmentIdNumber
+  governmentIdPhotoKey
+  selfieWithIdPhotoKey
+  landmark
+  distanceFromBranch
+  faceTemplate
+  faceEnrolledAt
+  mergedIntoClientId
+  mergedAt
+  mergedBy
+  civilStatus
+  yearsOfStay
+  business
+  dailyIncome
+  livenessScore
   `;
 
 export const LOAN_FIELDS = `
@@ -174,6 +207,30 @@ export const LOAN_FIELDS = `
   preApprovedDate
   editHistory
   bmRevertCount
+  guarantorDuplicate
+  guarantorDuplicateReason
+  coMakerPending
+  coMakerPendingName
+  coMakerDuplicate
+  disbursementPhotoKey
+  disbursementPhotoAt
+  ldfApprovedBy
+  clientBiometricVerified
+  clientBiometricVerifiedAt
+  faceVerified
+  faceVerifiedAt
+  faceMatchScore
+  guarantorPhotoKey
+  guarantorIdPhotoKey
+  guarantorIsClient
+  guarantorClientId
+  guarantorDuplicateNote
+  ciReferenceCode
+  guarantorBirthDate
+  guarantorCivilStatus
+  guarantorBusiness
+  guarantorDailyIncome
+  guarantorAddress
   `;
 
 export const GROUP_FIELDS = `
@@ -193,6 +250,10 @@ export const GROUP_FIELDS = `
   time
   dayNo
   loanOfficerName
+  qrToken
+  qrGeneratedAt
+  qrExpiresAt
+  qrGeneratedBy
   `;
 
 export const HOLIDAY_FIELDS = `
@@ -215,6 +276,15 @@ export const SETTINGS_FIELDS = `
   companyPhoneNumber
   superPwd
   enableNotifications
+  allowLoCI
+  requireClientBiometric
+  requireGovernmentId
+  requireSelfieWithId
+  smsEnabled
+  ciQuestions
+  requireStaffBiometric
+  qrAllowedStartTime
+  qrAllowedEndTime
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -243,6 +313,10 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   minWeeklyMcbuWithdrawal
   minDailyMcbuWithdrawalGL
   minWeeklyMcbuWithdrawalGL
+  enableLdfApprovalRestriction
+  ldfApprovalCutoffTime
+  enableLoanApprovalRestriction
+  loanApprovalCutoffTime
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
@@ -702,6 +776,137 @@ export const UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS = `
   inserted_date
   modified_by
   modified_date
+`;
+
+export const TEMP_LOAN_APP_FIELDS = `
+  _id
+  ciReferenceCode
+  branchId
+  firstName
+  lastName
+  middleName
+  birthdate
+  contactNumber
+  address
+  addressStreetNo
+  addressBarangayDistrict
+  addressMunicipalityCity
+  addressProvince
+  addressZipCode
+  loanAmount
+  loanPurpose
+  guarantorFirstName
+  guarantorLastName
+  guarantorRelationship
+  guarantorContactNumber
+  guarantorBirthDate
+  guarantorCivilStatus
+  guarantorBusiness
+  guarantorDailyIncome
+  lafPhotoKey
+  status
+  promotedClientId
+  submittedAt
+  expiresAt
+  dateAdded
+  biometricCredentialId
+  biometricPublicKey
+  biometricCounter
+  biometricRegisteredAt
+  biometricDeviceName
+  assignedTo
+  assignedAt
+  assignedByName
+  governmentIdType
+  governmentIdNumber
+  governmentIdPhotoKey
+  selfieWithIdPhotoKey
+  landmark
+  distanceFromBranch
+  clientType
+  existingClientId
+  existingLoanId
+  groupId
+  loId
+  isOffline
+  syncedAt
+  idVerified
+  detailFlags
+  duplicateCandidateIds
+  isDuplicateFlagged
+  isBalikUnmatched
+  duplicateValidatedBy
+  duplicateValidatedAt
+  duplicateValidationNote
+  oldBranchId
+  oldGroupId
+  oldLoId
+  clientChanges
+  faceTemplate
+  faceEnrolledAt
+  livenessScore
+  promotedAt
+  civilStatus
+  yearsOfStay
+  business
+  dailyIncome
+  loanRelease
+  amountRelease
+  guarantorAddress
+`;
+
+export const CI_INVESTIGATION_FIELDS = `
+  _id
+  tempApplicationId
+  ciReferenceCode
+  findings
+  businessVerified
+  addressVerified
+  decision
+  declineReason
+  selfieKey
+  picUserId
+  picUserName
+  offlinePayload
+  syncedAt
+  investigatedAt
+  dateAdded
+  insertedBy
+  ciAnswers
+`;
+
+export const AUDIT_LOG_FIELDS = `
+  _id
+  timestamp
+  userId
+  userName
+  userRole
+  branchId
+  branchName
+  action
+  category
+  severity
+  entityType
+  entityId
+  description
+  beforeData
+  afterData
+  metadata
+  success
+  failReason
+  ipAddress
+  userAgent
+`;
+
+export const BIOMETRIC_REGISTRATION_TOKENS_FIELDS = `
+  _id
+  clientId
+  loanId
+  token
+  usedAt
+  expiresAt
+  createdAt
+  createdBy
 `;
 
 export const CLIENT_PROGRAM_FIELDS = `

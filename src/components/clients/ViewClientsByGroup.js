@@ -25,11 +25,18 @@ import {
     Search 
 } from 'lucide-react';
 import ClientSearchV2 from "./ClientSearchV2";
+import { useRouter } from "next/router";
 
-const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
+const ViewClientsByGroupPage = ({
+    groupId, status, client, setClientParent, setMode,
+    handleShowAddDrawer,
+    handleShowCoMakerDrawer
+}) => {
+    const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const list = useSelector(state => state.client.list);
     const [activeList, setActiveList] = useState();
     const [excludedList, setExcludedList] = useState();
@@ -442,11 +449,15 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const [duplicateColumns, setDuplicateColumns] = useState([]);
 
     const handleEditAction = (row) => {
-        setMode("edit");
-        let clientData = row;
-        setClientParent(clientData);
-        handleShowAddDrawer();
-    }
+        if (currentBranch?.clientFlowVersion === 'v1') {
+            setMode("edit");
+            let clientData = row;
+            setClientParent(clientData);
+            handleShowAddDrawer();
+        } else {
+            router.push(`/clients/edit/${row._id}`);
+        }
+    };
 
     const handleCoMakerAction = (row) => {
         let clientData = row;
