@@ -7,7 +7,7 @@ import { UserIcon, CreditCardIcon, ShieldCheckIcon } from '@heroicons/react/24/o
 
 import InputText    from '@/lib/ui/InputText';
 import InputNumber  from '@/lib/ui/InputNumber';
-import SelectDropdown from '@/lib/ui/select';
+import SelectDropdownV2 from '@/lib/ui/selectv2';
 import DatePicker2  from '@/lib/ui/DatePicker2';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
@@ -104,7 +104,7 @@ const LoanFormPanel = ({
                         setFieldValue={setFieldValue}
                         errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined}
                     />
-                    <SelectDropdown
+                    <SelectDropdownV2
                         name="loanTerms" field="loanTerms"
                         value={loanTerms}
                         label="Loan Terms"
