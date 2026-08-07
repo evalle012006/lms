@@ -13,6 +13,7 @@ const LOAN_TYPE = createGraphType('loans', `
     groupName
     slotNo
     loId
+    clientId
     guarantorFirstName
     guarantorLastName
     branchId
@@ -28,6 +29,7 @@ async function checkGuarantor(req, res) {
         guarantorFirstName,
         guarantorLastName,
         excludeLoanId = null,
+        clientId = null, // FIX: the applicant's own clientId — their own loan history must not count as a duplicate
     } = req.query;
 
     if (!branchId || !guarantorFirstName || !guarantorLastName) {
@@ -43,6 +45,12 @@ async function checkGuarantor(req, res) {
 
     if (excludeLoanId) {
         where._id = { _neq: excludeLoanId };
+    }
+
+    // FIX: exclude ALL of this client's own loans, not just the one being edited.
+    // A client reloaning with the same guarantor across cycles is not a duplicate.
+    if (clientId) {
+        where.clientId = { _neq: clientId };
     }
 
     const loans = await graph.query(

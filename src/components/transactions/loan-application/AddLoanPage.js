@@ -1378,6 +1378,7 @@ const AddLoanPage = ({
                                     guarantorFirstName: values.guarantorFirstName,
                                     guarantorLastName:  values.guarantorLastName,
                                     excludeLoanId:      targetLoanId,
+                                    clientId:           clientId || values.clientId || '', // FIX: exclude this client's own loan history
                                 })
                             );
                             if (checkRes.success && checkRes.count > 0) {
@@ -1682,6 +1683,7 @@ const AddLoanPage = ({
                                 setLoanTerms={setLoanTerms}
                                 groupOccurence={groupOccurence}
                                 groupLeader={groupLeader}
+                                clientId={clientId}
                                 clientType={clientType}
                                 selectedClientObj={selectedClientObj}
                                 offsetClient={offsetClient}

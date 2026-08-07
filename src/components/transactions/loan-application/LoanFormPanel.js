@@ -29,6 +29,7 @@ const LoanFormPanel = ({
     setLoanTerms,
     groupOccurence,
     groupLeader,
+    clientId,
     clientType,
     selectedClientObj,
     offsetClient,
@@ -65,13 +66,18 @@ const LoanFormPanel = ({
             try {
                 const res = await fetchWrapper.get(
                     getApiBaseUrl() + 'transactions/loans/check-guarantor?' +
-                    new URLSearchParams({ branchId, guarantorFirstName: firstName, guarantorLastName: lastName })
+                    new URLSearchParams({
+                        branchId,
+                        guarantorFirstName: firstName,
+                        guarantorLastName:  lastName,
+                        ...(clientId ? { clientId } : {}),
+                    })
                 );
                 if (res.success) setGuarantorWarning(res.count > 0 ? res : null);
             } catch (e) { console.error(e); }
             finally { setGuarantorChecking(false); }
         }, 50);
-    }, [values.guarantorFirstName, values.guarantorLastName, branchId]);
+    }, [values.guarantorFirstName, values.guarantorLastName, branchId, clientId]);
 
     const handleGuarantorBlur          = scheduleGuarantorCheck;
     const handleGuarantorFirstNameBlur = scheduleGuarantorCheck;
