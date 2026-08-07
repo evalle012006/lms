@@ -922,15 +922,26 @@ const AddLoanPage = ({
 
     const handleClientTypeChange = (value) => {
         setClientType(value);
-        // Do NOT reset selectedGroup — user already picked it, re-fetch clients for new type
         setOffsetClient(null);
         setSelectedClientObj(null);
         dispatch(setClientList([]));
         const form = formikRef.current;
         resetClient(form);
         if (value !== 'offset' && selectedGroup) getListClient(value, selectedGroup);
-        if ((value === 'advance' || value === 'active') && rep === 4) {
-            getListGroup(currentUser.transactionType, currentUser._id, 'filter');
+
+        const needsFullGroupList = value === 'advance' || value === 'active';
+        if (rep === 4) {
+            getListGroup(
+                currentUser.transactionType,
+                currentUser._id,
+                needsFullGroupList ? 'filter' : undefined
+            );
+        } else if (rep === 3 && selectedLo) {
+            getListGroup(
+                groupOccurence,
+                selectedLo,
+                needsFullGroupList ? 'filter' : undefined
+            );
         }
     };
 
