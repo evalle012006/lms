@@ -9,7 +9,6 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
-import SelectDropdown from "@/lib/ui/select";
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import moment from 'moment';
@@ -22,6 +21,77 @@ import ClientSearchTool from "../dashboard/ClientSearchTool";
 import { getApiBaseUrl } from "@/lib/constants";
 // ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
+
+// ─────────────────────────────────────────────────────────────
+// NOTE: Native <select> replacement for the react-select based
+// SelectDropdown component. SelectDropdown was silently failing
+// to open its portaled menu (missing zIndex on styles.menuPortal)
+// and this whole client flow is slated for deprecation, so we're
+// not investing further in the react-select version here.
+// Scoped to this file only — SelectDropdown itself is untouched
+// and still used elsewhere in the codebase.
+// ─────────────────────────────────────────────────────────────
+const NativeSelectDropdown = ({
+    name,
+    value = '',
+    label,
+    field,
+    placeholder: placeholderText,
+    disabled,
+    onChange,
+    onBlur,
+    errors,
+    className = '',
+    options = [],
+}) => {
+    const handleChange = (e) => {
+        onChange(field, e.target.value);
+    };
+
+    const handleBlur = () => {
+        if (onBlur && field) {
+            onBlur(field, true);
+        }
+    };
+
+    return (
+        <div className={className}>
+            <div className={`
+                flex flex-col border rounded-md px-4 py-2 bg-white
+                ${value ? 'border-main' : 'border-slate-400'}
+                ${errors ? 'border-red-400' : ''}
+            `}>
+                <label
+                    htmlFor={name}
+                    className={`
+                        font-proxima-bold text-xs font-bold
+                        ${value ? 'text-main' : 'text-gray-500'}
+                        ${errors ? 'text-red-400' : ''}
+                    `}
+                >
+                    {label}
+                </label>
+                <select
+                    id={name}
+                    name={name}
+                    value={value || ''}
+                    disabled={disabled}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className="w-full text-sm font-medium text-gray-500/80 bg-white border-0 outline-none focus:ring-0 py-0 px-0 h-[30px] appearance-none cursor-pointer"
+                >
+                    <option value="" disabled hidden>{placeholderText}</option>
+                    {options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </select>
+            </div>
+            {errors && (
+                <span className="text-red-400 text-xs font-medium">{errors}</span>
+            )}
+        </div>
+    );
+};
 
 // Section Header Component
 const SectionHeader = ({ title, subtitle, className = "" }) => (
@@ -410,7 +480,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     ) : (
                                         <div className="space-y-4">
                                             {(currentUser.role.rep < 4 && flag != 'update-offset') && (
-                                                <SelectDropdown
+                                                <NativeSelectDropdown
                                                     name="loId"
                                                     field="loId"
                                                     value={values.loId}
@@ -424,7 +494,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             )}
 
                                             {flag != 'update-offset' && (
-                                                <SelectDropdown
+                                                <NativeSelectDropdown
                                                     name="groupId"
                                                     field="groupId"
                                                     value={values.groupId}
@@ -591,7 +661,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
                                         {/* Status Dropdown for Edit Mode */}
                                         {mode === 'edit' && currentUser.role.rep < 3 && (
-                                            <SelectDropdown
+                                            <NativeSelectDropdown
                                                 name="status"
                                                 field="status"
                                                 value={values.status}
