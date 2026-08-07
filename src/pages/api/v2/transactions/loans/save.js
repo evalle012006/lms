@@ -163,7 +163,7 @@ async function save(req, res) {
                 })]
               }));
 
-            if (mode === 'reloan' && !!oldLoan) {
+            if (mode === 'reloan' && !!oldLoanId) {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else if ((mode === 'advance' || mode === 'active')) {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
