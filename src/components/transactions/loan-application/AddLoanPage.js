@@ -1102,8 +1102,11 @@ const AddLoanPage = ({
         values.csfWithdrawal = 0;
         values.csfReturnAmt  = 0;
 
-        // ── Computed loan financials — exact mirror of AddUpdateLoanDrawer ─
-        if (clientType !== 'active' && clientType !== 'advance') {
+        // ── Computed loan financials ────────────────────────────────────
+        // Recompute whenever the loan is not yet active — covers both new
+        // pending loans and edits to existing pending loans. Only an
+        // already-active loan should keep its financials untouched on edit.
+        if (values.status !== 'active') {
             const serviceChargeRate = transactionSettings.serviceChargeRate;
             if (values.occurence === 'weekly') {
                 values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
@@ -1280,6 +1283,22 @@ const AddLoanPage = ({
             modifiedDate:        values.modifiedDate,
             currentDate:         values.currentDate,
             currentReleaseAmount: values.currentReleaseAmount,
+            // FIX: financial fields computed above were being dropped —
+            // loanDataFlat's stale values were winning instead.
+            loanBalance:         values.loanBalance,
+            amountRelease:       values.amountRelease,
+            activeLoan:          values.activeLoan,
+            loanRelease:         values.loanRelease,
+            loanTerms:           values.loanTerms,
+            admissionCollection:     values.admissionCollection,
+            lrfCollection:           values.lrfCollection,
+            cbhbCollection:          values.cbhbCollection,
+            addHospitalization:      values.addHospitalization,
+            otherPassbookCollection: values.otherPassbookCollection,
+            otherPictureCollection:  values.otherPictureCollection,
+            csfCollection:           values.csfCollection,
+            csfWithdrawal:           values.csfWithdrawal,
+            csfReturnAmt:            values.csfReturnAmt,
             // groupDay from group object
             groupDay: (() => {
                 const grp = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
@@ -1669,7 +1688,7 @@ const AddLoanPage = ({
                                 onPNFocus={() => getLastPNNumber(setFieldValue)}
                                 onPNBlur={e => handlePNNumber(e, setFieldValue)}
                                 branchId={currentUser.designatedBranchId}
-                                requiresGuarantorPhoto={currentBranch?.clientFlowVersion === 'v2'}
+                                clientFlowVersionV2={currentBranch?.clientFlowVersion === 'v2'}
                                 onBack={onBack}
                                 loading={loading}
                                 coMakerChecking={coMakerChecking}
