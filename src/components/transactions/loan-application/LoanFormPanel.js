@@ -35,7 +35,7 @@ const LoanFormPanel = ({
     onPNFocus,
     onPNBlur,
     branchId,
-    requiresGuarantorPhoto  = false,
+    clientFlowVersionV2  = false,
     onBack,
     loading,
     coMakerChecking = false,
@@ -283,7 +283,7 @@ const LoanFormPanel = ({
                     </div>
                 )}
 
-                {requiresGuarantorPhoto && onGuarantorPhotoChange && (
+                {clientFlowVersionV2 && onGuarantorPhotoChange && (
                     <div className="mt-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Photo <span className="text-red-500">*</span>
@@ -316,7 +316,7 @@ const LoanFormPanel = ({
                 )}
 
                 {/* Read-only fallback: non-v2 branch, but a photo exists on the record (e.g. legacy/migrated) */}
-                {!requiresGuarantorPhoto && guarantorPhotoPreview && (
+                {!clientFlowVersionV2 && guarantorPhotoPreview && (
                     <div className="mt-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Photo
@@ -326,7 +326,7 @@ const LoanFormPanel = ({
                     </div>
                 )}
 
-                {requiresGuarantorPhoto && onGuarantorIdChange && (
+                {clientFlowVersionV2 && onGuarantorIdChange && (
                     <div className="mt-3">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Valid ID <span className="text-red-500">*</span>
@@ -356,7 +356,7 @@ const LoanFormPanel = ({
                     </div>
                 )}
 
-                {!requiresGuarantorPhoto && guarantorIdPhotoPreview && (
+                {!clientFlowVersionV2 && guarantorIdPhotoPreview && (
                     <div className="mt-3">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Valid ID
@@ -376,10 +376,10 @@ const LoanFormPanel = ({
                     label="CI Name (Required)"
                     placeholder="Enter CI Name"
                     setFieldValue={setFieldValue}
-                    disabled={ciAutoFilled}
+                    disabled={clientFlowVersionV2 && ciAutoFilled}
                     errors={touched.ciName && errors.ciName ? errors.ciName : undefined}
                 />
-                {ciAutoFilled && (
+                {clientFlowVersionV2 && ciAutoFilled && (
                     <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd"
