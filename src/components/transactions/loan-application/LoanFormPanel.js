@@ -35,6 +35,7 @@ const LoanFormPanel = ({
     onPNFocus,
     onPNBlur,
     branchId,
+    requiresGuarantorPhoto  = false,
     onBack,
     loading,
     coMakerChecking = false,
@@ -282,7 +283,7 @@ const LoanFormPanel = ({
                     </div>
                 )}
 
-                {onGuarantorPhotoChange && (
+                {requiresGuarantorPhoto && onGuarantorPhotoChange && (
                     <div className="mt-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Photo <span className="text-red-500">*</span>
@@ -314,7 +315,18 @@ const LoanFormPanel = ({
                     </div>
                 )}
 
-                {onGuarantorIdChange && (
+                {/* Read-only fallback: non-v2 branch, but a photo exists on the record (e.g. legacy/migrated) */}
+                {!requiresGuarantorPhoto && guarantorPhotoPreview && (
+                    <div className="mt-4">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            Guarantor Photo
+                        </p>
+                        <img src={guarantorPhotoPreview} alt="Guarantor"
+                            className="w-full max-h-40 object-contain rounded-xl border border-gray-200 bg-gray-50" />
+                    </div>
+                )}
+
+                {requiresGuarantorPhoto && onGuarantorIdChange && (
                     <div className="mt-3">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Guarantor Valid ID <span className="text-red-500">*</span>
@@ -341,6 +353,16 @@ const LoanFormPanel = ({
                                 </div>
                             )}
                         </label>
+                    </div>
+                )}
+
+                {!requiresGuarantorPhoto && guarantorIdPhotoPreview && (
+                    <div className="mt-3">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            Guarantor Valid ID
+                        </p>
+                        <img src={guarantorIdPhotoPreview} alt="Guarantor ID"
+                            className="w-full max-h-36 object-contain rounded-xl border border-gray-200 bg-gray-50" />
                     </div>
                 )}
             </SectionCard>

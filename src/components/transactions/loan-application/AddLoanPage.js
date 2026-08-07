@@ -1028,7 +1028,8 @@ const AddLoanPage = ({
         }
 
         // ── Guarantor ID photo is required ────────────────────────────────
-        if (!guarantorIdFile && !guarantorIdPreview) {
+        const requiresGuarantorPhoto = currentBranch?.clientFlowVersion === 'v2';
+        if (requiresGuarantorPhoto && !guarantorIdFile && !guarantorIdPreview) {
             toast.error('Please upload a Guarantor Valid ID photo.');
             return;
         }
@@ -1657,6 +1658,7 @@ const AddLoanPage = ({
                                 onPNFocus={() => getLastPNNumber(setFieldValue)}
                                 onPNBlur={e => handlePNNumber(e, setFieldValue)}
                                 branchId={currentUser.designatedBranchId}
+                                requiresGuarantorPhoto={currentBranch?.clientFlowVersion === 'v2'}
                                 onBack={onBack}
                                 loading={loading}
                                 coMakerChecking={coMakerChecking}
