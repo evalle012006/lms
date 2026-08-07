@@ -793,7 +793,7 @@ const AddLoanPage = ({
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
         setSelectedClientObj({ ...c, resolvedPhotoUrl });
-        if (clientType !== 'pending') {
+        if (clientType !== 'pending' && currentBranch?.clientFlowVersion === 'v2') {
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
@@ -965,7 +965,9 @@ const AddLoanPage = ({
         setCiStatus(null);
         formikRef.current?.setFieldValue('clientId', client._id);
         // Balik clients always need new CI
-        checkClientCI(client._id, true);
+        if (currentBranch?.clientFlowVersion === 'v2') {
+            checkClientCI(client._id, true);
+        }
     };
 
     // FIX: guarantor photo handlers
@@ -1494,7 +1496,7 @@ const AddLoanPage = ({
 
                             {/* ── CI Warning Banner ─────────────────────────────── */}
                             {/* Shows when reloan/pending/balik client has no recent CI */}
-                            {(ciChecking || ciStatus) && clientType !== 'pending' && (
+                            {(ciChecking || ciStatus) && clientType !== 'pending' && currentBranch?.clientFlowVersion === 'v2' && (
                                 <div className={`col-span-full mb-2 px-4 py-3 rounded-xl border flex items-start gap-3 ${
                                     ciChecking
                                         ? 'bg-gray-50 border-gray-200'
