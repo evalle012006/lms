@@ -9,7 +9,7 @@ import {
     UserIcon, UsersIcon, CreditCardIcon,
 } from '@heroicons/react/24/outline';
 
-import SelectDropdown from '@/lib/ui/select';
+import SelectDropdownV2 from '@/lib/ui/selectv2';
 import { UppercaseFirstLetter } from '@/lib/utils';
 
 import SectionCard from './SectionCard';
@@ -113,7 +113,7 @@ const SelectClientPanel = ({
                         </SectionCard>
                     ) : (
                         <SectionCard icon={UserIcon} title="Loan Officer &amp; Group">
-                            <SelectDropdown
+                            <SelectDropdownV2
                                 name="loId" field="loId" value={selectedLo}
                                 label="Loan Officer (Required)" options={loList}
                                 onChange={handleLoIdChange} onBlur={setFieldTouched}
@@ -122,7 +122,7 @@ const SelectClientPanel = ({
                                 errors={touched.loId && errors.loId ? errors.loId : undefined}
                             />
                             <div className="mt-4">
-                                <SelectDropdown
+                                <SelectDropdownV2
                                     name="groupId" field="groupId" value={selectedGroup}
                                     label="Group (Required)"
                                     options={Array.isArray(groupList) ? groupList : []}
@@ -137,7 +137,7 @@ const SelectClientPanel = ({
                 )}
                 {rep === 4 && !fromCI && (
                     <SectionCard icon={UsersIcon} title="Group">
-                        <SelectDropdown
+                        <SelectDropdownV2
                             name="groupId" field="groupId" value={selectedGroup}
                             label="Group (Required)"
                             options={Array.isArray(groupList) ? groupList : []}
@@ -208,7 +208,7 @@ const SelectClientPanel = ({
             <div className="flex flex-col gap-5">
                 {rep === 3 && (
                     <SectionCard icon={UserIcon} title="Loan Officer &amp; Group">
-                        <SelectDropdown
+                        <SelectDropdownV2
                             name="loId" field="loId" value={selectedLo}
                             label="Loan Officer (Required)" options={loList}
                             onChange={handleLoIdChange} onBlur={setFieldTouched}
@@ -216,7 +216,7 @@ const SelectClientPanel = ({
                             disabled={loListLoading}
                         />
                         <div className="mt-4">
-                            <SelectDropdown
+                            <SelectDropdownV2
                                 name="groupId" field="groupId" value={selectedGroup}
                                 label="Group (Required)"
                                 options={Array.isArray(groupList) ? groupList : []}
@@ -307,7 +307,7 @@ const SelectClientPanel = ({
                     ) : (
                         /* ── Normal interactive mode ── */
                         <>
-                            <SelectDropdown
+                            <SelectDropdownV2
                                 name="loId" field="loId" value={selectedLo}
                                 label="Loan Officer (Required)" options={loList}
                                 onChange={handleLoIdChange} onBlur={setFieldTouched}
@@ -316,7 +316,7 @@ const SelectClientPanel = ({
                                 errors={touched.loId && errors.loId ? errors.loId : undefined}
                             />
                             <div className="mt-4">
-                                <SelectDropdown
+                                <SelectDropdownV2
                                     name="groupId" field="groupId" value={selectedGroup}
                                     label="Group (Required)"
                                     options={Array.isArray(groupList) ? groupList : []}
@@ -332,7 +332,7 @@ const SelectClientPanel = ({
 
             {rep === 4 && clientType !== 'offset' && (
                 <SectionCard icon={UsersIcon} title="Group" subtitle="Select group first">
-                    <SelectDropdown
+                    <SelectDropdownV2
                         name="groupId" field="groupId" value={selectedGroup}
                         label="Group (Required)"
                         options={Array.isArray(groupList) ? groupList : []}
@@ -366,7 +366,7 @@ const SelectClientPanel = ({
 
                 {clientType === 'offset' && (
                     <div className="flex flex-col gap-4">
-                        <SelectDropdown
+                        <SelectDropdownV2
                             name="oldBranchId" field="oldBranchId" value={selectedOldBranch}
                             label="Previous Branch (Required)"
                             options={Array.isArray(branchList) ? branchList : []}
@@ -374,7 +374,7 @@ const SelectClientPanel = ({
                             placeholder="Select Previous Branch"
                         />
                         {selectedOldBranch && (
-                            <SelectDropdown
+                            <SelectDropdownV2
                                 name="oldLOId" field="oldLOId" value={selectedOldLO}
                                 label="Previous Loan Officer (Required)"
                                 options={oldLOList}
@@ -383,7 +383,7 @@ const SelectClientPanel = ({
                             />
                         )}
                         {selectedOldLO && (
-                            <SelectDropdown
+                            <SelectDropdownV2
                                 name="oldGroupId" field="oldGroupId" value={selectedOldGroup}
                                 label="Previous Group (Required)"
                                 options={oldGroupList}
@@ -470,7 +470,7 @@ const SlotCycleCard = ({
                     </div>
                 </div>
             ) : (
-                <SelectDropdown
+                <SelectDropdownV2
                     name="slotNo" field="slotNo" value={slotNo ? Number(slotNo) : slotNo}
                     label="Slot No. (Required)" options={slotNumber}
                     onChange={handleSlotNoChange} onBlur={setFieldTouched}
@@ -520,7 +520,7 @@ const SlotCycleCard = ({
                 </div>
             ) : (
                 <>
-                    <SelectDropdown
+                    <SelectDropdownV2
                         name="coMaker" field="coMaker" value={selectedCoMaker}
                         label="Co-maker Slot"
                         options={Array.isArray(comakerList) ? comakerList : []}
