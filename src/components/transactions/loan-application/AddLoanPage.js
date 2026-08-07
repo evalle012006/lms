@@ -1003,7 +1003,7 @@ const AddLoanPage = ({
         // Prospect (clientType='pending') is excluded — they have no CI yet.
         // fromCI=true: already arrived from a completed CI investigation —
         // the CI check is redundant and ciStatus will always be null here.
-        const needsCICheck = clientType !== 'pending' && !fromCI;
+        const needsCICheck = clientType !== 'pending' && !fromCI && currentBranch?.clientFlowVersion === 'v2';
         if (needsCICheck) {
             if (!ciStatus) {
                 toast.error('Please wait — checking CI investigation status...');
