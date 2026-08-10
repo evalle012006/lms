@@ -166,12 +166,12 @@ const NDSForm = React.forwardRef((props, ref) => {
             let sched = [];
             sched.push({
                 installment: '',
-                loanRelease: Math.round(totalObligation),
+                loanRelease: loanData.principalLoan,
                 serviceCharge: '',
                 total: '',
                 balance: totalObligation,
                 balanceStr: Math.round(totalObligation).toFixed(0),
-                interest: interest
+                interest: Math.round(loanData.principalLoan * (effectiveServiceChargeRate - 1))
             });
 
             let totalServiceCharge = 0;
@@ -251,7 +251,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                             <tbody>
                                 <tr>
                                     <td>1. LOAN AMOUNT</td>
-                                    <td className='flex justify-end'>{ loan?.amountReleaseStr }</td>
+                                    <td className='flex justify-end'>{ loan?.principalLoanStr }</td>
                                 </tr>
                                 <tr>
                                     <td>2. OTHER CHARGES/DEDUCTIONS COLLECTED</td>
@@ -259,7 +259,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                                 </tr>
                                 <tr>
                                     <td>3. NET PROCEEDS OF LOAN (Item 1 less Item 2)</td>
-                                    <td className='flex justify-end'>{ loan?.amountReleaseStr }</td>
+                                    <td className='flex justify-end'>{ loan?.principalLoanStr }</td>
                                 </tr>
                                 <tr>
                                     <td>4. SCHEDULE OF PAYMENTS <span style={{ fontStyle: 'italic' }}>(please see below amortization schedule)</span></td>
