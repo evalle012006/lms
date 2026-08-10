@@ -112,15 +112,6 @@ const NDSForm = React.forwardRef((props, ref) => {
         if (props.loan) {
             const fullName = props.loan.client.firstName + ' ' + props.loan.client.lastName;
 
-            // ── amountRelease: total repayment obligation (principal + service charge) ──
-            // This is what AddLoanPage.handleSaveUpdate computes and saves as
-            // `amountRelease` / `loanBalance` at loan origination:
-            //   values.loanBalance   = values.principalLoan * serviceChargeRate;
-            //   values.amountRelease = values.loanBalance;
-            // We use the value ALREADY SAVED on the loan record — not a live
-            // re-read of transactionSettings — so a reprinted NDS always matches
-            // what was disclosed and signed at consummation, even if the global
-            // serviceChargeRate setting changes later.
             const amountRelease = props.loan.amountRelease
                 || props.loan.loanBalance
                 || (props.loan.principalLoan * (transactionSettings?.serviceChargeRate || 1.2));
@@ -136,31 +127,28 @@ const NDSForm = React.forwardRef((props, ref) => {
             const clientData = { ...props.loan.client, fullName: fullName };
             setClient(clientData);
             let address = '';
-            if (clientData.addressStreetNo) {
-                address = clientData.addressStreetNo;
-            }
-            if (clientData.addressBarangayDistrict) {
-                address += ', ' + clientData.addressBarangayDistrict;
-            }
-            if (clientData.addressMunicipalityCity) {
-                address += ', ' + clientData.addressMunicipalityCity;
-            }
-            if (clientData.addressProvince) {
-                address += ', ' + clientData.addressProvince;
-            }
-
+            if (clientData.addressStreetNo) address = clientData.addressStreetNo;
+            if (clientData.addressBarangayDistrict) address += ', ' + clientData.addressBarangayDistrict;
+            if (clientData.addressMunicipalityCity) address += ', ' + clientData.addressMunicipalityCity;
+            if (clientData.addressProvince) address += ', ' + clientData.addressProvince;
             setClientAddress(address);
 
-            // ── Amortization schedule — aligned with AddLoanPage's computation ──
-            // AddLoanPage: loanBalance = principalLoan * serviceChargeRate (applies
-            // uniformly regardless of daily/weekly occurence — only loanTerms/activeLoan
-            // differ by occurence there). We mirror that: the schedule's total
-            // obligation is always principalLoan * effectiveServiceChargeRate,
-            // where effectiveServiceChargeRate is derived from the loan record
-            // (amountRelease / principalLoan) rather than hardcoded 1.2.
+            // ── Amortization schedule — base restored to principalLoan. ──
+            // The 32.3339 declining-balance constant is calibrated to converge
+            // to ZERO only when the schedule starts from principalLoan, not
+            // amountRelease. Using amountRelease as the base (an earlier
+            // revision) left a residual balance at the final installment —
+            // confirmed by the 2302 leftover at installment 60 in your screenshot.
+            // effectiveServiceChargeRate replaces the old hardcoded 1.2 / 0.2
+            // literals so the schedule still reflects the loan's actual saved
+            // rate, without disturbing the amortization identity.
             const loanTerms = loanData.loanTerms;
             const effectiveServiceChargeRate = amountRelease / loanData.principalLoan;
-            const totalObligation = amountRelease; // == principalLoan * effectiveServiceChargeRate
+
+            const initialBalance = loanData.occurence == 'daily'
+                ? loanData.principalLoan
+                : loanData.principalLoan * effectiveServiceChargeRate;
+
             const interest = Math.round(loanData.principalLoan * (effectiveServiceChargeRate - 1));
 
             let sched = [];
@@ -169,15 +157,15 @@ const NDSForm = React.forwardRef((props, ref) => {
                 loanRelease: loanData.principalLoan,
                 serviceCharge: '',
                 total: '',
-                balance: totalObligation,
-                balanceStr: Math.round(totalObligation).toFixed(0),
-                interest: Math.round(loanData.principalLoan * (effectiveServiceChargeRate - 1))
+                balance: initialBalance,
+                balanceStr: Math.round(initialBalance).toFixed(0),
+                interest: interest
             });
 
             let totalServiceCharge = 0;
             for (let i = 1; i <= loanTerms; i++) {
                 const prev = sched[i - 1];
-                const total = totalObligation / loanTerms;
+                const total = (loanData.principalLoan * effectiveServiceChargeRate) / loanTerms;
                 let serviceCharge = i == loanTerms ? 0 : (prev.balance * (effectiveServiceChargeRate - 1)) / 32.3339;
                 let principal = i == loanTerms ? total : total - serviceCharge;
                 let balance = prev.balance - principal;
@@ -190,7 +178,7 @@ const NDSForm = React.forwardRef((props, ref) => {
 
                 totalServiceCharge += serviceCharge;
 
-                let data = {
+                sched.push({
                     installment: i,
                     loanRelease: '',
                     principal: Math.round(principal).toFixed(0),
@@ -199,13 +187,10 @@ const NDSForm = React.forwardRef((props, ref) => {
                     balance: balance,
                     balanceStr: Math.round(balance).toFixed(0),
                     interest: ''
-                }
-
-                sched.push(data);
+                });
             }
 
             sched[1] = { ...sched[1], interest: Math.round(totalServiceCharge).toFixed(0) };
-
             setAmortization(sched);
         }
     }, [props, transactionSettings]);
@@ -356,7 +341,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                             <tbody>
                                 <tr>
                                     <td>1. LOAN AMOUNT</td>
-                                    <td className='flex justify-end'>{ loan?.amountReleaseStr }</td>
+                                    <td className='flex justify-end'>{ loan?.principalLoanStr }</td>
                                 </tr>
                                 <tr>
                                     <td>2. OTHER CHARGES/DEDUCTIONS COLLECTED</td>
@@ -364,7 +349,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                                 </tr>
                                 <tr>
                                     <td>3. NET PROCEEDS OF LOAN (Item 1 less Item 2)</td>
-                                    <td className='flex justify-end'>{ loan?.amountReleaseStr }</td>
+                                    <td className='flex justify-end'>{ loan?.principalLoanStr }</td>
                                 </tr>
                                 <tr>
                                     <td>4. SCHEDULE OF PAYMENTS <span style={{ fontStyle: 'italic' }}>(please see below amortization schedule)</span></td>
