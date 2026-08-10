@@ -772,7 +772,7 @@ const PublicLAFForm = ({
         setStep(s => s + 1);
     }, [step, clientType, lafPhotoFile, lafPhotoPreview, idType, idNumber, idPhotoFile,
         selfieWithIdFile, requireSelfieWithId, foundClient, si,
-        existingClientHasId, isExistingClient]);
+        existingClientHasId, isExistingClient, clientChanges]);
 
     const goPrev = () => {
         if (step === si('Biometric')) setReviewAgreed(false);
