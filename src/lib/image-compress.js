@@ -23,3 +23,22 @@ export async function compressImage(file, { maxDimension = 1600, quality = 0.85 
         img.src = url;
     });
 }
+
+/**
+ * Convenience helper: compress then enforce a hard max size, throwing a
+ * user-facing error if the compressed result is still too large. Use this
+ * at call sites that need a client-side size gate (upload forms with a
+ * maxMB prop, camera capture, etc).
+ *
+ * @param {File} file
+ * @param {{ maxMB?: number, maxDimension?: number, quality?: number }} opts
+ * @returns {Promise<File>}
+ */
+export async function compressImageOrThrow(file, opts = {}) {
+    const { maxMB = 5, ...compressOpts } = opts;
+    const compressed = await compressImage(file, compressOpts);
+    if (compressed.size > maxMB * 1024 * 1024) {
+        throw new Error(`Photo still too large after compression. Max ${maxMB}MB.`);
+    }
+    return compressed;
+}
