@@ -470,7 +470,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
-                        coMaker: normalizeCoMaker(cc.coMakerId),
+                        coMaker: normalizeCoMaker(cc.coMaker),
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -556,7 +556,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
-                            coMaker: normalizeCoMaker(cc.coMakerId),
+                            coMaker: normalizeCoMaker(cc.coMaker),
                             loanId: cc.loanId,
                             branchId: cc.branchId,
                             loId: cc.loId,
@@ -706,7 +706,7 @@ const CashCollectionDetailsPage = () => {
                             _id: ccId,
                             loanId: loanId,
                             group: cc.group,
-                            coMaker: normalizeCoMaker(cc.coMakerId),
+                            coMaker: normalizeCoMaker(cc.coMaker),
                             loId: cc.loId,
                             branchId: cc.branchId,
                             groupId: cc.groupId,
@@ -834,7 +834,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             client: cc.client,
                             groupLeader: cc.client.groupLeader,
-                            coMaker: normalizeCoMaker(cc.coMakerId),
+                            coMaker: normalizeCoMaker(cc.coMaker),
                             group: cc.group,
                             loanId: cc._id,
                             loId: cc.loId,
@@ -1115,7 +1115,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: normalizeCoMaker(loan.coMakerId),
+                            coMaker: normalizeCoMaker(loan.coMaker),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan.prevLoanId,
@@ -1214,7 +1214,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: normalizeCoMaker(loan.coMakerId),
+                            coMaker: normalizeCoMaker(loan.coMaker),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan.prevLoanId,
@@ -1305,7 +1305,7 @@ const CashCollectionDetailsPage = () => {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
-                            coMaker: normalizeCoMaker(loan.coMakerId),
+                            coMaker: normalizeCoMaker(loan.coMaker),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             prevLoanId: loan.prevLoanId,
@@ -1386,7 +1386,7 @@ const CashCollectionDetailsPage = () => {
                         let pendingTomorrow = {
                             _id: loan._id,
                             client: loan.client,
-                            coMaker: normalizeCoMaker(loan.coMakerId),
+                            coMaker: normalizeCoMaker(loan.coMaker),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             group: prevLoan ? prevLoan.group : loan.group,

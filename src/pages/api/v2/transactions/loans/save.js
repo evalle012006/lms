@@ -47,6 +47,31 @@ async function save(req, res) {
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
 
+    // ── Idempotency guard: block duplicate advance/reloan submissions ──────────
+    // Prevents a double-click, retry, or accidental resubmit from creating a
+    // second loan for the same client advancing from the same old loan.
+    // Without this, two loans get created, and the setTimeout-driven call to
+    // transactions/cash-collections/update-pending-loans fires twice — racing
+    // against each other and against the real daily collection save, which is
+    // what corrupted both loans' status in the incident this guard is fixing.
+    if ((mode === 'reloan' || mode === 'advance' || mode === 'active') && oldLoanId) {
+        const duplicateInProgress = (await graph.query(queryQl(loansType(), {
+          where: {
+            clientId:   { _eq: loanData.clientId },
+            prevLoanId: { _eq: oldLoanId },
+            status:     { _in: ['pending', 'active'] },
+          }
+        }))).data?.loans;
+
+        if (duplicateInProgress?.length > 0) {
+            res.send({
+                error: true,
+                message: `A loan advancing from this client's existing loan was already created (PN: ${duplicateInProgress[0].pnNumber || duplicateInProgress[0]._id}). Please refresh the page before retrying.`
+            });
+            return;
+        }
+    }
+
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
         slotNo:   { _eq:  loanData.slotNo   },

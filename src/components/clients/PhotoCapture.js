@@ -14,6 +14,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Camera, Upload, X, SwitchCamera, ImagePlus, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { compressImageOrThrow } from '@/lib/image-compress';
 
 const PhotoCapture = ({
     onFileReady,
@@ -133,16 +134,19 @@ const PhotoCapture = ({
     }, [maxMB, onFileReady, stopStream]);
 
     // ── File input ────────────────────────────────────────────────────────
-    const processFile = (file) => {
+    const processFile = async (file) => {
         if (!file) return;
-        if (file.size > maxMB * 1024 * 1024) {
-            toast.error(`File too large. Max ${maxMB}MB.`);
+        let compressed;
+        try {
+            compressed = await compressImageOrThrow(file, { maxMB });
+        } catch (err) {
+            toast.error(err.message);
             return;
         }
         const reader = new FileReader();
         reader.onloadend = () => setLocalPreview(reader.result);
-        reader.readAsDataURL(file);
-        onFileReady?.(file);
+        reader.readAsDataURL(compressed);
+        onFileReady?.(compressed);
     };
 
     const handleReset = () => {

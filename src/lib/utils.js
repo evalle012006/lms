@@ -287,7 +287,6 @@ export const handleBackToModernBranchCashCollections = (router, currentUser) => 
 
 // Helper function to normalize and validate coMaker value
 export const normalizeCoMaker = (value) => {
-    // Handle falsy values, "null", "undefined", empty strings
     if (!value || 
         value === 'null' || 
         value === 'undefined' || 
@@ -297,10 +296,15 @@ export const normalizeCoMaker = (value) => {
         return null;
     }
     
-    // Convert to number and validate
+    // Reject anything that isn't a clean integer string — parseInt() would
+    // otherwise silently truncate garbage like "66a8189d..." into 66,
+    // fabricating a plausible-looking slot number from corrupted data.
+    if (typeof value === 'string' && !/^\d+$/.test(value.trim())) {
+        return null;
+    }
+
     const num = typeof value === 'string' ? parseInt(value, 10) : value;
     
-    // Return null if not a valid positive number
     if (isNaN(num) || num <= 0) {
         return null;
     }

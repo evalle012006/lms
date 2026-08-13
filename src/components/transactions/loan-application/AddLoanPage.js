@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
 import { getNextValidDate } from '@/lib/date-utils';
 import { setGroupList } from '@/redux/actions/groupActions';
@@ -230,7 +231,10 @@ const AddLoanPage = ({
     // In edit mode, guarantor comes from the loan record — never overwrite from client
     useEffect(() => {
         if (!selectedClientObj || mode === 'edit') return;
-        formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
+        // FALLBACK ONLY for v2 — the ciStatus effect above overwrites this once the
+        // authoritative CI investigation lookup resolves. This still matters as the
+        // only source for non-v2 branches and as a placeholder while checkClientCI is in flight.
+        // formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
         const form = formikRef.current;
         if (!form) return;
         const current = form.values;
@@ -265,6 +269,25 @@ const AddLoanPage = ({
         if (!offsetClient) return;
         formikRef.current?.setFieldValue('ciName', offsetClient.ciName || '');
     }, [offsetClient]);
+
+    // ── CI Name authority: for v2, the approved CI investigation's picUserName
+    // is the source of truth. The client/offsetClient effects below still run
+    // first and set a denormalized fallback immediately (so the field isn't
+    // empty while checkClientCI is in flight); this effect overwrites it once
+    // the authoritative value resolves. Never runs in edit mode — loanData.ciName
+    // (the value saved on the loan record) is authoritative there instead.
+    useEffect(() => {
+        if (mode === 'edit') return;
+        if (currentBranch?.clientFlowVersion !== 'v2') return;
+        if (!ciStatus) return; // still checking, or not applicable (e.g. pending client) — leave fallback in place
+
+        if (ciStatus.hasCI && ciStatus.latestCI?.picUserName) {
+            formikRef.current?.setFieldValue('ciName', ciStatus.latestCI.picUserName);
+        }
+        // hasCI === false: no approved CI exists at all — nothing authoritative to
+        // set, leave whatever the fallback effects populated (client.ciName / offsetClient.ciName).
+        // handleSaveUpdate already blocks submission in this case, so this is display-only risk.
+    }, [ciStatus, mode, currentBranch]);
 
     // ── Fetch loan in edit mode ────────────────────────────
     useEffect(() => {
@@ -564,19 +587,19 @@ const AddLoanPage = ({
 
     const getListClient = async (status, groupId) => {
         setLoading(true);
-        const bId = currentUser.designatedBranchId;
+
         let url = getApiBaseUrl() + 'clients/list?';
 
         if (status === 'active') {
-            url += new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status });
+            url += new URLSearchParams({ mode: 'view_only_no_exist_loan', groupId, status });
         } else if (status === 'advance') {
-            url += new URLSearchParams({ mode: 'view_existing_loan', branchId: bId, groupId, status });
+            url += new URLSearchParams({ mode: 'view_existing_loan', groupId, status });
         } else if (status === 'offset') {
             url += new URLSearchParams({ mode: 'view_offset', status, branchId: selectedOldBranch, loId: selectedOldLO, groupId });
         } else {
             url += rep === 4
                 ? new URLSearchParams({ mode: 'view_only_no_exist_loan', loId: currentUser._id, groupId, status })
-                : new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status });
+                : new URLSearchParams({ mode: 'view_only_no_exist_loan', groupId, status });
         }
 
         const res = await fetchWrapper.get(url);
@@ -605,83 +628,31 @@ const AddLoanPage = ({
 
     const getListCoMaker = async (groupId, currentClientId = null) => {
         if (!groupId) return;
-        // Use param if provided, fall back to state (edit mode / useEffect calls)
         const excludeId = currentClientId || clientId;
 
-        // FIX: fetch ALL clients in this group regardless of loan status.
-        // Co-maker is a group membership relationship, not loan-status dependent.
-        // Use the clients/list endpoint with pending status to get all group members
-        // — pending includes both new members and reloaning members.
-        // Then also fetch active to get reloaning clients.
-        const bId = currentUser.designatedBranchId;
-
-        const [pendingRes, activeRes] = await Promise.all([
-            fetchWrapper.get(
-                getApiBaseUrl() + 'clients/list?' +
-                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'pending' })
-            ).catch(() => ({ success: false })),
-            fetchWrapper.get(
-                getApiBaseUrl() + 'clients/list?' +
-                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'active' })
-            ).catch(() => ({ success: false })),
-        ]);
-
-        // pending returns plain client objects
-        const pendingClients = (pendingRes.clients || []).map(c => ({
-            _id:    c._id,
-            name:   `${c.lastName}, ${c.firstName}`.toUpperCase(),
-            slotNo: c.slotNo || null,
-        }));
-
-        // active returns loan objects with nested client — same shape as getListClient
-        const activeClients = (activeRes.clients || []).map(loan => ({
-            _id:    loan.client?._id || loan.clientId,
-            name:   loan.client
-                ? `${loan.client.lastName}, ${loan.client.firstName}`.toUpperCase()
-                : loan.fullName || '',
-            slotNo: loan.slotNo || null,
-        }));
-
-        // Merge, deduplicate by _id, exclude the current applicant
-        const seen = new Set();
-        const allMembers = [...pendingClients, ...activeClients].filter(c => {
-            if (!c._id || c._id === excludeId) return false;
-            if (seen.has(c._id)) return false;
-            seen.add(c._id);
-            return true;
-        });
-
-        // Detect already-assigned co-makers from pending loans
-        let usedCoMakerIds = new Set();
-        try {
-            const loansRes = await fetchWrapper.get(
-                getApiBaseUrl() + 'transactions/loans/list?' +
-                new URLSearchParams({ groupId, status: 'pending', currentDate: currentDate || '' })
-            );
-            if (loansRes.success) {
-                (loansRes.loans || [])
-                    .filter(l => l.coMakerId && l.clientId !== excludeId)
-                    .forEach(l => usedCoMakerIds.add(l.coMakerId));
-            }
-        } catch { /* non-fatal */ }
-
-        const entries = allMembers
-            .map(c => {
-                const alreadyUsed = usedCoMakerIds.has(c._id);
-                return {
-                    slotNo:     c.slotNo,
-                    clientId:   c._id,
-                    value:      c._id,
-                    isDisabled: alreadyUsed,
-                    label:      c.slotNo
-                        ? alreadyUsed
-                            ? `Slot ${c.slotNo} — ${c.name} (already co-maker)`
-                            : `Slot ${c.slotNo} — ${c.name}`
-                        : alreadyUsed
-                            ? `${c.name} (already co-maker)`
-                            : c.name,
-                };
+        // Server-side view_comakers_by_group already excludes:
+        //   - clients with no live slot in this group
+        //   - clients whose most recent loan is reject/closed
+        //   - clients already assigned as coMaker on another live loan (see coMaker field note)
+        // No further client-side filtering needed.
+        const res = await fetchWrapper.get(
+            getApiBaseUrl() + 'clients/list?' +
+            new URLSearchParams({
+                mode: 'view_comakers_by_group',
+                groupId,
+                excludeClientId: excludeId || '',
             })
+        ).catch(() => ({ success: false }));
+
+        const entries = (res.clients || [])
+            .map(l => ({
+                slotNo:   l.slotNo,
+                clientId: l.client?._id || l.clientId,
+                value:    l.client?._id || l.clientId,
+                label:    l.client
+                    ? `Slot ${l.slotNo} — ${l.client.lastName}, ${l.client.firstName}`.toUpperCase()
+                    : `Slot ${l.slotNo}`,
+            }))
             .sort((a, b) => (a.slotNo || 999) - (b.slotNo || 999));
 
         dispatch(setComakerList(entries));
@@ -793,7 +764,7 @@ const AddLoanPage = ({
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
         setSelectedClientObj({ ...c, resolvedPhotoUrl });
-        if (clientType !== 'pending' && currentBranch?.clientFlowVersion === 'v2') {
+        if (currentBranch?.clientFlowVersion === 'v2') {
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
@@ -982,25 +953,27 @@ const AddLoanPage = ({
     };
 
     // FIX: guarantor photo handlers
-    const handleGuarantorPhotoChange = (e) => {
+    const handleGuarantorPhotoChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setGuarantorPhotoFile(file);
-        setGuarantorPhotoPreview(URL.createObjectURL(file));
+        const compressed = await compressImage(file);
+        setGuarantorPhotoFile(compressed);
+        setGuarantorPhotoPreview(URL.createObjectURL(compressed));
     };
 
-    const handleGuarantorIdChange = (e) => {
+    const handleGuarantorIdChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setGuarantorIdFile(file);
-        setGuarantorIdPreview(URL.createObjectURL(file));
+        const compressed = await compressImage(file);
+        setGuarantorIdFile(compressed);
+        setGuarantorIdPreview(URL.createObjectURL(compressed));
     };
 
     const handleClearClient = () => {
         setSelectedClientObj(null);
         setOffsetClient(null);
+        setCiStatus(null);
         resetClient(formikRef.current);
-        // FIX: clear guarantor photos when client is cleared
         setGuarantorPhotoFile(null);
         setGuarantorPhotoPreview(null);
         setGuarantorIdFile(null);
@@ -1202,12 +1175,15 @@ const AddLoanPage = ({
                 fd.append('origin', 'guarantor-photos');
                 fd.append('uuid', clientId || `guarantor-${Date.now()}`);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    if (uploadData.fileKey) guarantorPhotoKey = uploadData.fileKey;
-                }
+                if (!uploadRes.ok) throw new Error(`Guarantor photo upload failed (${uploadRes.status}).`);
+                const uploadData = await uploadRes.json();
+                if (!uploadData.fileKey) throw new Error('Guarantor photo upload returned no file key.');
+                guarantorPhotoKey = uploadData.fileKey;
             } catch (e) {
                 console.error('Guarantor photo upload failed:', e);
+                setLoading(false);
+                toast.error('Failed to upload guarantor photo. Please try again before saving.');
+                return;
             }
         }
 
@@ -1219,12 +1195,15 @@ const AddLoanPage = ({
                 fd.append('origin', 'guarantor-id-photos');
                 fd.append('uuid', clientId || `guarantor-id-${Date.now()}`);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    if (uploadData.fileKey) guarantorIdPhotoKey = uploadData.fileKey;
-                }
+                if (!uploadRes.ok) throw new Error(`Guarantor ID upload failed (${uploadRes.status}).`);
+                const uploadData = await uploadRes.json();
+                if (!uploadData.fileKey) throw new Error('Guarantor ID upload returned no file key.');
+                guarantorIdPhotoKey = uploadData.fileKey;
             } catch (e) {
                 console.error('Guarantor ID upload failed:', e);
+                setLoading(false);
+                toast.error('Failed to upload guarantor ID. Please try again before saving.');
+                return;
             }
         }
 

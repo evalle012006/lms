@@ -382,10 +382,10 @@ const LoanFormPanel = ({
                     label="CI Name (Required)"
                     placeholder="Enter CI Name"
                     setFieldValue={setFieldValue}
-                    disabled={clientFlowVersionV2 && ciAutoFilled}
+                    disabled={clientFlowVersionV2 && ciAutoFilled && values.ciName != ''}
                     errors={touched.ciName && errors.ciName ? errors.ciName : undefined}
                 />
-                {clientFlowVersionV2 && ciAutoFilled && (
+                {clientFlowVersionV2 && ciAutoFilled && values.ciName != '' && (
                     <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd"
