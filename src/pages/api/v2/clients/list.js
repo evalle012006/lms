@@ -234,14 +234,12 @@ async function list(req, res) {
             .map(c => ({ ...c.loans?.[0], client: c }))
             .filter(l => l.slotNo != null);
 
-        // Find client _ids already assigned as coMaker on a live loan in this group.
-        // coMaker (despite the name) stores the co-maker's client _id — see field note above.
         const usedRes = await graph.query(
-            queryQl(createGraphType('loans', `_id coMaker status`)('loans'), {
+            queryQl(createGraphType('loans', `_id coMakerId status`)('loans'), {
                 where: {
-                    groupId: { _eq: groupId },
-                    status: { _nin: ["reject", "closed"] },
-                    coMaker: { _is_null: false },
+                    groupId:   { _eq: groupId },
+                    status:    { _nin: ["reject", "closed"] },
+                    coMakerId: { _is_null: false },
                 }
             })
         );
