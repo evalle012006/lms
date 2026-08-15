@@ -15,6 +15,7 @@ export const USER_FIELDS = `
   role
   status
   transactionType
+  weeklyScheduleType
   designatedBranchId
   lastName
   root
@@ -143,6 +144,7 @@ export const LOAN_FIELDS = `
   loanOfficerName
   loanRelease
   loanTerms
+  weeklyScheduleType
   loId
   maturedPastDue
   maturedPD
@@ -246,6 +248,7 @@ export const GROUP_FIELDS = `
   name
   noOfClients
   occurence
+  weeklyScheduleType
   status
   time
   dayNo

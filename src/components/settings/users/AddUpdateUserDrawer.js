@@ -45,6 +45,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
     const [biometricRemoved, setBiometricRemoved]   = useState(false);
 
     const [role, setRole] = useState();
+    const [weeklyScheduleType, setWeeklyScheduleType] = useState('standard');
 
     // reset hooks when close
     const performClose = () => {
@@ -61,6 +62,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
             // ✅ user.profile is now a key or legacy URL — PrivateImage handles both
             user.profile && setPhoto(user.profile);
             user.transactionType && setOccurence(user.transactionType);
+            user.weeklyScheduleType && setWeeklyScheduleType(user.weeklyScheduleType);
         }
 
         if (currentRole?.includes('2-')) {
@@ -122,6 +124,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
         role: user.role ? user.roleId : '',
         loNo: user.loNo ? parseInt(user.loNo) : null,
         transactionType: user.transactionType || 'daily',
+        weeklyScheduleType: user.weeklyScheduleType || 'standard',
         branchManagerName: user?.branchManagerName || '',
         areaId: user?.areaId || '',
         regionId: user?.regionId || '',
@@ -185,6 +188,16 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
         const form = formikRef.current;
         form.setFieldValue(field, value);
         setOccurence(value);
+        if (value !== 'weekly') {
+            setWeeklyScheduleType('standard');
+            form.setFieldValue('weeklyScheduleType', 'standard');
+        }
+    }, []);
+
+    const handleWeeklyScheduleTypeChange = useCallback((field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        setWeeklyScheduleType(value);
     }, []);
 
     const handleSaveUpdate = useCallback(async (values, actions) => {
@@ -228,7 +241,14 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                     values.divisionId = selectedBranch.divisionId;
                 }
 
-                values.transactionType = values?.weekly ? 'weekly' : 'daily';
+                // values.transactionType = values?.weekly ? 'weekly' : 'daily';
+                // FIX: values.weekly was never a real field — this line was silently
+                // forcing transactionType to 'daily' on every rep>=3 save, discarding
+                // whatever the radio buttons actually selected.
+                values.transactionType = occurence;
+                values.weeklyScheduleType = occurence === 'weekly'
+                    ? weeklyScheduleType
+                    : null;
             }
 
             values.currentDate = currentDate;
@@ -244,9 +264,17 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                 }
             } else if (mode === 'edit') {
                 values.file = image;
-                await handleUpdateUser(values);
-                toast.success('User successfully updated.');
-                performClose();
+                // await handleUpdateUser(values);
+                // toast.success('User successfully updated.');
+                // performClose();
+                const updateResult = await handleUpdateUser(values);
+                if (updateResult?.error) {
+                    toast.error(updateResult.message || 'Update failed.');
+                    // don't close — let the admin see the blocking loans and retry
+                } else {
+                    toast.success('User successfully updated.');
+                    performClose();
+                }
             }
         } catch (error) {
             toast.error('An error occurred. Please try again.');
@@ -257,7 +285,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
             actions.resetForm();
             handleRemoveImage();
         }
-    }, [mode, image, currentDate, roles, branchList, onClose, setShowSidebar]);
+    }, [mode, image, currentDate, roles, branchList, onClose, setShowSidebar, occurence, weeklyScheduleType]);
 
     const handleUpdateUser = async (userData) => {
         return await fetchWrapper.sendData(getApiBaseUrl() + 'users/', JSON.parse(JSON.stringify(userData)));
@@ -554,6 +582,15 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
                                                 <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={(field, value) => handleTransactionTypeChange(field, 'daily')} />
                                                 <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={(field, value) => handleTransactionTypeChange(field, 'weekly')} />
                                             </div>
+                                            {occurence === 'weekly' && (
+                                                <div className="flex flex-col mt-3 ml-4">
+                                                    <div className="text-xs uppercase text-gray-400">Weekly Mode</div>
+                                                    <div className="flex flex-row mt-1">
+                                                        <RadioButton id={"radio_standard"} name="radio-weekly-schedule" label={"Standard (24 wks)"} checked={weeklyScheduleType === 'standard'} value="standard" onChange={(field, value) => handleWeeklyScheduleTypeChange('weeklyScheduleType', 'standard')} />
+                                                        <RadioButton id={"radio_accelerated"} name="radio-weekly-schedule" label={"Accelerated (12 wks)"} checked={weeklyScheduleType === 'accelerated'} value="accelerated" onChange={(field, value) => handleWeeklyScheduleTypeChange('weeklyScheduleType', 'accelerated')} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </React.Fragment>
                                 )}

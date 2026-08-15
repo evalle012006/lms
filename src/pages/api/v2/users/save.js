@@ -1,4 +1,4 @@
-import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS } from '@/lib/constants';
+import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS, WEEKLY_GROUPS_ACCELERATED } from '@/lib/constants';
 import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
 import { findAreas, findDivisions, findRegions, findUserById, findUsers } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -145,6 +145,12 @@ async function save(req, res) {
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,
+            // ── ADDED: weeklyScheduleType — only meaningful when transactionType is 'weekly'.
+            // Mirrors the same normalization used in the update route so both paths agree
+            // on what "unset" means (null, not undefined/'standard' by accident).
+            weeklyScheduleType: data.transactionType === 'weekly'
+                ? (data.weeklyScheduleType || 'standard')
+                : null,
             root: false,
             // ── CHANGED: spread sanitized hierarchy fields ──
             ...hierarchyFields,
@@ -253,7 +259,15 @@ async function createGroups (user, addToMutationList) {
             insertGroups(groups);
         }
     } else if (user.transactionType === 'weekly') {
-        const groups = WEEKLY_GROUPS.map((g, i) => {
+        // ── CHANGED: pick the name pool based on weeklyScheduleType so a
+        // brand-new accelerated-weekly LO gets car-brand groups instead of
+        // fruit groups. Falls back to WEEKLY_GROUPS (fruits/standard) if
+        // weeklyScheduleType wasn't set for any reason.
+        const namePool = user.weeklyScheduleType === 'accelerated'
+            ? WEEKLY_GROUPS_ACCELERATED
+            : WEEKLY_GROUPS;
+
+        const groups = namePool.map((g, i) => {
             const groupNo = i + 1;
             if (groupNo <= 3) {
                 const groups = createWeeklyGroupData(g, user, groupNo, "monday");

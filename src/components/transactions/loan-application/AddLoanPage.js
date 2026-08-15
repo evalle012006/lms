@@ -79,6 +79,11 @@ const AddLoanPage = ({
     const [guarantorIdPreview,    setGuarantorIdPreview]    = useState(null);
     const [clientType, setClientType]             = useState('pending');
     const [groupOccurence, setGroupOccurence]     = useState(currentUser?.transactionType || 'daily');
+    // LO-level (not group-level) — drives 24 vs 12 week term for weekly loans.
+    // rep=4: sourced from currentUser directly. rep=3: sourced from loList entry, set in handleLoIdChange.
+    const [loWeeklyScheduleType, setLoWeeklyScheduleType] = useState(
+        rep === 4 ? (currentUser?.weeklyScheduleType || 'standard') : 'standard'
+    );
     const [selectedLo, setSelectedLo]             = useState(rep === 4 ? currentUser._id : null);
     const [selectedGroup, setSelectedGroup]       = useState(null);
     const [clientId, setClientId]                 = useState(null);
@@ -347,6 +352,7 @@ const AddLoanPage = ({
                     setClientId(l.clientId);
                     setSlotNo(l.slotNo);
                     setLoanTerms(l.loanTerms || 60);
+                    if (l.weeklyScheduleType) setLoWeeklyScheduleType(l.weeklyScheduleType);
                     if (l.loId) setSelectedLo(l.loId);
                     if (l.occurence) setGroupOccurence(l.occurence);
 
@@ -715,6 +721,7 @@ const AddLoanPage = ({
         const u = loList.find(u => u._id === value);
         setSelectedLo(value);
         setGroupOccurence(u?.transactionType || 'daily');
+        setLoWeeklyScheduleType(u?.weeklyScheduleType || 'standard');
         form?.setFieldValue(field, value);
         setSelectedGroup(null);
         form?.setFieldValue('groupId', '');
@@ -1082,11 +1089,16 @@ const AddLoanPage = ({
         if (values.status !== 'active') {
             const serviceChargeRate = transactionSettings.serviceChargeRate;
             if (values.occurence === 'weekly') {
-                values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
-                values.loanTerms  = 24;
+                // values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
+                // values.loanTerms  = 24;
+                const weeklyTermDays = loWeeklyScheduleType === 'accelerated' ? 12 : 24;
+                values.activeLoan       = (values.principalLoan * serviceChargeRate) / weeklyTermDays;
+                values.loanTerms        = weeklyTermDays;
+                values.weeklyScheduleType = loWeeklyScheduleType;
             } else {
                 values.loanTerms  = loanTerms;
                 values.activeLoan = (values.principalLoan * serviceChargeRate) / (loanTerms === 60 ? 60 : 100);
+                values.weeklyScheduleType = null;
             }
             values.loanBalance          = values.principalLoan * serviceChargeRate;
             values.amountRelease        = values.loanBalance;
@@ -1256,6 +1268,7 @@ const AddLoanPage = ({
             branchName:          values.branchName,
             groupName:           values.groupName,
             occurence:           values.occurence,
+            weeklyScheduleType:  values.weeklyScheduleType,
             loanFor:             values.loanFor,
             groupLeader:         values.groupLeader,
             modifiedBy:          values.modifiedBy,

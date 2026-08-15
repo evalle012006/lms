@@ -85,7 +85,6 @@ const CashCollectionDetailsPage = () => {
     const [closeLoan, setCloseLoan] = useState();
     const [remarksArr, setRemarksArr] = useState(LOR_WEEKLY_REMARKS);
     const [filter, setFilter] = useState(false);
-    const maxDays = 24;
     const [groupFilter, setGroupFilter] = useState();
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
@@ -425,7 +424,7 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (current.status == 'tomorrow' || current.status == 'pending') {
-                            noOfPayments = 24;
+                            noOfPayments = cc.loanTerms || 24;
                         }
                     } else {
                         mispayment = cc.mispayment;
@@ -458,7 +457,7 @@ const CashCollectionDetailsPage = () => {
                             }
 
                             if (cc.status == 'tomorrow' || cc.status == 'pending') {
-                                noOfPayments = 24;
+                                noOfPayments = cc.loanTerms || 24;
                             }
 
                             if (cc.status == "tomorrow") {
@@ -570,7 +569,7 @@ const CashCollectionDetailsPage = () => {
                             mispayment: '-',
                             mispaymentStr: '-',
                             noMispayment: numMispayment,
-                            noMispaymentStr: numMispayment > 0 ? numMispayment + ' / ' + maxDays : '-',
+                            noMispaymentStr: numMispayment > 0 ? numMispayment + ' / ' + cc.loanTerms : '-',
                             collection: 0,
                             excess: cc.excess > 0 ? cc.excess : 0,
                             excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -627,9 +626,9 @@ const CashCollectionDetailsPage = () => {
 
                         setEditMode(false);
                     } else if (cc.status === "closed") {
-                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
+                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                         if (date) {
-                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
+                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
                         }
                         let activeLoan = 0;
                         let paymentCollection = 0;
@@ -726,7 +725,7 @@ const CashCollectionDetailsPage = () => {
                             total: 0,
                             totalStr: '-',
                             noOfPayments: cc.noOfPayments,
-                            noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
+                            noOfPaymentStr: cc.noOfPayments + ' / ' + cc.loanTerms,
                             mcbu: mcbu,
                             mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                             mcbuCol: mcbuCol ,
@@ -788,11 +787,11 @@ const CashCollectionDetailsPage = () => {
                         }
                         setEditMode(false);
                     } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
-                        let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-';
-                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
+                        let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + cc.loanTerms : '-';
+                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                         let noMispayment = date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment;
                         if (date) {
-                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
+                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
                         }
 
                         let activeLoan = cc.activeLoan;
@@ -969,7 +968,7 @@ const CashCollectionDetailsPage = () => {
                                     collection.loanBalance = current.loanBalance;
                                     collection.loanBalanceStr = formatPricePhp(current.loanBalance);
                                     collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
-                                    collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + maxDays : '-';
+                                    collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + cc.loanTerms : '-';
                                     collection.total = current.total;
                                     collection.fullPayment = current.fullPayment;
                                     collection.fullPaymentStr = formatPricePhp(current.fullPayment);
@@ -1086,8 +1085,8 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (collection.status === 'completed') {
-                    collection.noOfPayments = 24;
-                    collection.noOfPaymentStr = '24 / 24';
+                    collection.noOfPayments = collection.loanTerms;
+                    collection.noOfPaymentStr = `${collection.loanTerms} / ${collection.loanTerms}`;
                     if (collection.fullPaymentDate == currentDate) {
                         collection.fullPayment = collection?.loanRelease;
                         collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
@@ -1134,11 +1133,11 @@ const CashCollectionDetailsPage = () => {
                             mispayment: currentLoan.mispayment,
                             mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
                             noMispayment: currentLoan.noMispayment,
-                            noMispaymentStr: currentLoan.noMispayment > 0 ? currentLoan.noMispayment + ' / ' + maxDays : '-',
+                            noMispaymentStr: currentLoan.noMispayment > 0 ? currentLoan.noMispayment + ' / ' + currentLoan.loanTerms : '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : 0,
                             noOfPayments: '-',
-                            noOfPaymentStr: (currentLoan.noOfPayments !== '-' && currentLoan.status !== 'totals') ? currentLoan.noOfPayments + ' / ' + maxDays : '-',
+                            noOfPaymentStr: (currentLoan.noOfPayments !== '-' && currentLoan.status !== 'totals') ? currentLoan.noOfPayments + ' / ' + currentLoan.loanTerms : '-',
                             mcbu: loan.mcbu,
                             mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             mcbuCol: currentLoan.mcbuCol,
@@ -2185,7 +2184,7 @@ const CashCollectionDetailsPage = () => {
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                             temp.total = temp.prevData.total;
                             temp.noOfPayments = temp.prevData.noOfPayments;
-                            temp.noOfPaymentStr = temp.noOfPayments + " / " + maxDays;
+                            temp.noOfPaymentStr = temp.noOfPayments + " / " + temp.loanTerms;
                             temp.amountRelease = temp.prevData.amountRelease;
                             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
                             temp.excess = temp.prevData.excess;
@@ -2293,7 +2292,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.noOfPayments = temp.noOfPayments + 1;
                                 }
         
-                                temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
+                                temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
     
                                 temp = setHistory(temp, prevLoanBalance);
         
@@ -2728,8 +2727,8 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
                                             temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
-                                            temp.noOfPayments = 24;
-                                            temp.noOfPaymentStr = `24 / ${temp.loanTerms}`;
+                                            temp.noOfPayments = temp.loanTerms;
+                                            temp.noOfPaymentStr = `${temp.loanTerms} / ${temp.loanTerms}`;
                                             temp.noMispayment = 0;
                                             temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
