@@ -133,6 +133,7 @@ const AddLoanPage = ({
     const [loanFetching, setLoanFetching] = useState(false);
     // Holds raw coMaker values from loan record until comakerList is ready
     const [pendingCoMakerRestore, setPendingCoMakerRestore] = useState(null);
+    const [coMakerRestorePending, setCoMakerRestorePending] = useState(false);
     const [clientProfileKey, setClientProfileKey] = useState(null);
     const isEdit = mode === 'edit';
 
@@ -361,7 +362,9 @@ const AddLoanPage = ({
                     // Store coMaker restore data — will resolve once comakerList is populated
                     if (l.coMaker || l.coMakerId) {
                         setPendingCoMakerRestore({ slotNo: l.coMaker, coMakerId: l.coMakerId });
+                        setCoMakerRestorePending(true);
                     }
+
                     // Restore coMaker pending flag
                     if (l.coMakerPending) {
                         setCoMakerPending(true);
@@ -439,6 +442,7 @@ const AddLoanPage = ({
                 toast.info('Previous co-maker not found in this group. Please select a new co-maker.', { autoClose: 4000 });
             }
         }
+        setCoMakerRestorePending(false); 
         setPendingCoMakerRestore(null);
     }, [comakerList, pendingCoMakerRestore, clientType]);
 
@@ -1033,11 +1037,11 @@ const AddLoanPage = ({
     // Save — exact mirror of AddUpdateLoanDrawer
     // ─────────────────────────────────────────────────────────
     const handleSaveUpdate = async(values, action) => {
-        // ── Phase 7: Block loan creation without valid CI ─────────────────
-        // Applies to all existing client types (reloan/pending/balik).
-        // Prospect (clientType='pending') is excluded — they have no CI yet.
-        // fromCI=true: already arrived from a completed CI investigation —
-        // the CI check is redundant and ciStatus will always be null here.
+        if (isEdit && coMakerRestorePending) {
+            toast.error('Please wait — still loading co-maker information before saving.');
+            return;
+        }
+
         const needsCICheck = clientType !== 'pending' && !fromCI && currentBranch?.clientFlowVersion === 'v2';
         if (needsCICheck) {
             if (!ciStatus) {

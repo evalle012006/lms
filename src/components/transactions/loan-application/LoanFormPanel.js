@@ -11,6 +11,7 @@ import SelectDropdownV2 from '@/lib/ui/selectv2';
 import DatePicker2  from '@/lib/ui/DatePicker2';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import moment from 'moment';
 
 import SectionCard from './SectionCard';
 
@@ -55,6 +56,14 @@ const LoanFormPanel = ({
     const [guarantorWarning,  setGuarantorWarning]  = useState(null);
     const [guarantorChecking, setGuarantorChecking] = useState(false);
     const checkTimerRef = useRef(null);
+
+    useEffect(() => {
+        if (!isEdit || !values.dateOfRelease || !initialDateRelease) return;
+        if (moment(values.dateOfRelease).isBefore(moment(), 'day')) {
+            setFieldValue('dateOfRelease', initialDateRelease);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEdit, initialDateRelease]);
 
     // Weekly loan terms are derived server-side from weeklyScheduleType
     // (see handleSaveUpdate in AddLoanPage — it computes weeklyTermDays
@@ -103,7 +112,11 @@ const LoanFormPanel = ({
                 <SectionCard icon={CreditCardIcon} title="Date of release">
                     <DatePicker2
                         name="dateOfRelease"
-                        value={initialDateRelease}
+                        value={
+                            values.dateOfRelease && !moment(values.dateOfRelease).isBefore(moment(), 'day')
+                                ? values.dateOfRelease
+                                : initialDateRelease
+                        }
                         onChange={onDateChange}
                         minDate={minDate}
                         maxDate={maxDate}
