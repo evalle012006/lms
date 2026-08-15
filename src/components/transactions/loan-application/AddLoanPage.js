@@ -1724,6 +1724,7 @@ const AddLoanPage = ({
                                 handleChange={handleChange}
                                 setFieldValue={setFieldValue}
                                 setFieldTouched={setFieldTouched}
+                                currentDate={currentDate}
                                 initialDateRelease={initialDateRelease}
                                 isEdit={isEdit}
                                 fromCI={fromCI}

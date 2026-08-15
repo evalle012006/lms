@@ -22,6 +22,7 @@ const LoanFormPanel = ({
     handleChange,
     setFieldValue,
     setFieldTouched,
+    currentDate,
     initialDateRelease,
     minDate,
     maxDate,
@@ -59,11 +60,12 @@ const LoanFormPanel = ({
 
     useEffect(() => {
         if (!isEdit || !values.dateOfRelease || !initialDateRelease) return;
-        if (moment(values.dateOfRelease).isBefore(moment(), 'day')) {
+        console.log('useEffect', moment(values.dateOfRelease).isBefore(currentDate, 'day'))
+        if (moment(values.dateOfRelease).isBefore(currentDate, 'day')) {
             setFieldValue('dateOfRelease', initialDateRelease);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isEdit, initialDateRelease]);
+    }, [isEdit, initialDateRelease, currentDate]);
 
     // Weekly loan terms are derived server-side from weeklyScheduleType
     // (see handleSaveUpdate in AddLoanPage — it computes weeklyTermDays
@@ -106,14 +108,14 @@ const LoanFormPanel = ({
 
     return (
         <div className="flex flex-col gap-5">
-
+            {console.log(initialDateRelease, values.dateOfRelease, !moment(values.dateOfRelease).isBefore(currentDate, 'day'), currentDate)}
             {/* Date of release */}
             {initialDateRelease && minDate && maxDate && (
                 <SectionCard icon={CreditCardIcon} title="Date of release">
                     <DatePicker2
                         name="dateOfRelease"
                         value={
-                            values.dateOfRelease && !moment(values.dateOfRelease).isBefore(moment(), 'day')
+                            values.dateOfRelease && !moment(values.dateOfRelease).isBefore(currentDate, 'day')
                                 ? values.dateOfRelease
                                 : initialDateRelease
                         }
