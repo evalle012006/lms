@@ -756,7 +756,7 @@ const ModernBranchCashCollections = () => {
     );
   };
 
-  const formatWithComparison2 = (current, diff, groupStatus = null) => {
+  const formatWithComparison2 = (current, diff, groupStatus = null, positive = false) => {
     if (current === undefined) {
       return current;
     }
@@ -770,8 +770,8 @@ const ModernBranchCashCollections = () => {
       return current;
     }
     
-    const sign = diff > 0 ? '+' : '';
-    const isPositive = diff >= 0;
+    const sign = positive ? '-' : diff > 0 ? '+' : '';
+    const isPositive = positive || diff >= 0;
 
     let diffFormatted;
 
@@ -2712,7 +2712,7 @@ const ModernBranchCashCollections = () => {
                                       ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
                                         formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
                                       ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                        formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
+                                        formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus, true)
                                       ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
                                         formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
                                       ) : column.key === 'noMcbuReturn' && column.hasComparison ? (

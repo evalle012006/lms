@@ -16,7 +16,7 @@ const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
 
 const USER_TYPE = createGraphType('users', `
-    _id loNo transactionType firstName lastName designatedBranch designatedBranchId
+    _id loNo transactionType weeklyScheduleType firstName lastName designatedBranch designatedBranchId
 `)('users');
 
 const BRANCH_TYPE = createGraphType('branches', `_id name code`)('branches');
@@ -109,13 +109,13 @@ async function list(req, res) {
         const branch = branchMap[g.branchId]      || null;
         return {
             ...g,
-            // FIX: resolve branchName from branch lookup (null in many group records)
             branchName:        branch?.name || g.branchName || null,
             branchCode:        branch?.code || null,
-            // FIX: loNo and transactionType for ordering and filtering
             loNo:              lo?.loNo             ?? null,
             loTransactionType: lo?.transactionType  || null,
-            // Backfill loanOfficerName if missing on the group record
+            // NEW: LO's current weekly schedule type — needed to filter out
+            // stale-theme duplicate groups on the frontend. null for daily LOs.
+            loWeeklyScheduleType: lo?.weeklyScheduleType || null,
             loanOfficerName:   g.loanOfficerName
                 || (lo ? `${lo.firstName} ${lo.lastName}`.trim() : null),
         };

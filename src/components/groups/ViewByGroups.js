@@ -27,6 +27,19 @@ import ButtonSolid   from '@/lib/ui/ButtonSolid';
 import { PlusIcon }                    from '@heroicons/react/24/solid';
 import { setBranch } from '@/redux/actions/branchActions';
 
+const ScheduleTypeBadge = ({ scheduleType }) => {
+    if (!scheduleType) return null;
+    const isAccelerated = scheduleType === 'accelerated';
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
+            ${isAccelerated
+                ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                : 'bg-sky-100 text-sky-700 border border-sky-200'}`}>
+            {isAccelerated ? '⚡ Accelerated · 12wk' : '📅 Standard · 24wk'}
+        </span>
+    );
+};
+
 // ── QR status badge ───────────────────────────────────────────────────────
 const QRBadge = ({ currentBranch, group, onClick }) => {
     if (currentBranch?.clientFlowVersion === 'v1') {
@@ -110,9 +123,14 @@ const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDe
                 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50
                 last:border-0 transition-colors group/row"`}>
             <div>
-                <p className="text-sm font-medium text-gray-900 group-hover/row:text-blue-700">
-                    {group.name}
-                </p>
+                <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900 group-hover/row:text-blue-700">
+                        {group.name}
+                    </p>
+                    {group.occurence === 'weekly' && (
+                        <ScheduleTypeBadge scheduleType={group.weeklyScheduleType} />
+                    )}
+                </div>
                 <p className="text-xs text-gray-400">
                     {group.occurence} · {group.day} · {group.time || '—'}
                 </p>
@@ -160,25 +178,34 @@ const LOSection = ({ currentBranch, loName, groups, defaultOpen = true, ...rowPr
     const [open, setOpen] = useState(defaultOpen);
     const showQR = currentBranch?.clientFlowVersion === 'v2';
     const now     = moment();
-    const qrCount = groups.filter(g =>
-        g.qrToken && now.isBefore(moment(g.qrExpiresAt))
-    ).length;
-    const noQRCount = groups.filter(g =>
-        !g.qrToken || now.isAfter(moment(g.qrExpiresAt))
-    ).length;
+    const qrCount = groups.filter(g => g.qrToken && now.isBefore(moment(g.qrExpiresAt))).length;
+    const noQRCount = groups.filter(g => !g.qrToken || now.isAfter(moment(g.qrExpiresAt))).length;
+
+    // ── Detect mixed schedule types within this LO's weekly groups ──
+    // If groups.length > 15 for a weekly LO, or more than one distinct
+    // weeklyScheduleType value appears, that's almost certainly stale
+    // duplicate data — surface it loudly rather than silently rendering both.
+    const weeklyGroups = groups.filter(g => g.occurence === 'weekly');
+    const scheduleTypes = [...new Set(weeklyGroups.map(g => g.weeklyScheduleType).filter(Boolean))];
+    const hasMixedSchedule = scheduleTypes.length > 1;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-3">
-            <button type="button"
-                onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between px-4 py-3
-                    hover:bg-gray-50 transition-colors">
+            <button type="button" onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
-                    {open
-                        ? <ChevronDown className="w-4 h-4 text-gray-400" />
-                        : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                    {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                     <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{loName}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900">{loName}</p>
+                            {hasMixedSchedule && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                                    text-xs font-semibold bg-red-100 text-red-700 border border-red-300">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Mixed schedule types — needs cleanup
+                                </span>
+                            )}
+                        </div>
                         <p className="text-xs text-gray-400">
                             {groups.length} group{groups.length !== 1 ? 's' : ''}
                             {showQR && qrCount > 0 && ` · ${qrCount} with active QR`}
@@ -377,6 +404,22 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
                 g.loTransactionType === currentUser.transactionType
             );
         }
+
+        // NEW: exact schedule-type filter — only show a weekly group if its own
+        // weeklyScheduleType matches its LO's CURRENT weeklyScheduleType. This is
+        // what actually hides stale duplicate-theme groups (e.g. leftover
+        // 'standard' groups on an LO that's since switched to 'accelerated'),
+        // rather than just making them visually distinct. Daily groups
+        // (weeklyScheduleType === null on both sides) pass through untouched.
+        list = list.filter(g => {
+            if (g.occurence !== 'weekly') return true;
+            // If loWeeklyScheduleType is missing (e.g. API not yet redeployed,
+            // or an LO record with no weeklyScheduleType set), fail open rather
+            // than hiding everything — better to show a possible duplicate than
+            // to silently hide a legitimate group due to a data gap.
+            if (!g.loWeeklyScheduleType) return true;
+            return g.weeklyScheduleType === g.loWeeklyScheduleType;
+        });
 
         // ── Apply search + filters ────────────────────────────────────────
         if (search)   list = list.filter(g =>

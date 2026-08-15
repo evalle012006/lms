@@ -17,6 +17,7 @@ const EditLoanApplicationPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <AddLoanPage
+                key={uuid}
                 mode="edit"
                 loanId={uuid}
                 onBack={() => router.replace('/transactions/loan-applications')}

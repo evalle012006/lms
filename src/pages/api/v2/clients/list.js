@@ -23,6 +23,10 @@ loans (where: { status: { _eq: "active" } }, order_by: [{ insertedDateTime: desc
 }
 `;
 
+const SPECIFIC_LOAN_FIELDS = `
+    _id clientId branchId groupId loId loanCycle status slotNo coMaker coMakerId
+`;
+
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
@@ -209,6 +213,45 @@ async function list(req, res) {
                 }
             })
         ).then(res => res.data.clients);
+    } else if (mode === 'view_comakers_by_group' && groupId) {
+        const excludeClientId = req.query.excludeClientId || null;
+        const excludeLoanId   = req.query.excludeLoanId   || null;
+
+        const clientsRes = await graph.query(
+            queryQl(CLIENT_TYPE(`
+                loans (where: { status: { _nin: ["reject", "closed"] } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
+                    ${SPECIFIC_LOAN_FIELDS}
+                }
+            `), {
+                where: {
+                    groupId: { _eq: groupId },
+                    loans: { status: { _nin: ["reject", "closed"] } },
+                    ...(excludeClientId ? { _id: { _neq: excludeClientId } } : {}),
+                }
+            })
+        );
+
+        const candidates = clientsRes.data.clients
+            .map(c => ({ ...c.loans?.[0], client: c }))
+            .filter(l => l.slotNo != null);
+
+        const usedRes = await graph.query(
+            queryQl(createGraphType('loans', `_id coMakerId status`)('loans'), {
+                where: {
+                    groupId:   { _eq: groupId },
+                    status:    { _nin: ["reject", "closed"] },
+                    coMakerId: { _is_null: false },
+                    ...(excludeLoanId ? { _id: { _neq: excludeLoanId } } : {}),
+                }
+            })
+        );
+        const usedCoMakerClientIds = new Set(
+            (usedRes.data.loans || [])
+                .map(l => l.coMakerId)
+                .filter(Boolean)
+        );
+
+        clients = candidates.filter(l => !usedCoMakerClientIds.has(l.client._id));
     } else {
         clients = await graph.query(
             queryQl(CLIENT_TYPE(DEFAULT_LOANS), {

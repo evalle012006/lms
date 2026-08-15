@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
 import { getNextValidDate } from '@/lib/date-utils';
 import { setGroupList } from '@/redux/actions/groupActions';
@@ -15,6 +16,7 @@ import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
 import Spinner from '@/components/Spinner';
 import { useSignedUrl } from 'hooks/useSignedUrl';
+import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';
@@ -78,6 +80,11 @@ const AddLoanPage = ({
     const [guarantorIdPreview,    setGuarantorIdPreview]    = useState(null);
     const [clientType, setClientType]             = useState('pending');
     const [groupOccurence, setGroupOccurence]     = useState(currentUser?.transactionType || 'daily');
+    // LO-level (not group-level) — drives 24 vs 12 week term for weekly loans.
+    // rep=4: sourced from currentUser directly. rep=3: sourced from loList entry, set in handleLoIdChange.
+    const [loWeeklyScheduleType, setLoWeeklyScheduleType] = useState(
+        rep === 4 ? (currentUser?.weeklyScheduleType || 'standard') : 'standard'
+    );
     const [selectedLo, setSelectedLo]             = useState(rep === 4 ? currentUser._id : null);
     const [selectedGroup, setSelectedGroup]       = useState(null);
     const [clientId, setClientId]                 = useState(null);
@@ -126,6 +133,7 @@ const AddLoanPage = ({
     const [loanFetching, setLoanFetching] = useState(false);
     // Holds raw coMaker values from loan record until comakerList is ready
     const [pendingCoMakerRestore, setPendingCoMakerRestore] = useState(null);
+    const [coMakerRestorePending, setCoMakerRestorePending] = useState(false);
     const [clientProfileKey, setClientProfileKey] = useState(null);
     const isEdit = mode === 'edit';
 
@@ -137,6 +145,24 @@ const AddLoanPage = ({
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
+    // Existing guarantor doc keys loaded from the loan record (edit mode) —
+    // distinct from guarantorPhotoPreview/guarantorIdPreview, which hold local
+    // blob: URLs for freshly-selected files and don't need signing.
+    const [guarantorPhotoKeyExisting,   setGuarantorPhotoKeyExisting]   = useState(null);
+    const [guarantorIdPhotoKeyExisting, setGuarantorIdPhotoKeyExisting] = useState(null);
+
+    const guarantorKeys = useMemo(
+        () => [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting].filter(Boolean),
+        [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting]
+    );
+    const { urlMap: guarantorUrlMap } = useBulkSignedUrls(guarantorKeys);
+
+    // A locally-selected file (blob: URL) always wins over the resolved
+    // existing key — matches "click to change" replacing the old doc.
+    const resolvedGuarantorPhotoPreview =
+        guarantorPhotoPreview || (guarantorPhotoKeyExisting ? guarantorUrlMap[guarantorPhotoKeyExisting] : null);
+    const resolvedGuarantorIdPreview =
+        guarantorIdPreview || (guarantorIdPhotoKeyExisting ? guarantorUrlMap[guarantorIdPhotoKeyExisting] : null);
 
     // ── Load LO list for BM ────────────────────────────────────
     useEffect(() => {
@@ -230,7 +256,10 @@ const AddLoanPage = ({
     // In edit mode, guarantor comes from the loan record — never overwrite from client
     useEffect(() => {
         if (!selectedClientObj || mode === 'edit') return;
-        formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
+        // FALLBACK ONLY for v2 — the ciStatus effect above overwrites this once the
+        // authoritative CI investigation lookup resolves. This still matters as the
+        // only source for non-v2 branches and as a placeholder while checkClientCI is in flight.
+        // formikRef.current?.setFieldValue('ciName', selectedClientObj.ciName || '');
         const form = formikRef.current;
         if (!form) return;
         const current = form.values;
@@ -265,6 +294,25 @@ const AddLoanPage = ({
         if (!offsetClient) return;
         formikRef.current?.setFieldValue('ciName', offsetClient.ciName || '');
     }, [offsetClient]);
+
+    // ── CI Name authority: for v2, the approved CI investigation's picUserName
+    // is the source of truth. The client/offsetClient effects below still run
+    // first and set a denormalized fallback immediately (so the field isn't
+    // empty while checkClientCI is in flight); this effect overwrites it once
+    // the authoritative value resolves. Never runs in edit mode — loanData.ciName
+    // (the value saved on the loan record) is authoritative there instead.
+    useEffect(() => {
+        if (mode === 'edit') return;
+        if (currentBranch?.clientFlowVersion !== 'v2') return;
+        if (!ciStatus) return; // still checking, or not applicable (e.g. pending client) — leave fallback in place
+
+        if (ciStatus.hasCI && ciStatus.latestCI?.picUserName) {
+            formikRef.current?.setFieldValue('ciName', ciStatus.latestCI.picUserName);
+        }
+        // hasCI === false: no approved CI exists at all — nothing authoritative to
+        // set, leave whatever the fallback effects populated (client.ciName / offsetClient.ciName).
+        // handleSaveUpdate already blocks submission in this case, so this is display-only risk.
+    }, [ciStatus, mode, currentBranch]);
 
     // ── Fetch loan in edit mode ────────────────────────────
     useEffect(() => {
@@ -304,9 +352,8 @@ const AddLoanPage = ({
                     form.setFieldValue('guarantorDailyIncome', l.guarantorDailyIncome || '');
                     form.setFieldValue('guarantorAddress',     l.guarantorAddress     || '');
 
-                    // FIX: restore guarantor photo previews in edit mode
-                    if (l.guarantorPhotoKey)   setGuarantorPhotoPreview(l.guarantorPhotoKey);
-                    if (l.guarantorIdPhotoKey) setGuarantorIdPreview(l.guarantorIdPhotoKey);
+                    if (l.guarantorPhotoKey)   setGuarantorPhotoKeyExisting(l.guarantorPhotoKey);
+                    if (l.guarantorIdPhotoKey) setGuarantorIdPhotoKeyExisting(l.guarantorIdPhotoKey);
 
                     // Restore derived state
                     setSelectedGroup(l.groupId);
@@ -315,7 +362,9 @@ const AddLoanPage = ({
                     // Store coMaker restore data — will resolve once comakerList is populated
                     if (l.coMaker || l.coMakerId) {
                         setPendingCoMakerRestore({ slotNo: l.coMaker, coMakerId: l.coMakerId });
+                        setCoMakerRestorePending(true);
                     }
+
                     // Restore coMaker pending flag
                     if (l.coMakerPending) {
                         setCoMakerPending(true);
@@ -324,6 +373,7 @@ const AddLoanPage = ({
                     setClientId(l.clientId);
                     setSlotNo(l.slotNo);
                     setLoanTerms(l.loanTerms || 60);
+                    if (l.weeklyScheduleType) setLoWeeklyScheduleType(l.weeklyScheduleType);
                     if (l.loId) setSelectedLo(l.loId);
                     if (l.occurence) setGroupOccurence(l.occurence);
 
@@ -361,9 +411,9 @@ const AddLoanPage = ({
         if (!selectedGroup || !currentDate) return;
         // Pass clientId from state — this useEffect is for group/date changes,
         // handleClientIdChange handles client selection with fresh ID directly
-        getListCoMaker(selectedGroup, clientId);
+        getListCoMaker(selectedGroup, clientId, isEdit ? loanId : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedGroup, currentDate]);
+    }, [selectedGroup, currentDate, isEdit, loanId]);
 
     // ── Resolve coMaker once comakerList is populated ─────────────────
     useEffect(() => {
@@ -392,6 +442,7 @@ const AddLoanPage = ({
                 toast.info('Previous co-maker not found in this group. Please select a new co-maker.', { autoClose: 4000 });
             }
         }
+        setCoMakerRestorePending(false); 
         setPendingCoMakerRestore(null);
     }, [comakerList, pendingCoMakerRestore, clientType]);
 
@@ -416,10 +467,33 @@ const AddLoanPage = ({
         setClientType(ct);
         if (initialLoId) setSelectedLo(initialLoId);
 
-        // FIX Issue 2: call getListGroup for the pre-set LO so groupList is populated
-        // for BM (rep=3). This resolves the group name in the read-only display.
-        if (initialLoId && rep === 3) {
-            getListGroup(currentUser.transactionType || 'daily', initialLoId);
+        if (initialGroupId) {
+            // Fetch the group directly by ID — do NOT use getListGroup here.
+            // getListGroup requires occurence as an input filter, but occurence
+            // is exactly what we don't know yet at this point in the CI flow.
+            // currentUser.transactionType is meaningless for a BM (rep=3), so the
+            // old call silently filtered on 'daily' and dropped weekly groups
+            // from groupList entirely — see handleSaveUpdate's group?.occurence lookup.
+            fetchWrapper.get(
+                getApiBaseUrl() + 'groups?' + new URLSearchParams({ _id: initialGroupId })
+            ).then(res => {
+                if (res.success && res.group) {
+                    const g = res.group;
+                    setGroupOccurence(g.occurence || 'daily');
+                    setLoWeeklyScheduleType(g.occurence === 'weekly' ? (g.weeklyScheduleType || 'standard') : 'standard');
+                    // Populate groupList so handleSaveUpdate's groupList.find(...) resolves
+                    // and so the Group dropdown (read-only in fromCI mode) shows a name.
+                    dispatch(setGroupList([{
+                        ...g,
+                        value: g._id,
+                        label: UppercaseFirstLetter(g.name),
+                    }]));
+                } else {
+                    toast.error('Could not load group details for this loan application.');
+                }
+            }).catch(() => {
+                toast.error('Could not load group details for this loan application.');
+            });
         }
 
         setSelectedGroup(initialGroupId);
@@ -564,19 +638,19 @@ const AddLoanPage = ({
 
     const getListClient = async (status, groupId) => {
         setLoading(true);
-        const bId = currentUser.designatedBranchId;
+
         let url = getApiBaseUrl() + 'clients/list?';
 
         if (status === 'active') {
-            url += new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status });
+            url += new URLSearchParams({ mode: 'view_only_no_exist_loan', groupId, status });
         } else if (status === 'advance') {
-            url += new URLSearchParams({ mode: 'view_existing_loan', branchId: bId, groupId, status });
+            url += new URLSearchParams({ mode: 'view_existing_loan', groupId, status });
         } else if (status === 'offset') {
             url += new URLSearchParams({ mode: 'view_offset', status, branchId: selectedOldBranch, loId: selectedOldLO, groupId });
         } else {
             url += rep === 4
                 ? new URLSearchParams({ mode: 'view_only_no_exist_loan', loId: currentUser._id, groupId, status })
-                : new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status });
+                : new URLSearchParams({ mode: 'view_only_no_exist_loan', groupId, status });
         }
 
         const res = await fetchWrapper.get(url);
@@ -603,85 +677,34 @@ const AddLoanPage = ({
         setLoading(false);
     };
 
-    const getListCoMaker = async (groupId, currentClientId = null) => {
+    const getListCoMaker = async (groupId, currentClientId = null, currentLoanId = null) => {
         if (!groupId) return;
-        // Use param if provided, fall back to state (edit mode / useEffect calls)
         const excludeId = currentClientId || clientId;
 
-        // FIX: fetch ALL clients in this group regardless of loan status.
-        // Co-maker is a group membership relationship, not loan-status dependent.
-        // Use the clients/list endpoint with pending status to get all group members
-        // — pending includes both new members and reloaning members.
-        // Then also fetch active to get reloaning clients.
-        const bId = currentUser.designatedBranchId;
-
-        const [pendingRes, activeRes] = await Promise.all([
-            fetchWrapper.get(
-                getApiBaseUrl() + 'clients/list?' +
-                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'pending' })
-            ).catch(() => ({ success: false })),
-            fetchWrapper.get(
-                getApiBaseUrl() + 'clients/list?' +
-                new URLSearchParams({ mode: 'view_only_no_exist_loan', branchId: bId, groupId, status: 'active' })
-            ).catch(() => ({ success: false })),
-        ]);
-
-        // pending returns plain client objects
-        const pendingClients = (pendingRes.clients || []).map(c => ({
-            _id:    c._id,
-            name:   `${c.lastName}, ${c.firstName}`.toUpperCase(),
-            slotNo: c.slotNo || null,
-        }));
-
-        // active returns loan objects with nested client — same shape as getListClient
-        const activeClients = (activeRes.clients || []).map(loan => ({
-            _id:    loan.client?._id || loan.clientId,
-            name:   loan.client
-                ? `${loan.client.lastName}, ${loan.client.firstName}`.toUpperCase()
-                : loan.fullName || '',
-            slotNo: loan.slotNo || null,
-        }));
-
-        // Merge, deduplicate by _id, exclude the current applicant
-        const seen = new Set();
-        const allMembers = [...pendingClients, ...activeClients].filter(c => {
-            if (!c._id || c._id === excludeId) return false;
-            if (seen.has(c._id)) return false;
-            seen.add(c._id);
-            return true;
-        });
-
-        // Detect already-assigned co-makers from pending loans
-        let usedCoMakerIds = new Set();
-        try {
-            const loansRes = await fetchWrapper.get(
-                getApiBaseUrl() + 'transactions/loans/list?' +
-                new URLSearchParams({ groupId, status: 'pending', currentDate: currentDate || '' })
-            );
-            if (loansRes.success) {
-                (loansRes.loans || [])
-                    .filter(l => l.coMakerId && l.clientId !== excludeId)
-                    .forEach(l => usedCoMakerIds.add(l.coMakerId));
-            }
-        } catch { /* non-fatal */ }
-
-        const entries = allMembers
-            .map(c => {
-                const alreadyUsed = usedCoMakerIds.has(c._id);
-                return {
-                    slotNo:     c.slotNo,
-                    clientId:   c._id,
-                    value:      c._id,
-                    isDisabled: alreadyUsed,
-                    label:      c.slotNo
-                        ? alreadyUsed
-                            ? `Slot ${c.slotNo} — ${c.name} (already co-maker)`
-                            : `Slot ${c.slotNo} — ${c.name}`
-                        : alreadyUsed
-                            ? `${c.name} (already co-maker)`
-                            : c.name,
-                };
+        // Server-side view_comakers_by_group already excludes:
+        //   - clients with no live slot in this group
+        //   - clients whose most recent loan is reject/closed
+        //   - clients already assigned as coMaker on another live loan (see coMaker field note)
+        // No further client-side filtering needed.
+        const res = await fetchWrapper.get(
+            getApiBaseUrl() + 'clients/list?' +
+            new URLSearchParams({
+                mode: 'view_comakers_by_group',
+                groupId,
+                excludeClientId: excludeId || '',
+                ...(currentLoanId ? { excludeLoanId: currentLoanId } : {}),
             })
+        ).catch(() => ({ success: false }));
+
+        const entries = (res.clients || [])
+            .map(l => ({
+                slotNo:   l.slotNo,
+                clientId: l.client?._id || l.clientId,
+                value:    l.client?._id || l.clientId,
+                label:    l.client
+                    ? `Slot ${l.slotNo} — ${l.client.lastName}, ${l.client.firstName}`.toUpperCase()
+                    : `Slot ${l.slotNo}`,
+            }))
             .sort((a, b) => (a.slotNo || 999) - (b.slotNo || 999));
 
         dispatch(setComakerList(entries));
@@ -744,6 +767,7 @@ const AddLoanPage = ({
         const u = loList.find(u => u._id === value);
         setSelectedLo(value);
         setGroupOccurence(u?.transactionType || 'daily');
+        setLoWeeklyScheduleType(u?.weeklyScheduleType || 'standard');
         form?.setFieldValue(field, value);
         setSelectedGroup(null);
         form?.setFieldValue('groupId', '');
@@ -793,7 +817,7 @@ const AddLoanPage = ({
         const c = (Array.isArray(clientList) ? clientList : []).find(c => c._id === value || c.value === value);
         if (!c) return;
         setSelectedClientObj({ ...c, resolvedPhotoUrl });
-        if (clientType !== 'pending' && currentBranch?.clientFlowVersion === 'v2') {
+        if (currentBranch?.clientFlowVersion === 'v2') {
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
@@ -982,25 +1006,27 @@ const AddLoanPage = ({
     };
 
     // FIX: guarantor photo handlers
-    const handleGuarantorPhotoChange = (e) => {
+    const handleGuarantorPhotoChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setGuarantorPhotoFile(file);
-        setGuarantorPhotoPreview(URL.createObjectURL(file));
+        const compressed = await compressImage(file);
+        setGuarantorPhotoFile(compressed);
+        setGuarantorPhotoPreview(URL.createObjectURL(compressed));
     };
 
-    const handleGuarantorIdChange = (e) => {
+    const handleGuarantorIdChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setGuarantorIdFile(file);
-        setGuarantorIdPreview(URL.createObjectURL(file));
+        const compressed = await compressImage(file);
+        setGuarantorIdFile(compressed);
+        setGuarantorIdPreview(URL.createObjectURL(compressed));
     };
 
     const handleClearClient = () => {
         setSelectedClientObj(null);
         setOffsetClient(null);
+        setCiStatus(null);
         resetClient(formikRef.current);
-        // FIX: clear guarantor photos when client is cleared
         setGuarantorPhotoFile(null);
         setGuarantorPhotoPreview(null);
         setGuarantorIdFile(null);
@@ -1011,11 +1037,11 @@ const AddLoanPage = ({
     // Save — exact mirror of AddUpdateLoanDrawer
     // ─────────────────────────────────────────────────────────
     const handleSaveUpdate = async(values, action) => {
-        // ── Phase 7: Block loan creation without valid CI ─────────────────
-        // Applies to all existing client types (reloan/pending/balik).
-        // Prospect (clientType='pending') is excluded — they have no CI yet.
-        // fromCI=true: already arrived from a completed CI investigation —
-        // the CI check is redundant and ciStatus will always be null here.
+        if (isEdit && coMakerRestorePending) {
+            toast.error('Please wait — still loading co-maker information before saving.');
+            return;
+        }
+
         const needsCICheck = clientType !== 'pending' && !fromCI && currentBranch?.clientFlowVersion === 'v2';
         if (needsCICheck) {
             if (!ciStatus) {
@@ -1039,8 +1065,12 @@ const AddLoanPage = ({
         }
 
         // ── Guarantor ID photo is required ────────────────────────────────
-        const requiresGuarantorPhoto = currentBranch?.clientFlowVersion === 'v2';
-        if (requiresGuarantorPhoto && !guarantorIdFile && !guarantorIdPreview) {
+        const requiresGuarantorDocs = currentBranch?.clientFlowVersion === 'v2';
+        if (requiresGuarantorDocs && !guarantorPhotoFile && !guarantorPhotoPreview) {
+            toast.error('Please upload a Guarantor Photo.');
+            return;
+        }
+        if (requiresGuarantorDocs && !guarantorIdFile && !guarantorIdPreview) {
             toast.error('Please upload a Guarantor Valid ID photo.');
             return;
         }
@@ -1109,11 +1139,16 @@ const AddLoanPage = ({
         if (values.status !== 'active') {
             const serviceChargeRate = transactionSettings.serviceChargeRate;
             if (values.occurence === 'weekly') {
-                values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
-                values.loanTerms  = 24;
+                // values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
+                // values.loanTerms  = 24;
+                const weeklyTermDays = loWeeklyScheduleType === 'accelerated' ? 12 : 24;
+                values.activeLoan       = (values.principalLoan * serviceChargeRate) / weeklyTermDays;
+                values.loanTerms        = weeklyTermDays;
+                values.weeklyScheduleType = loWeeklyScheduleType;
             } else {
                 values.loanTerms  = loanTerms;
                 values.activeLoan = (values.principalLoan * serviceChargeRate) / (loanTerms === 60 ? 60 : 100);
+                values.weeklyScheduleType = null;
             }
             values.loanBalance          = values.principalLoan * serviceChargeRate;
             values.amountRelease        = values.loanBalance;
@@ -1202,12 +1237,15 @@ const AddLoanPage = ({
                 fd.append('origin', 'guarantor-photos');
                 fd.append('uuid', clientId || `guarantor-${Date.now()}`);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    if (uploadData.fileKey) guarantorPhotoKey = uploadData.fileKey;
-                }
+                if (!uploadRes.ok) throw new Error(`Guarantor photo upload failed (${uploadRes.status}).`);
+                const uploadData = await uploadRes.json();
+                if (!uploadData.fileKey) throw new Error('Guarantor photo upload returned no file key.');
+                guarantorPhotoKey = uploadData.fileKey;
             } catch (e) {
                 console.error('Guarantor photo upload failed:', e);
+                setLoading(false);
+                toast.error('Failed to upload guarantor photo. Please try again before saving.');
+                return;
             }
         }
 
@@ -1219,14 +1257,25 @@ const AddLoanPage = ({
                 fd.append('origin', 'guarantor-id-photos');
                 fd.append('uuid', clientId || `guarantor-id-${Date.now()}`);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    if (uploadData.fileKey) guarantorIdPhotoKey = uploadData.fileKey;
-                }
+                if (!uploadRes.ok) throw new Error(`Guarantor ID upload failed (${uploadRes.status}).`);
+                const uploadData = await uploadRes.json();
+                if (!uploadData.fileKey) throw new Error('Guarantor ID upload returned no file key.');
+                guarantorIdPhotoKey = uploadData.fileKey;
             } catch (e) {
                 console.error('Guarantor ID upload failed:', e);
+                setLoading(false);
+                toast.error('Failed to upload guarantor ID. Please try again before saving.');
+                return;
             }
         }
+
+        // Attach guarantor file keys to values so they're included in BOTH:
+        // - add mode, where savePayload = values directly
+        // - edit mode, where formControlledFields already carries them (this is
+        //   redundant for edit but harmless, and keeps a single source of truth
+        //   instead of two separate paths that can drift out of sync again)
+        values.guarantorPhotoKey   = guarantorPhotoKey;
+        values.guarantorIdPhotoKey = guarantorIdPhotoKey;
 
         const saveUrl = isEdit
             ? getApiBaseUrl() + 'transactions/loans'
@@ -1277,6 +1326,7 @@ const AddLoanPage = ({
             branchName:          values.branchName,
             groupName:           values.groupName,
             occurence:           values.occurence,
+            weeklyScheduleType:  values.weeklyScheduleType,
             loanFor:             values.loanFor,
             groupLeader:         values.groupLeader,
             modifiedBy:          values.modifiedBy,
@@ -1674,7 +1724,9 @@ const AddLoanPage = ({
                                 handleChange={handleChange}
                                 setFieldValue={setFieldValue}
                                 setFieldTouched={setFieldTouched}
+                                currentDate={currentDate}
                                 initialDateRelease={initialDateRelease}
+                                isEdit={isEdit}
                                 fromCI={fromCI}
                                 minDate={minDate}
                                 maxDate={maxDate}
@@ -1682,6 +1734,7 @@ const AddLoanPage = ({
                                 loanTerms={loanTerms}
                                 setLoanTerms={setLoanTerms}
                                 groupOccurence={groupOccurence}
+                                weeklyScheduleType={loWeeklyScheduleType}
                                 groupLeader={groupLeader}
                                 clientId={clientId}
                                 clientType={clientType}
@@ -1696,8 +1749,8 @@ const AddLoanPage = ({
                                 coMakerChecking={coMakerChecking}
                                 isSubmitting={isSubmitting}
                                 isValidating={isValidating}
-                                guarantorPhotoPreview={guarantorPhotoPreview}
-                                guarantorIdPhotoPreview={guarantorIdPreview}
+                                guarantorPhotoPreview={resolvedGuarantorPhotoPreview}
+                                guarantorIdPhotoPreview={resolvedGuarantorIdPreview}
                                 onGuarantorPhotoChange={handleGuarantorPhotoChange}
                                 onGuarantorIdChange={handleGuarantorIdChange}
                             />

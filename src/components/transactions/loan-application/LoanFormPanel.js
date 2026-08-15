@@ -2,7 +2,7 @@
 // FIX: Added fromCI prop — when true, don't force loanCycle=1 for clientType='pending'
 // because fromCI 'pending' = Pending Member (existing client), not Prospect
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { UserIcon, CreditCardIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 import InputText    from '@/lib/ui/InputText';
@@ -11,6 +11,7 @@ import SelectDropdownV2 from '@/lib/ui/selectv2';
 import DatePicker2  from '@/lib/ui/DatePicker2';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import moment from 'moment';
 
 import SectionCard from './SectionCard';
 
@@ -21,6 +22,7 @@ const LoanFormPanel = ({
     handleChange,
     setFieldValue,
     setFieldTouched,
+    currentDate,
     initialDateRelease,
     minDate,
     maxDate,
@@ -29,6 +31,7 @@ const LoanFormPanel = ({
     setLoanTerms,
     groupOccurence,
     groupLeader,
+    weeklyScheduleType = 'standard',
     clientId,
     clientType,
     selectedClientObj,
@@ -46,8 +49,7 @@ const LoanFormPanel = ({
     guarantorIdPhotoPreview = null,
     onGuarantorPhotoChange  = null,
     onGuarantorIdChange     = null,
-    // FIX: when true, bypass forced loanCycle=1 for 'pending' clientType
-    // because fromCI 'pending' = Pending Member (existing client, not Prospect)
+    isEdit = false,
     fromCI = false,
 }) => {
     const ciAutoFilled = !!(selectedClientObj?.ciName || offsetClient?.ciName);
@@ -55,6 +57,28 @@ const LoanFormPanel = ({
     const [guarantorWarning,  setGuarantorWarning]  = useState(null);
     const [guarantorChecking, setGuarantorChecking] = useState(false);
     const checkTimerRef = useRef(null);
+
+    useEffect(() => {
+        if (!isEdit || !values.dateOfRelease || !initialDateRelease) return;
+        console.log('useEffect', moment(values.dateOfRelease).isBefore(currentDate, 'day'))
+        if (moment(values.dateOfRelease).isBefore(currentDate, 'day')) {
+            setFieldValue('dateOfRelease', initialDateRelease);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEdit, initialDateRelease, currentDate]);
+
+    // Weekly loan terms are derived server-side from weeklyScheduleType
+    // (see handleSaveUpdate in AddLoanPage — it computes weeklyTermDays
+    // directly from loWeeklyScheduleType, ignoring values.loanTerms).
+    // So for weekly groups this is display-only, not a real choice.
+    useEffect(() => {
+        if (isEdit) return;
+        if (groupOccurence === 'weekly') {
+            setLoanTerms(weeklyScheduleType === 'accelerated' ? 12 : 24);
+        } else if (groupOccurence === 'daily') {
+            setLoanTerms(60);
+        }
+    }, [groupOccurence, weeklyScheduleType, setLoanTerms]);
 
     const scheduleGuarantorCheck = useCallback(() => {
         if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
@@ -84,13 +108,17 @@ const LoanFormPanel = ({
 
     return (
         <div className="flex flex-col gap-5">
-
+            {console.log(initialDateRelease, values.dateOfRelease, !moment(values.dateOfRelease).isBefore(currentDate, 'day'), currentDate)}
             {/* Date of release */}
             {initialDateRelease && minDate && maxDate && (
                 <SectionCard icon={CreditCardIcon} title="Date of release">
                     <DatePicker2
                         name="dateOfRelease"
-                        value={initialDateRelease}
+                        value={
+                            values.dateOfRelease && !moment(values.dateOfRelease).isBefore(currentDate, 'day')
+                                ? values.dateOfRelease
+                                : initialDateRelease
+                        }
                         onChange={onDateChange}
                         minDate={minDate}
                         maxDate={maxDate}
@@ -110,19 +138,34 @@ const LoanFormPanel = ({
                         setFieldValue={setFieldValue}
                         errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined}
                     />
-                    <SelectDropdownV2
-                        name="loanTerms" field="loanTerms"
-                        value={loanTerms}
-                        label="Loan Terms"
-                        options={[
-                            { value: 60,  label: '60 days'  },
-                            { value: 75,  label: '75 days'  },
-                            { value: 100, label: '100 days' },
-                        ]}
-                        onChange={(_, v) => setLoanTerms(parseInt(v))}
-                        onBlur={setFieldTouched}
-                        placeholder="Select Terms"
-                    />
+                    {groupOccurence === 'weekly' ? (
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                                Loan Terms
+                            </label>
+                            <div className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                bg-gray-50 text-gray-700 flex items-center justify-between">
+                                <span>
+                                    {loanTerms} weeks
+                                    ({weeklyScheduleType === 'accelerated' ? 'Accelerated' : 'Standard'})
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <SelectDropdownV2
+                            name="loanTerms" field="loanTerms"
+                            value={loanTerms}
+                            label="Loan Terms"
+                            options={[
+                                { value: 60,  label: '60 days'  },
+                                { value: 75,  label: '75 days'  },
+                                { value: 100, label: '100 days' },
+                            ]}
+                            onChange={(_, v) => setLoanTerms(parseInt(v))}
+                            onBlur={setFieldTouched}
+                            placeholder="Select Terms"
+                        />
+                    )}
                 </div>
 
                 {/* Loan Cycle removed — displayed as read-only in SlotCycleCard (SelectClientPanel) */}
@@ -382,10 +425,10 @@ const LoanFormPanel = ({
                     label="CI Name (Required)"
                     placeholder="Enter CI Name"
                     setFieldValue={setFieldValue}
-                    disabled={clientFlowVersionV2 && ciAutoFilled}
+                    disabled={clientFlowVersionV2 && ciAutoFilled && values.ciName != ''}
                     errors={touched.ciName && errors.ciName ? errors.ciName : undefined}
                 />
-                {clientFlowVersionV2 && ciAutoFilled && (
+                {clientFlowVersionV2 && ciAutoFilled && values.ciName != '' && (
                     <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd"
