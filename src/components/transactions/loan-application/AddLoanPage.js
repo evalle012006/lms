@@ -1702,6 +1702,7 @@ const AddLoanPage = ({
                                 setFieldValue={setFieldValue}
                                 setFieldTouched={setFieldTouched}
                                 initialDateRelease={initialDateRelease}
+                                isEdit={isEdit}
                                 fromCI={fromCI}
                                 minDate={minDate}
                                 maxDate={maxDate}
