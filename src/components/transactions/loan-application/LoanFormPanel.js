@@ -62,6 +62,7 @@ const LoanFormPanel = ({
     // directly from loWeeklyScheduleType, ignoring values.loanTerms).
     // So for weekly groups this is display-only, not a real choice.
     useEffect(() => {
+        if (isEdit) return;
         if (groupOccurence === 'weekly') {
             setLoanTerms(weeklyScheduleType === 'accelerated' ? 12 : 24);
         } else if (groupOccurence === 'daily') {

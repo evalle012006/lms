@@ -1042,8 +1042,12 @@ const AddLoanPage = ({
         }
 
         // ── Guarantor ID photo is required ────────────────────────────────
-        const requiresGuarantorPhoto = currentBranch?.clientFlowVersion === 'v2';
-        if (requiresGuarantorPhoto && !guarantorIdFile && !guarantorIdPreview) {
+        const requiresGuarantorDocs = currentBranch?.clientFlowVersion === 'v2';
+        if (requiresGuarantorDocs && !guarantorPhotoFile && !guarantorPhotoPreview) {
+            toast.error('Please upload a Guarantor Photo.');
+            return;
+        }
+        if (requiresGuarantorDocs && !guarantorIdFile && !guarantorIdPreview) {
             toast.error('Please upload a Guarantor Valid ID photo.');
             return;
         }
@@ -1241,6 +1245,14 @@ const AddLoanPage = ({
                 return;
             }
         }
+
+        // Attach guarantor file keys to values so they're included in BOTH:
+        // - add mode, where savePayload = values directly
+        // - edit mode, where formControlledFields already carries them (this is
+        //   redundant for edit but harmless, and keeps a single source of truth
+        //   instead of two separate paths that can drift out of sync again)
+        values.guarantorPhotoKey   = guarantorPhotoKey;
+        values.guarantorIdPhotoKey = guarantorIdPhotoKey;
 
         const saveUrl = isEdit
             ? getApiBaseUrl() + 'transactions/loans'
