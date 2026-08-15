@@ -16,6 +16,7 @@ import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
 import Spinner from '@/components/Spinner';
 import { useSignedUrl } from 'hooks/useSignedUrl';
+import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 import GuarantorDuplicateBanner from './GuarantorDuplicateBanner';
 import SelectClientPanel from './SelectClientPanel';
 import LoanFormPanel from './LoanFormPanel';
@@ -143,6 +144,24 @@ const AddLoanPage = ({
 
     // Resolve client profile photo in edit mode via the signed-url hook
     const { signedUrl: editClientPhotoUrl } = useSignedUrl(clientProfileKey);
+    // Existing guarantor doc keys loaded from the loan record (edit mode) —
+    // distinct from guarantorPhotoPreview/guarantorIdPreview, which hold local
+    // blob: URLs for freshly-selected files and don't need signing.
+    const [guarantorPhotoKeyExisting,   setGuarantorPhotoKeyExisting]   = useState(null);
+    const [guarantorIdPhotoKeyExisting, setGuarantorIdPhotoKeyExisting] = useState(null);
+
+    const guarantorKeys = useMemo(
+        () => [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting].filter(Boolean),
+        [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting]
+    );
+    const { urlMap: guarantorUrlMap } = useBulkSignedUrls(guarantorKeys);
+
+    // A locally-selected file (blob: URL) always wins over the resolved
+    // existing key — matches "click to change" replacing the old doc.
+    const resolvedGuarantorPhotoPreview =
+        guarantorPhotoPreview || (guarantorPhotoKeyExisting ? guarantorUrlMap[guarantorPhotoKeyExisting] : null);
+    const resolvedGuarantorIdPreview =
+        guarantorIdPreview || (guarantorIdPhotoKeyExisting ? guarantorUrlMap[guarantorIdPhotoKeyExisting] : null);
 
     // ── Load LO list for BM ────────────────────────────────────
     useEffect(() => {
@@ -332,9 +351,8 @@ const AddLoanPage = ({
                     form.setFieldValue('guarantorDailyIncome', l.guarantorDailyIncome || '');
                     form.setFieldValue('guarantorAddress',     l.guarantorAddress     || '');
 
-                    // FIX: restore guarantor photo previews in edit mode
-                    if (l.guarantorPhotoKey)   setGuarantorPhotoPreview(l.guarantorPhotoKey);
-                    if (l.guarantorIdPhotoKey) setGuarantorIdPreview(l.guarantorIdPhotoKey);
+                    if (l.guarantorPhotoKey)   setGuarantorPhotoKeyExisting(l.guarantorPhotoKey);
+                    if (l.guarantorIdPhotoKey) setGuarantorIdPhotoKeyExisting(l.guarantorIdPhotoKey);
 
                     // Restore derived state
                     setSelectedGroup(l.groupId);
@@ -1725,8 +1743,8 @@ const AddLoanPage = ({
                                 coMakerChecking={coMakerChecking}
                                 isSubmitting={isSubmitting}
                                 isValidating={isValidating}
-                                guarantorPhotoPreview={guarantorPhotoPreview}
-                                guarantorIdPhotoPreview={guarantorIdPreview}
+                                guarantorPhotoPreview={resolvedGuarantorPhotoPreview}
+                                guarantorIdPhotoPreview={resolvedGuarantorIdPreview}
                                 onGuarantorPhotoChange={handleGuarantorPhotoChange}
                                 onGuarantorIdChange={handleGuarantorIdChange}
                             />
