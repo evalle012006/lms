@@ -215,6 +215,7 @@ async function list(req, res) {
         ).then(res => res.data.clients);
     } else if (mode === 'view_comakers_by_group' && groupId) {
         const excludeClientId = req.query.excludeClientId || null;
+        const excludeLoanId   = req.query.excludeLoanId   || null;
 
         const clientsRes = await graph.query(
             queryQl(CLIENT_TYPE(`
@@ -240,6 +241,7 @@ async function list(req, res) {
                     groupId:   { _eq: groupId },
                     status:    { _nin: ["reject", "closed"] },
                     coMakerId: { _is_null: false },
+                    ...(excludeLoanId ? { _id: { _neq: excludeLoanId } } : {}),
                 }
             })
         );

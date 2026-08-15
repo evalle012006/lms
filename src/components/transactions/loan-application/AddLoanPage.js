@@ -408,7 +408,7 @@ const AddLoanPage = ({
         if (!selectedGroup || !currentDate) return;
         // Pass clientId from state — this useEffect is for group/date changes,
         // handleClientIdChange handles client selection with fresh ID directly
-        getListCoMaker(selectedGroup, clientId);
+        getListCoMaker(selectedGroup, clientId, isEdit ? loanId : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedGroup, currentDate]);
 
@@ -688,6 +688,7 @@ const AddLoanPage = ({
                 mode: 'view_comakers_by_group',
                 groupId,
                 excludeClientId: excludeId || '',
+                ...(currentLoanId ? { excludeLoanId: currentLoanId } : {}),
             })
         ).catch(() => ({ success: false }));
 
