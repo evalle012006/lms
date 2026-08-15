@@ -15,6 +15,7 @@ import { setBranchList } from '@/redux/actions/branchActions';
 import DCSTable              from '@/components/transactions/daily-collection-sheet/DCSTable';
 import SummaryPanel          from '@/components/transactions/daily-collection-sheet/SummaryPanel';
 import MorningAfternoonPanel from '@/components/transactions/daily-collection-sheet/MorningAfternoonPanel';
+import TransactionPanel from '@/components/transactions/daily-collection-sheet/TransactionPanel';
 
 // ── Separated export / print utilities ───────────────────────────────────────
 import { exportDCSExcel } from '@/components/transactions/daily-collection-sheet/exportDCSExcel';
@@ -476,11 +477,12 @@ const DailyCollectionSheet = () => {
 
                         {!isAdminAllBranches && (
                             <div className="flex space-x-1 mt-3 border-b border-gray-200">
-                                <TabBtn id="dcs"     label="DCS Table"           icon={FileSpreadsheet} />
-                                <TabBtn id="morning" label="Morning / Afternoon"  icon={Sun} />
+                                <TabBtn id="dcs" label="DCS Table" icon={FileSpreadsheet} />
+                                <TabBtn id="morning" label="Morning / Afternoon" icon={Sun} />
+                                <TabBtn id="transaction" label="Transaction" icon={BookOpen} />
                             </div>
                         )}
-                    </div>
+                        </div>
 
                     {/* ── Content ── */}
                     <div className="flex-1 overflow-auto min-h-0">
@@ -514,7 +516,7 @@ const DailyCollectionSheet = () => {
                                     </div>
                                 )}
                             </div>
-                        ) : (
+                        ) : activeTab === 'morning' ? (
                             <div className="p-6">
                                 <div className="mb-3 flex items-center space-x-2">
                                     <Sun className="w-5 h-5 text-amber-500" />
@@ -524,7 +526,11 @@ const DailyCollectionSheet = () => {
                                 </div>
                                 <MorningAfternoonPanel summaryData={summaryData} data={data} />
                             </div>
-                        )}
+                        ) : activeTab === 'transaction' ? (
+                            <div className="p-6">
+                                <TransactionPanel />
+                            </div>
+                        ) : null}
                     </div>
 
                 </div>
