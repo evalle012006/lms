@@ -410,7 +410,7 @@ const AddLoanPage = ({
         // handleClientIdChange handles client selection with fresh ID directly
         getListCoMaker(selectedGroup, clientId, isEdit ? loanId : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedGroup, currentDate]);
+    }, [selectedGroup, currentDate, isEdit, loanId]);
 
     // ── Resolve coMaker once comakerList is populated ─────────────────
     useEffect(() => {
