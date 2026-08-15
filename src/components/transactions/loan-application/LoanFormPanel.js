@@ -2,7 +2,7 @@
 // FIX: Added fromCI prop — when true, don't force loanCycle=1 for clientType='pending'
 // because fromCI 'pending' = Pending Member (existing client), not Prospect
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { UserIcon, CreditCardIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 import InputText    from '@/lib/ui/InputText';
@@ -29,6 +29,7 @@ const LoanFormPanel = ({
     setLoanTerms,
     groupOccurence,
     groupLeader,
+    weeklyScheduleType = 'standard',
     clientId,
     clientType,
     selectedClientObj,
@@ -55,6 +56,18 @@ const LoanFormPanel = ({
     const [guarantorWarning,  setGuarantorWarning]  = useState(null);
     const [guarantorChecking, setGuarantorChecking] = useState(false);
     const checkTimerRef = useRef(null);
+
+    // Weekly loan terms are derived server-side from weeklyScheduleType
+    // (see handleSaveUpdate in AddLoanPage — it computes weeklyTermDays
+    // directly from loWeeklyScheduleType, ignoring values.loanTerms).
+    // So for weekly groups this is display-only, not a real choice.
+    useEffect(() => {
+        if (groupOccurence === 'weekly') {
+            setLoanTerms(weeklyScheduleType === 'accelerated' ? 12 : 24);
+        } else if (groupOccurence === 'daily') {
+            setLoanTerms(60);
+        }
+    }, [groupOccurence, weeklyScheduleType, setLoanTerms]);
 
     const scheduleGuarantorCheck = useCallback(() => {
         if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
@@ -110,19 +123,34 @@ const LoanFormPanel = ({
                         setFieldValue={setFieldValue}
                         errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined}
                     />
-                    <SelectDropdownV2
-                        name="loanTerms" field="loanTerms"
-                        value={loanTerms}
-                        label="Loan Terms"
-                        options={[
-                            { value: 60,  label: '60 days'  },
-                            { value: 75,  label: '75 days'  },
-                            { value: 100, label: '100 days' },
-                        ]}
-                        onChange={(_, v) => setLoanTerms(parseInt(v))}
-                        onBlur={setFieldTouched}
-                        placeholder="Select Terms"
-                    />
+                    {groupOccurence === 'weekly' ? (
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                                Loan Terms
+                            </label>
+                            <div className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                bg-gray-50 text-gray-700 flex items-center justify-between">
+                                <span>
+                                    {loanTerms} weeks
+                                    ({weeklyScheduleType === 'accelerated' ? 'Accelerated' : 'Standard'})
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <SelectDropdownV2
+                            name="loanTerms" field="loanTerms"
+                            value={loanTerms}
+                            label="Loan Terms"
+                            options={[
+                                { value: 60,  label: '60 days'  },
+                                { value: 75,  label: '75 days'  },
+                                { value: 100, label: '100 days' },
+                            ]}
+                            onChange={(_, v) => setLoanTerms(parseInt(v))}
+                            onBlur={setFieldTouched}
+                            placeholder="Select Terms"
+                        />
+                    )}
                 </div>
 
                 {/* Loan Cycle removed — displayed as read-only in SlotCycleCard (SelectClientPanel) */}

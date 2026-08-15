@@ -445,10 +445,33 @@ const AddLoanPage = ({
         setClientType(ct);
         if (initialLoId) setSelectedLo(initialLoId);
 
-        // FIX Issue 2: call getListGroup for the pre-set LO so groupList is populated
-        // for BM (rep=3). This resolves the group name in the read-only display.
-        if (initialLoId && rep === 3) {
-            getListGroup(currentUser.transactionType || 'daily', initialLoId);
+        if (initialGroupId) {
+            // Fetch the group directly by ID — do NOT use getListGroup here.
+            // getListGroup requires occurence as an input filter, but occurence
+            // is exactly what we don't know yet at this point in the CI flow.
+            // currentUser.transactionType is meaningless for a BM (rep=3), so the
+            // old call silently filtered on 'daily' and dropped weekly groups
+            // from groupList entirely — see handleSaveUpdate's group?.occurence lookup.
+            fetchWrapper.get(
+                getApiBaseUrl() + 'groups?' + new URLSearchParams({ _id: initialGroupId })
+            ).then(res => {
+                if (res.success && res.group) {
+                    const g = res.group;
+                    setGroupOccurence(g.occurence || 'daily');
+                    setLoWeeklyScheduleType(g.occurence === 'weekly' ? (g.weeklyScheduleType || 'standard') : 'standard');
+                    // Populate groupList so handleSaveUpdate's groupList.find(...) resolves
+                    // and so the Group dropdown (read-only in fromCI mode) shows a name.
+                    dispatch(setGroupList([{
+                        ...g,
+                        value: g._id,
+                        label: UppercaseFirstLetter(g.name),
+                    }]));
+                } else {
+                    toast.error('Could not load group details for this loan application.');
+                }
+            }).catch(() => {
+                toast.error('Could not load group details for this loan application.');
+            });
         }
 
         setSelectedGroup(initialGroupId);
@@ -1674,6 +1697,7 @@ const AddLoanPage = ({
                                 loanTerms={loanTerms}
                                 setLoanTerms={setLoanTerms}
                                 groupOccurence={groupOccurence}
+                                weeklyScheduleType={loWeeklyScheduleType}
                                 groupLeader={groupLeader}
                                 clientId={clientId}
                                 clientType={clientType}
