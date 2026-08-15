@@ -673,7 +673,7 @@ const AddLoanPage = ({
         setLoading(false);
     };
 
-    const getListCoMaker = async (groupId, currentClientId = null) => {
+    const getListCoMaker = async (groupId, currentClientId = null, currentLoanId = null) => {
         if (!groupId) return;
         const excludeId = currentClientId || clientId;
 
