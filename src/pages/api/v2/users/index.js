@@ -258,14 +258,14 @@ const createDailyGroupData = (groupName, user, groupNo) => ({
 
 const buildWeeklyGroupSet = (user, weeklyScheduleType) => {
     const namePool = weeklyScheduleType === 'accelerated' ? WEEKLY_GROUPS_ACCELERATED : WEEKLY_GROUPS;
+    const perDay = weeklyScheduleType === 'accelerated' ? 5 : 3;
+    const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
     return namePool.map((g, i) => {
         const groupNo = i + 1;
-        if (groupNo <= 3)  return createWeeklyGroupData(g, user, groupNo, "monday");
-        if (groupNo <= 6)  return createWeeklyGroupData(g, user, groupNo, "tuesday");
-        if (groupNo <= 9)  return createWeeklyGroupData(g, user, groupNo, "wednesday");
-        if (groupNo <= 12) return createWeeklyGroupData(g, user, groupNo, "thursday");
-        if (groupNo <= 15) return createWeeklyGroupData(g, user, groupNo, "friday");
-        return null;
+        const dayIndex = Math.floor((groupNo - 1) / perDay);
+        if (dayIndex > 4) return null;
+        return createWeeklyGroupData(g, user, groupNo, days[dayIndex]);
     }).filter(Boolean);
 };
 

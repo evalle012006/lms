@@ -259,33 +259,20 @@ async function createGroups (user, addToMutationList) {
             insertGroups(groups);
         }
     } else if (user.transactionType === 'weekly') {
-        // ── CHANGED: pick the name pool based on weeklyScheduleType so a
-        // brand-new accelerated-weekly LO gets car-brand groups instead of
-        // fruit groups. Falls back to WEEKLY_GROUPS (fruits/standard) if
-        // weeklyScheduleType wasn't set for any reason.
         const namePool = user.weeklyScheduleType === 'accelerated'
             ? WEEKLY_GROUPS_ACCELERATED
             : WEEKLY_GROUPS;
 
+        // Accelerated: 25 groups, 5/day. Standard: 15 groups, 3/day.
+        const perDay = user.weeklyScheduleType === 'accelerated' ? 5 : 3;
+
         const groups = namePool.map((g, i) => {
             const groupNo = i + 1;
-            if (groupNo <= 3) {
-                const groups = createWeeklyGroupData(g, user, groupNo, "monday");
-                return groups;
-            } else if (groupNo >= 4 && groupNo <= 6) {
-                const groups = createWeeklyGroupData(g, user, groupNo, "tuesday");
-                return groups;
-            } else if (groupNo >= 7 && groupNo <= 9) {
-                const groups = createWeeklyGroupData(g, user, groupNo, "wednesday");
-                return groups;
-            } else if (groupNo >= 10 && groupNo <= 12) {
-                const groups = createWeeklyGroupData(g, user, groupNo, "thursday");
-                return groups;
-            } else if (groupNo >= 13 && groupNo <= 15) {
-                const groups = createWeeklyGroupData(g, user, groupNo, "friday");
-                return groups
-            }
-        });
+            const dayIndex = Math.floor((groupNo - 1) / perDay); // 0=Mon..4=Fri
+            const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+            if (dayIndex > 4) return null; // safety: ignore extra names beyond 5 days
+            return createWeeklyGroupData(g, user, groupNo, days[dayIndex]);
+        }).filter(Boolean);
 
         insertGroups(groups);
     }
@@ -325,6 +312,7 @@ const createWeeklyGroupData = (groupName, user, groupNo, day) => {
         capacity: 30,
         noOfClients: 0,
         status: "available",
+        weeklyScheduleType: user.weeklyScheduleType,
         dateAdded: new Date()
     }
 }
