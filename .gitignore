@@ -12,3 +12,4 @@ src/pages/_app.js
 
 .github/workflows/CD.yml
 .github/workflows/CI.yml
+scripts/cleanup-do-spaces.js
