@@ -12,3 +12,7 @@ src/pages/_app.js
 
 .github/workflows/CD.yml
 .github/workflows/CI.yml
+scripts/cleanup-do-spaces.js
+scripts/revert-quarantine.js
+src/pages/api/v2/admin/cleanup-do-spaces.js
+src/pages/api/v2/admin/revert-quarantine.js

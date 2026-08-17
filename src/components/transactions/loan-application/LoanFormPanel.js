@@ -108,7 +108,6 @@ const LoanFormPanel = ({
 
     return (
         <div className="flex flex-col gap-5">
-            {console.log(initialDateRelease, values.dateOfRelease, !moment(values.dateOfRelease).isBefore(currentDate, 'day'), currentDate)}
             {/* Date of release */}
             {initialDateRelease && minDate && maxDate && (
                 <SectionCard icon={CreditCardIcon} title="Date of release">

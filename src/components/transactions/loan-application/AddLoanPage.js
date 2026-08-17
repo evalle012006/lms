@@ -521,9 +521,8 @@ const AddLoanPage = ({
 
         setClientId(initialClientId);
         formikRef.current?.setFieldValue('clientId', initialClientId);
-
         // Slot — existing clients already have one
-        if (initialSlotNo) {
+        if (initialSlotNo && initialClientType != 'balik') {
             const slot = parseInt(initialSlotNo);
             setSlotNo(slot);
             setSlotReadOnly(true);
@@ -564,7 +563,7 @@ const AddLoanPage = ({
 
         setHasPreFilled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialClientId, initialGroupId]);
+    }, [initialClientId, initialGroupId, initialClientType]);
 
     // ── Apply LAF values when arriving from CI flow ───────────────────────
     // guarantorFirstName on client record may be stale ('.') — LAF record is authoritative.
@@ -1665,6 +1664,7 @@ const AddLoanPage = ({
                                 selectedGroup={selectedGroup}
                                 clientId={clientId}
                                 clientType={clientType}
+                                initialClientType={initialClientType}
                                 offsetClient={offsetClient}
                                 selectedClientObj={selectedClientObj}
                                 selectedOldBranch={selectedOldBranch}
