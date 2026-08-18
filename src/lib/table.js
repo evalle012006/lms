@@ -140,12 +140,14 @@ export function AvatarCell({ value, column, row }) {
   );
 }
 
+js
 export function SelectCell({ value, column, row }) {
   const options = column.Options;
   const valueIdAccessor = column.valueIdAccessor;
   const valueId = valueIdAccessor && row.original[valueIdAccessor];
   const resolvedValue = valueId ? valueId : value;
   const [defaultValue, setDefaultValue] = useState(resolvedValue);
+  const callback = column.selectOnChange;
 
   useEffect(() => {
     setDefaultValue(resolvedValue);
