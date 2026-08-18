@@ -140,7 +140,6 @@ export function AvatarCell({ value, column, row }) {
   );
 }
 
-js
 export function SelectCell({ value, column, row }) {
   const options = column.Options;
   const valueIdAccessor = column.valueIdAccessor;
