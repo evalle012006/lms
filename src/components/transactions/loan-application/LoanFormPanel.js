@@ -168,7 +168,7 @@ const LoanFormPanel = ({
                 </div>
 
                 {/* Loan Cycle removed — displayed as read-only in SlotCycleCard (SelectClientPanel) */}
-                {(groupOccurence === 'weekly' || groupLeader) && (
+                {((groupOccurence === 'weekly' && weeklyScheduleType === 'standard') || groupLeader) && (
                     <div className="mt-4">
                         <InputNumber
                             name="mcbu"

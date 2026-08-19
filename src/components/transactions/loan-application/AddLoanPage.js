@@ -1217,7 +1217,8 @@ const AddLoanPage = ({
             toast.error('Principal loan must be divisible by 1,000.');
             return;
         }
-        if (values.occurence === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < transactionSettings.minWeeklyMcbuCollection)) {
+        if (values.occurence === 'weekly' && values.weeklyScheduleType === 'standard' 
+                && (!values.mcbu || parseFloat(values.mcbu) < transactionSettings.minWeeklyMcbuCollection)) {
             setLoading(false);
             toast.error(`Invalid MCBU. Please enter at least ${transactionSettings.minWeeklyMcbuCollection}.`);
             return;

@@ -144,8 +144,13 @@ export function SelectCell({ value, column, row }) {
   const options = column.Options;
   const valueIdAccessor = column.valueIdAccessor;
   const valueId = valueIdAccessor && row.original[valueIdAccessor];
-  const [defaultValue, setDefaultValue] = useState(valueId ? valueId : value);
+  const resolvedValue = valueId ? valueId : value;
+  const [defaultValue, setDefaultValue] = useState(resolvedValue);
   const callback = column.selectOnChange;
+
+  useEffect(() => {
+    setDefaultValue(resolvedValue);
+  }, [resolvedValue]);
 
   const handleChange = (val) => {
     setDefaultValue(val);
@@ -758,7 +763,7 @@ const TableComponent = React.memo(({
                     const { key, ...rowProps } = row.getRowProps();
                     return (
                       <tr
-                        key={`row-${i}`}
+                        key={row.original._id ?? `row-${i}`}
                         {...rowProps}
                         className={rowClass}
                         style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}

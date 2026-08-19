@@ -19,8 +19,8 @@ const CLIENT_TYPE = createGraphType('client', `
     oldGroupId oldLoId
     loans (
         where: { status: { _neq: "reject" } }
-        order_by: [{ loanCycle: desc }]
-        limit: 1
+        order_by: [{ loanCycle: desc }, { insertedDateTime: desc }]
+        limit: 5
     ) {
         _id slotNo status loanCycle groupId branchId
         amountRelease loanBalance loanRelease dateAdded dateOfRelease
