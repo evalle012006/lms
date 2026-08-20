@@ -8,14 +8,18 @@ import Select from 'react-select';
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { getApiBaseUrl } from '@/lib/constants';
+import { getApiBaseUrl, mapSummaryData } from '@/lib/constants';
 import { DropdownIndicator, borderStyles } from '@/styles/select';
 import { setBranchList } from '@/redux/actions/branchActions';
 
-import DCSTable              from '@/components/transactions/daily-collection-sheet/DCSTable';
-import SummaryPanel          from '@/components/transactions/daily-collection-sheet/SummaryPanel';
-import MorningAfternoonPanel from '@/components/transactions/daily-collection-sheet/MorningAfternoonPanel';
+import DCSTable from '@/components/transactions/daily-collection-sheet/DCSTable';
+import SummaryPanel from '@/components/transactions/daily-collection-sheet/SummaryPanel';
 import TransactionPanel from '@/components/transactions/daily-collection-sheet/TransactionPanel';
+
+import OtherReceiptPayment from '@/components/transactions/daily-collection-sheet/OtherReceipt&Payment';
+import MngtExpenses from '@/components/transactions/daily-collection-sheet/MngtExpenses';
+import Cashbook from '@/components/transactions/daily-collection-sheet/Cashbook';
+import Payroll from '@/components/transactions/daily-collection-sheet/Payroll';
 
 // ── Separated export / print utilities ───────────────────────────────────────
 import { exportDCSExcel } from '@/components/transactions/daily-collection-sheet/exportDCSExcel';
@@ -120,28 +124,31 @@ const calculateTotals = (rows) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DailyCollectionSheet = () => {
-    const dispatch      = useDispatch();
-    const currentUser   = useSelector(state => state.user.data);
+    const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
     const currentBranch = useSelector(state => state.branch.data);
-    const branchList    = useSelector(state => state.branch.list);
+    const branchList = useSelector(state => state.branch.list);
 
-    const [loading, setLoading]             = useState(true);
-    const [data, setData]                   = useState([]);
-    const [branchData, setBranchData]       = useState([]);
-    const [totals, setTotals]               = useState(null);
-    const [selectedDate, setSelectedDate]   = useState(moment().format('YYYY-MM-DD'));
-    const [selectedLo, setSelectedLo]       = useState(null);
-    const [loanOfficers, setLoanOfficers]   = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState([]);
+    const [branchData, setBranchData] = useState([]);
+    const [totals, setTotals] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
+    const [selectedLo, setSelectedLo] = useState(null);
+    const [loanOfficers, setLoanOfficers] = useState([]);
     const [selectedBranch, setSelectedBranch] = useState(null);
 
-    const [summaryData, setSummaryData]       = useState(null);
+    const [summaryData, setSummaryData] = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
+
+    const [cashbookData, setCashbookData] = useState({});
+    const [cashbookLoading, setCashbookLoading] = useState(false);
 
     const [activeTab, setActiveTab] = useState('dcs');
 
-    const isAdmin            = currentUser?.role?.rep === 1;
-    const isLoanOfficer      = currentUser?.role?.rep === 4;
-    const isBranchManager    = currentUser?.role?.rep === 3;
+    const isAdmin = currentUser?.role?.rep === 1;
+    const isLoanOfficer = currentUser?.role?.rep === 4;
+    const isBranchManager = currentUser?.role?.rep === 3;
     const isAdminAllBranches = isAdmin && !selectedBranch;
 
     // ── Branch list ──────────────────────────────────────────────────────────
@@ -211,6 +218,133 @@ const DailyCollectionSheet = () => {
             setSummaryLoading(false);
         }
     }, []);
+
+    const fetchCashbookMonth = useCallback(
+        async (branchId, selectedMonthDate, loId = null) => {
+            if (!branchId || !selectedMonthDate) {
+                setCashbookData({});
+                return;
+            }
+
+            try {
+                setCashbookLoading(true);
+
+                const monthStart = moment(selectedMonthDate).startOf('month');
+                const monthEnd = moment(selectedMonthDate);
+
+                const workingDates = [];
+
+                const cursor = monthStart.clone();
+
+                while (cursor.isSameOrBefore(monthEnd, 'day')) {
+                    const dayOfWeek = cursor.day();
+
+                    // Skip Sunday = 0
+                    // Skip Saturday = 6
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        workingDates.push(cursor.format('YYYY-MM-DD'));
+                    }
+
+                    cursor.add(1, 'day');
+                }
+
+                const entries = await Promise.all(
+                    workingDates.map(async (date) => {
+                        try {
+                            const params = new URLSearchParams({
+                                branch_id: branchId,
+                                selected_date: date,
+                            });
+
+                            if (loId) {
+                                params.append('lo_id', loId);
+                            }
+
+                            const response = await fetchWrapper.get(
+                                getApiBaseUrl() +
+                                    'data/get_daily_collection_summary?' +
+                                    params.toString()
+                            );
+
+                            const raw = Array.isArray(response.data)
+                                ? response.data[0]
+                                : response.data;
+
+                            return [
+                                date,
+                                mapSummaryData(raw),
+                            ];
+                        } catch (error) {
+                            console.error(
+                                `Cashbook summary error for ${date}:`,
+                                error
+                            );
+
+                            return [date, null];
+                        }
+                    })
+                );
+
+                const monthData = {};
+
+                entries.forEach(([date, summary]) => {
+                    monthData[date] = summary;
+                });
+
+                setCashbookData(monthData);
+            } catch (error) {
+                console.error('Error fetching Cashbook month:', error);
+                setCashbookData({});
+            } finally {
+                setCashbookLoading(false);
+            }
+        },
+        []
+    );
+
+    useEffect(() => {
+        if (activeTab !== 'cashbook') return;
+
+        let branchId = null;
+        let loId = null;
+
+        if (isLoanOfficer) {
+            branchId = currentUser?.designatedBranchId;
+            loId = currentUser?._id;
+        } else if (isBranchManager) {
+            branchId = currentUser?.designatedBranchId;
+            loId = selectedLo?._id || null;
+        } else if (isAdmin && selectedBranch) {
+            branchId = selectedBranch._id;
+            loId = selectedLo?._id || null;
+        } else {
+            branchId = currentBranch?._id;
+            loId = selectedLo?._id || null;
+        }
+
+        if (!branchId) {
+            setCashbookData({});
+            return;
+        }
+
+        fetchCashbookMonth(
+            branchId,
+            selectedDate,
+            loId
+        );
+    }, [
+        activeTab,
+        selectedDate,
+        selectedLo?._id,
+        selectedBranch?._id,
+        currentBranch?._id,
+        currentUser?._id,
+        currentUser?.designatedBranchId,
+        isLoanOfficer,
+        isBranchManager,
+        isAdmin,
+        fetchCashbookMonth,
+    ]);
 
     // ── Main DCS data fetch ──────────────────────────────────────────────────
     useEffect(() => {
@@ -357,7 +491,7 @@ const DailyCollectionSheet = () => {
     const TabBtn = ({ id, label, icon: Icon }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`flex items-center space-x-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex flex-shrink-0 items-center space-x-1.5 px-4 py-2.5 text-sm whitespace-nowrap font-medium border-b-2 transition-colors ${
                 activeTab === id
                     ? 'border-teal-500 text-teal-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -476,10 +610,42 @@ const DailyCollectionSheet = () => {
                         </div>
 
                         {!isAdminAllBranches && (
-                            <div className="flex space-x-1 mt-3 border-b border-gray-200">
-                                <TabBtn id="dcs" label="DCS Table" icon={FileSpreadsheet} />
-                                <TabBtn id="morning" label="Morning / Afternoon" icon={Sun} />
-                                <TabBtn id="transaction" label="Transaction" icon={BookOpen} />
+                            <div className="flex space-x-1 mt-3 border-b border-gray-200 overflow-x-auto">
+                                <TabBtn
+                                    id="dcs"
+                                    label="DCS Table"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="other-receipts"
+                                    label="Other Receipts & Payments Summary"
+                                    icon={BookOpen}
+                                />
+
+                                <TabBtn
+                                    id="management-expenses"
+                                    label="Management Expenses"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="transaction"
+                                    label="Transaction"
+                                    icon={BookOpen}
+                                />
+
+                                <TabBtn
+                                    id="cashbook"
+                                    label="Cashbook"
+                                    icon={BookOpen}
+                                />
+
+                                <TabBtn
+                                    id="payroll"
+                                    label="Payroll"
+                                    icon={FileSpreadsheet}
+                                />
                             </div>
                         )}
                         </div>
@@ -526,10 +692,35 @@ const DailyCollectionSheet = () => {
                                 </div>
                                 <MorningAfternoonPanel summaryData={summaryData} data={data} />
                             </div>
+                        ) : activeTab === 'other-receipts' ? (
+                            <div className="p-6">
+                                <OtherReceiptPayment />
+                            </div>
+
+                        ) : activeTab === 'management-expenses' ? (
+                            <div className="p-6">
+                                <MngtExpenses />
+                            </div>
+
                         ) : activeTab === 'transaction' ? (
                             <div className="p-6">
                                 <TransactionPanel />
                             </div>
+
+                        ) : activeTab === 'cashbook' ? (
+                            <div className="p-6">
+                                <Cashbook
+                                    selectedDate={selectedDate}
+                                    cashbookData={cashbookData}
+                                    loading={cashbookLoading}
+                                />
+                            </div>
+
+                        ) : activeTab === 'payroll' ? (
+                            <div className="p-6">
+                                <Payroll />
+                            </div>
+
                         ) : null}
                     </div>
 
