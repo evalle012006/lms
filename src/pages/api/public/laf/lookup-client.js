@@ -18,8 +18,9 @@ const CLIENT_TYPE = createGraphType('client', `
     governmentIdType governmentIdNumber governmentIdPhotoKey
     oldGroupId oldLoId
     loans (
-        order_by: [{ loanCycle: desc }]
-        limit: 1
+        where: { status: { _neq: "reject" } }
+        order_by: [{ loanCycle: desc }, { insertedDateTime: desc }]
+        limit: 5
     ) {
         _id slotNo status loanCycle groupId branchId
         amountRelease loanBalance loanRelease dateAdded dateOfRelease
@@ -178,7 +179,11 @@ export async function handler(req, res) {
                         where: {
                             lastName: { _ilike: lastName.trim() },
                             groupId:  { _eq: groupId },
-                            loans: { slotNo: { _eq: parseInt(slotNo) }, groupId: { _eq: groupId } },
+                            loans: {
+                                slotNo:  { _eq: parseInt(slotNo) },
+                                groupId: { _eq: groupId },
+                                status:  { _neq: 'reject' },
+                            },
                         },
                         limit: 1,
                     })

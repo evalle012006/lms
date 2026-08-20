@@ -232,6 +232,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
         groupStatus: "pending",
         insertedDateTime: new Date(),
         pastDue: loan.pastDue ? loan.pastDue : 0,
+        coMaker: loan.coMaker,
         origin: 'pre-save'
     }));
 

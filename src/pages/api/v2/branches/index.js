@@ -10,13 +10,17 @@ const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _e
 
 const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
-    branchManager: users (where: {
-        role: {
-          _contains: {
-            rep: 3
+    branchManager: users (
+        where: {
+          role: {
+            _contains: {
+              shortCode: "branch_manager"
+            }
           }
-        }
-      }) {
+        },
+        order_by: { dateAdded: asc },
+        limit: 1
+      ) {
         ${USER_FIELDS}
     },
     noOfLO: users_aggregate(where: {

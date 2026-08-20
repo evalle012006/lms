@@ -60,7 +60,8 @@ async function updateLoan(req, res) {
 
   // the mixed type from mongo during migration
   let updatedLoan = { ...loan };
-  updatedLoan.coMaker = loan.coMaker?.toString();
+  updatedLoan.coMaker = loan.coMaker?.toString() || null;
+  updatedLoan.coMakerId = loan.coMakerId || null;
   updatedLoan.modifiedBy = user_id;
   updatedLoan.modifiedDateTime = new Date().toISOString();
 

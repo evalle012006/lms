@@ -21,6 +21,8 @@ const ClientNDSPage = () => {
     const [loading, setLoading] = useState(true);
     const ndsFormRef = useRef();
 
+    const [currentBranch, setCurrentBranch] = useState();
+
     const router = useRouter();
     const { uuid } = router.query;
 
@@ -43,13 +45,14 @@ const ClientNDSPage = () => {
             const params = { _id: currentUser.designatedBranchId, date: currentDate };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
+                setCurrentBranch(response.branch);
                 dispatch(setBranch(response.branch));
             } else {
                 toast.error('Error while loading data');
             }
         }
 
-        if (currentUser.role.rep >= 3) {
+        if (currentUser.role.rep >= 3 && currentDate) {
             getCurrentBranch();
         }
 
@@ -76,7 +79,7 @@ const ClientNDSPage = () => {
                         />
                     </div>
 
-                    <NDSForm ref={ndsFormRef} loan={loan} />
+                    <NDSForm ref={ndsFormRef} loan={loan} currentBranch={currentBranch} currentDate={currentDate} />
                 </div>
             )}
         </React.Fragment>
@@ -84,9 +87,7 @@ const ClientNDSPage = () => {
 }
 
 const NDSForm = React.forwardRef((props, ref) => {
-    const currentBranch = useSelector(state => state.branch.data);
-    const currentUser = useSelector(state => state.user.data);
-    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const { currentBranch, currentDate } = props;
     // Fallback only — used when a legacy loan record has no amountRelease/loanBalance
     // saved on it at all. Normal path derives the rate from the loan record itself
     // (see effectiveServiceChargeRate below) so reprints stay stable even if global
@@ -196,6 +197,7 @@ const NDSForm = React.forwardRef((props, ref) => {
     }, [props, transactionSettings]);
 
     useEffect(() => {
+        console.log('currentBranch', currentBranch);
         if (currentBranch) {
             setBranchManager(`${currentBranch?.branchManager?.firstName} ${currentBranch?.branchManager?.lastName}`);
         }

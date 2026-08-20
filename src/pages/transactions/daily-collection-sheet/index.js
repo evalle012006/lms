@@ -20,6 +20,7 @@ import OtherReceiptPayment from '@/components/transactions/daily-collection-shee
 import MngtExpenses from '@/components/transactions/daily-collection-sheet/MngtExpenses';
 import Cashbook from '@/components/transactions/daily-collection-sheet/Cashbook';
 import Payroll from '@/components/transactions/daily-collection-sheet/Payroll';
+import TransactionPanel from '@/components/transactions/daily-collection-sheet/TransactionPanel';
 
 // ── Separated export / print utilities ───────────────────────────────────────
 import { exportDCSExcel } from '@/components/transactions/daily-collection-sheet/exportDCSExcel';
@@ -648,7 +649,7 @@ const DailyCollectionSheet = () => {
                                 />
                             </div>
                         )}
-                        </div>
+                            </div>
 
                     {/* ── Content ── */}
                     <div className="flex-1 overflow-auto min-h-0">

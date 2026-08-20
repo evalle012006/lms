@@ -27,6 +27,7 @@ import CustomSelect        from './CustomSelect';
 import CardItem, { formatNumber } from './CardItem';
 import CompanyActivitiesSlider, { ACTIVITY_SLIDES } from './CompanyActivitiesSlider';
 import DelinquentAlertsModal from './DelinquentAlertsModal';
+import { compressImage } from '@/lib/image-compress';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -152,8 +153,9 @@ const DashboardPage = () => {
         setUploadingActivity(true);
         try {
             for (let i = 0; i < files.length; i++) {
+                const compressed = await compressImage(files[i]);
                 const formData = new FormData();
-                formData.append('file', files[i]);
+                formData.append('file', compressed);
                 formData.append('origin', 'dashboard-activities');
                 formData.append('uuid', `${Date.now()}-${i}`);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -161,8 +163,13 @@ const DashboardPage = () => {
             }
             await fetchActivityImages();
             toast.success(`${files.length} image${files.length > 1 ? 's' : ''} uploaded successfully.`);
-        } catch (err) { console.error('Activity upload error:', err); toast.error('Upload failed. Please try again.');
-        } finally { setUploadingActivity(false); if (activityFileInputRef.current) activityFileInputRef.current.value = ''; }
+        } catch (err) {
+            console.error('Activity upload error:', err);
+            toast.error('Upload failed. Please try again.');
+        } finally {
+            setUploadingActivity(false);
+            if (activityFileInputRef.current) activityFileInputRef.current.value = '';
+        }
     };
 
     const handleActivityDelete = async (key) => {

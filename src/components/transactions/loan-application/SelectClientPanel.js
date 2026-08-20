@@ -43,6 +43,7 @@ const SelectClientPanel = ({
     selectedGroup,
     clientId,
     clientType,
+    initialClientType,
     offsetClient,
     selectedClientObj,
     selectedOldBranch,
@@ -186,7 +187,7 @@ const SelectClientPanel = ({
 
                 <SlotCycleCard
                     clientType={clientType} slotNo={slotNo} slotNumber={slotNumber}
-                    loanCycle={loanCycle}
+                    loanCycle={loanCycle} initialClientType={initialClientType}
                     slotReadOnly={slotReadOnly}
                     selectedCoMaker={selectedCoMaker} comakerList={comakerList}
                     coMakerReadOnly={coMakerReadOnly}
@@ -251,7 +252,7 @@ const SelectClientPanel = ({
                 </SectionCard>
                 <SlotCycleCard
                     clientType={clientType} slotNo={slotNo} slotNumber={slotNumber}
-                    loanCycle={loanCycle}
+                    loanCycle={loanCycle} initialClientType={initialClientType}
                     slotReadOnly={slotReadOnly}
                     selectedCoMaker={selectedCoMaker} comakerList={comakerList}
                     coMakerReadOnly={coMakerReadOnly}
@@ -427,7 +428,7 @@ const SelectClientPanel = ({
             {(clientId || offsetClient) && (
                 <SlotCycleCard
                     clientType={clientType} slotNo={slotNo} slotNumber={slotNumber}
-                    loanCycle={loanCycle}
+                    loanCycle={loanCycle} initialClientType={initialClientType}
                     slotReadOnly={slotReadOnly}
                     selectedCoMaker={selectedCoMaker} comakerList={comakerList}
                     coMakerReadOnly={coMakerReadOnly}
@@ -448,7 +449,7 @@ const SelectClientPanel = ({
 // ── SlotCycleCard ──────────────────────────────────────────
 const SlotCycleCard = ({
     clientType, slotNo, slotNumber, loanCycle,
-    slotReadOnly,
+    slotReadOnly, initialClientType,
     selectedCoMaker, comakerList, loStatus,
     coMakerReadOnly,        // FIX 3: true = show read-only display
     coMakerReadOnlyLabel,   // FIX 3: "Slot 20 — NAME" string
@@ -460,7 +461,7 @@ const SlotCycleCard = ({
     <SectionCard icon={CreditCardIcon} title="Slot &amp; Cycle">
         <div className="grid grid-cols-2 gap-4">
             {/* FIX 1: slot read-only — no "Fixed" badge, just plain display */}
-            {slotReadOnly ? (
+            {(slotReadOnly && initialClientType !== 'balik') ? (
                 <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
                         Slot No.
