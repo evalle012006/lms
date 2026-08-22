@@ -2,6 +2,13 @@
 // FIX 1: Client photo uses object-contain so faces are not cropped
 // FIX 2: Show Slot No., Date of Release, Amount Released row when ldfApproved
 // FIX 3: Slot No. and Loan Cycle row added to table
+// FIX 4: Conditional promissory-note / T&C / CSF content for accelerated
+//        weekly loans (occurence === 'weekly' && weeklyScheduleType === 'accelerated').
+//        Verified against graph.fields.js — weeklyScheduleType lives directly on
+//        LOAN_FIELDS, so loanData.weeklyScheduleType should already be populated
+//        for confirmed loans. NOTE: TempLAFModal.js (public/CI prospect flow)
+//        hardcodes occurence: 'daily' and never sets weeklyScheduleType — this
+//        branch will not fire for prospect LAFs until that's wired through.
 
 import React, { useRef } from 'react';
 import { X, Printer, Download } from 'lucide-react';
@@ -58,9 +65,20 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   const group        = loanData.group || {};
   const loanOfficer  = loanData.loanOfficer || {};
 
+  // FIX 4: accelerated weekly loan detection
+  const isAccelerated = loanData.occurence === 'weekly' && loanData.weeklyScheduleType === 'accelerated';
+
   const serviceChargeRate = 0.20;
   const totalAmount       = loanData.principalLoan * (1 + serviceChargeRate);
   const totalAmountWords  = numberToWords(totalAmount);
+
+  // FIX 4: program label, payment-term text, and CSF terms differ for accelerated
+  const programLabelText = isAccelerated ? ' under the 12-Week Accelerated Loan Program' : '';
+  const paymentTermText  = isAccelerated
+    ? <> payable in <span className="font-semibold">12 WEEKS</span> under an accelerated payment schedule until the whole sum of the principal together with the service charge have been paid in full, in equal weekly installment without delay.</>
+    : <> payable in <span className="font-semibold">60 Days</span> until the whole sum of the principal together with the service charge have been paid in full, in equal regular daily installment without delay.</>;
+  const csfAmount    = isAccelerated ? 25 : 5;
+  const csfFrequency = isAccelerated ? 'weekly basis' : 'daily basis';
 
   // FIX 1: client photo — use client.profile first, then loanData.profile
   const profilePicture = client.profile || loanData.profile;
@@ -291,7 +309,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             <div className="mb-6 page-break-avoid">
               <h3 className="text-center font-bold text-lg mb-3">PROMISSORY NOTE</h3>
               <p className="text-sm text-justify leading-relaxed">
-                I, the undersigned promise to pay the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> indicated above loan approval together with the <span className="font-semibold">service charge of 20%</span> with the sum of <span className="font-semibold underline">{totalAmountWords}</span> Pesos (Php.<span className="font-semibold underline">{totalAmount.toLocaleString()}</span>) payable in <span className="font-semibold">60 Days</span> until the whole sum of the principal together with the service charge have been paid in full, in equal regular daily installment without delay. In case of my default payment, I allow <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> to take any legal necessary action from my assets to serve as my payment. And I agree with my full knowledge and ability that until the principal and service charge owed under this note are paid in full.
+                I, the undersigned promise to pay the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> indicated above loan approval{programLabelText} together with the <span className="font-semibold">service charge of 20%</span> with the sum of <span className="font-semibold underline">{totalAmountWords}</span> Pesos (Php.<span className="font-semibold underline">{totalAmount.toLocaleString()}</span>){paymentTermText} In case of my default payment, I allow <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> to take any legal necessary action from my assets to serve as my payment. And I agree with my full knowledge and ability that until the principal and service charge owed under this note are paid in full.
               </p>
             </div>
 
@@ -299,14 +317,14 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             <div className="mb-6 page-break-avoid">
               <h3 className="text-center font-bold text-lg mb-3">TERMS & CONDITIONS</h3>
               <ol className="text-sm space-y-2 list-decimal list-inside">
-                <li>As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the loan provided by the Corporation.</li>
-                <li>Promise to pay the loan in full without fail.</li>
+                <li>As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</li>
+                <li>Promise to pay the loan in full without fail{isAccelerated ? ' according to the 12-week accelerated term.' : '.'}</li>
                 <li>All clients can avail their succeeding loan depending on their performance in <span className="font-semibold">AmberCash PH Micro Lending Corp.</span></li>
                 <li>No objection shall be raised on this regard by its successors or by member itself, and if the Lender/company prevails in a lawsuit to collect on this note, borrower will pay Lender's court cost, collection agency cost and attorney fees in an amount the court finds to be reasonable.</li>
                 <li>Must also agree that no delay or omission on part of the holder of this note in exercising any right hereunder shall operate as a waiver of any such right or of any other right of such holder, nor shall any delay.</li>
                 <li>The rights and remedies of the payee shall be cumulative and may be pursued singly, successively, or together, in the sole discretion of the payee.</li>
                 <li>The undersigned and all other parties to this note, whether the guarantors and the co-maker will hereby agree to remain fully liable and clearly understood hereunder until this note shall be fully paid and waive presentment, protest and further agree to remain bound, notwithstanding any extension, renewal or modification.</li>
-                <li>Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP 5 at every group meeting or on a daily basis. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</li>
+                <li>Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP {csfAmount} at every group meeting or on a {csfFrequency}. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</li>
                 <li>As a member, you agree to abide by the terms and conditions set by AmberCash PH Micro Lending Corp.</li>
               </ol>
               <p className="text-sm mt-4 text-justify">

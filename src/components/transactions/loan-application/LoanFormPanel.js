@@ -51,6 +51,15 @@ const LoanFormPanel = ({
     onGuarantorIdChange     = null,
     isEdit = false,
     fromCI = false,
+    // NEW — "Save & Add More" support. showSaveAndAddMore gates whether the
+    // second button renders at all (AddLoanPage only passes true for a fresh,
+    // non-CI add). The two click handlers just flip a flag in AddLoanPage
+    // before the shared Formik submit fires — both buttons submit the exact
+    // same form/validation/save logic, they only differ in what happens
+    // AFTER a successful save (stay and reset vs navigate away).
+    showSaveAndAddMore    = false,
+    onSaveAndAddMoreClick = null,
+    onSaveOnlyClick       = null,
 }) => {
     const ciAutoFilled = !!(selectedClientObj?.ciName || offsetClient?.ciName);
 
@@ -447,6 +456,7 @@ const LoanFormPanel = ({
                     Cancel
                 </button>
                 <button type="submit"
+                    onClick={onSaveOnlyClick}
                     disabled={(isSubmitting && isValidating) || loading || coMakerChecking || guarantorChecking}
                     className="flex-1 py-3 rounded-xl bg-teal-600 text-white text-sm font-medium
                         hover:bg-teal-700 disabled:opacity-50 transition-colors">
@@ -460,6 +470,22 @@ const LoanFormPanel = ({
                         </span>
                     ) : loading ? 'Saving...' : 'Save Loan Application'}
                 </button>
+                {/* NEW — same submit path as the button above (type="submit", inside
+                    the same <form>), just sets a flag first so handleSaveUpdate knows
+                    to reset-and-stay instead of navigate-away on success. Kept as a
+                    real submit button (not a separate button+manual submitForm() call)
+                    since it's the simpler option here and there's no double-submit risk —
+                    only one of the two submit buttons can be the one the browser reports
+                    as the clicked submitter per native form semantics. */}
+                {showSaveAndAddMore && (
+                    <button type="submit"
+                        onClick={onSaveAndAddMoreClick}
+                        disabled={(isSubmitting && isValidating) || loading || coMakerChecking || guarantorChecking}
+                        className="flex-1 py-3 rounded-xl border-2 border-teal-600 text-teal-700 text-sm font-medium
+                            hover:bg-teal-50 disabled:opacity-50 transition-colors">
+                        {loading ? 'Saving...' : 'Save & Add More'}
+                    </button>
+                )}
             </div>
         </div>
     );

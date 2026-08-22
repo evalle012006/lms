@@ -21,8 +21,17 @@ const AddLoanApplicationPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <AddLoanPage
+                key={router.asPath}
                 onBack={() => router.push('/transactions/loan-applications')}
                 onSuccess={() => router.push('/transactions/loan-applications')}
+                // NEW: "Save & Add More" — pushes to the bare add route with no
+                // query params. Combined with key={router.asPath} above, this
+                // forces a full remount of AddLoanPage, which is what actually
+                // clears all internal state (25+ useState values) rather than
+                // trying to manually reset each one. router.push (not replace)
+                // is deliberate — keeps the just-saved loan's URL in history in
+                // case the person needs to go back to it.
+                onSaveAndAddMore={() => router.push('/transactions/loan-applications/add')}
                 initialClientId={q.clientId    || null}
                 initialGroupId={q.groupId      || null}
                 initialLoId={q.loId            || null}
