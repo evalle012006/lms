@@ -41,6 +41,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         day: group.day,
         dayNo: group.dayNo,
         time: group.time,
+        capacity: group.capacity,
         groupNo: group.groupNo,
         occurence: group.occurence,
         loanOfficerId: group.loanOfficerId,
@@ -58,9 +59,12 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         groupNo: yup
             .string()
             .required('Please select a group number'),
-        // loanOfficerId: yup
-        //     .string()
-        //     .required('Please select a loan officer'),
+        capacity: yup
+            .number()
+            .typeError('Capacity must be a number')
+            .integer('Capacity must be a whole number')
+            .min(1, 'Capacity must be greater than 0')
+            .required('Please enter capacity'),
 
     });
 
@@ -73,34 +77,53 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        const branch = branchList.find(b => b._id === branchId);
         values.day = day;
         values.dayNo = dayNo;
+        values.capacity = parseInt(values.capacity, 10);
         values.occurence = occurence;
-        values.capacity = occurence === 'daily' ? 26 : 30;
         values.noOfClients = group.noOfClients;
-        // values.status = group.status;
 
-        if (currentUser.role.rep === 4) {
-            const cuBranch = branchList.find(b => b.code === currentUser.designatedBranch);
-            values.branchId = cuBranch._id;
-            values.branchName = cuBranch.name;
-            values.loanOfficerId = currentUser._id;
-            values.loanOfficerName = `${currentUser.firstName} ${currentUser.lastName}`;
+        if (!currentUser.root) {
+            // Branch/LO fields are hidden for non-root users (BM and LO alike) —
+            // they can only ever act on their own branch, never pick one from a list.
+            values.branchId = currentUser.designatedBranchId;
+            values.branchName = currentUser.designatedBranch;
+
+            if (currentUser.role.rep === 4) {
+                // LO: also locked into being their own loan officer
+                values.loanOfficerId = currentUser._id;
+                values.loanOfficerName = `${currentUser.firstName} ${currentUser.lastName}`;
+            } else {
+                // BM (rep === 3): editing a group that already has a loan officer
+                // assigned — since the field is hidden, preserve whatever the
+                // group already had rather than inventing a value.
+                values.loanOfficerId = group.loanOfficerId;
+                values.loanOfficerName = group.loanOfficerName;
+            }
         } else {
+            // Root: branch/LO dropdowns are visible and drive branchId/branchOfficers state
+            const branch = branchList.find(b => b._id === branchId);
+            if (!branch) {
+                setLoading(false);
+                toast.error('Selected branch could not be found. Please reselect the branch and try again.');
+                return;
+            }
             values.branchId = branch._id;
             values.branchName = branch.name;
-            values.loanOfficerName = branchOfficers.find(u => u._id === values.loanOfficerId).label;
+
+            const officer = branchOfficers.find(u => u._id === values.loanOfficerId);
+            if (!officer) {
+                setLoading(false);
+                toast.error('Selected loan officer could not be found. Please reselect and try again.');
+                return;
+            }
+            values.loanOfficerName = officer.label;
         }
         
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'groups/save/';
 
-            let availableSlots = [];
-            for (let i = 1; i <= 40; i++) {
-                availableSlots.push(i);
-            }
-            values.availableSlots = availableSlots;
+            values.availableSlots = Array.from({ length: values.capacity }, (_, i) => i + 1);
             values.status = 'available';
             values.noOfClients = 0;
 
@@ -124,6 +147,20 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         } else if (mode === 'edit') {
             const apiUrl = getApiBaseUrl() + 'groups';
             values._id = group._id;
+
+            const oldCapacity = group.capacity;
+            if (values.capacity > oldCapacity) {
+                // append new slot numbers above the old capacity — never touch occupied ones
+                const newSlots = [];
+                for (let i = oldCapacity + 1; i <= values.capacity; i++) newSlots.push(i);
+                values.availableSlots = [...(group.availableSlots || []), ...newSlots].sort((a, b) => a - b);
+            } else {
+                // capacity unchanged or increased-then-decreased back — leave availableSlots as-is,
+                // we already blocked capacity < noOfClients above
+                values.availableSlots = group.availableSlots;
+            }
+            values.status = values.noOfClients >= values.capacity ? 'full' : 'available';
+
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
                     setLoading(false);
@@ -284,7 +321,18 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                 errors={touched.groupNo && errors.groupNo ? errors.groupNo : undefined}
                                             />
                                     </div>
-                                    {currentUser.role.rep < 4 && (
+                                    <div className="mt-4">
+                                        <InputNumber
+                                            name="capacity"
+                                            value={values.capacity}
+                                            onChange={handleChange}
+                                            label="Capacity"
+                                            placeholder="Enter Capacity"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.capacity && errors.capacity ? errors.capacity : undefined}
+                                        />
+                                    </div>
+                                    {currentUser.root && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <SelectDropdown

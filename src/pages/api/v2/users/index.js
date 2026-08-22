@@ -7,7 +7,8 @@ import {
     LO_1_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS,
     LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, LO_10_DAILY_GROUPS,
     LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS,
-    LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_20_DAILY_GROUPS
+    LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_20_DAILY_GROUPS,
+    ACCELERATED_WEEKLY_CATEGORIES
 } from '@/lib/constants';
 import { findAreas, findDivisions, findRegions } from '@/lib/graph.functions';
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -28,7 +29,7 @@ const LOAN_TYPE = createGraphType('loans', `
   slotNo
 `)('loans');
 
-const GROUP_TYPE = createGraphType('groups', `_id name groupNo day occurence loanOfficerId weeklyScheduleType`);
+const GROUP_TYPE = createGraphType('groups', `_id name groupNo day occurence loanOfficerId weeklyScheduleType acceleratedCategory`);
 
 const LOG_TYPE = createGraphType('user_activity_logs', `
 id user_id action field old_value new_value created_at
@@ -43,7 +44,8 @@ const LOGROUPS = [
 
 const WATCHED_FIELDS = [
     'firstName', 'lastName', 'areaId', 'regionId', 'divisionId',
-    'designatedBranch', 'designatedBranchId', 'transactionType', 'weeklyScheduleType'
+    'designatedBranch', 'designatedBranchId', 'transactionType', 'weeklyScheduleType',
+    'acceleratedCategory'
 ];
 
 async function writeChangeLogs(userId, oldData, newData) {
@@ -151,38 +153,32 @@ const findBlockingLoans = async (loId) => {
     return loans || [];
 };
 
-// ── Group transition helpers ──────────────────────────────────────────────
-// Rule: never delete a group that has ANY loan history. Groups with zero
-// loan history are safe to delete.
-//
-// IMPORTANT: cleanup is scoped by occurence AND weeklyScheduleType together,
-// not occurence alone. Filtering by occurence only was the root cause of
-// the duplicate-group bug: on a standard<->accelerated switch, both themes
-// share occurence='weekly', so an occurence-only cleanup would delete BOTH
-// the theme being left AND any existing rows of the theme being switched
-// TO, right before the existence check ran — making it look like every
-// switch was blowing away and recreating the target set from scratch.
-// Scoping by theme means cleanup only ever touches the FROM theme, leaving
-// an already-existing TO theme completely untouched.
+// CHANGED: cleanup/existence functions now take acceleratedCategory as a
+// third scoping dimension, alongside occurence and weeklyScheduleType.
+// Without this, two accelerated LOs on different categories were still
+// safe from each other (loanOfficerId already scoped them), but a single
+// LO switching FROM one category TO another within accelerated had no
+// scoping key to distinguish "old category groups to clean up" from
+// "new category groups to check for/create" — both would look identical
+// under occurence+weeklyScheduleType alone.
 
-const findGroupsByLoOccurenceAndTheme = async (loId, occurence, weeklyScheduleType) => {
+const findGroupsByLoOccurenceAndTheme = async (loId, occurence, weeklyScheduleType, acceleratedCategory) => {
     const where = { loanOfficerId: { _eq: loId }, occurence: { _eq: occurence } };
     if (occurence === 'weekly') {
         where.weeklyScheduleType = { _eq: weeklyScheduleType };
+        if (weeklyScheduleType === 'accelerated') {
+            where.acceleratedCategory = { _eq: acceleratedCategory };
+        }
     }
 
-     // ── TEMP LOG ──────────────────────────────────────────────
     console.log('[findGroupsByLoOccurenceAndTheme] where:', JSON.stringify(where));
 
     const rawRes = await graph.query(
         queryQl(GROUP_TYPE('groupsQuery'), { where })
     );
 
-     // ── TEMP LOG ──────────────────────────────────────────────
     console.log('[findGroupsByLoOccurenceAndTheme] full response:', JSON.stringify(rawRes));
 
-    // FIX: the alias passed to GROUP_TYPE becomes the actual response key —
-    // it's data.groupsQuery, not data.groups.
     const groups = rawRes?.data?.groupsQuery;
     return groups || [];
 };
@@ -195,28 +191,22 @@ const findGroupIdsWithLoanHistory = async (groupIds) => {
     return new Set((loans || []).map(l => l.groupId));
 };
 
-// Deletes groups with zero loan history for the given LO/occurence/theme
-// combination ONLY. Never touches groups belonging to a different theme.
-const cleanupUnusedGroups = async (loId, occurence, weeklyScheduleType) => {
-    const groups = await findGroupsByLoOccurenceAndTheme(loId, occurence, weeklyScheduleType);
+const cleanupUnusedGroups = async (loId, occurence, weeklyScheduleType, acceleratedCategory) => {
+    const groups = await findGroupsByLoOccurenceAndTheme(loId, occurence, weeklyScheduleType, acceleratedCategory);
 
-    // ── TEMP LOG ──────────────────────────────────────────────
-    console.log(`[cleanupUnusedGroups] found ${groups.length} candidate groups for occurence=${occurence} theme=${weeklyScheduleType}`);
+    console.log(`[cleanupUnusedGroups] found ${groups.length} candidate groups for occurence=${occurence} theme=${weeklyScheduleType} category=${acceleratedCategory}`);
 
     if (!groups.length) return;
 
     const usedIds = await findGroupIdsWithLoanHistory(groups.map(g => g._id));
     const unused = groups.filter(g => !usedIds.has(g._id));
 
-    // ── TEMP LOG ──────────────────────────────────────────────
     console.log(`[cleanupUnusedGroups] ${unused.length} unused, will attempt delete:`, JSON.stringify(unused.map(g => g._id)));
 
     if (unused.length > 0) {
         const rawRes = await graph.mutation(
             deleteQl(GROUP_TYPE('groupsDelete'), { _id: { _in: unused.map(g => g._id) } })
         );
-
-        // ── TEMP LOG — full mutation response ──────────────────
         console.log('[cleanupUnusedGroups] delete mutation response:', JSON.stringify(rawRes));
     }
 };
@@ -232,9 +222,10 @@ const createWeeklyGroupData = (groupName, user, groupNo, day) => ({
     loanOfficerId: user._id + "",
     loanOfficerName: user.lastName + ', ' + user.firstName,
     availableSlots: Array.from({ length: 30 }, (_, i) => i + 1),
-    capacity: 30,
+    capacity: user.weeklyScheduleType === 'accelerated' ? 15 : 30,
     noOfClients: 0,
     weeklyScheduleType: user.weeklyScheduleType,
+    acceleratedCategory: user.weeklyScheduleType === 'accelerated' ? user.acceleratedCategory : null,
     status: "available",
     dateAdded: new Date()
 });
@@ -256,16 +247,26 @@ const createDailyGroupData = (groupName, user, groupNo) => ({
     dateAdded: new Date()
 });
 
-const buildWeeklyGroupSet = (user, weeklyScheduleType) => {
-    const namePool = weeklyScheduleType === 'accelerated' ? WEEKLY_GROUPS_ACCELERATED : WEEKLY_GROUPS;
+const buildWeeklyGroupSet = (user, weeklyScheduleType, acceleratedCategory) => {
+    let namePool;
+    if (weeklyScheduleType === 'accelerated') {
+        const category = ACCELERATED_WEEKLY_CATEGORIES.find(c => c.key === acceleratedCategory);
+        if (!category) {
+            console.warn(`[buildWeeklyGroupSet] no valid acceleratedCategory ('${acceleratedCategory}') for user ${user._id} — defaulting to 'cars'`);
+        }
+        namePool = category ? category.names : ACCELERATED_WEEKLY_CATEGORIES[0].names;
+    } else {
+        namePool = WEEKLY_GROUPS;
+    }
     const perDay = weeklyScheduleType === 'accelerated' ? 5 : 3;
     const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+    const userWithCategory = { ...user, acceleratedCategory };
 
     return namePool.map((g, i) => {
         const groupNo = i + 1;
         const dayIndex = Math.floor((groupNo - 1) / perDay);
         if (dayIndex > 4) return null;
-        return createWeeklyGroupData(g, user, groupNo, days[dayIndex]);
+        return createWeeklyGroupData(g, userWithCategory, groupNo, days[dayIndex]);
     }).filter(Boolean);
 };
 
@@ -277,17 +278,19 @@ const buildDailyGroupSet = (user, loNo) => {
 
 // Direct existence check — queries groups by loId + occurence (+ theme for
 // weekly) rather than inferring from names or from cleanup side-effects.
-const targetSetAlreadyExists = async (loId, occurence, weeklyScheduleType) => {
+const targetSetAlreadyExists = async (loId, occurence, weeklyScheduleType, acceleratedCategory) => {
     const where = { loanOfficerId: { _eq: loId }, occurence: { _eq: occurence } };
     if (occurence === 'weekly') {
         where.weeklyScheduleType = { _eq: weeklyScheduleType };
+        if (weeklyScheduleType === 'accelerated') {
+            where.acceleratedCategory = { _eq: acceleratedCategory };
+        }
     }
 
     const rawRes = await graph.query(
         queryQl(GROUP_TYPE('groupsExistCheck'), { where, limit: 1 })
     );
 
-    // FIX: same alias/key mismatch — it's data.groupsExistCheck, not data.groups.
     const groups = rawRes?.data?.groupsExistCheck;
     return (groups || []).length > 0;
 };
@@ -299,24 +302,24 @@ const targetSetAlreadyExists = async (loId, occurence, weeklyScheduleType) => {
 // independent — this is what lets cleanup target only the theme being
 // left, without ever touching the theme being switched to (see note on
 // cleanupUnusedGroups above for why that distinction matters).
+// CHANGED: transitionGroups now threads acceleratedCategory through both
+// the "from" cleanup and "to" existence-check/insert.
 const transitionGroups = async ({
     user, fromOccurence, toOccurence,
-    fromWeeklyScheduleType, toWeeklyScheduleType, loNo
+    fromWeeklyScheduleType, toWeeklyScheduleType,
+    fromAcceleratedCategory, toAcceleratedCategory, loNo
 }) => {
-    // Clean up unused groups belonging ONLY to the specific theme/occurence
-    // being left. Never touches the target theme, even if it happens to
-    // share the same occurence.
-    await cleanupUnusedGroups(user._id, fromOccurence, fromWeeklyScheduleType);
+    await cleanupUnusedGroups(user._id, fromOccurence, fromWeeklyScheduleType, fromAcceleratedCategory);
 
     let groupsToInsert = [];
     if (toOccurence === 'weekly') {
-        const alreadyExists = await targetSetAlreadyExists(user._id, 'weekly', toWeeklyScheduleType);
+        const alreadyExists = await targetSetAlreadyExists(user._id, 'weekly', toWeeklyScheduleType, toAcceleratedCategory);
         if (!alreadyExists) {
-            groupsToInsert = buildWeeklyGroupSet(user, toWeeklyScheduleType);
+            groupsToInsert = buildWeeklyGroupSet(user, toWeeklyScheduleType, toAcceleratedCategory);
         }
     } else if (toOccurence === 'daily') {
         const pool = LOGROUPS[loNo - 1];
-        const alreadyExists = pool ? await targetSetAlreadyExists(user._id, 'daily', null) : false;
+        const alreadyExists = pool ? await targetSetAlreadyExists(user._id, 'daily', null, null) : false;
         if (pool && !alreadyExists) {
             groupsToInsert = buildDailyGroupSet(user, loNo);
         }
@@ -374,16 +377,31 @@ async function updateUser(req, res) {
                     payload.transactionType === 'daily' &&
                     userData.transactionType !== 'daily';
 
+                // CHANGED: switchingScheduleType now also fires on a category change
+                // within accelerated — this was the gap I flagged above. Without this,
+                // an admin switching an LO from "cars" to "birds" while staying
+                // accelerated would silently keep the old cars groups and never create
+                // birds groups, because weeklyScheduleType itself never changed.
                 const switchingScheduleType = userRole.rep === 4 &&
                     payload.transactionType === 'weekly' &&
                     userData.transactionType === 'weekly' &&
-                    (payload.weeklyScheduleType || 'standard') !== (userData.weeklyScheduleType || 'standard');
+                    (
+                        (payload.weeklyScheduleType || 'standard') !== (userData.weeklyScheduleType || 'standard')
+                        ||
+                        (
+                            (payload.weeklyScheduleType || 'standard') === 'accelerated' &&
+                            (payload.acceleratedCategory || null) !== (userData.acceleratedCategory || null)
+                        )
+                    );
 
                 if (switchingToWeekly || switchingToDaily || switchingScheduleType) {
                     const blockingLoans = await findBlockingLoans(userData._id);
                     if (blockingLoans.length > 0) {
+                        const isCategoryOnlyChange = switchingScheduleType &&
+                            (payload.weeklyScheduleType || 'standard') === (userData.weeklyScheduleType || 'standard');
                         const label = switchingToWeekly ? 'Weekly'
                             : switchingToDaily ? 'Daily'
+                            : isCategoryOnlyChange ? 'a different group category'
                             : 'Accelerated Weekly';
                         resolve({
                             success: false,
@@ -410,6 +428,9 @@ async function updateUser(req, res) {
                     transactionType: payload.transactionType,
                     weeklyScheduleType: payload.transactionType === 'weekly'
                         ? (payload.weeklyScheduleType || 'standard')
+                        : null,
+                    acceleratedCategory: (payload.transactionType === 'weekly' && (payload.weeklyScheduleType || 'standard') === 'accelerated')
+                        ? (payload.acceleratedCategory || null)
                         : null,
                     ...hierarchyFields,
                 };
@@ -501,7 +522,9 @@ async function updateUser(req, res) {
                             fromOccurence: 'daily',
                             toOccurence: 'weekly',
                             fromWeeklyScheduleType: null,
-                            toWeeklyScheduleType: forUpdate.weeklyScheduleType || 'standard'
+                            toWeeklyScheduleType: forUpdate.weeklyScheduleType || 'standard',
+                            fromAcceleratedCategory: null,
+                            toAcceleratedCategory: forUpdate.acceleratedCategory
                         });
                     } else if (switchingToDaily) {
                         await transitionGroups({
@@ -509,6 +532,7 @@ async function updateUser(req, res) {
                             fromOccurence: 'weekly',
                             toOccurence: 'daily',
                             fromWeeklyScheduleType: userData.weeklyScheduleType || 'standard',
+                            fromAcceleratedCategory: userData.acceleratedCategory || null,
                             loNo: parseInt(forUpdate.loNo || userData.loNo)
                         });
                     } else if (switchingScheduleType) {
@@ -516,13 +540,10 @@ async function updateUser(req, res) {
                             user: mergedUser,
                             fromOccurence: 'weekly',
                             toOccurence: 'weekly',
-                            // The critical fix: fromWeeklyScheduleType is the LO's
-                            // OLD theme (userData, pre-update) — cleanup only ever
-                            // touches this theme's unused groups. toWeeklyScheduleType
-                            // is the NEW theme, which is never touched by cleanup and
-                            // only gets a fresh insert if it doesn't already exist.
                             fromWeeklyScheduleType: userData.weeklyScheduleType || 'standard',
-                            toWeeklyScheduleType: forUpdate.weeklyScheduleType || 'standard'
+                            toWeeklyScheduleType: forUpdate.weeklyScheduleType || 'standard',
+                            fromAcceleratedCategory: userData.acceleratedCategory || null,
+                            toAcceleratedCategory: forUpdate.acceleratedCategory || null
                         });
                     }
                 } catch (groupError) {
