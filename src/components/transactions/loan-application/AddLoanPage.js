@@ -1405,15 +1405,15 @@ const AddLoanPage = ({
                 if (response.error) {
                     toast.error(response.message);
                 } else if (response.success || response.loan) {
-                    if (!isEdit && clientType === 'active') {
-                        const pendingLoan = [{ ...values, loanId: values.oldLoanId }];
-                        setTimeout(async () => {
-                            await fetchWrapper.post(
-                                getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans',
-                                pendingLoan
-                            );
-                        }, 3000);
-                    }
+                    // if (!isEdit && clientType === 'active') {
+                    //     const pendingLoan = [{ ...values, loanId: values.oldLoanId }];
+                    //     setTimeout(async () => {
+                    //         await fetchWrapper.post(
+                    //             getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans',
+                    //             pendingLoan
+                    //         );
+                    //     }, 3000);
+                    // }
 
                     // Post-save guarantor duplicate check — runs in both add AND edit mode
                     // In edit mode: re-checks in case guarantor name was changed
