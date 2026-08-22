@@ -33,7 +33,7 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         // ── Loan fields ───────────────────────────────────────────────────
         principalLoan:  Number(application.loanAmount) || 0,
         loanPurpose:    application.loanPurpose || '',
-        loanCycle:      1,
+        loanCycle:      (application.loan?.loanCycle || 0) + 1,
         dateOfRelease:  null,
         dateAdded:      application.dateAdded || application.submittedAt,
         loanTerms:      60,
