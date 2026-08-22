@@ -33,6 +33,7 @@ import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useCIOfflineCache } from '@/hooks/useCIOfflineCache';
 import { fetchWrapper }      from '@/lib/fetch-wrapper';
 import { getApiBaseUrl }     from '@/lib/constants';
+import { getLatestNonPendingLoan } from '@/lib/loan-cycle';
 
 // ── Offline: no cache screen ──────────────────────────────────────────────
 const OfflineNoCacheScreen = ({ onOpen }) => (
@@ -558,6 +559,7 @@ const CIInvestigationPage = () => {
                     ...searchResult?.application,
                     branchName: searchResult?.application?.branchName,
                     branchCode: searchResult?.application?.branchCode,
+                    loan: getLatestNonPendingLoan(clientLoanHistory),
                 }}
             />
 
