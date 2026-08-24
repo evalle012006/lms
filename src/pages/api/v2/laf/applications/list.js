@@ -24,7 +24,7 @@ async function listApplications(req, res) {
 
     const {
         status,
-        // FIX: pagination params — default 20 per page
+        search,
         limit:  limitStr  = '20',
         offset: offsetStr = '0',
     } = req.query;
@@ -63,6 +63,19 @@ async function listApplications(req, res) {
 
     if (req.query.existingClientId) {
         where = { ...where, existingClientId: { _eq: req.query.existingClientId } };
+    }
+
+    if (search?.trim()) {
+        const term = search.trim();
+        where = {
+            ...where,
+            _or: [
+                { firstName:       { _ilike: `%${term}%` } },
+                { lastName:        { _ilike: `%${term}%` } },
+                { contactNumber:   { _ilike: `%${term}%` } },
+                { ciReferenceCode: { _ilike: `%${term}%` } },
+            ],
+        };
     }
 
     // FIX: run data fetch + total count in parallel
