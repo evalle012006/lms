@@ -1504,7 +1504,7 @@ const AddLoanPage = ({
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
-        mcbu:                groupOccurence === 'weekly'
+        mcbu:                (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
                                  ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
         csf:                 0,
         dateGranted:         null,
