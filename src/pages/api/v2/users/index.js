@@ -424,6 +424,7 @@ async function updateUser(req, res) {
                     number: payload.number,
                     position: payload.position,
                     profile: profile === 'null' ? null : profile,
+                    role: userRole,
                     loNo: payload.loNo && payload.loNo !== 'null' ? +payload.loNo : null,
                     transactionType: payload.transactionType,
                     weeklyScheduleType: payload.transactionType === 'weekly'
