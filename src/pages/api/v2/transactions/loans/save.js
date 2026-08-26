@@ -127,15 +127,15 @@ async function save(req, res) {
             };
         } else {
             let finalData = {...loanData};
-            if (finalData.occurence === 'weekly') {
+            if (finalData?.groupLeader) {
+                finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 0;
+                finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 0;
+            } else if (finalData.occurence === 'weekly' && group.weeklyScheduleType === 'standard') {
                 if (finalData.loanCycle === 1) {
                     finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 50;
                     finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 50;
                 }
                 finalData.mcbuTarget = 50;
-            } else if (finalData?.groupLeader) {
-                finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 0;
-                finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 0;
             }
 
             if (mode === 'reloan') {
@@ -338,7 +338,10 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
 
         if (loan.loanCycle == 1) {
             groupStatus = 'closed';
-            if (loan.occurence == 'weekly') {
+            if (loan?.groupLeader) {
+                mcbu = loan.mcbu > 0 ? loan.mcbu : 0;
+                mcbuCol = loan.mcbu > 0 ? loan.mcbu : 0;
+            } else if (loan.occurence == 'weekly' && group.weeklyScheduleType === 'standard') {
                 mcbu = loan.mcbu > 0 ? loan.mcbu : 50;
                 mcbuCol = loan.mcbu > 0 ? loan.mcbu : 50;
             }
@@ -389,7 +392,7 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
             origin: 'automation-loan'
         };
 
-        if (data.occurence === 'weekly') {
+        if (data.occurence === 'weekly' && group.weeklyScheduleType === 'standard') {
             data.mcbuTarget = 50;
             data.groupDay = group.day;
 

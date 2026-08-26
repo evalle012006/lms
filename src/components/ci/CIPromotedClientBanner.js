@@ -15,7 +15,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
 
     // Derive slot/cycle from the loanHistory prop (already fetched by parent page)
     // loanHistory = array of loan objects for existingClientId, or null for new prospects
-    const { existingSlotNo, existingLoanCycle, hasPendingLoan } = useMemo(() => {
+    const { existingSlotNo, existingLoanCycle, hasPendingLoan, groupNotAvailable } = useMemo(() => {
         if (!loanHistory) {
             return { existingSlotNo: null, existingLoanCycle: null, hasPendingLoan: false };
         }
@@ -33,8 +33,9 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
             existingSlotNo:    latestLoan?.slotNo    ? String(latestLoan.slotNo)                    : null,
             existingLoanCycle: latestLoan?.loanCycle ? String((latestLoan.loanCycle || 0) + 1)      : null,
             hasPendingLoan:    pending,
+            groupNotAvailable: application?.groupStatus !== 'available',
         };
-    }, [loanHistory]);
+    }, [loanHistory, application.groupStatus]);
 
     // For new prospects: loanHistory null means still loading (parent hasn't fetched yet)
     // For existing clients: loanHistory is always fetched by loadApplication in parent
@@ -43,6 +44,8 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
 
     const handleAddLoan = () => {
         if (!clientId) return;
+        if (groupNotAvailable) return;
+
         const q = new URLSearchParams();
 
         q.set('clientId', clientId);
@@ -93,7 +96,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         : 'New client record has been created.';
 
     // Button state
-    const buttonReady = !hasPendingLoan && !isLoading;
+    const buttonReady = !hasPendingLoan && !isLoading && !groupNotAvailable;
 
     return (
         <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
@@ -111,6 +114,16 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             <p className="text-xs text-amber-700 mt-0.5">
                                 This client already has a pending loan application.
                                 Go to Loan Applications to view or approve it.
+                            </p>
+                        </div>
+                    ) : groupNotAvailable ? (
+                        <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs font-semibold text-amber-800">
+                                Group not available for loan application
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                                This client is part of a group that is not available for loan applications.
+                                Please check the group status before proceeding.
                             </p>
                         </div>
                     ) : isLoading ? (
