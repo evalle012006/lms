@@ -130,10 +130,19 @@ const Cashbook = ({
 
         // DCS SUMMARY
         beginningBalance: summary?.beginningBalance ?? 0,
+
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
+
+        // DCS "Other Loan Collection (Weekly)"
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
+
+        // DCS "Admin Fees #" -> Cashbook "Membership Fee"
+        membershipFee: summary?.rcptAdminFees ?? 0,
+
+        // DCS "LRF Collection"
+        lrfCollection: summary?.rcptLrf ?? 0,
       });
     }
 

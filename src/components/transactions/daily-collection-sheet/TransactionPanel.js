@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import {
     Receipt,
     Plus,
@@ -6,6 +7,7 @@ import {
     Eye,
     Printer,
     Trash2,
+    Pencil,
 } from 'lucide-react';
 
 const EMPTY_ITEM = {
@@ -90,7 +92,24 @@ const money = (value) => {
     });
 };
 
+const getManilaDate = () => {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date());
+};
+
+const isTransactionToday = (transaction) => {
+    return transaction?.date === getManilaDate();
+};
+
 const TransactionPanel = () => {
+    const currentUser = useSelector((state) => state.user.data);
+
+    const isAdmin = currentUser?.role?.rep === 1;
+
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -102,7 +121,7 @@ const TransactionPanel = () => {
     const [transactions, setTransactions] = useState([]);
 
     const [selectedTransaction, setSelectedTransaction] = useState(null);
-
+    const [editingTransactionId, setEditingTransactionId] = useState(null);
     const [transactionForm, setTransactionForm] = useState({
         ...EMPTY_FORM,
         items: [{ ...EMPTY_ITEM }],
@@ -128,7 +147,14 @@ const TransactionPanel = () => {
     };
 
     const openCreateModal = () => {
-        resetTransactionForm();
+        setEditingTransactionId(null);
+
+        setTransactionForm({
+            ...EMPTY_FORM,
+            date: getManilaDate(),
+            items: [{ ...EMPTY_ITEM }],
+        });
+
         setShowCreateModal(true);
     };
 
@@ -265,14 +291,71 @@ const TransactionPanel = () => {
             return;
         }
 
+        const calculatedTotal = validItems.reduce(
+            (sum, item) => sum + Number(item.amount || 0),
+            0
+        );
+
+        // ==========================================
+        // EDIT EXISTING TRANSACTION
+        // ==========================================
+        if (editingTransactionId) {
+            const existingTransaction = transactions.find(
+                (item) => item.id === editingTransactionId
+            );
+
+            if (!existingTransaction) {
+                alert('Transaction not found.');
+                return;
+            }
+
+            const canEdit =
+                isAdmin || isTransactionToday(existingTransaction);
+
+            if (!canEdit) {
+                alert('Past transactions can no longer be edited.');
+                return;
+            }
+
+            const updatedTransaction = {
+                ...existingTransaction,
+                ...transactionForm,
+                id: existingTransaction.id,
+
+                // Do not allow the original transaction date
+                // to be changed while editing.
+                date: existingTransaction.date,
+
+                items: validItems,
+                totalAmount: calculatedTotal,
+                updatedAt: new Date().toISOString(),
+            };
+
+            setTransactions((prev) =>
+                prev.map((item) =>
+                    item.id === editingTransactionId
+                        ? updatedTransaction
+                        : item
+                )
+            );
+
+            setSelectedTransaction(updatedTransaction);
+            setEditingTransactionId(null);
+            setShowCreateModal(false);
+            resetTransactionForm();
+
+            return;
+        }
+
+        // ==========================================
+        // CREATE NEW TRANSACTION
+        // ==========================================
         const transaction = {
             id: Date.now(),
             ...transactionForm,
             items: validItems,
-            totalAmount: validItems.reduce(
-                (sum, item) => sum + Number(item.amount || 0),
-                0
-            ),
+            totalAmount: calculatedTotal,
+            createdAt: new Date().toISOString(),
         };
 
         setTransactions((prev) => [transaction, ...prev]);
@@ -287,7 +370,40 @@ const TransactionPanel = () => {
         setShowViewModal(true);
     };
 
+    const handleEdit = (transaction) => {
+        const canEdit = isAdmin || isTransactionToday(transaction);
+
+        if (!canEdit) {
+            alert('Past transactions can no longer be edited.');
+            return;
+        }
+
+        setEditingTransactionId(transaction.id);
+
+        setTransactionForm({
+            paidTo: transaction.paidTo || '',
+            address: transaction.address || '',
+            date: transaction.date || '',
+            voucherNo: transaction.voucherNo || '',
+            totalAmountWords: transaction.totalAmountWords || '',
+            cashierInCharge: transaction.cashierInCharge || '',
+            supervisor: transaction.supervisor || '',
+            receivedBy: transaction.receivedBy || '',
+            items: transaction.items.map((item) => ({
+                ...item,
+            })),
+        });
+
+        setShowViewModal(false);
+        setShowCreateModal(true);
+    };
+
     const handleDelete = (transaction) => {
+        if (!isAdmin) {
+            alert('Only Admin can delete transactions.');
+            return;
+        }
+
         const confirmed = window.confirm(
             `Are you sure you want to delete Voucher ${transaction.voucherNo}?`
         );
@@ -761,24 +877,25 @@ const TransactionPanel = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-
-                            <button
-                                type="button"
-                                onClick={() => setShowTypeModal(true)}
-                                className="
-                                    inline-flex items-center gap-2
-                                    px-4 py-2
-                                    border border-teal-600
-                                    text-teal-700
-                                    hover:bg-teal-50
-                                    text-sm font-semibold
-                                    rounded-md
-                                    transition-colors
-                                "
-                            >
-                                <Plus className="w-4 h-4" />
-                                Add Transaction Type
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTypeModal(true)}
+                                    className="
+                                        inline-flex items-center gap-2
+                                        px-4 py-2
+                                        border border-teal-600
+                                        text-teal-700
+                                        hover:bg-teal-50
+                                        text-sm font-semibold
+                                        rounded-md
+                                        transition-colors
+                                    "
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add Transaction Type
+                                </button>
+                            )}
 
                             <button
                                 type="button"
@@ -923,6 +1040,30 @@ const TransactionPanel = () => {
                                                         View
                                                     </button>
 
+                                                    {/* EDIT - TODAY ONLY, ADMIN CAN EDIT ANY DATE */}
+                                                        {(isAdmin || isTransactionToday(transaction)) && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEdit(transaction)}
+                                                                className="
+                                                                    inline-flex
+                                                                    items-center
+                                                                    gap-1
+                                                                    px-3 py-1.5
+                                                                    bg-amber-500
+                                                                    text-white
+                                                                    rounded-md
+                                                                    text-xs
+                                                                    font-semibold
+                                                                    hover:bg-amber-600
+                                                                    transition-colors
+                                                                "
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                                Edit
+                                                            </button>
+                                                        )}
+
                                                     {/* PRINT */}
                                                     <button
                                                         type="button"
@@ -944,27 +1085,29 @@ const TransactionPanel = () => {
                                                         Print
                                                     </button>
 
-                                                    {/* DELETE */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDelete(transaction)}
-                                                        className="
-                                                            inline-flex
-                                                            items-center
-                                                            gap-1
-                                                            px-3 py-1.5
-                                                            bg-red-600
-                                                            text-white
-                                                            rounded-md
-                                                            text-xs
-                                                            font-semibold
-                                                            hover:bg-red-700
-                                                            transition-colors
-                                                        "
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                        Delete
-                                                    </button>
+                                                    {/* DELETE - ADMIN ONLY */}
+                                                        {isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDelete(transaction)}
+                                                                className="
+                                                                    inline-flex
+                                                                    items-center
+                                                                    gap-1
+                                                                    px-3 py-1.5
+                                                                    bg-red-600
+                                                                    text-white
+                                                                    rounded-md
+                                                                    text-xs
+                                                                    font-semibold
+                                                                    hover:bg-red-700
+                                                                    transition-colors
+                                                                "
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                Delete
+                                                            </button>
+                                                        )}
 
                                                 </div>
 
@@ -1012,11 +1155,15 @@ const TransactionPanel = () => {
 
                             <div>
                                 <h2 className="text-lg font-bold text-gray-800">
-                                    Create Transaction
+                                    {editingTransactionId
+                                        ? 'Edit Transaction'
+                                        : 'Create Transaction'}
                                 </h2>
 
                                 <p className="text-xs text-gray-500 mt-0.5">
-                                    Create Petty Cash Voucher
+                                    {editingTransactionId
+                                        ? 'Fix or update Petty Cash Voucher'
+                                        : 'Create Petty Cash Voucher'}
                                 </p>
                             </div>
 
@@ -1087,13 +1234,23 @@ const TransactionPanel = () => {
                                     <input
                                         type="date"
                                         value={transactionForm.date}
+                                        disabled={Boolean(editingTransactionId)}
                                         onChange={(e) =>
                                             updateMainField(
                                                 'date',
                                                 e.target.value
                                             )
                                         }
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        className={`
+                                            w-full border border-gray-300 rounded-md
+                                            px-3 py-2 text-sm
+                                            focus:outline-none focus:ring-2 focus:ring-teal-500
+                                            ${
+                                                editingTransactionId
+                                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-white'
+                                            }
+                                        `}
                                     />
                                 </div>
 
@@ -1448,7 +1605,9 @@ const TransactionPanel = () => {
                                         rounded-md
                                     "
                                 >
-                                    Save Transaction
+                                    {editingTransactionId
+                                        ? 'Update Transaction'
+                                        : 'Save Transaction'}
                                 </button>
 
                             </div>
