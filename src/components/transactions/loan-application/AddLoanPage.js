@@ -1086,6 +1086,7 @@ const AddLoanPage = ({
         values.groupId       = selectedGroup;
 
         const group       = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
+        values.group      = group;
         values.groupName  = group?.name;
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
