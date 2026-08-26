@@ -1,4 +1,4 @@
-import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS, WEEKLY_GROUPS_ACCELERATED } from '@/lib/constants';
+import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS, ACCELERATED_WEEKLY_CATEGORIES } from '@/lib/constants';
 import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
 import { findAreas, findDivisions, findRegions, findUserById, findUsers } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -145,14 +145,16 @@ async function save(req, res) {
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,
-            // ── ADDED: weeklyScheduleType — only meaningful when transactionType is 'weekly'.
-            // Mirrors the same normalization used in the update route so both paths agree
-            // on what "unset" means (null, not undefined/'standard' by accident).
             weeklyScheduleType: data.transactionType === 'weekly'
                 ? (data.weeklyScheduleType || 'standard')
                 : null,
+            // NEW: only meaningful for weekly + accelerated. Persisted on the user
+            // so the update route can compare old-vs-new category on edit (see
+            // switchingScheduleType change in [id].js below).
+            acceleratedCategory: (data.transactionType === 'weekly' && (data.weeklyScheduleType || 'standard') === 'accelerated')
+                ? (data.acceleratedCategory || null)
+                : null,
             root: false,
-            // ── CHANGED: spread sanitized hierarchy fields ──
             ...hierarchyFields,
         };
 
@@ -251,26 +253,34 @@ async function createGroups (user, addToMutationList) {
     if (user.transactionType === 'daily') {
         const loNo = parseInt(user.loNo);
         if (loNo) {
-            const groups = LOGROUPS[loNo - 1].map((g, i) => {
-                const groups = createDailyGroupData(g, user, i + 1);
-                return groups
-            });
-
+            const groups = LOGROUPS[loNo - 1].map((g, i) => createDailyGroupData(g, user, i + 1));
             insertGroups(groups);
         }
     } else if (user.transactionType === 'weekly') {
-        const namePool = user.weeklyScheduleType === 'accelerated'
-            ? WEEKLY_GROUPS_ACCELERATED
-            : WEEKLY_GROUPS;
+        // CHANGED: standard still uses WEEKLY_GROUPS (fruits) directly.
+        // Accelerated now selects a pool from ACCELERATED_WEEKLY_CATEGORIES
+        // by user.acceleratedCategory, defaulting to 'cars' if somehow
+        // missing (should never happen — form validation requires it — but
+        // a hard failure here would leave the user record created with no
+        // groups at all, which is worse than defaulting and logging).
+        let namePool;
+        if (user.weeklyScheduleType === 'accelerated') {
+            const category = ACCELERATED_WEEKLY_CATEGORIES.find(c => c.key === user.acceleratedCategory);
+            if (!category) {
+                console.warn(`[createGroups] user ${user._id} is accelerated with no valid acceleratedCategory ('${user.acceleratedCategory}') — defaulting to 'cars'`);
+            }
+            namePool = category ? category.names : ACCELERATED_WEEKLY_CATEGORIES[0].names;
+        } else {
+            namePool = WEEKLY_GROUPS;
+        }
 
-        // Accelerated: 25 groups, 5/day. Standard: 15 groups, 3/day.
         const perDay = user.weeklyScheduleType === 'accelerated' ? 5 : 3;
+        const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
         const groups = namePool.map((g, i) => {
             const groupNo = i + 1;
-            const dayIndex = Math.floor((groupNo - 1) / perDay); // 0=Mon..4=Fri
-            const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
-            if (dayIndex > 4) return null; // safety: ignore extra names beyond 5 days
+            const dayIndex = Math.floor((groupNo - 1) / perDay);
+            if (dayIndex > 4) return null;
             return createWeeklyGroupData(g, user, groupNo, days[dayIndex]);
         }).filter(Boolean);
 
@@ -309,10 +319,13 @@ const createWeeklyGroupData = (groupName, user, groupNo, day) => {
         loanOfficerId: user._id + "",
         loanOfficerName: user.lastName + ', ' + user.firstName,
         availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-        capacity: 30,
+        capacity: user.weeklyScheduleType === 'accelerated' ? 15 : 30,
         noOfClients: 0,
         status: "available",
         weeklyScheduleType: user.weeklyScheduleType,
+        // NEW: needed on the group row itself, not just the user row, so
+        // cleanup/transition queries in [id].js can scope by category.
+        acceleratedCategory: user.weeklyScheduleType === 'accelerated' ? user.acceleratedCategory : null,
         dateAdded: new Date()
     }
 }

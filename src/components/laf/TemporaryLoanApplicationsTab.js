@@ -15,6 +15,7 @@ import { useSignedUrl }    from 'hooks/useSignedUrl';
 import placeholder         from '/public/images/image-placeholder.png';
 import TempLAFModal        from '@/components/laf/TempLAFModal';
 import { Printer, CheckCircle, XCircle, ZoomIn, X } from 'lucide-react';
+import { getLatestNonPendingLoan } from '@/lib/loan-cycle';
 
 const PAGE_SIZE = 20; // records per page
 
@@ -450,8 +451,7 @@ const TemporaryLoanApplicationsTab = () => {
                 const res = await fetchWrapper.get(
                     getApiBaseUrl() + `clients/loan-history?clientId=${app.promotedClientId}`
                 );
-                const latestLoan = res.loans?.[0] || null;
-                if (latestLoan) appWithLoan.loan = latestLoan;
+                appWithLoan.loan = getLatestNonPendingLoan(res.loans || []);
             } catch { /* non-fatal */ }
         }
         setLafModalApp(appWithLoan);

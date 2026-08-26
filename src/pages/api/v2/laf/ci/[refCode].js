@@ -14,7 +14,7 @@ const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_F
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const BRANCH_TYPE = createGraphType('branches', '_id name code')('branches');
 // FIX: added group type to fetch groupName
-const GROUP_TYPE  = createGraphType('groups', '_id name')('groups');
+const GROUP_TYPE  = createGraphType('groups', '_id name status')('groups');
 
 const s3 = new S3Client({
     endpoint: 'https://sgp1.digitaloceanspaces.com',
@@ -84,8 +84,8 @@ async function getByRefCode(req, res) {
             ...application,
             branchName: branch?.name || '—',
             branchCode: branch?.code || '—',
-            // FIX: groupName now populated
             groupName:  group?.name  || '',
+            groupStatus: group?.status || '',
             lafPhotoUrl,
         },
         investigation: investigation

@@ -2,6 +2,10 @@
 // FIX: Infinite scroll — 20 per page, sentinel-based auto-load
 // FIX: sentinelRef uses scrollContainerRef as root so observer fires on list scroll
 // FIX: initialLoadDone guard prevents sentinel firing on mount
+// FIX: Server-side search — search now goes to the backend instead of only
+//      filtering whatever page happened to be loaded locally. Debounced 300ms
+//      so we don't fire a request per keystroke. fetchMore now also passes
+//      search so paginated results stay consistent with page 1.
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import moment from 'moment';
@@ -12,7 +16,8 @@ import { toast }           from 'react-toastify';
 import Spinner             from '@/components/Spinner';
 import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 
-const PAGE_SIZE_LIST = 20;
+const PAGE_SIZE_LIST   = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 // ── Client type pill ──────────────────────────────────────────────────────
 const CLIENT_TYPE_CONFIG = {
@@ -64,8 +69,18 @@ const CIApplicationsList = ({
     const [hasMore,       setHasMore]       = useState(true);
     const [offset,        setOffset]        = useState(0);
     const [total,         setTotal]         = useState(0);
-    const [search,        setSearch]        = useState('');
     const [statusFilter,  setStatusFilter]  = useState('pending');
+
+    // FIX: search split into immediate input value (for the text box) and a
+    // debounced value (what actually drives the fetch). Typing stays instant;
+    // the network call waits until the user pauses for SEARCH_DEBOUNCE_MS.
+    const [searchInput, setSearchInput] = useState('');
+    const [search,      setSearch]      = useState('');
+
+    useEffect(() => {
+        const t = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(t);
+    }, [searchInput]);
 
     // Refs
     const sentinelRef       = useRef(null);
@@ -86,6 +101,10 @@ const CIApplicationsList = ({
     );
 
     // ── Fetch first page ──────────────────────────────────────────────────
+    // FIX: `search` added to deps — this callback previously closed over
+    // `search` without declaring it, so the effect below never re-ran when
+    // the user typed (stale closure — fetchList's reference never changed,
+    // so [fetchList, refreshKey] never saw a reason to fire).
     const fetchList = useCallback(async () => {
         if (!isOnlineRef.current) {
             setApplications(offlineAppsRef.current || []);
@@ -101,6 +120,7 @@ const CIApplicationsList = ({
         try {
             const params = new URLSearchParams({ limit: PAGE_SIZE_LIST, offset: 0 });
             if (statusFilter !== 'all') params.set('status', statusFilter);
+            if (search) params.set('search', search);
             const res = await fetchWrapper.get(
                 getApiBaseUrl() + `laf/applications/list?${params}`
             );
@@ -124,17 +144,21 @@ const CIApplicationsList = ({
             setLoading(false);
             initialLoadDone.current = true; // FIX: now safe for sentinel to fire
         }
-    }, [statusFilter]);
+    }, [statusFilter, search]);
 
     useEffect(() => { fetchList(); }, [fetchList, refreshKey]);
 
     // ── Fetch next page ───────────────────────────────────────────────────
+    // FIX: `search` now sent on paginated requests too — previously page 1
+    // respected the search term but page 2+ silently dropped it, so scrolling
+    // while searching mixed matching and non-matching rows in the same list.
     const fetchMore = useCallback(async () => {
         if (loadingMore || !hasMore || !isOnlineRef.current) return;
         setLoadingMore(true);
         try {
             const params = new URLSearchParams({ limit: PAGE_SIZE_LIST, offset });
             if (statusFilter !== 'all') params.set('status', statusFilter);
+            if (search) params.set('search', search);
             const res = await fetchWrapper.get(
                 getApiBaseUrl() + `laf/applications/list?${params}`
             );
@@ -156,7 +180,7 @@ const CIApplicationsList = ({
             setLoadingMore(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadingMore, hasMore, offset, statusFilter, applications.length]);
+    }, [loadingMore, hasMore, offset, statusFilter, search, applications.length]);
 
     // ── IntersectionObserver — uses scroll container as root ──────────────
     useEffect(() => {
@@ -177,19 +201,10 @@ const CIApplicationsList = ({
         return () => observerRef.current?.disconnect();
     }, [fetchMore]);
 
-    // Client-side search filter
-    const filtered = applications.filter(a => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (
-            `${a.firstName} ${a.lastName}`.toLowerCase().includes(q) ||
-            `${a.lastName} ${a.firstName}`.toLowerCase().includes(q) ||
-            a.ciReferenceCode?.toLowerCase().includes(q) ||
-            a.contactNumber?.includes(q) ||
-            a.branchName?.toLowerCase().includes(q) ||
-            a.branchCode?.toLowerCase().includes(q)
-        );
-    });
+    // FIX: removed client-side `filtered` — the server now returns the
+    // correct search-matched set, so re-filtering `applications` locally was
+    // redundant at best and, before the fetchList dep fix, was actively
+    // masking the fact that search wasn't reaching the backend at all.
 
     const statusOptions = [
         { value: 'all',                label: 'All'            },
@@ -241,8 +256,9 @@ const CIApplicationsList = ({
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5
                         text-gray-400" />
-                    <input type="text" value={search}
-                        onChange={e => setSearch(e.target.value)}
+                    {/* FIX: input is bound to searchInput (instant) not search (debounced) */}
+                    <input type="text" value={searchInput}
+                        onChange={e => setSearchInput(e.target.value)}
                         placeholder="Search by name, contact, CI code..."
                         className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200
                             rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
@@ -252,7 +268,7 @@ const CIApplicationsList = ({
             {/* List body */}
             {loading ? (
                 <div className="flex justify-center py-8"><Spinner /></div>
-            ) : filtered.length === 0 ? (
+            ) : applications.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
                     <p className="text-xs">
                         {!isOnline
@@ -266,7 +282,7 @@ const CIApplicationsList = ({
                     ref={scrollContainerRef}
                     className="divide-y divide-gray-50 overflow-y-auto"
                     style={{ maxHeight: 'calc(100vh - 340px)' }}>
-                    {filtered.map(app => {
+                    {applications.map(app => {
                         const photoUrl = app.lafPhotoKey ? urlMap[app.lafPhotoKey] : null;
                         return (
                             <button key={app._id}

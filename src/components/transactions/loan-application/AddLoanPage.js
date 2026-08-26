@@ -26,6 +26,7 @@ const isPlaceholder = (v) => !v || v.trim() === '.' || v.trim() === '-';
 
 const AddLoanPage = ({
     onBack, onSuccess, mode = 'add', loanId = null,
+    onSaveAndAddMore = null,
     initialClientId   = null,
     initialGroupId    = null,
     initialLoId       = null,
@@ -150,6 +151,8 @@ const AddLoanPage = ({
     // blob: URLs for freshly-selected files and don't need signing.
     const [guarantorPhotoKeyExisting,   setGuarantorPhotoKeyExisting]   = useState(null);
     const [guarantorIdPhotoKeyExisting, setGuarantorIdPhotoKeyExisting] = useState(null);
+
+    const [saveAndAddMore, setSaveAndAddMore] = useState(false);
 
     const guarantorKeys = useMemo(
         () => [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting].filter(Boolean),
@@ -1083,6 +1086,7 @@ const AddLoanPage = ({
         values.groupId       = selectedGroup;
 
         const group       = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
+        values.group      = group;
         values.groupName  = group?.name;
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
@@ -1402,15 +1406,15 @@ const AddLoanPage = ({
                 if (response.error) {
                     toast.error(response.message);
                 } else if (response.success || response.loan) {
-                    if (!isEdit && clientType === 'active') {
-                        const pendingLoan = [{ ...values, loanId: values.oldLoanId }];
-                        setTimeout(async () => {
-                            await fetchWrapper.post(
-                                getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans',
-                                pendingLoan
-                            );
-                        }, 3000);
-                    }
+                    // if (!isEdit && clientType === 'active') {
+                    //     const pendingLoan = [{ ...values, loanId: values.oldLoanId }];
+                    //     setTimeout(async () => {
+                    //         await fetchWrapper.post(
+                    //             getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans',
+                    //             pendingLoan
+                    //         );
+                    //     }, 3000);
+                    // }
 
                     // Post-save guarantor duplicate check — runs in both add AND edit mode
                     // In edit mode: re-checks in case guarantor name was changed
@@ -1467,8 +1471,18 @@ const AddLoanPage = ({
                     }
                     toast.success(isEdit ? 'Loan successfully updated.' : 'Loan application successfully added.');
                     action.setSubmitting = false;
-                    // Small delay so flag mutations complete before navigating away
-                    setTimeout(() => onSuccess?.(), 500);
+                    // Small delay so flag mutations complete before navigating away.
+                    // saveAndAddMore routes to the bare /add URL (no query params); combined
+                    // with key={router.asPath} in add.js, that forces AddLoanPage to fully
+                    // remount for the next entry rather than trying to reset 25+ useState
+                    // values in place — see the note on onSaveAndAddMore in add.js.
+                    setTimeout(() => {
+                        if (saveAndAddMore && onSaveAndAddMore) {
+                            onSaveAndAddMore();
+                        } else {
+                            onSuccess?.();
+                        }
+                    }, 500);
                 }
             })
             .catch(err => {
@@ -1491,7 +1505,7 @@ const AddLoanPage = ({
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
-        mcbu:                groupOccurence === 'weekly'
+        mcbu:                (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
                                  ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
         csf:                 0,
         dateGranted:         null,
@@ -1754,6 +1768,9 @@ const AddLoanPage = ({
                                 guarantorIdPhotoPreview={resolvedGuarantorIdPreview}
                                 onGuarantorPhotoChange={handleGuarantorPhotoChange}
                                 onGuarantorIdChange={handleGuarantorIdChange}
+                                showSaveAndAddMore={mode === 'add' && !fromCI}
+                                onSaveAndAddMoreClick={() => setSaveAndAddMore(true)}
+                                onSaveOnlyClick={() => setSaveAndAddMore(false)}
                             />
                         </div>
                     </form>

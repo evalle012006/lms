@@ -16,6 +16,7 @@ export const USER_FIELDS = `
   status
   transactionType
   weeklyScheduleType
+  acceleratedCategory
   designatedBranchId
   lastName
   root
@@ -249,6 +250,7 @@ export const GROUP_FIELDS = `
   noOfClients
   occurence
   weeklyScheduleType
+  acceleratedCategory
   status
   time
   dayNo
