@@ -1,6 +1,15 @@
+// src/pages/api/v2/laf/ci/investigate.js
+// FIX: guard against re-saving a CI decision once the application has
+//   already been promoted. Previously, insertQl's on_conflict upsert would
+//   silently accept a new decision and overwrite temporaryLoanApplications.status
+//   (ci_approved <-> ci_declined) even after promote/[refCode].js had already
+//   claimed the row and created a client — leaving contradictory records where
+//   status says "ci_declined" but promotedClientId/promotedAt are still populated
+//   from the earlier approval. Now rejected outright before any write happens.
+
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions'; // ← ADD THIS
@@ -32,6 +41,24 @@ async function saveInvestigation(req, res) {
         return res.status(200).json({
             success: false,
             message: 'A selfie photo is required when approving an application.'
+        });
+    }
+
+    // ── FIX: block re-investigation of an already-promoted application ─────
+    const [application] = await graph.query(
+        queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
+    ).then(r => r.data?.temporaryLoanApplications ?? []);
+
+    if (!application) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
+
+    if (application.status === 'promoted') {
+        return res.status(200).json({
+            success: false,
+            message: 'This application has already been promoted to a client record. ' +
+                'The investigation decision cannot be changed. Contact an administrator ' +
+                'if this client record needs correction.',
         });
     }
 

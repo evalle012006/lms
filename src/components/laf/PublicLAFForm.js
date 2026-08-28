@@ -678,9 +678,8 @@ const PublicLAFForm = ({
             return;
         }
         if (cur === si('Lookup')) {
-            // Balik can skip lookup if no match found
-            if (!foundClient && clientType !== 'balik') {
-                toast.error('Please find your record first.');
+            if (!foundClient) {
+                toast.error('Please select or find your record first.');
                 return;
             }
             setStep(s => s + 1);
@@ -842,6 +841,9 @@ const PublicLAFForm = ({
         // ── Online mode: normal submit ────────────────────────────────────
         if (!lafPhotoFile) { toast.error('Photo required.'); return; }
         if (requireClientBiometric && biometricRequired && !biometricVerified) { toast.error('Biometric verification required.'); return; }
+
+        const isUnmatchedBalik = clientType === 'balik' && !foundClient?._id;
+
         setSubmitting(true);
         try {
             const uuid = `laf${Date.now()}`;
@@ -874,16 +876,11 @@ const PublicLAFForm = ({
                     lafPhotoKey, governmentIdPhotoKey, selfieWithIdPhotoKey,
                     governmentIdType: idType || null, governmentIdNumber: idNumber || null,
                     landmark: values.landmark || null, distanceFromBranch: values.distanceFromBranch || null,
-                    // Balik history — pass old assignment from lookup
                     oldGroupId:            foundClient?.oldGroupId  || null,
                     oldLoId:               foundClient?.oldLoId     || null,
-                    // Duplicate / Balik flags
                     isDuplicateFlagged: duplicates.length > 0,
                     duplicateCandidateIds: duplicates.map(d => d._id),
-                    isBalikUnmatched:      clientType === 'balik' && !foundClient,
-                    // FIX: face liveness fields — removed old WebAuthn biometric spread
-                    // biometricData now contains faceTemplate/faceEnrolledAt/livenessScore
-                    // from FaceLivenessStep, NOT WebAuthn credential fields
+                    isBalikUnmatched: isUnmatchedBalik,
                     faceTemplate:   biometricData?.faceTemplate
                         ? JSON.stringify(biometricData.faceTemplate)
                         : null,
@@ -893,8 +890,6 @@ const PublicLAFForm = ({
                     yearsOfStay:  values.yearsOfStay  || null,
                     business:     values.business     || null,
                     dailyIncome:  values.dailyIncome ? String(values.dailyIncome) : null,
-                    // Issue 6: pass loan amounts for Previous Loan cell in LAF print
-                    // These come from foundClient (populated by lookup-client API)
                     amountRelease: foundClient?.amountRelease || null,
                     loanRelease:   foundClient?.loanRelease   || null,
                 }),
@@ -1495,7 +1490,6 @@ const PublicLAFForm = ({
                                     (clientType !== 'balik' && !foundClient) ||
                                     balikMatches.length > 1
                                 }
-                                nextLabel={clientType === 'balik' && !foundClient && balikMatches.length === 0 ? 'Skip & Enter Manually' : 'Next'}
                             />
                         </div>
                     )}

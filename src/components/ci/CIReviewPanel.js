@@ -193,7 +193,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             // ── Auto-promote after CI approval ────────────────────────────
             if (decision === 'approved') {
                 try {
-                    const promoteRes = await fetchWrapper.get(
+                    const promoteRes = await fetchWrapper.post(
                         getApiBaseUrl() + `laf/promote/${encodeURIComponent(application.ciReferenceCode)}`
                     );
                     if (promoteRes.success) {
