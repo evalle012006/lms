@@ -480,17 +480,17 @@ const SlotCycleCard = ({
                 />
             )}
 
-            {/* FIX 2: loanCycle from Formik values — not hardcoded */}
+            {/* Loan Cycle — trust the Formik value as-is. It's resolved once,
+                correctly, at the point of client selection (see
+                src/lib/loan-cycle.js). This display must never re-guess it
+                from clientType — that's what caused the Balik/Pending Member
+                mixup in the first place. */}
             <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
                     Loan Cycle
                 </p>
                 <p className="text-sm font-semibold text-gray-800 pt-2">
-                    {loanCycle
-                        ? loanCycle
-                        : (clientType === 'pending' || clientType === 'offset')
-                            ? 1
-                            : '—'}
+                    {loanCycle || '—'}
                 </p>
             </div>
         </div>
