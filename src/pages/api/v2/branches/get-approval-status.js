@@ -1,3 +1,4 @@
+import { CLOSING_DOC_KEYS } from '@/lib/closing-documents.constants';
 import { BRANCH_APPROVAL_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
@@ -23,8 +24,6 @@ async function getBranchApprovalStatus(req, res) {
         statusCode = 400;
     } else {
         try {
-            // Query branchApprovals table for the given branches and date
-            // Using BRANCH_APPROVAL_FIELDS constant for consistency
             const approvals = await graph.query(
                 queryQl(
                     createGraphType('branchApprovals', `${BRANCH_APPROVAL_FIELDS}`)('approvals'),
@@ -37,17 +36,36 @@ async function getBranchApprovalStatus(req, res) {
                 )
             );
 
-            if (approvals && approvals.data && approvals.data.approvals) {
-                response = { 
-                    success: true, 
-                    data: approvals.data.approvals 
-                };
-            } else {
-                response = { 
-                    success: true, 
-                    data: [] 
-                };
-            }
+            const closingDocs = await graph.query(
+                queryQl(
+                    createGraphType('closing_documents', `branch_id doc_type`)('closingDocuments'),
+                    {
+                        where: {
+                            branch_id: { _in: branchIds },
+                            date_for: { _eq: dateFor },
+                            is_active: { _eq: true }
+                        }
+                    }
+                )
+            );
+
+            const docTypesByBranch = {};
+            (closingDocs?.data?.closingDocuments || []).forEach(d => {
+                if (!docTypesByBranch[d.branch_id]) docTypesByBranch[d.branch_id] = new Set();
+                docTypesByBranch[d.branch_id].add(d.doc_type);
+            });
+
+            const closingDocsCounts = {};
+            Object.keys(docTypesByBranch).forEach(branchId => {
+                closingDocsCounts[branchId] = docTypesByBranch[branchId].size;
+            });
+
+            response = {
+                success: true,
+                data: approvals?.data?.approvals || [],
+                closingDocsCounts,              // { [branchId]: distinct doc_type count }
+                requiredClosingDocsCount: CLOSING_DOC_KEYS.length
+            };
         } catch (error) {
             console.error('Error fetching branch approval status:', error);
             response = { error: true, message: "Error fetching approval status." };

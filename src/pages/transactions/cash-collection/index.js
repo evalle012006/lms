@@ -205,6 +205,7 @@ const ModernBranchCashCollections = () => {
       yellow: 'bg-yellow-100',
       blue: 'bg-blue-100',
       stale: 'bg-purple-100', 
+      noDocs: 'bg-red-100',
       none: '',
     };
 
@@ -212,6 +213,15 @@ const ModernBranchCashCollections = () => {
     if (isWeekend || isHoliday) {
       // temporary disable colors on holiday/weekend
       // return bgColorMap.none;
+    }
+
+    if (
+      currentFilter === 'branch' &&
+      currentUser.role.rep <= 2 &&
+      !row.hasClosingDocs &&
+      row.approvalStatus !== 'closed'
+    ) {
+      return bgColorMap.noDocs;
     }
 
     // Draft rows at group level
@@ -388,12 +398,16 @@ const ModernBranchCashCollections = () => {
       });
       
       if (response.success) {
-        return response.data; // Returns array of { branchId, status, userName }
+        return {
+          approvals: response.data,
+          closingDocsCounts: response.closingDocsCounts || {},
+          requiredClosingDocsCount: response.requiredClosingDocsCount ?? 5 // fallback only if API omits it
+        };
       }
-      return [];
+      return { approvals: [], closingDocsCounts: {}, requiredClosingDocsCount: 5 };
     } catch (error) {
       console.error('Error fetching branch approval status:', error);
-      return [];
+      return { approvals: [], closingDocsCounts: {}, requiredClosingDocsCount: 5 };
     }
   };
 
@@ -1256,18 +1270,19 @@ const ModernBranchCashCollections = () => {
         // If viewing branches, fetch approval status
         if (filter === 'branch' && processedData.length > 0) {
           const branchIds = processedData.map(item => item._id).filter(id => id);
-          const approvalStatus = await fetchBranchApprovalStatus(branchIds, formattedDate);
-          
-          // Merge approval status into processed data
+          const { approvals: approvalStatus, closingDocsCounts, requiredClosingDocsCount } =
+            await fetchBranchApprovalStatus(branchIds, formattedDate);
+
           processedData.forEach(item => {
             const approval = approvalStatus.find(a => a.branchId === item._id);
             if (approval) {
-              item.approvalStatus = approval.status; // 'open' or 'closed'
+              item.approvalStatus = approval.status;
               item.approvedBy = approval.userName;
-              // ADDED: carry stale flag through for row/button/badge logic
               item.documentsStale = approval.documentsStale || false;
               item.staleReason = approval.staleReason || null;
             }
+            // CHANGED: all required doc types must be present, not just one
+            item.hasClosingDocs = (closingDocsCounts[item._id] || 0) >= requiredClosingDocsCount;
           });
         }
 

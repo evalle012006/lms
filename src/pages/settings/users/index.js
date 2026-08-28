@@ -10,7 +10,9 @@ import { toast } from "react-toastify";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
-import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
+// NEW: drawer replaced by /settings/users/add and /settings/users/edit/[uuid] pages.
+// AddUpdateUserDrawer is intentionally left in place (unused here) rather than
+// deleted — see project notes on keeping it as a temporary fallback.
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
@@ -28,8 +30,8 @@ const TeamPage = () => {
     const [loading, setLoading] = useState(true);
     const [userListData, setUserListData] = useState([]);
 
-    const [showAddDrawer, setShowAddDrawer] = useState(false);
-    const [mode, setMode] = useState('add');
+    // NEW: userData is now only needed for the delete confirmation dialog —
+    // add/edit no longer need local state since they live on their own pages.
     const [userData, setUserData] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -58,8 +60,8 @@ const TeamPage = () => {
                 position: user.position,
                 designatedBranch: user.designatedBranch,
                 designatedBranchId: user.designatedBranchId,
-                roleId: user.role.rep + "-" + user.role.shortCode,
-                role: UppercaseFirstLetter(user.role.name),
+                roleId: user?.role?.rep + "-" + user?.role?.shortCode,
+                role: UppercaseFirstLetter(user?.role?.name),
                 loNo: user.loNo,
                 profile: user.profile ? user.profile : '',
                 lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
@@ -266,30 +268,19 @@ const TeamPage = () => {
         },
     ]);
 
-    const handleShowAddDrawer = () => {
-        setShowAddDrawer(true);
-    }
-
-    const handleCloseAddDrawer = () => {
-        setLoading(true);
-        setMode('add');
-        setUserData({});
-        getListUsers();
+    // NEW: was setShowAddDrawer(true) — now navigates to the dedicated add page.
+    const handleShowAddPage = () => {
+        router.push('/settings/users/add');
     }
 
     const actionButtons = [
-        <ButtonSolid key="add-user" label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" key="plus-icon" />, 'left']} />
+        <ButtonSolid key="add-user" label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddPage} icon={[<PlusIcon className="w-5 h-5" key="plus-icon" />, 'left']} />
     ];
 
+    // NEW: was setMode('edit') + setUserData(rowOriginal) + handleShowAddDrawer() —
+    // now navigates to the edit page, which loads the user itself via userId.
     const handleEditAction = (row) => {
-        setMode("edit");
-        let rowOriginal = row.original;
-        const selectedRole = platformRoles.find(role => UppercaseFirstLetter(role.name) === rowOriginal.role);
-        if (selectedRole) {
-            rowOriginal = { ...rowOriginal, role: selectedRole };
-        }
-        setUserData(rowOriginal);
-        handleShowAddDrawer();
+        router.push(`/settings/users/edit/${row.original._id}`);
     }
 
     const handleDeleteAction = (row) => {
@@ -412,7 +403,6 @@ const TeamPage = () => {
                     </div>
                 )}
             </div>
-            <AddUpdateUser mode={mode} user={userData} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
