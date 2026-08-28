@@ -11,6 +11,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
 import { getNextValidDate } from '@/lib/date-utils';
+import { resolveLoanCycle } from '@/lib/loan-cycle';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
@@ -826,7 +827,6 @@ const AddLoanPage = ({
         if (clientType === 'active' || clientType === 'advance') {
             // ── Restore slot/loanCycle/comaker from the client's existing loan ──
             const sl             = c.loans?.[0]?.slotNo;
-            const lc             = c.loans?.[0]?.loanCycle;
             const prevCoMaker    = c.loans?.[0]?.coMaker;
             const prevCoMakerId  = c.loans?.[0]?.coMakerId;
 
@@ -846,7 +846,7 @@ const AddLoanPage = ({
             // ensures enableReinitialize won't wipe these after comakerList loads
             setTimeout(() => {
                 formikRef.current?.setFieldValue('slotNo', sl);
-                formikRef.current?.setFieldValue('loanCycle', (lc || 0) + 1);
+                formikRef.current?.setFieldValue('loanCycle', resolveLoanCycle(c.loans));
             }, 150);
 
             // ── Fetch LAF guarantor data (delayed so slot/loanCycle setTimeout fires first) ──
@@ -1001,6 +1001,10 @@ const AddLoanPage = ({
         setClientId(client._id);
         setCiStatus(null);
         formikRef.current?.setFieldValue('clientId', client._id);
+        // Balik — always restarts at cycle 1. Set explicitly rather than
+        // relying on the Formik initialValues default, so this can't
+        // silently drift the next time someone touches initialValues.
+        formikRef.current?.setFieldValue('loanCycle', resolveLoanCycle(client.loans));
         // Balik clients always need new CI
         if (currentBranch?.clientFlowVersion === 'v2') {
             checkClientCI(client._id, true);
