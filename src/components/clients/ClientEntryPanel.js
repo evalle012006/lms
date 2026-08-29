@@ -412,6 +412,9 @@ const ClientEntryPanel = ({ onCIFound }) => {
     }, [nameSearch]);
 
     // ── CI code lookup — used by both search input and list click ─────────
+    // FIX: read-only preview — was calling laf/promote, which (pre-idempotency-fix)
+    // committed a client insert on every search/preview. laf/detail is the actual
+    // non-mutating preview endpoint and returns the same clientData shape.
     const handleCILookup = useCallback(async (code) => {
         const trimmed = (code || ciCode).trim().toUpperCase();
         if (!trimmed) return;
@@ -420,7 +423,7 @@ const ClientEntryPanel = ({ onCIFound }) => {
         setCiError('');
         try {
             const res = await fetchWrapper.get(
-                getApiBaseUrl() + `laf/promote/${encodeURIComponent(trimmed)}`
+                getApiBaseUrl() + `laf/detail?` + new URLSearchParams({ ciCode: trimmed })
             );
             if (!res.success) {
                 setCiError(res.message || 'CI code not found or not approved.');
@@ -659,10 +662,10 @@ const ClientEntryPanel = ({ onCIFound }) => {
                                                 {ciResult.clientData?.contactNumber}
                                             </p>
                                             <p className="text-xs text-blue-600">
-                                                ₱{Number(ciResult.loanData?.loanAmount || 0)
+                                                ₱{Number(ciResult.clientData?.loanAmount || 0)
                                                     .toLocaleString()}
-                                                {ciResult.loanData?.loanPurpose
-                                                    ? ` — ${ciResult.loanData.loanPurpose}`
+                                                {ciResult.clientData?.loanPurpose
+                                                    ? ` — ${ciResult.clientData.loanPurpose}`
                                                     : ''}
                                             </p>
                                         </div>
