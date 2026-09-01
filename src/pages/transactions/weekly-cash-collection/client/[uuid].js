@@ -1999,7 +1999,8 @@ const CashCollectionDetailsPage = () => {
 
                 const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
 
-                const selectedGroup = data.length > 0 ? data[0].group : {};
+                const rawSelectedGroup = currentGroup || (data.length > 0 ? data[0].group : {});
+                const selectedGroup = Array.isArray(rawSelectedGroup) ? rawSelectedGroup[0] : rawSelectedGroup;
                 if (selectedGroup && selectedGroup.day !== dayName) {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
                 }
@@ -2020,7 +2021,7 @@ const CashCollectionDetailsPage = () => {
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
                 // });
-                // console.log(dataArr)
+                // console.log('>>>>final', dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
