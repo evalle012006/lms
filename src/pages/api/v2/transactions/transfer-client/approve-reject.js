@@ -122,6 +122,7 @@ async function approveReject(req, res) {
                                 updatedLoan.loId = transfer.targetUserId;
                                 updatedLoan.groupId = transfer.targetGroupId;
                                 updatedLoan.groupName = targetGroup.name;
+                                updatedLoan.occurence = targetGroup.occurence;
                                 updatedLoan.slotNo = selectedSlotNo;
                                 updatedLoan.mcbuCollection = loan.mcbu;
                                 updatedLoan.transferId = transfer._id;
