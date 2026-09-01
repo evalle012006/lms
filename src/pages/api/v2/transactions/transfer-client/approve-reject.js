@@ -75,6 +75,8 @@ async function approveReject(req, res) {
                     logger.debug({user_id, page: `Validate Loan: ${clientLoans.length}`, data: validateLoan});
                     const loan = validateLoan.loan;
 
+                    let updatedLoan = null; 
+
                     if (validateLoan.error) {
                         errorMsg.add(validateLoan.errorMsg);
                     } else {
@@ -106,7 +108,6 @@ async function approveReject(req, res) {
                                 set: { ...targetGroup }
                             }));
 
-                            let updatedLoan = null;
                             if (loan) {
                                 const loanId = loan._id;
                                 delete loan._id;
