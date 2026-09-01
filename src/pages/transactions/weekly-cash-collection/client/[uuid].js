@@ -1754,8 +1754,9 @@ const CashCollectionDetailsPage = () => {
                         if (!cc.remarks || !isExemptFromMcbu) {
                             errorMsg.add('Error occured. Invalid MCBU Collection.');
                         }
-                    } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
-                        errorMsg.add('Error occured. MCBU collection should be divisible by 10.');
+                    } else if (parseFloat(cc.mcbuCol) > resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType) 
+                        && parseFloat(cc.mcbuCol) % 5 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
+                        errorMsg.add('Error occured. MCBU collection should be divisible by 5.');
                     }
                 }
 
