@@ -116,16 +116,26 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     }
 
     const getListGroup = async (selectedUser, type) => {
-        let url = getApiBaseUrl() + 'groups/list-all';
         let selectedBranch = {};
         if (type === "source") {
             selectedBranch = branchList.find(b => b._id === selectedSourceBranch);
         } else {
             selectedBranch = branchList.find(b => b._id === selectedTargetBranch);
         }
-        
+
         if (selectedBranch && selectedUser) {
-            url = url + '?' + new URLSearchParams({ branchId: selectedBranch._id, loId: selectedUser._id });
+            if (!selectedUser.transactionType) {
+                toast.error(`${type === 'source' ? 'Source' : 'Target'} loan officer has no transaction type set.`);
+                return;
+            }
+
+            const url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({
+                branchId: selectedBranch._id,
+                loId: selectedUser._id,
+                occurence: selectedUser.transactionType,
+                mode: 'filter',
+            });
+
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
