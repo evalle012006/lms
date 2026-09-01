@@ -7,6 +7,8 @@ import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
 import moment from 'moment';
+import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
+import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 
 const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)
@@ -29,6 +31,7 @@ async function save(req, res) {
     let mode;
     let oldLoanId;
     const currentDate = loanData.currentDate;
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
     delete loanData.currentDate;
     delete loanData.group;
@@ -131,11 +134,12 @@ async function save(req, res) {
                 finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 0;
                 finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 0;
             } else if (finalData.occurence === 'weekly' && group.weeklyScheduleType === 'standard') {
+                const weeklyMcbuMin = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
                 if (finalData.loanCycle === 1) {
-                    finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 50;
-                    finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 50;
+                    finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : weeklyMcbuMin;
+                    finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : weeklyMcbuMin;
                 }
-                finalData.mcbuTarget = 50;
+                finalData.mcbuTarget = weeklyMcbuMin;
             }
 
             if (mode === 'reloan') {
@@ -198,7 +202,7 @@ async function save(req, res) {
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow' && finalData.loanCycle > 1) {
                 const reloan = mode === 'reloan';
-                await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
+                await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, mcbuTargetConfig, addToMutationList);
             }
 
             await graph.mutation(
@@ -317,7 +321,7 @@ async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMut
     }
 }
 
-async function saveCashCollection(user_id, loan, reloan, group, loanId, currentDate, groupStatus, addToMutationList) {
+async function saveCashCollection(user_id, loan, reloan, group, loanId, currentDate, groupStatus, mcbuTargetConfig, addToMutationList) {
     const currentReleaseAmount = loan.amountRelease;
 
     const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
@@ -342,8 +346,9 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
                 mcbu = loan.mcbu > 0 ? loan.mcbu : 0;
                 mcbuCol = loan.mcbu > 0 ? loan.mcbu : 0;
             } else if (loan.occurence == 'weekly' && group.weeklyScheduleType === 'standard') {
-                mcbu = loan.mcbu > 0 ? loan.mcbu : 50;
-                mcbuCol = loan.mcbu > 0 ? loan.mcbu : 50;
+                const weeklyMcbuMin = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
+                mcbu = loan.mcbu > 0 ? loan.mcbu : weeklyMcbuMin;
+                mcbuCol = loan.mcbu > 0 ? loan.mcbu : weeklyMcbuMin;
             }
         }
 
@@ -393,7 +398,7 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
         };
 
         if (data.occurence === 'weekly' && group.weeklyScheduleType === 'standard') {
-            data.mcbuTarget = 50;
+            data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
             data.groupDay = group.day;
 
             if (!reloan && data.loanCycle !== 1) {

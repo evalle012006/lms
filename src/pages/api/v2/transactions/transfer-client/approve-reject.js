@@ -13,6 +13,8 @@ import {
 import logger from "@/logger";
 import { generateUUID } from "@/lib/utils";
 import { logGraphQLError } from "@/lib/graphql-utils";
+import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
+import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 
 const groupsType = createGraphType("groups", GROUP_FIELDS);
 const loansType = createGraphType("loans", LOAN_FIELDS);
@@ -31,6 +33,7 @@ async function approveReject(req, res) {
     const transfers = req.body;
     const mutationList = [];
     const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
     const errorMsg = new Set();
     try {
@@ -174,7 +177,7 @@ async function approveReject(req, res) {
                             }
                         }
 
-                        await saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList);
+                        await saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList);
 
                         logger.debug({user_id, page: `Updating Client: ${transfer.selectedClientId}`});
 
@@ -264,7 +267,7 @@ async function approveReject(req, res) {
     }
 }
 
-async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
+async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList) {
     // add new cash collection entry with updated data
     const cashCollection = await findCashCollections({
       clientId: { _eq: transfer.selectedClientId },
@@ -354,8 +357,8 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             }
 
             if (data.occurence === 'weekly') {
-                // data.mcbuTarget = 50;
-                data.groupDay = targetGroup.groupDay;
+                // data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, sourceGroup.weeklyScheduleType);
+                data.groupDay = sourceGroup.groupDay;
             }
         }
 

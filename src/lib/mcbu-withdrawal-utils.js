@@ -47,3 +47,15 @@ export function validateMcbuRetain(mcbuAmount, currentMcbu, isGroupLeader, occur
     }
     return { valid: true };
 }
+
+export async function getWeeklyMcbuTargetConfig() {
+    const fields = 'minWeeklyMcbuCollection minWeeklyMcbuCollectionAccelerated';
+    const result = await graph.query(
+        queryQl(createGraphType('transactionSettings', fields)('txnSettings'), { limit: 1 })
+    );
+    const s = result?.data?.txnSettings?.[0] || {};
+    return {
+        minWeeklyMcbuCollection: s.minWeeklyMcbuCollection,
+        minWeeklyMcbuCollectionAccelerated: s.minWeeklyMcbuCollectionAccelerated,
+    };
+}

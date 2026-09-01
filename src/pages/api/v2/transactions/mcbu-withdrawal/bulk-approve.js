@@ -7,7 +7,8 @@ import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import moment from 'moment';
-import { getMcbuWithdrawRetainConfig, validateMcbuRetain } from "@/lib/mcbu-withdrawal-utils";
+import { getMcbuWithdrawRetainConfig, validateMcbuRetain, getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
+import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 
 const graph = new GraphProvider();
 const mcbuWithdrawalsType = createGraphType(
@@ -48,6 +49,7 @@ async function bulkApprove(req, res) {
 
     const validWithdrawalMap = {};
     const retainConfig = await getMcbuWithdrawRetainConfig();
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
     // validated all withdrawals and add it in a map for distinct duplicates
     for(const withdrawal of withdrawals) {
@@ -63,7 +65,7 @@ async function bulkApprove(req, res) {
 
         if(!!validWithdrawal) {
           validWithdrawalMap[withdrawal.id] = validWithdrawal;
-          await performApprovalWithdrawal(validWithdrawal, user_id, currentDate, addToMutationList, mutationList)
+          await performApprovalWithdrawal(validWithdrawal, user_id, currentDate, addToMutationList, mutationList, mcbuTargetConfig)
               .then(() => {
                 results.push({ 
                   success: true, 
@@ -108,7 +110,7 @@ async function bulkApprove(req, res) {
 }
 
 // Updated saveCashCollection function to include CSF withdrawal
-async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdrawalAmount, group, loanId, currentDate, groupStatus, addToMutationList) {
+async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdrawalAmount, group, loanId, currentDate, groupStatus, mcbuTargetConfig, addToMutationList) {
   const currentReleaseAmount = parseFloat(loan.amountRelease || 0);
 
   // Check if a cash collection already exists for this client on the current date
@@ -168,7 +170,7 @@ async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdr
 
     // Weekly-specific settings
     if (data.occurence === 'weekly') {
-      data.mcbuTarget = 50;
+      data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
       data.groupDay = group.day;
 
       if (data.loanCycle !== 1) {
@@ -219,7 +221,7 @@ async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdr
   }
 }
 
-async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, currentDate, addToMutationList, mutationList) {
+async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, currentDate, addToMutationList, mutationList, mcbuTargetConfig) {
   const { _id, loan_id, modified_by, csf_withdrawal_amount, mcbu_withdrawal_amount, modified_date } = withdrawal;
 
   // Validate withdrawal amounts
@@ -288,6 +290,7 @@ async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, cur
     loan_id, 
     currentDate, 
     groupStatus, 
+    mcbuTargetConfig,
     addToMutationList
   );
 

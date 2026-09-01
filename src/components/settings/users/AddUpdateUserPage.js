@@ -136,7 +136,7 @@ const SegmentedControl = ({ name, label, value, options, onChange }) => (
 // blocking modal, not a toast — a toast auto-dismisses and this is the only
 // place the plaintext password ever appears, so it needs to stay up until
 // the admin has actually copied or written it down.
-const PasswordRevealModal = ({ password, context, userName, onClose }) => {
+export const PasswordRevealModal = ({ password, context, userName, onClose }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
