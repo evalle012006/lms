@@ -1,6 +1,10 @@
 // src/components/laf/TempLAFModal.js
 // Updated — all guarantor extended fields wired to loanData for LAFModal rendering.
 // Also wires loanRelease/amountRelease for Previous Loan cell per clientType.
+// FIX: occurence/weeklyScheduleType now read from application (populated by
+// ci/[refCode].js group enrichment) instead of hardcoded 'daily' — required
+// for LAFModal's isAccelerated branch to fire correctly for accelerated
+// weekly prospects going through the CI investigation LAF print/download.
 
 import React from 'react';
 import moment from 'moment';
@@ -37,7 +41,10 @@ const TempLAFModal = ({ isOpen, onClose, application }) => {
         dateOfRelease:  null,
         dateAdded:      application.dateAdded || application.submittedAt,
         loanTerms:      60,
-        occurence:      'daily',
+        // FIX: read actual group schedule instead of hardcoding 'daily' —
+        // ci/[refCode].js now enriches application with these from the group record
+        occurence:           application.occurence          || 'daily',
+        weeklyScheduleType:  application.weeklyScheduleType  || null,
         amountRelease:  Number(application.loanAmount) || 0,
 
         // ── Previous loan — used by LAFModal for the Previous Loan cell ───

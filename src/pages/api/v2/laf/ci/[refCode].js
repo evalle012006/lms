@@ -1,6 +1,11 @@
 // src/pages/api/v2/laf/ci/[refCode].js
 // FIX: Added groupName enrichment — temporaryLoanApplications only stores groupId,
 // not groupName. Fetch group name from groups table and add to response.
+// FIX: Added occurence + weeklyScheduleType — needed by LAFModal (via TempLAFModal)
+// to render accelerated-loan promissory note / T&C / CSF text instead of always
+// defaulting to standard daily terms. Previously the group query only asked for
+// _id/name/status, so these fields never reached the client regardless of what
+// TempLAFModal did with application.occurence.
 
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -13,8 +18,8 @@ const graph = new GraphProvider();
 const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const BRANCH_TYPE = createGraphType('branches', '_id name code')('branches');
-// FIX: added group type to fetch groupName
-const GROUP_TYPE  = createGraphType('groups', '_id name status')('groups');
+// FIX: added group type to fetch groupName + occurence + weeklyScheduleType
+const GROUP_TYPE  = createGraphType('groups', '_id name status occurence weeklyScheduleType')('groups');
 
 const s3 = new S3Client({
     endpoint: 'https://sgp1.digitaloceanspaces.com',
@@ -86,6 +91,10 @@ async function getByRefCode(req, res) {
             branchCode: branch?.code || '—',
             groupName:  group?.name  || '',
             groupStatus: group?.status || '',
+            // FIX: occurence/weeklyScheduleType — needed by LAFModal to render
+            // accelerated-loan promissory note/T&C text instead of standard terms
+            occurence:          group?.occurence          || 'daily',
+            weeklyScheduleType: group?.weeklyScheduleType  || null,
             lafPhotoUrl,
         },
         investigation: investigation
