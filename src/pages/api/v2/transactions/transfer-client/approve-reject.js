@@ -15,6 +15,7 @@ import { generateUUID } from "@/lib/utils";
 import { logGraphQLError } from "@/lib/graphql-utils";
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
+import { recalculateLoanForTransfer } from "@/lib/transfer-recalculation";
 
 const groupsType = createGraphType("groups", GROUP_FIELDS);
 const loansType = createGraphType("loans", LOAN_FIELDS);
@@ -105,6 +106,7 @@ async function approveReject(req, res) {
                                 set: { ...targetGroup }
                             }));
 
+                            let updatedLoan = null;
                             if (loan) {
                                 const loanId = loan._id;
                                 delete loan._id;
@@ -114,7 +116,7 @@ async function approveReject(req, res) {
                                 delete loan.transferredDate;
                                 delete loan.transferred;
 
-                                let updatedLoan = {...loan};
+                                updatedLoan = {...loan};
                                 updatedLoan.branchId = transfer.targetBranchId;
                                 updatedLoan.loId = transfer.targetUserId;
                                 updatedLoan.groupId = transfer.targetGroupId;
@@ -131,6 +133,41 @@ async function approveReject(req, res) {
 
                                 if (updatedLoan.status == 'completed' && updatedLoan.fullPaymentDate == currentDate) {
                                     updatedLoan.fullPaymentDate = null;
+                                }
+
+                                // PRE-EXISTING GAP (not caused by the occurence-transfer feature, but load-bearing
+                                // for it): loans landing in a weekly group need `groupDay` set to the target
+                                // group's meeting day so weekly collection-sheet queries (which filter loans by
+                                // groupDay) actually pick them up. This was never set for ANY weekly transfer
+                                // before now — fixing here since it directly affects the feature under test.
+                                if (targetGroup.occurence === 'weekly') {
+                                    updatedLoan.groupDay = targetGroup.day;
+                                }
+
+                                // Occurence-change recalculation. loan.activeLoan / loan.loanTerms /
+                                // loan.noOfPayments are NEVER mutated here — only updatedLoan's copies —
+                                // so the source group's closing cash_collection record (built from
+                                // `loan` in saveCashCollection below) keeps its original daily/weekly
+                                // figures untouched, per the "source stays intact" decision.
+                                if (sourceGroup.occurence !== targetGroup.occurence && parseFloat(updatedLoan.loanBalance) > 0) {
+                                    const recalculated = recalculateLoanForTransfer({
+                                        amountRelease: parseFloat(updatedLoan.amountRelease),
+                                        loanBalance: parseFloat(updatedLoan.loanBalance),
+                                        targetOccurence: targetGroup.occurence,
+                                        targetWeeklyScheduleType: targetGroup.weeklyScheduleType,
+                                        targetLoanTerms: transfer.targetLoanTerms,
+                                    });
+
+                                    updatedLoan.activeLoan = recalculated.activeLoan;
+                                    updatedLoan.loanTerms = recalculated.loanTerms;
+                                    updatedLoan.noOfPayments = recalculated.noOfPayments;
+                                    updatedLoan.weeklyScheduleType = recalculated.weeklyScheduleType;
+
+                                    logger.debug({
+                                        user_id,
+                                        page: `Transfer occurence recalculation: ${transfer.selectedClientId}`,
+                                        data: { from: sourceGroup.occurence, to: targetGroup.occurence, ...recalculated }
+                                    });
                                 }
 
                                 if (existingCashCollection.length > 0) {
@@ -177,7 +214,7 @@ async function approveReject(req, res) {
                             }
                         }
 
-                        await saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList);
+                        await saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList);
 
                         logger.debug({user_id, page: `Updating Client: ${transfer.selectedClientId}`});
 
@@ -267,7 +304,7 @@ async function approveReject(req, res) {
     }
 }
 
-async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList) {
+async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
     // add new cash collection entry with updated data
     const cashCollection = await findCashCollections({
       clientId: { _eq: transfer.selectedClientId },
@@ -311,20 +348,26 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             origin: 'automation-trf'
         };
 
-        if (loan) {
+        // NOTE: this block deliberately reads from `updatedLoan`, not `loan`.
+        // `updatedLoan` carries the recalculated activeLoan/loanTerms/noOfPayments
+        // for the NEW (target) group when occurence changed; `loan` is the
+        // untouched original, used only for the source-side closing record below.
+        // Reading `loan` here would silently drop the recalculation on the
+        // record the LO actually collects against at the target group.
+        if (updatedLoan) {
             data.oldLoanId = loan.oldId;
             data.loanId = loan._id;
-            data.activeLoan = loan.activeLoan;
-            data.targetCollection = loan.activeLoan;
-            data.amountRelease = loan.amountRelease;
-            data.loanBalance = loan.loanBalance;
+            data.activeLoan = updatedLoan.activeLoan;
+            data.targetCollection = updatedLoan.activeLoan;
+            data.amountRelease = updatedLoan.amountRelease;
+            data.loanBalance = updatedLoan.loanBalance;
             data.slotNo = selectedSlotNo;
-            data.loanCycle = loan.loanCycle;
-            data.noOfPayments = loan.noOfPayments;
-            data.mcbu = loan.mcbu;
-            data.pastDue = loan.pastDue;
-            data.noPastDue = loan.noPastDue;
-            data.loanTerms = loan.loanTerms + "";
+            data.loanCycle = updatedLoan.loanCycle;
+            data.noOfPayments = updatedLoan.noOfPayments;
+            data.mcbu = updatedLoan.mcbu;
+            data.pastDue = updatedLoan.pastDue;
+            data.noPastDue = updatedLoan.noPastDue;
+            data.loanTerms = updatedLoan.loanTerms + "";
 
             if (existingCashCollection.length > 0) {
                 const prevCC = existingCashCollection[0];
@@ -357,8 +400,11 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             }
 
             if (data.occurence === 'weekly') {
-                // data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, sourceGroup.weeklyScheduleType);
-                data.groupDay = sourceGroup.groupDay;
+                // data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, targetGroup.weeklyScheduleType);
+                // FIX (pre-existing bug): groups don't have a `groupDay` field — they have `day`.
+                // This was always writing `undefined` before. Also switched to targetGroup, since
+                // this record belongs to the target group, not the source.
+                data.groupDay = targetGroup.day;
             }
         }
 
@@ -415,6 +461,9 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             origin: 'automation-trf'
         };
 
+        // Deliberately reads from `loan` (the untouched, original figures) — this is the
+        // SOURCE group's closing record and must preserve the client's original daily/weekly
+        // installment history regardless of any occurence-change recalculation applied above.
         if (loan) {
             data.loanId = loan.oldId + "";
             data.activeLoan = loan.activeLoan;
@@ -432,7 +481,8 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
 
         if (data.occurence === 'weekly') {
             data.mcbuTarget = 50;
-            data.groupDay = sourceGroup.groupDay;
+            // FIX (pre-existing bug): same `groupDay` -> `day` fix as above.
+            data.groupDay = sourceGroup.day;
         }
 
         addToMutationList(alias => insertQl(cashCollectionsType(alias), { objects: [{ ...data, _id: generateUUID() }]}));

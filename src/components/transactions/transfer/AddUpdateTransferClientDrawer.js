@@ -9,9 +9,11 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import 'react-calendar/dist/Calendar.css';
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
+import RadioButton from "@/lib/ui/radio-button";
 import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
 import { getApiBaseUrl } from "@/lib/constants";
+import TransferConfirmationModal from "./TransferConfirmationModal";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const transferList = useSelector(state => state.transfer.list);
@@ -35,6 +37,12 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const [selectedTargetUser, setSelectedTargetUser] = useState();
     const [selectedTargetGroup, setSelectedTargetGroup] = useState();
 
+    // Only relevant when the target group's occurence is 'daily' — daily groups
+    // carry no term field of their own (unlike weekly, which derives 24/12 from
+    // weeklyScheduleType), so this must be an explicit user choice. Default 60
+    // per business rule.
+    const [selectedTargetLoanTerms, setSelectedTargetLoanTerms] = useState(60);
+
     const [clientList, setClientList] = useState([]);
     const [selectedClientId, setSelectedClientId] = useState();
     const [selectedClient, setSelectedClient] = useState();
@@ -42,6 +50,10 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const [selectedSlotNo, setSelectedSlotNo] = useState();
 
     const [disableField, setDisableField] = useState(false);
+
+    // Holds the fully-prepared submit payload while the confirmation modal is open.
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [pendingSubmit, setPendingSubmit] = useState(null); // { values, action, sourceGroup, targetGroup }
 
     const initialValues = {
         sourceBranchId: client.sourceBranchId,
@@ -129,6 +141,13 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 return;
             }
 
+            // list-by-group-occurence scopes results to the LO's CURRENT occurence +
+            // weeklyScheduleType/acceleratedCategory theme, so stale/leftover groups from
+            // a prior theme switch (which cleanupUnusedGroups intentionally never deletes
+            // once they have loan history) don't leak into this dropdown. mode: 'filter'
+            // preserves "all statuses" the same way groups/list-all did — omitting it would
+            // silently restrict results to status: 'available' only, which would hide a
+            // client's current (possibly full) source group from the Source Group dropdown.
             const url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({
                 branchId: selectedBranch._id,
                 loId: selectedUser._id,
@@ -238,6 +257,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         setSelectedTargetGroup();
         setSelectedTargetUser(value);
         setSlotNumbers();
+        setSelectedTargetLoanTerms(60);
         const form = formikRef.current;
         form.setFieldValue(field, value);
     }
@@ -269,6 +289,10 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         form.setFieldValue(field, value);  
     }
 
+    const handleChangeTargetLoanTerms = (value) => {
+        setSelectedTargetLoanTerms(value);
+    }
+
     const reset = () => {
         setSourceUserList();
         setSourceGroupList();
@@ -280,73 +304,89 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         setSelectedTargetBranch();
         setSelectedTargetUser();
         setSelectedTargetGroup();
+        setSelectedTargetLoanTerms(60);
         setClientList();
         setSelectedClientId();
         setSelectedClient();
         setSlotNumbers();
         setSelectedSlotNo();
+        setShowConfirmModal(false);
+        setPendingSubmit(null);
     }
 
     const handleSaveUpdate = (values, action) => {
-        setLoading(true);
         if (!selectedSourceBranch) {
-            setLoading(false);
             toast.error('Selected source branch is required.');
         } else if (!selectedSourceUser) {
-            setLoading(false);
             toast.error('Selected source loan officer is required.');
         } else if (!selectedSourceGroup) {
-            setLoading(false);
             toast.error('Selected source group is required.');
         } else if (selectedSourceGroup === selectedTargetGroup) {
-            setLoading(false);
             toast.error('Selected source and target groups are the same.');
         } else if (!selectedClientId) {
-            setLoading(false);
             toast.error("No selected client!");
+        } else if (!selectedTargetGroup) {
+            toast.error("Please select target group.");
         } else {
-            if (selectedTargetGroup) {
-                const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
-                values.sourceBranchId = selectedSourceBranch;
-                values.sourceUserId = selectedSourceUser;
-                values.sourceGroupId = selectedSourceGroup;
-                values.currentSlotNo = selectedClient.slotNo;
-                values.occurence = sourceGroup?.occurence;
-                values.sameLo = selectedClient.loId === values.targetUserId;
-                values.loToLo = selectedSourceBranch === selectedTargetBranch;
-                values.branchToBranch = selectedSourceBranch !== selectedTargetBranch;
+            const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
+            const targetGroup = targetGroupList.find(group => group._id === selectedTargetGroup);
 
-                // if (selectedClient.loans.length > 0) {
-                //     values.loanId = selectedClient.loans[0]._id;
-                // }
+            values.sourceBranchId = selectedSourceBranch;
+            values.sourceUserId = selectedSourceUser;
+            values.sourceGroupId = selectedSourceGroup;
+            values.currentSlotNo = selectedClient.slotNo;
+            values.occurence = sourceGroup?.occurence;
+            values.sameLo = selectedClient.loId === values.targetUserId;
+            values.loToLo = selectedSourceBranch === selectedTargetBranch;
+            values.branchToBranch = selectedSourceBranch !== selectedTargetBranch;
 
-                if (mode === "add") {
-                    values.status = "pending";
-                    values.dateAdded = currentDate;
-                    fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client', values)
-                        .then(response => {
-                            setLoading(false);
-                            if (response.error) {
-                                toast.error(response.message);
-                            } else if (response.success) {
-                                setShowSidebar(false);
-                                toast.success('Transfer client successfully added.');
-                                action.setSubmitting = false;
-                                action.resetForm({values: ''});
-                                reset();
-                                onClose();
-                            }
-                        }).catch(error => {
-                            console.log(error)
-                        });
-                } else {
-                    // update
-                }
-            } else {
-                setLoading(false);
-                toast.error("Please select target group.");
+            if (targetGroup?.occurence === 'daily') {
+                values.targetLoanTerms = selectedTargetLoanTerms;
             }
+
+            // Don't submit yet — show the confirmation modal with source/target details
+            // and the recalculated preview (if occurence is changing) first.
+            setPendingSubmit({ values, action, sourceGroup, targetGroup });
+            setShowConfirmModal(true);
         }
+    }
+
+    const handleConfirmTransfer = () => {
+        if (!pendingSubmit) return;
+        const { values, action } = pendingSubmit;
+
+        setLoading(true);
+        setShowConfirmModal(false);
+
+        if (mode === "add") {
+            values.status = "pending";
+            values.dateAdded = currentDate;
+            fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client', values)
+                .then(response => {
+                    setLoading(false);
+                    if (response.error) {
+                        toast.error(response.message);
+                    } else if (response.success) {
+                        setShowSidebar(false);
+                        toast.success('Transfer client successfully added.');
+                        action.setSubmitting = false;
+                        action.resetForm({values: ''});
+                        reset();
+                        onClose();
+                    }
+                }).catch(error => {
+                    console.log(error);
+                    setLoading(false);
+                });
+        } else {
+            // update
+            setLoading(false);
+        }
+    }
+
+    const handleCancelConfirm = () => {
+        setShowConfirmModal(false);
+        setPendingSubmit(null);
     }
 
     const handleCancel = () => {
@@ -441,12 +481,14 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 toast.error('Selected group is the same as the source group.');
                 setSelectedTargetGroup(null);
                 form.setFieldValue("targetGroupId", null);
-            } else if (targetGroup.occurence !== sourceGroup.occurence) {
-                toast.error(`Please select a ${sourceGroup.occurence} group.`);
-                setSelectedTargetGroup(null);
-                form.setFieldValue("targetGroupId", null);
             } else if (targetGroup.status === 'available') {
+                // Occurence mismatch between source and target is now ALLOWED — this is the
+                // whole point of this feature (daily <-> weekly transfers). The server
+                // recalculates activeLoan/loanTerms/noOfPayments when occurence changes and
+                // there's still a loan balance (see approve-reject.js). The confirmation
+                // modal shown at submit time previews that recalculation before it's sent.
                 setSelectedTargetGroup(selectedTargetGroup);
+                setSelectedTargetLoanTerms(60);
                 const availableSlots = targetGroup.availableSlots.filter(s => s <= targetGroup.capacity).filter(s => {
                     const hasTransfer = transferList.filter(t => t.targetGroupId === targetGroup._id).find(t => t.selectedSlotNo === s);
                     return !hasTransfer && s;
@@ -606,16 +648,6 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                                     <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].mcbu) }</span>
                                                 </div>
                                             </div>
-                                            {/* <div className="mt-4">
-                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
-                                                    <div className="flex justify-between">
-                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
-                                                            MCBU Collection
-                                                        </label>
-                                                    </div>
-                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].mcbu) }</span>
-                                                </div>
-                                            </div> */}
                                         </React.Fragment>
                                     )}
                                     <div className="border-b border-zinc-300 h-4"></div>
@@ -661,6 +693,29 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             errors={touched.targetGroupId && errors.targetGroupId ? errors.targetGroupId : undefined}
                                         />
                                     </div>
+                                    {selectedTargetGroup && targetGroupList.find(g => g._id === selectedTargetGroup)?.occurence === 'daily' && (
+                                        <div className="mt-4">
+                                            <div className="text-sm text-gray-600 mb-1">Target Loan Terms</div>
+                                            <div className="flex flex-row">
+                                                <RadioButton
+                                                    id="radio_target_loan_terms_60"
+                                                    name="radio-target-loan-terms"
+                                                    label="60 Days"
+                                                    checked={selectedTargetLoanTerms === 60}
+                                                    value={60}
+                                                    onChange={() => handleChangeTargetLoanTerms(60)}
+                                                />
+                                                <RadioButton
+                                                    id="radio_target_loan_terms_100"
+                                                    name="radio-target-loan-terms"
+                                                    label="100 Days"
+                                                    checked={selectedTargetLoanTerms === 100}
+                                                    value={100}
+                                                    onChange={() => handleChangeTargetLoanTerms(100)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                     {selectedClient?.loans.length > 0 && (
                                         <div className="mt-4">
                                             <SelectDropdown
@@ -687,6 +742,22 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                     </div>
                 )}
             </SideBar>
+
+            {showConfirmModal && pendingSubmit && (
+                <TransferConfirmationModal
+                    show={showConfirmModal}
+                    onClose={handleCancelConfirm}
+                    onConfirm={handleConfirmTransfer}
+                    sourceGroup={pendingSubmit.sourceGroup}
+                    targetGroup={pendingSubmit.targetGroup}
+                    sourceBranchName={branchList.find(b => b._id === selectedSourceBranch)?.label}
+                    targetBranchName={branchList.find(b => b._id === selectedTargetBranch)?.label}
+                    sourceUserName={sourceUserList.find(u => u._id === selectedSourceUser)?.label}
+                    targetUserName={targetUserList.find(u => u._id === selectedTargetUser)?.label}
+                    client={selectedClient}
+                    targetLoanTerms={selectedTargetLoanTerms}
+                />
+            )}
         </React.Fragment>
     )
 }
