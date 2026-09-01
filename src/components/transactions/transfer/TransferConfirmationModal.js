@@ -50,7 +50,7 @@ const TransferConfirmationModal = ({
     const occurenceLabel = (occ) => occ === 'weekly' ? 'Weekly' : 'Daily';
 
     return (
-        <Modal show={show} onClose={onClose} title="Confirm Client Transfer">
+        <Modal show={show} onClose={onClose} title="Confirm Client Transfer" size="lg" zIndex={200}>
             <div className="p-4 space-y-4">
                 {preview.recalculated && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">

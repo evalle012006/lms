@@ -12,7 +12,8 @@ const Modal = ({
   maxWidth = "1200px",
   height = "90vh",
   maxHeight = "800px",
-  size = "default" // "sm", "md", "lg", "xl", "full"
+  size = "default", // "sm", "md", "lg", "xl", "full"
+  zIndex = 50,
 }) => {
 
   // Size configurations
@@ -65,12 +66,13 @@ const Modal = ({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"
+        style={{ zIndex }}
         onClick={onClose}
       />
       
       {/* Modal Container */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: zIndex }}>
         <div 
           className="relative bg-white rounded-lg shadow-2xl flex flex-col"
           style={{
