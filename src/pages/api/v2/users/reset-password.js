@@ -41,6 +41,7 @@ async function resetUserPassword(req, res) {
         updateQl(USER_TYPE, {
             set: {
                 password: hashedPassword,
+                mustChangePassword: true,
                 biometricCredentialId: null,
                 biometricPublicKey:    null,
                 biometricCounter:      0,

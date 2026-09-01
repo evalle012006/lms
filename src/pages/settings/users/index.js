@@ -22,6 +22,8 @@ import UserFilters from "@/components/settings/users/UserFilters";
 import { setAreaList } from "@/redux/actions/areaActions";
 import { setRegionList } from "@/redux/actions/regionActions";
 import { setDivisionList } from "@/redux/actions/divisionActions";
+import { PasswordRevealModal } from "@/components/settings/users/AddUpdateUserPage";
+
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -35,6 +37,11 @@ const TeamPage = () => {
     const [userData, setUserData] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    // NEW: mirrors AddUpdateUserPage.js's passwordModal state — holds the
+    // plaintext temp password just long enough for the admin to copy it.
+    const [passwordModal, setPasswordModal] = useState(null); // { password, context: 'reset', userName }
+    const [resettingUserId, setResettingUserId] = useState(null);
 
     const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
@@ -309,18 +316,39 @@ const TeamPage = () => {
         }
     }
 
+    // CHANGED: aligned with the Reset Password action on the edit page
+    // (AddUpdateUserPage.js's handleResetPassword) — same confirmation
+    // copy, same minimal payload ({_id} instead of the whole row object,
+    // which the endpoint never needed), and now actually surfaces
+    // response.tempPassword through the shared PasswordRevealModal instead
+    // of discarding it and showing stale "use any kind of password" text
+    // that predates real temp-password generation.
     const handleResetUserPassword = (row) => {
-        let rowOriginal = row.original;
-        setLoading(true);
-        const apiUrl = getApiBaseUrl() + 'users/reset-password';
-        fetchWrapper.post(apiUrl, rowOriginal)
+        const rowOriginal = row.original;
+        if (!confirm(
+            `Reset password for ${rowOriginal.name}? ` +
+            `This will also remove their fingerprint login — they'll need to sign in with a new password and re-register biometrics.`
+        )) return;
+
+        setResettingUserId(rowOriginal._id);
+        fetchWrapper.post(getApiBaseUrl() + 'users/reset-password', { _id: rowOriginal._id })
             .then(response => {
-                setLoading(false);
                 if (response.success) {
-                    toast.success('User password was reset. Please login the user and use any kind of password and enter a new password on the next screen.', {autoClose: 5000});
+                    setPasswordModal({
+                        password: response.tempPassword,
+                        context: 'reset',
+                        userName: rowOriginal.name,
+                    });
+                } else {
+                    toast.error(response.message || 'Failed to reset password.');
                 }
-            }).catch(error => {
+            })
+            .catch(error => {
                 console.log(error);
+                toast.error('An error occurred while resetting the password.');
+            })
+            .finally(() => {
+                setResettingUserId(null);
             });
     }
 
@@ -382,8 +410,19 @@ const TeamPage = () => {
 
     return (
         <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep < 4) ? actionButtons : []}>
+            {passwordModal && (
+                <PasswordRevealModal
+                    password={passwordModal.password}
+                    context={passwordModal.context}
+                    userName={passwordModal.userName}
+                    onClose={() => {
+                        setPasswordModal(null);
+                        toast.success('Password reset. The user will need to sign in with the new password and re-register biometrics.', { autoClose: 6000 });
+                    }}
+                />
+            )}
             <div className="pb-4">
-                {loading ? (
+                {(loading || resettingUserId) ? (
                     <div className="flex justify-center items-center h-64">
                         <Spinner />
                     </div>

@@ -392,12 +392,17 @@ const LoginPage = () => {
     const handleLoginSuccess = (user) => {
         dispatch(setUser(user));
         userService.loginDirect(user);
+ 
+        if (user?.mustChangePassword) {
+            router.push('/change-password');
+            return;
+        }
+ 
         const hasBiometric = !!user?.biometricCredentialId;
         const isRoot = user?.root === true;
         if (!hasBiometric && !isRoot) {
             router.push('/biometric-setup');
         } else {
-            // FIX: honour redirect param — used by QR scan flow (/laf/CI-XXXX)
             const redirectTo = router.query.redirect;
             router.push(redirectTo && redirectTo !== '/' ? redirectTo : '/');
         }

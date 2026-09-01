@@ -31,6 +31,7 @@ export const USER_FIELDS = `
   biometricDeviceName
   loginAttempts
   lockedUntil
+  mustChangePassword
   `;
 
 export const BRANCH_FIELDS = `
@@ -302,6 +303,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   startTransactionTime
   minDailyMcbuCollection
   minWeeklyMcbuCollection
+  minWeeklyMcbuCollectionAccelerated
   minCsfCollection
   admissionFee
   lrfRate

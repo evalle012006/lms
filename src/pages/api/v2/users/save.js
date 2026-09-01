@@ -154,6 +154,7 @@ async function save(req, res) {
             lastLogin: null,
             dateAdded: data.currentDate,
             password: hashedPassword,
+            mustChangePassword: true,
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,

@@ -19,6 +19,8 @@ import {
   findGroups,
   findLoans,
 } from "@/lib/graph.functions";
+import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
+import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 
 const groupType = createGraphType("groups", GROUP_FIELDS);
 const loanType = createGraphType("loans", LOAN_FIELDS);
@@ -31,6 +33,7 @@ export default apiHandler({
 });
 
 async function updateLoan(req, res) {
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
   const mutationList = [];
   const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
@@ -160,7 +163,7 @@ async function updateLoan(req, res) {
 
             loan._id = loanId;
             if (loan.status === 'active') {
-                await saveCashCollection(loan, groupData, currentDate, addToMutationList);
+                await saveCashCollection(loan, groupData, currentDate, mcbuTargetConfig, addToMutationList);
             }
         }
 
@@ -232,7 +235,7 @@ async function getCoMakerInfo(coMaker, groupId) {
     return {success: true, client}
 }
 
-async function saveCashCollection(loan, group, currentDate, addToMutationList) {
+async function saveCashCollection(loan, group, currentDate, mcbuTargetConfig, addToMutationList) {
     const status = loan.status === "active" ? "tomorrow" : loan.status;
 
     let cashCollection = await findCashCollections({
@@ -302,7 +305,7 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
         }
 
         if (data.occurence === 'weekly') {
-            data.mcbuTarget = 50;
+            data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
             data.groupDay = group.day;
         }
 

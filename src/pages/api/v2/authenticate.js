@@ -58,6 +58,7 @@ biometricRegisteredAt
 biometricDeviceName
 loginAttempts
 lockedUntil
+mustChangePassword
 `)('users');
 
 const SETTINGS_TYPE = createGraphType('settings', `

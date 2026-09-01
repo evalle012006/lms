@@ -1072,11 +1072,11 @@ const AddLoanPage = ({
 
         // ── Guarantor ID photo is required ────────────────────────────────
         const requiresGuarantorDocs = currentBranch?.clientFlowVersion === 'v2';
-        if (requiresGuarantorDocs && !guarantorPhotoFile && !guarantorPhotoPreview) {
+        if (requiresGuarantorDocs && !guarantorPhotoFile && !guarantorPhotoPreview && !guarantorPhotoKeyExisting) {
             toast.error('Please upload a Guarantor Photo.');
             return;
         }
-        if (requiresGuarantorDocs && !guarantorIdFile && !guarantorIdPreview) {
+        if (requiresGuarantorDocs && !guarantorIdFile && !guarantorIdPreview && !guarantorIdPhotoKeyExisting) {
             toast.error('Please upload a Guarantor Valid ID photo.');
             return;
         }

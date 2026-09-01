@@ -19,8 +19,14 @@ const BiometricSetupPage = () => {
 
     const handleSkip = () => {
         try {
-            const stored = JSON.parse(localStorage.getItem('acuser') || '{}');
-            stored.biometricSkipped = true;
+            // CHANGED: source from Redux `currentUser` instead of re-reading
+            // localStorage. At this point in the flow, Redux is the freshest,
+            // correct copy (e.g. mustChangePassword:false if a forced change
+            // was just completed) — re-parsing localStorage.acuser here risked
+            // dispatching a stale or differently-shaped blob back into Redux
+            // and silently reverting fields another page had just corrected.
+            const stored = { ...currentUser, biometricSkipped: true };
+            localStorage.setItem('acuser', JSON.stringify(stored));
             // loginDirect calls userSubject.next({ success: true, user })
             // which is what RouteGuard reads via userService.userValue
             userService.loginDirect(stored);
