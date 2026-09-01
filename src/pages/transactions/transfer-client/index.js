@@ -547,14 +547,14 @@ const TransferClientPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        if (mounted && currentDate && holidayList.length > 0) {
+        if (mounted && currentDate && (holidayList?.length ?? 0) > 0) {
             fetchData();
         }
 
         return (() => {
             mounted = false;
         })
-    }, [currentDate, holidayList.length]); // FIXED: Use holidayList.length instead of the whole array
+    }, [currentDate, holidayList?.length]);
 
     // UPDATED: Sync transferListData with transferList
     useEffect(() => {
