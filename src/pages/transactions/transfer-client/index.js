@@ -267,48 +267,33 @@ const TransferClientPage = () => {
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
         if (!transferList) return;
-    
-        const pageSize = 20; // Match this with your table's pageSize
-        const startIndex = currentPageIndex * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, transferList.length);
-    
+
         const updateTransferList = () => {
             if (mode === 'all') {
-                return transferList.map((loan, index) => {
+                const visibleIds = new Set((rows || []).map(r => r._id));
+                return transferList.map((loan) => {
                     let temp = { ...loan };
-                    
-                    // Only update items on the current page that meet the conditions
-                    if (index >= startIndex && index < endIndex) {
-                        // Check conditions before updating selection
-                        if (temp.status === 'pending' && !temp.withError) {
-                            // Set to the new selectAll value (true or false)
-                            temp.selected = selectAll;
-                        }
+                    if (visibleIds.has(temp._id) && temp.status === 'pending' && !temp.withError) {
+                        temp.selected = selectAll;
                     }
-                    
                     return temp;
                 });
             } else if (mode === 'row') {
-                const absoluteIndex = currentPageIndex * pageSize + rows.index;
-                
-                return transferList.map((loan, index) => {
+                const clickedId = rows._id;
+                return transferList.map((loan) => {
                     let temp = { ...loan };
-                    
-                    // Toggle selection for the specific row if conditions met
-                    if (index === absoluteIndex && temp.status === 'pending' && !temp.withError) {
+                    if (temp._id === clickedId && temp.status === 'pending' && !temp.withError) {
                         temp.selected = !temp.selected;
                     }
-    
                     return temp;
                 });
             }
-    
-            return transferList; // Return unchanged list if mode is invalid
+
+            return transferList;
         };
-    
+
         try {
             const updatedList = updateTransferList();
-            // NOTE: Don't re-sort here to avoid confusing users during multi-select
             dispatch(setTransferList(updatedList));
         } catch (error) {
             console.error('Error updating transfer list:', error);
@@ -555,13 +540,6 @@ const TransferClientPage = () => {
             mounted = false;
         })
     }, [currentDate, holidayList?.length]);
-
-    // UPDATED: Sync transferListData with transferList
-    useEffect(() => {
-        if (transferList) {
-            setTransferListData(transferList);
-        }
-    }, [transferList]);
 
     useEffect(() => {
         if (currentUser.role.rep < 4) {
