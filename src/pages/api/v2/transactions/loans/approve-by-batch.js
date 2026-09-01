@@ -26,6 +26,7 @@ import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-ser
 import { findUserById, findBranches } from '@/lib/graph.functions';
 import { sendLoanReleasedSMS } from '@/lib/sms-service';
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
+import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
