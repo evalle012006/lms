@@ -65,7 +65,26 @@ function RouteGuard({ children }) {
                 } catch { return false; }
             };
 
-            const mustChangePassword = !!(
+            // NEW: short-lived override, set by change-password.js immediately
+            // after a successful change. Exists because the localStorage/Redux
+            // read below has proven timing-sensitive specifically in
+            // production (see comment in change-password.js) — this gives a
+            // single unambiguous signal to trust instead of racing to get the
+            // shape-inconsistent 'acuser' write and this read perfectly
+            // ordered. Expires after 10 seconds so it can't become a standing
+            // bypass if something else is wrong — this is a bridge across one
+            // redirect, not a replacement for the real flag.
+            const getRecentPasswordChangeOverride = () => {
+                try {
+                    const ts = sessionStorage.getItem('mustChangePasswordClearedAt');
+                    if (!ts) return false;
+                    const isRecent = (Date.now() - Number(ts)) < 10000;
+                    if (!isRecent) sessionStorage.removeItem('mustChangePasswordClearedAt');
+                    return isRecent;
+                } catch { return false; }
+            };
+
+            const mustChangePassword = !getRecentPasswordChangeOverride() && !!(
                 userState?.mustChangePassword
                 || user?.mustChangePassword
                 || getStoredMustChangePassword()
