@@ -96,18 +96,35 @@ const ChangePasswordPage = () => {
             });
 
             if (response.success) {
-                // Must update all three places RouteGuard can read from —
-                // Redux, the userService BehaviorSubject, and localStorage —
-                // same pattern biometric-setup.js uses for biometricCredentialId,
-                // and for the same reason: RouteGuard falls back to localStorage
-                // as the source of truth after a reload, so updating Redux alone
-                // would leave the guard still seeing mustChangePassword=true and
-                // bouncing the user right back to this page.
+                // CHANGED: added a short-lived override flag, separate from the
+                // shape-defensive localStorage write below. This exists because
+                // the localStorage/Redux write path has proven timing-sensitive
+                // in production specifically (works reliably in staging/local,
+                // intermittently loops back to this page in production) — likely
+                // a race between this write completing and RouteGuard's very
+                // next authCheck run, worsened by real-world network/device
+                // latency that localhost doesn't have. Rather than keep chasing
+                // the exact interleaving, this gives RouteGuard an unambiguous,
+                // single-key, synchronously-readable signal to trust for the
+                // next few seconds regardless of what state localStorage.acuser
+                // or Redux are in at that exact moment. See matching check in
+                // RouteGuard.js.
                 try {
-                    const stored = JSON.parse(localStorage.getItem('acuser') || '{}');
-                    stored.mustChangePassword = false;
-                    localStorage.setItem('acuser', JSON.stringify(stored));
-                    userService.update(stored);
+                    sessionStorage.setItem('mustChangePasswordClearedAt', String(Date.now()));
+                } catch { /* ignore */ }
+
+                // Shape-defensive write — kept as the durable fix; the
+                // sessionStorage flag above only needs to bridge the next
+                // few seconds, not replace this.
+                try {
+                    const raw = localStorage.getItem('acuser');
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    if (parsed && parsed.user) {
+                        parsed.user.mustChangePassword = false;
+                    }
+                    parsed.mustChangePassword = false;
+                    localStorage.setItem('acuser', JSON.stringify(parsed));
+                    userService.update(parsed.user || parsed);
                 } catch { /* ignore */ }
 
                 dispatch(setUser({ ...currentUser, mustChangePassword: false }));
