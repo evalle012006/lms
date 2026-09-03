@@ -175,7 +175,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                             className='inline-block border-b border-gray-900 text-center'
                             style={{ minWidth: '140px' }}
                         >
-                            {moment().format('MM/DD/YYYY hh:mm A')}
+                            {moment(currentDate).format('MM/DD/YYYY hh:mm A')}
                         </span>
                     </div>
                 </div>

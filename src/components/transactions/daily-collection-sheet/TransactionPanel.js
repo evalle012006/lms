@@ -92,28 +92,14 @@ const money = (value) => {
     });
 };
 
-const getManilaDate = () => {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Manila',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).format(new Date());
-};
-
-const isTransactionToday = (transaction) => {
-    return transaction?.date === getManilaDate();
-};
-
 const TransactionPanel = () => {
     const currentUser = useSelector((state) => state.user.data);
-
+    const currentDate = useSelector((state) => state.systemSettings.currentDate);
     const isAdmin = currentUser?.role?.rep === 1;
-
+    const isTransactionToday = (transaction) => { return transaction?.date === currentDate; };
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
-
     const [transactionTypes, setTransactionTypes] = useState(
         INITIAL_TRANSACTION_TYPES
     );
@@ -151,7 +137,7 @@ const TransactionPanel = () => {
 
         setTransactionForm({
             ...EMPTY_FORM,
-            date: getManilaDate(),
+            date: currentDate,
             items: [{ ...EMPTY_ITEM }],
         });
 
