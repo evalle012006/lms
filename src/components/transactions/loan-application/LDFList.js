@@ -171,7 +171,12 @@ const LDFListPage = React.forwardRef((props, ref) => {
                     </div>
                     <div style={{ width: '25%' }} className='flex flex-row justify-end items-center pr-1'>
                         <span>Date:&nbsp;</span>
-                        <span className='inline-block border-b border-gray-900' style={{ minWidth: '80px' }}>&nbsp;</span>
+                        <span
+                            className='inline-block border-b border-gray-900 text-center'
+                            style={{ minWidth: '140px' }}
+                        >
+                            {moment(currentDate).format('MM/DD/YYYY hh:mm A')}
+                        </span>
                     </div>
                 </div>
                 <div className='flex flex-row justify-center'>
@@ -305,10 +310,6 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                         <tr className='text-center h-4'>
                                             <td className='text-[8px]'>Branch Head Signature</td>
                                             <td className='text-[8px]'>Asst. Branch Manager Signature</td>
-                                        </tr>
-                                        <tr className='h-8'>
-                                            <td className='border border-gray-900'></td>
-                                            <td className='border border-gray-900'></td>
                                         </tr>
                                     </tbody>
                                 </table>
