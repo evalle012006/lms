@@ -10,7 +10,9 @@ import { toast } from "react-toastify";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
-import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
+// NEW: drawer replaced by /settings/users/add and /settings/users/edit/[uuid] pages.
+// AddUpdateUserDrawer is intentionally left in place (unused here) rather than
+// deleted — see project notes on keeping it as a temporary fallback.
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
@@ -20,6 +22,8 @@ import UserFilters from "@/components/settings/users/UserFilters";
 import { setAreaList } from "@/redux/actions/areaActions";
 import { setRegionList } from "@/redux/actions/regionActions";
 import { setDivisionList } from "@/redux/actions/divisionActions";
+import { PasswordRevealModal } from "@/components/settings/users/AddUpdateUserPage";
+
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -28,11 +32,16 @@ const TeamPage = () => {
     const [loading, setLoading] = useState(true);
     const [userListData, setUserListData] = useState([]);
 
-    const [showAddDrawer, setShowAddDrawer] = useState(false);
-    const [mode, setMode] = useState('add');
+    // NEW: userData is now only needed for the delete confirmation dialog —
+    // add/edit no longer need local state since they live on their own pages.
     const [userData, setUserData] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    // NEW: mirrors AddUpdateUserPage.js's passwordModal state — holds the
+    // plaintext temp password just long enough for the admin to copy it.
+    const [passwordModal, setPasswordModal] = useState(null); // { password, context: 'reset', userName }
+    const [resettingUserId, setResettingUserId] = useState(null);
 
     const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
@@ -58,8 +67,8 @@ const TeamPage = () => {
                 position: user.position,
                 designatedBranch: user.designatedBranch,
                 designatedBranchId: user.designatedBranchId,
-                roleId: user.role.rep + "-" + user.role.shortCode,
-                role: UppercaseFirstLetter(user.role.name),
+                roleId: user?.role?.rep + "-" + user?.role?.shortCode,
+                role: UppercaseFirstLetter(user?.role?.name),
                 loNo: user.loNo,
                 profile: user.profile ? user.profile : '',
                 lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
@@ -266,30 +275,19 @@ const TeamPage = () => {
         },
     ]);
 
-    const handleShowAddDrawer = () => {
-        setShowAddDrawer(true);
-    }
-
-    const handleCloseAddDrawer = () => {
-        setLoading(true);
-        setMode('add');
-        setUserData({});
-        getListUsers();
+    // NEW: was setShowAddDrawer(true) — now navigates to the dedicated add page.
+    const handleShowAddPage = () => {
+        router.push('/settings/users/add');
     }
 
     const actionButtons = [
-        <ButtonSolid key="add-user" label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" key="plus-icon" />, 'left']} />
+        <ButtonSolid key="add-user" label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddPage} icon={[<PlusIcon className="w-5 h-5" key="plus-icon" />, 'left']} />
     ];
 
+    // NEW: was setMode('edit') + setUserData(rowOriginal) + handleShowAddDrawer() —
+    // now navigates to the edit page, which loads the user itself via userId.
     const handleEditAction = (row) => {
-        setMode("edit");
-        let rowOriginal = row.original;
-        const selectedRole = platformRoles.find(role => UppercaseFirstLetter(role.name) === rowOriginal.role);
-        if (selectedRole) {
-            rowOriginal = { ...rowOriginal, role: selectedRole };
-        }
-        setUserData(rowOriginal);
-        handleShowAddDrawer();
+        router.push(`/settings/users/edit/${row.original._id}`);
     }
 
     const handleDeleteAction = (row) => {
@@ -318,18 +316,39 @@ const TeamPage = () => {
         }
     }
 
+    // CHANGED: aligned with the Reset Password action on the edit page
+    // (AddUpdateUserPage.js's handleResetPassword) — same confirmation
+    // copy, same minimal payload ({_id} instead of the whole row object,
+    // which the endpoint never needed), and now actually surfaces
+    // response.tempPassword through the shared PasswordRevealModal instead
+    // of discarding it and showing stale "use any kind of password" text
+    // that predates real temp-password generation.
     const handleResetUserPassword = (row) => {
-        let rowOriginal = row.original;
-        setLoading(true);
-        const apiUrl = getApiBaseUrl() + 'users/reset-password';
-        fetchWrapper.post(apiUrl, rowOriginal)
+        const rowOriginal = row.original;
+        if (!confirm(
+            `Reset password for ${rowOriginal.name}? ` +
+            `This will also remove their fingerprint login — they'll need to sign in with a new password and re-register biometrics.`
+        )) return;
+
+        setResettingUserId(rowOriginal._id);
+        fetchWrapper.post(getApiBaseUrl() + 'users/reset-password', { _id: rowOriginal._id })
             .then(response => {
-                setLoading(false);
                 if (response.success) {
-                    toast.success('User password was reset. Please login the user and use any kind of password and enter a new password on the next screen.', {autoClose: 5000});
+                    setPasswordModal({
+                        password: response.tempPassword,
+                        context: 'reset',
+                        userName: rowOriginal.name,
+                    });
+                } else {
+                    toast.error(response.message || 'Failed to reset password.');
                 }
-            }).catch(error => {
+            })
+            .catch(error => {
                 console.log(error);
+                toast.error('An error occurred while resetting the password.');
+            })
+            .finally(() => {
+                setResettingUserId(null);
             });
     }
 
@@ -391,8 +410,19 @@ const TeamPage = () => {
 
     return (
         <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep < 4) ? actionButtons : []}>
+            {passwordModal && (
+                <PasswordRevealModal
+                    password={passwordModal.password}
+                    context={passwordModal.context}
+                    userName={passwordModal.userName}
+                    onClose={() => {
+                        setPasswordModal(null);
+                        toast.success('Password reset. The user will need to sign in with the new password and re-register biometrics.', { autoClose: 6000 });
+                    }}
+                />
+            )}
             <div className="pb-4">
-                {loading ? (
+                {(loading || resettingUserId) ? (
                     <div className="flex justify-center items-center h-64">
                         <Spinner />
                     </div>
@@ -412,7 +442,6 @@ const TeamPage = () => {
                     </div>
                 )}
             </div>
-            <AddUpdateUser mode={mode} user={userData} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

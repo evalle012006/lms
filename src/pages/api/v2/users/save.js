@@ -4,7 +4,10 @@ import { findAreas, findDivisions, findRegions, findUserById, findUsers } from '
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
+import { generateTempPassword } from '@/lib/generate-password';
 import { apiHandler } from '@/services/api-handler';
+
+const bcrypt = require('bcryptjs');
 
 const LOGROUPS = [
     LO_1_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS,
@@ -132,6 +135,14 @@ async function save(req, res) {
         // ── CHANGED: use buildHierarchyFields instead of raw data values ──
         const hierarchyFields = buildHierarchyFields(userRole, data);
 
+        // NEW: real temp password instead of leaving `password` unset. An unset
+        // password previously meant the NO_PASS login branch accepted any input
+        // as correct on the next attempt — this replaces that silent bypass with
+        // an admin-issued value. Plaintext only ever lives in this response,
+        // once, for the admin to relay to the new user.
+        const tempPassword = generateTempPassword();
+        const hashedPassword = bcrypt.hashSync(tempPassword, bcrypt.genSaltSync(8), null);
+
         let userData = {
             _id: generateUUID(),
             firstName: data.firstName,
@@ -142,6 +153,8 @@ async function save(req, res) {
             logged: false,
             lastLogin: null,
             dateAdded: data.currentDate,
+            password: hashedPassword,
+            mustChangePassword: true,
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,
@@ -227,10 +240,18 @@ async function save(req, res) {
             );
         }
 
+        // CHANGED: strip the password hash before echoing the user back in the
+        // response — mirrors `delete userData.password` in pages/api/v2/users/index.js's
+        // update handler. `userData` itself (still holding the hash) is left
+        // untouched above since it's also passed into createGroups(); we only
+        // scrub the copy that goes out over the wire. tempPassword is the one
+        // and only place the plaintext appears.
+        const { password, ...userForResponse } = userData;
         response = {
             success: true,
-            user: userData,
-            email: data.email
+            user: userForResponse,
+            email: data.email,
+            tempPassword,
         }
     }
 

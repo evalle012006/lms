@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { getLatestNonPendingLoan, resolveLoanCycle } from '@/lib/loan-cycle';
 
 const CIPromotedClientBanner = ({ application, investigation, currentUser, loanHistory }) => {
     const router = useRouter();
@@ -20,18 +21,15 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
             return { existingSlotNo: null, existingLoanCycle: null, hasPendingLoan: false };
         }
 
-        const pending = loanHistory.some(l => l.status === 'pending');
-
-        const latestLoan = [...loanHistory]
-            .filter(l => l.status !== 'pending')
-            .sort((a, b) =>
-                new Date(b.insertedDateTime || b.dateAdded || 0) -
-                new Date(a.insertedDateTime || a.dateAdded || 0)
-            )[0];
+        const pending    = loanHistory.some(l => l.status === 'pending');
+        const latestLoan = getLatestNonPendingLoan(loanHistory);
 
         return {
-            existingSlotNo:    latestLoan?.slotNo    ? String(latestLoan.slotNo)                    : null,
-            existingLoanCycle: latestLoan?.loanCycle ? String((latestLoan.loanCycle || 0) + 1)      : null,
+            existingSlotNo:    latestLoan?.slotNo ? String(latestLoan.slotNo) : null,
+            // Balik clients were reset by closing/offsetting all prior loans —
+            // they always restart at cycle 1, regardless of their old cycle
+            // number. Reloan / Pending Member continue it. See src/lib/loan-cycle.js.
+            existingLoanCycle: String(resolveLoanCycle(loanHistory)),
             hasPendingLoan:    pending,
             groupNotAvailable: application?.groupStatus !== 'available',
         };

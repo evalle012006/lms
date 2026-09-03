@@ -136,6 +136,7 @@ const TransactionsSettingsPage = (props) => {
         // MCBU/CSF Settings
         minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
         minWeeklyMcbuCollection: transactionState.minWeeklyMcbuCollection || '',
+        minWeeklyMcbuCollectionAccelerated: transactionState.minWeeklyMcbuCollectionAccelerated || '',
         minCsfCollection: transactionState.minCsfCollection || '',
         mcbuCsfMCBUForNM: transactionState.mcbuCsfMCBUForNM || '',
         mcbuCsfMinimumBalance: transactionState.mcbuCsfMinimumBalance || '',
@@ -182,6 +183,7 @@ const TransactionsSettingsPage = (props) => {
         // MCBU/CSF Settings
         minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
         minWeeklyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum weekly MCBU collection is required'),
+        minWeeklyMcbuCollectionAccelerated: yup.number().min(0, 'Cannot be negative').required('Minimum weekly MCBU collection (Accelerated) is required'),
         minCsfCollection: yup.number().min(0, 'Cannot be negative').required('Minimum CSF collection is required'),
         mcbuCsfMCBUForNM: yup.number().min(0, 'Cannot be negative').required('MCBU for New Members is required'),
         mcbuCsfMinimumBalance: yup.number().min(0, 'Cannot be negative').required('Minimum balance is required'),
@@ -550,6 +552,19 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
+                                                required
+                                            />
+                                            <ModernInput
+                                                name="minWeeklyMcbuCollectionAccelerated"
+                                                value={values.minWeeklyMcbuCollectionAccelerated}
+                                                label="Minimum Weekly MCBU Collection (Accelerated)"
+                                                placeholder="Enter minimum weekly MCBU collection for accelerated groups"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minWeeklyMcbuCollectionAccelerated && errors.minWeeklyMcbuCollectionAccelerated}
                                                 required
                                             />
                                             {/* MCBU Withdrawal Retain - Regular Clients */}

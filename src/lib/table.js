@@ -633,9 +633,10 @@ const TableComponent = React.memo(({
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
     if (multiSelectActionFn) {
-      multiSelectActionFn('all', newSelectAll, null, currentPageIndex);
+      const visibleRows = page.map(r => r.original);
+      multiSelectActionFn('all', newSelectAll, visibleRows, currentPageIndex);
     }
-  }, [selectAll, currentPageIndex, multiSelectActionFn]);
+  }, [selectAll, currentPageIndex, multiSelectActionFn, page]);
 
   const handleSelectRow = useCallback((row, index) => {
     if (multiSelectActionFn) {

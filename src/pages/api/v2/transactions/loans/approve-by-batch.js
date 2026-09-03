@@ -25,6 +25,8 @@ import { getCurrentDate, getCurrentDateV2, getEndDate } from "@/lib/date-utils";
 import { isNotificationEnabled, notifyLoanCreated } from '@/lib/notification-service';
 import { findUserById, findBranches } from '@/lib/graph.functions';
 import { sendLoanReleasedSMS } from '@/lib/sms-service';
+import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
+import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -154,6 +156,7 @@ async function processData(req, res) {
     }
   } else {
     const isNotificationEnabledFlag = await isNotificationEnabled();
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
     const result = await Promise.all(
       loanData.map(async (l) => {
         let loan = { ...l };
@@ -263,7 +266,7 @@ async function processData(req, res) {
                   });
               }
 
-              await saveCashCollection(loan, groupData, currentDate, addToMutationList);
+              await saveCashCollection(loan, groupData, currentDate, mcbuTargetConfig, addToMutationList);
               if (isNotificationEnabledFlag) {
                 await createLoanApprovalNotification(loan, loanId, req?.auth?.sub);
               }
@@ -388,7 +391,7 @@ async function getCoMakerInfo(coMaker, groupId) {
   return { success: true, client };
 }
 
-async function saveCashCollection(loan, group, currentDate, addToMutationList) {
+async function saveCashCollection(loan, group, currentDate, mcbuTargetConfig, addToMutationList) {
   const status = loan.status === "active" ? "tomorrow" : loan.status;
   let cashCollection = await findCashCollections({
     clientId: { _eq: loan.clientId },
@@ -478,7 +481,7 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
     }
 
     if (data.occurence === "weekly") {
-      data.mcbuTarget = 50;
+      data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, group.weeklyScheduleType);
       data.groupDay = group.day;
     }
     logger.debug({

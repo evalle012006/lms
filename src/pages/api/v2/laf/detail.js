@@ -29,6 +29,7 @@ async function getSignedUrlForKey(key) {
 }
 import { logAudit }                  from '@/lib/audit';
 import { findUserById }              from '@/lib/graph.functions';
+import { checkDuplicates } from '@/lib/duplicate-check';
 
 const graph = new GraphProvider();
 
@@ -60,6 +61,8 @@ async function getDetail(req, res) {
     if (!application) {
         return res.status(200).json({ success: false, message: 'Application not found.' });
     }
+
+    const duplicateCandidates = await checkDuplicates(application.firstName, application.lastName);
 
     // Rep 3/4 can only see their own branch
     if (currentUser.role.rep >= 3 && application.branchId !== currentUser.designatedBranchId) {
@@ -134,9 +137,13 @@ async function getDetail(req, res) {
             status:                  application.status,
             isOffline:               application.isOffline,
             submittedAt:             application.submittedAt,
+            existingClientId:        application.existingClientId,
+            groupId:                 application.groupId,
+            loId:                    application.loId,
         },
         photos: {
             lafPhotoUrl,
         },
+        duplicateCandidates,
     });
 }

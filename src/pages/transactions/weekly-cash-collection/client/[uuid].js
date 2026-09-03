@@ -46,6 +46,7 @@ import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseM
 import EditMcbuCsfWithdrawalModal from '@/components/transactions/EditMcbuCsfWithdrawalModal';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
+import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -1743,7 +1744,7 @@ const CashCollectionDetailsPage = () => {
                 } 
                 
                 if (cc.groupDay === dayName || cc.offsetTransFlag) {
-                    if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < transactionSettings.minWeeklyMcbuCollection) {
+                    if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType)) {
                         const remarksValue = cc.remarks?.value;
                         const isExemptFromMcbu = remarksValue === 'past due'
                             || remarksValue === 'past due collection'
@@ -1753,8 +1754,9 @@ const CashCollectionDetailsPage = () => {
                         if (!cc.remarks || !isExemptFromMcbu) {
                             errorMsg.add('Error occured. Invalid MCBU Collection.');
                         }
-                    } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
-                        errorMsg.add('Error occured. MCBU collection should be divisible by 10.');
+                    } else if (parseFloat(cc.mcbuCol) > resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType) 
+                        && parseFloat(cc.mcbuCol) % 5 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
+                        errorMsg.add('Error occured. MCBU collection should be divisible by 5.');
                     }
                 }
 
@@ -1779,7 +1781,7 @@ const CashCollectionDetailsPage = () => {
                 
                 if ((cc.remarks == '' && cc.paymentCollection > 0) && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                     const noPaymentsToday = cc.paymentCollection / cc.activeLoan;
-                    const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                    const expectedMcbu = resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType) * noPaymentsToday;
                     
                     if (!cc.mcbuCol) {
                         errorMsg.add(`Error occured. No MCBU Collection detected.`);
@@ -1797,7 +1799,7 @@ const CashCollectionDetailsPage = () => {
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
                 const noPaymentsToday = cc.paymentCollection / activeLoan;
-                const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                const expectedMcbu = resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType) * noPaymentsToday;
 
                 if (!cc.mcbuCol) {
                     errorMsg.add(`Error occured. No MCBU Collection detected.`);
@@ -1997,7 +1999,8 @@ const CashCollectionDetailsPage = () => {
 
                 const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
 
-                const selectedGroup = data.length > 0 ? data[0].group : {};
+                const rawSelectedGroup = currentGroup || (data.length > 0 ? data[0].group : {});
+                const selectedGroup = Array.isArray(rawSelectedGroup) ? rawSelectedGroup[0] : rawSelectedGroup;
                 if (selectedGroup && selectedGroup.day !== dayName) {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
                 }
@@ -2018,7 +2021,7 @@ const CashCollectionDetailsPage = () => {
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
                 // });
-                // console.log(dataArr)
+                // console.log('>>>>final', dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -2268,7 +2271,7 @@ const CashCollectionDetailsPage = () => {
     
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
                                     temp.noOfPayments = temp.noOfPayments + noPayments;
-                                    const finalMcbu = noPayments * transactionSettings.minWeeklyMcbuCollection;
+                                    const finalMcbu = noPayments * resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType);
                                     temp.mcbuCol = finalMcbu;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
@@ -2282,7 +2285,7 @@ const CashCollectionDetailsPage = () => {
                                 } else {
                                     temp.mcbu = safeNumber(temp.prevData.mcbu);
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.mcbuCol = transactionSettings.minWeeklyMcbuCollection;
+                                    temp.mcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType);
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -2305,7 +2308,7 @@ const CashCollectionDetailsPage = () => {
                                 }
 
                                 const noPaymentsToday = value / temp.activeLoan;
-                                const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                                const minMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
                                 if (!temp.mcbuCol || temp.mcbuCol < minMcbuCol) {
                                     temp.mcbuError = true;
                                 }
@@ -2393,7 +2396,7 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else {
                             const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
-                            const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                            const minMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
                             if (mcbuCol > 0 && mcbuCol < minMcbuCol) {
                                 temp.mcbuError = true;
                                 temp.mcbuCol = mcbuCol;
@@ -2602,7 +2605,7 @@ const CashCollectionDetailsPage = () => {
                         if ((temp.status == 'active' || (temp.status == 'completed' && temp.paymentCollection > 0)) && (remarks.value && ['reloaner', 'double payment', 'advance payment'].includes(remarks.value))) {
                             const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : temp.history?.activeLoan;
                             const noPaymentsToday = temp.paymentCollection / activeLoan;
-                            const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                            const expectedMcbu = resolveWeeklyMcbuMinimum(transactionSettings, cc.group?.weeklyScheduleType) * noPaymentsToday;
                             
                             if (!temp.mcbuCol) {
                                 temp.mcbuError = true;
@@ -3038,6 +3041,7 @@ const CashCollectionDetailsPage = () => {
     
                                 if (overUnder > 0 && payment > 0) {
                                     const paymentOverUnder = payment % temp.activeLoan;
+                                    const weeklyMcbuMin = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType);
                                     
                                     if (overUnder === paymentOverUnder || overUnder === payment) {
                                         const newPayment = payment - overUnder;
@@ -3048,7 +3052,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.excessStr = formatPricePhp(temp.excess);
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
                                             const excessMcbu = temp.excess / temp.activeLoan;
-                                            const finalMcbu = (excessMcbu * transactionSettings.minWeeklyMcbuCollection) + transactionSettings.minWeeklyMcbuCollection;
+                                            const finalMcbu = (excessMcbu * weeklyMcbuMin) + weeklyMcbuMin;
                                             temp.mcbuCol = finalMcbu;
                                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
@@ -3061,7 +3065,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.noOfPayments = parseInt(temp.noOfPayments);
                                         } else {
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + 1;
-                                            temp.mcbuCol = transactionSettings.minWeeklyMcbuCollection;
+                                            temp.mcbuCol = weeklyMcbuMin;
                                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                             temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -3194,7 +3198,7 @@ const CashCollectionDetailsPage = () => {
                                         // Calculate number of payments made today
                                         const noPaymentsToday = temp.paymentCollection / activeLoan;
                                         // Calculate base MCBU collection
-                                        let calculatedMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                                        let calculatedMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
                                         temp.mcbuCol = calculatedMcbuCol;
                                         temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     }
@@ -3301,7 +3305,7 @@ const CashCollectionDetailsPage = () => {
         switch (col) {
             case 'mcbuCol':
                 const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
-                const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                const minMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
                 if (!value || (value < minMcbuCol && Number.isInteger(minMcbuCol))) {
                     toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
                     temp.mcbuError = true;

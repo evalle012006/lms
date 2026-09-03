@@ -150,11 +150,15 @@ const AddUpdateClientPage = ({
     }, [currentUser]);
 
     // ── Auto-load from URL ciCode param ──────────────────────────────────
+    // FIX: was calling laf/promote — a mutating endpoint — purely to preview
+    // data. Under the pre-idempotency-fix version that committed a client
+    // insert on every page load with ?ciCode= in the URL. laf/detail is the
+    // actual read-only preview and returns the same clientData shape.
     useEffect(() => {
         if (!ciCode) return;
         setCiSearchLoading(true);
         fetchWrapper
-            .get(getApiBaseUrl() + `laf/promote/${encodeURIComponent(ciCode)}`)
+            .get(getApiBaseUrl() + `laf/detail?` + new URLSearchParams({ ciCode }))
             .then(res => {
                 if (res.success) {
                     setCiPreFill(res);
@@ -315,6 +319,14 @@ const AddUpdateClientPage = ({
     }, [client]);
 
     // ── Save ──────────────────────────────────────────────────────────────
+    // FIX: mode 'add' no longer does its own client insert via clients/save/
+    // followed by a separate laf/mark-promoted call. Both of those were a
+    // second, independent client-creation path competing with laf/promote's
+    // own insert — see laf/promote/[refCode].js for the atomic version that
+    // now owns client creation for the CI-driven flow exclusively.
+    // clients/save/ and laf/mark-promoted are UNCHANGED and still used by
+    // the legacy AddUpdateClient.js sidebar (no-CI manual add) — do not
+    // remove or modify those endpoints on their account.
     const handleSaveUpdate = useCallback(async (values, actions) => {
         // In add mode, must have CI pre-fill
         if (mode === 'add' && !ciPreFill) {
@@ -332,6 +344,35 @@ const AddUpdateClientPage = ({
 
         setLoading(true);
         try {
+            // ── ADD MODE — single atomic call to promote ────────────────────
+            // groupId/loId are an optional override; omitted/empty fields fall
+            // back to whatever's already on the temp application server-side.
+            if (mode === 'add') {
+                const effectiveCiCode = ciCode || ciPreFill?.ciData?.ciReferenceCode;
+                if (!effectiveCiCode) {
+                    toast.error('Missing CI reference code. Please search again.');
+                    return;
+                }
+
+                const response = await fetchWrapper.post(
+                    getApiBaseUrl() + `laf/promote/${encodeURIComponent(effectiveCiCode)}`,
+                    {
+                        groupId: values.groupId || undefined,
+                        loId:    values.loId    || undefined,
+                    }
+                );
+
+                if (!response.success) {
+                    toast.error(response.message || 'Failed to save client.');
+                    return;
+                }
+
+                toast.success('Client successfully added.');
+                onSuccess?.();
+                return;
+            }
+
+            // ── EDIT MODE — unchanged ────────────────────────────────────────
             let processedValues = {
                 insertedBy:  currentUser._id,
                 duplicate,
@@ -342,73 +383,31 @@ const AddUpdateClientPage = ({
                 delinquent:  values.delinquent || false,
             };
 
-            if (mode === 'add') {
-                // All personal data comes from CI pre-fill
-                Object.assign(processedValues, {
-                    firstName:               cd.firstName?.trim().toUpperCase(),
-                    lastName:                cd.lastName?.trim().toUpperCase(),
-                    middleName:              cd.middleName?.trim().toUpperCase() || '',
-                    birthdate:               cd.birthdate
-                        ? moment(cd.birthdate).format('YYYY-MM-DD') : null,
-                    fullName: `${cd.firstName?.trim()} ${cd.middleName || ''} ${cd.lastName?.trim()}`.toUpperCase(),
-                    contactNumber:           cd.contactNumber || '',
-                    addressStreetNo:         cd.addressStreetNo         || '',
-                    addressBarangayDistrict: cd.addressBarangayDistrict || '',
-                    addressMunicipalityCity: cd.addressMunicipalityCity || '',
-                    addressProvince:         cd.addressProvince         || '',
-                    addressZipCode:          cd.addressZipCode          || '',
-                    address: [
-                        cd.addressStreetNo, cd.addressBarangayDistrict,
-                        cd.addressMunicipalityCity, cd.addressProvince, cd.addressZipCode,
-                    ].filter(Boolean).join(' '),
-                    profile: ciPreFill?.clientData?.lafPhotoKey || null,
-                    biometricCredentialId: cd.biometricCredentialId || null,
-                    biometricPublicKey:    cd.biometricPublicKey    || null,
-                    biometricCounter:      cd.biometricCounter      || 0,
-                    biometricRegisteredAt: cd.biometricRegisteredAt || null,
-                    biometricDeviceName:   cd.biometricDeviceName   || null,
-                    // ── Phase 2 fields ─────────────────────────────────────
-                    governmentIdType:      cd.governmentIdType      || null,
-                    governmentIdNumber:    cd.governmentIdNumber    || null,
-                    governmentIdPhotoKey:  cd.governmentIdPhotoKey  || null,
-                    selfieWithIdPhotoKey:  cd.selfieWithIdPhotoKey  || null,
-                    landmark:              cd.landmark              || null,
-                    distanceFromBranch:    cd.distanceFromBranch   || null,
-                    clientType:            cd.clientType            || 'prospect',
-                    status:     'pending',
-                    delinquent: false,
-                    groupId:    values.groupId || cd.groupId || '',
-                    loId:       values.loId    || cd.loId    || '',
-                    groupName:  groupList.find(g => g._id === (values.groupId || cd.groupId))?.name || '',
-                });
-            } else {
-                // Edit mode — use form values
-                Object.assign(processedValues, {
-                    _id:        fetchedClient?._id || clientId,
-                    firstName:  values.firstName.trim().toUpperCase(),
-                    lastName:   values.lastName.trim().toUpperCase(),
-                    middleName: values.middleName?.trim().toUpperCase() || '',
-                    birthdate:  values.birthdate
-                        ? moment(values.birthdate).format('YYYY-MM-DD') : null,
-                    fullName: `${values.firstName.trim()} ${values.middleName} ${values.lastName.trim()}`.toUpperCase(),
-                    contactNumber:           values.contactNumber,
-                    addressStreetNo:         values.addressStreetNo,
-                    addressBarangayDistrict: values.addressBarangayDistrict,
-                    addressMunicipalityCity: values.addressMunicipalityCity,
-                    addressProvince:         values.addressProvince,
-                    addressZipCode:          values.addressZipCode,
-                    address: [
-                        values.addressStreetNo, values.addressBarangayDistrict,
-                        values.addressMunicipalityCity, values.addressProvince, values.addressZipCode,
-                    ].filter(Boolean).join(' '),
-                    file:      image,
-                    groupName: selectedGroup?.name          || fetchedClient?.groupName || '',
-                    groupId:   selectedGroup?._id           || fetchedClient?.groupId   || '',
-                    loId:      selectedGroup?.loanOfficerId || fetchedClient?.loId      || '',
-                    status:    values.status                || fetchedClient?.status    || 'pending',
-                    delinquent: values.delinquent,
-                });
-            }
+            Object.assign(processedValues, {
+                _id:        fetchedClient?._id || clientId,
+                firstName:  values.firstName.trim().toUpperCase(),
+                lastName:   values.lastName.trim().toUpperCase(),
+                middleName: values.middleName?.trim().toUpperCase() || '',
+                birthdate:  values.birthdate
+                    ? moment(values.birthdate).format('YYYY-MM-DD') : null,
+                fullName: `${values.firstName.trim()} ${values.middleName} ${values.lastName.trim()}`.toUpperCase(),
+                contactNumber:           values.contactNumber,
+                addressStreetNo:         values.addressStreetNo,
+                addressBarangayDistrict: values.addressBarangayDistrict,
+                addressMunicipalityCity: values.addressMunicipalityCity,
+                addressProvince:         values.addressProvince,
+                addressZipCode:          values.addressZipCode,
+                address: [
+                    values.addressStreetNo, values.addressBarangayDistrict,
+                    values.addressMunicipalityCity, values.addressProvince, values.addressZipCode,
+                ].filter(Boolean).join(' '),
+                file:      image,
+                groupName: selectedGroup?.name          || fetchedClient?.groupName || '',
+                groupId:   selectedGroup?._id           || fetchedClient?.groupId   || '',
+                loId:      selectedGroup?.loanOfficerId || fetchedClient?.loId      || '',
+                status:    values.status                || fetchedClient?.status    || 'pending',
+                delinquent: values.delinquent,
+            });
 
             // Branch assignment for non-admin
             if (currentUser.root !== true &&
@@ -439,28 +438,14 @@ const AddUpdateClientPage = ({
                 }
             }
 
-            const response = mode === 'add'
-                ? await fetchWrapper.post(getApiBaseUrl() + 'clients/save/', processedValues)
-                : await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', processedValues);
+            const response = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', processedValues);
 
             if (!response.success) {
                 toast.error(response.message || 'Failed to save client.');
                 return;
             }
 
-            // Mark CI application as promoted
-            const effectiveCiCode = ciCode || ciPreFill?.ciData?.ciReferenceCode;
-            if (effectiveCiCode && response.client?._id) {
-                await fetchWrapper.post(getApiBaseUrl() + 'laf/mark-promoted', {
-                    ciReferenceCode: effectiveCiCode,
-                    clientId: response.client._id,
-                });
-            }
-
-            toast.success(mode === 'add'
-                ? 'Client successfully added.'
-                : 'Client successfully updated.'
-            );
+            toast.success('Client successfully updated.');
             onSuccess?.();
         } catch (err) {
             console.error(err);
@@ -470,32 +455,37 @@ const AddUpdateClientPage = ({
             actions.setSubmitting(false);
         }
     }, [mode, client, image, duplicate, selectedGroup, branchList, groupList,
-        currentUser, ciCode, ciPreFill, onSuccess]);
+        currentUser, ciCode, ciPreFill, onSuccess, fetchedClient, clientId,
+        transactionSettings]);
 
+    // FIX: existing-client detection now comes from clientData.existingClientId
+    // (populated by laf/detail) instead of a top-level result.isExistingClient
+    // flag, which only promote.js's response ever provided.
     const handleCIFound = useCallback((result) => {
         const code = result.ciData?.ciReferenceCode;
- 
-        // Existing client (reloan/pending/balik) — already updated server-side.
+        const existingClientId = result.clientData?.existingClientId;
+
+        // Existing client (reloan/pending/balik) — already has a client record.
         // Skip the Add Client form entirely; redirect to Add Loan for this client.
-        if (result.isExistingClient && result.clientId) {
-            toast.success('Member record updated from LAF. Redirecting to Add Loan…');
+        if (existingClientId) {
+            toast.success('Existing member found. Redirecting to Add Loan…');
             // Resolve names for immediate read-only display (avoids flash of raw IDs)
-            const loEntry    = (loList || []).find(l => l._id === result.loanData?.loId);
+            const loEntry    = (loList || []).find(l => l._id === result.clientData?.loId);
             const groupEntry = (Array.isArray(groupList) ? groupList : [])
-                .find(g => g._id === result.loanData?.groupId);
+                .find(g => g._id === result.clientData?.groupId);
 
             const q = new URLSearchParams({
-                clientId: result.clientId,
-                ...(result.loanData?.groupId    ? { groupId:    result.loanData.groupId    } : {}),
-                ...(result.loanData?.loId       ? { loId:       result.loanData.loId       } : {}),
-                ...(result.loanData?.clientType ? { clientType: result.loanData.clientType } : {}),
-                ...(loEntry?.label              ? { loName:     loEntry.label              } : {}),
-                ...(groupEntry?.name            ? { groupName:  groupEntry.name            } : {}),
+                clientId: existingClientId,
+                ...(result.clientData?.groupId    ? { groupId:    result.clientData.groupId    } : {}),
+                ...(result.clientData?.loId       ? { loId:       result.clientData.loId       } : {}),
+                ...(result.clientData?.clientType ? { clientType: result.clientData.clientType } : {}),
+                ...(loEntry?.label                 ? { loName:     loEntry.label                } : {}),
+                ...(groupEntry?.name               ? { groupName:  groupEntry.name              } : {}),
             });
             router.push(`/loans/add?${q.toString()}`);
             return;
         }
- 
+
         // New prospect client — pre-fill Add Client form as before
         if (code) {
             router.replace(
@@ -504,11 +494,11 @@ const AddUpdateClientPage = ({
                 { shallow: true }
             );
         }
- 
+
         setCiPreFill(result);
         setShowEntryPanel(false);
         if (result.duplicateCandidates?.length > 0) setDuplicate(true);
-    }, [router]);
+    }, [router, loList, groupList]);
 
     useEffect(() => {
         if (!ciPreFill) return;

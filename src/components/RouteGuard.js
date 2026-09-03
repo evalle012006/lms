@@ -53,9 +53,65 @@ function RouteGuard({ children }) {
                 || user?.biometricCredentialId
                 || getStoredBiometric();
 
-            // Paths that bypass the biometric check
-            const biometricBypassPaths = ['/biometric-setup', '/logout'];
+            // NEW: same localStorage-fallback pattern as biometric, for the same
+            // reason — userService.userValue's shape isn't reliable across a
+            // reload, so localStorage is the source of truth here too.
+            const getStoredMustChangePassword = () => {
+                try {
+                    const raw = localStorage.getItem('acuser');
+                    if (!raw) return false;
+                    const parsed = JSON.parse(raw);
+                    return !!(parsed?.mustChangePassword || parsed?.user?.mustChangePassword);
+                } catch { return false; }
+            };
+
+            // NEW: short-lived override, set by change-password.js immediately
+            // after a successful change. Exists because the localStorage/Redux
+            // read below has proven timing-sensitive specifically in
+            // production (see comment in change-password.js) — this gives a
+            // single unambiguous signal to trust instead of racing to get the
+            // shape-inconsistent 'acuser' write and this read perfectly
+            // ordered. Expires after 10 seconds so it can't become a standing
+            // bypass if something else is wrong — this is a bridge across one
+            // redirect, not a replacement for the real flag.
+            const getRecentPasswordChangeOverride = () => {
+                try {
+                    const ts = sessionStorage.getItem('mustChangePasswordClearedAt');
+                    if (!ts) return false;
+                    const isRecent = (Date.now() - Number(ts)) < 10000;
+                    if (!isRecent) sessionStorage.removeItem('mustChangePasswordClearedAt');
+                    return isRecent;
+                } catch { return false; }
+            };
+
+            const mustChangePassword = !getRecentPasswordChangeOverride() && !!(
+                userState?.mustChangePassword
+                || user?.mustChangePassword
+                || getStoredMustChangePassword()
+            );
+
+            // Paths that bypass the biometric check.
+            // FIX: '/change-password' must be included here too, not just in
+            // its own bypass list below. Without this, landing on
+            // /change-password with no biometric registered would immediately
+            // fail THIS check (biometricBypassPaths didn't cover it) and
+            // redirect to /biometric-setup — which would then fail the
+            // mustChangePassword check (since /biometric-setup isn't in that
+            // bypass list) and redirect right back to /change-password. The
+            // two pages fought over the redirect and biometric-setup was
+            // consistently winning the race, which is why it was the only
+            // one ever visible.
+            const biometricBypassPaths = ['/biometric-setup', '/change-password', '/logout'];
             const bypassBiometric = biometricBypassPaths.includes(path) || isPublicPath;
+
+            // NEW: paths that bypass the forced password-change check — mirrors
+            // biometricBypassPaths above. Must include the change-password page
+            // itself, or every check while sitting on that page would immediately
+            // redirect back to itself (setAuthorized(false) + router.replace to
+            // the same path, on every routeChangeComplete) and the page could
+            // never actually render for the user to complete it.
+            const mustChangePasswordBypassPaths = ['/change-password', '/logout'];
+            const bypassMustChangePassword = mustChangePasswordBypassPaths.includes(path) || isPublicPath;
 
             if (!user && !isPublicPath) {
                 setAuthorized(false);
@@ -68,6 +124,19 @@ function RouteGuard({ children }) {
                     pathname: '/login',
                     query: { redirect: redirectPath },
                 });
+            } else if (
+                user &&
+                mustChangePassword &&
+                !user.root &&
+                !bypassMustChangePassword
+            ) {
+                // NEW: forced password change takes priority over the biometric
+                // check below — see login.js's handleLoginSuccess for the same
+                // ordering decision at the point of login. A user shouldn't be
+                // asked to register a fingerprint tied to a temp password
+                // they're about to be required to replace.
+                setAuthorized(false);
+                router.replace('/change-password');
             } else if (
                 user &&
                 !biometricCredentialId &&

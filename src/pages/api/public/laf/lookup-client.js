@@ -19,13 +19,26 @@ const CLIENT_TYPE = createGraphType('client', `
     oldGroupId oldLoId
     loans (
         where: { status: { _neq: "reject" } }
-        order_by: [{ loanCycle: desc }, { insertedDateTime: desc }]
+        order_by: [{ insertedDateTime: desc, loanCycle: desc }]
         limit: 5
     ) {
         _id slotNo status loanCycle groupId branchId
         amountRelease loanBalance loanRelease dateAdded dateOfRelease
         guarantorFirstName guarantorLastName guarantorMiddleName
     }
+`)('clients');
+
+// Balik matches on client.status alone — no loan validation involved (see
+// clientWhere below). Querying loans for balik was dead weight that leaked
+// stale closed-loan data (loanId, loanRelease, amountRelease) into the LAF
+// submit payload for no reason. Lean type, no loans join.
+const CLIENT_TYPE_NO_LOANS = createGraphType('client', `
+    _id firstName lastName middleName birthdate contactNumber
+    addressStreetNo addressBarangayDistrict addressMunicipalityCity
+    addressProvince addressZipCode ciName status branchId branchName
+    delinquent profile
+    governmentIdType governmentIdNumber governmentIdPhotoKey
+    oldGroupId oldLoId
 `)('clients');
 
 // For checking existing active CI applications
@@ -169,7 +182,7 @@ export async function handler(req, res) {
               };
 
         const clients = await graph.query(
-            queryQl(CLIENT_TYPE, { where: clientWhere, limit: 5 })
+            queryQl(isBalik ? CLIENT_TYPE_NO_LOANS : CLIENT_TYPE, { where: clientWhere, limit: 5 })
         ).then(r => r.data?.clients ?? []);
 
         if (clients.length === 0) {
