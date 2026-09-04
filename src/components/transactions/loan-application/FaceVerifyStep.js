@@ -4,6 +4,8 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
@@ -126,7 +128,7 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
 // onRetry — optional callback to parent when user clicks Try Again
 // Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
 // clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
-const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = false }) => {
+const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = false, clientId, loanId, branchId }) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
@@ -147,6 +149,58 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
 
     const currentChallenge = CHALLENGES[challengeIdx];
     const noTemplate = !faceTemplate || !Array.isArray(faceTemplate) || faceTemplate.length !== 128;
+
+    // Captures a downscaled JPEG thumbnail from the current video frame.
+    // Best-effort only — never throws into the calling flow.
+    async function captureDebugThumbnail(video) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return await new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
+            });
+        } catch {
+            return null;
+        }
+    }
+
+    async function uploadDebugThumbnail(blob, clientId) {
+        if (!blob) return null;
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'face-verify-debug.jpg');
+            formData.append('origin', 'face-verify-debug');
+            formData.append('uuid', `faceverify-${clientId || 'unknown'}-${Date.now()}`);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) return null;
+            const data = await res.json();
+            return data.fileKey || null;
+        } catch {
+            return null;
+        }
+    }
+
+    async function logFaceVerifyAttempt({ clientId, loanId, branchId, distance, confidence, matched, photoKey }) {
+        try {
+            await fetchWrapper.post(getApiBaseUrl() + 'face-verify-attempts/log', {
+                client_id: clientId,
+                loan_id: loanId ?? null,
+                branch_id: branchId ?? null,
+                distance,
+                confidence,
+                matched,
+                match_threshold: MATCH_THRESHOLD,
+                photo_key: photoKey,
+                user_agent: navigator.userAgent,
+            });
+        } catch {
+            // best-effort — never let logging failure affect the verify flow
+        }
+    }
 
     const loadModels = useCallback(async () => {
         if (modelsLoaded || modelsLoading) return;
@@ -236,12 +290,20 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
                 startDetectionLoop(0);
                 return;
             }
+            const thumbnailBlob = await captureDebugThumbnail(video); // grab frame BEFORE stopCamera()
             stopCamera();
             const capturedDescriptor = Array.from(detection.descriptor);
             const distance           = euclideanDistance(capturedDescriptor, faceTemplate);
             const confidence         = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
             const matched            = distance < MATCH_THRESHOLD;
             setResult({ matched, score: confidence / 100, distance });
+
+            // Fire-and-forget debug logging — does not block the UI or the
+            // onVerified callback below.
+            uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
+                logFaceVerifyAttempt({ clientId, loanId, branchId, distance, confidence, matched, photoKey });
+            });
+
             if (matched) {
                 onVerified({ matched: true, score: confidence / 100, faceMatchScore: distance });
             }

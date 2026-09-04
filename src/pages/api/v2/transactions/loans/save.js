@@ -2,7 +2,8 @@ import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
 import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
-import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
+import { BRANCH_FIELDS, CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
+import { validateDateOfRelease } from '@/lib/date-utils';
 import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
@@ -14,6 +15,7 @@ const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)
 const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
 const groupType =createGraphType("groups", GROUP_FIELDS)
+const branchType = createGraphType("branch", BRANCH_FIELDS)
 
 export default apiHandler({
     post: save
@@ -31,6 +33,7 @@ async function save(req, res) {
     let mode;
     let oldLoanId;
     const currentDate = loanData.currentDate;
+    const ciApprovedDate = loanData.ciApprovedDate;
     const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
     delete loanData.currentDate;
@@ -38,6 +41,7 @@ async function save(req, res) {
     delete loanData.groupStatus;
     delete loanData.pendings;
     delete loanData.origin;
+    delete loanData.ciApprovedDate;
 
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -72,6 +76,39 @@ async function save(req, res) {
                 message: `A loan advancing from this client's existing loan was already created (PN: ${duplicateInProgress[0].pnNumber || duplicateInProgress[0]._id}). Please refresh the page before retrying.`
             });
             return;
+        }
+    }
+
+    // ── v2 Date of Release validation — server-side source of truth ────────
+    // Client-side already checked this (AddLoanPage.js); this is the real
+    // enforcement layer since the client check can be bypassed by a direct
+    // API call.
+    if (loanData.branchId && loanData.dateOfRelease && group?.occurence) {
+        const [branch] = (await graph.query(queryQl(branchType(), {
+            where: { _id: { _eq: loanData.branchId } }
+        }))).data?.branch ?? [];
+
+        if (branch?.clientFlowVersion === 'v2') {
+            if (!ciApprovedDate) {
+                res.send({
+                    error: true,
+                    fields: ['dateOfRelease'],
+                    message: 'CI approval date is missing — cannot validate Date of Release.',
+                });
+                return;
+            }
+
+            const { valid, earliestDOR } = validateDateOfRelease(
+                loanData.dateOfRelease, ciApprovedDate, group.occurence
+            );
+            if (!valid) {
+                res.send({
+                    error: true,
+                    fields: ['dateOfRelease'],
+                    message: `Invalid Date of Release. Earliest allowed date is ${earliestDOR}.`,
+                });
+                return;
+            }
         }
     }
 

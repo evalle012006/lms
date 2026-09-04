@@ -294,8 +294,13 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
     const [savingRemark, setSavingRemark] = useState(false);
     const [note,         setNote]         = useState('');
 
-    const canValidate = currentUser?.role?.rep === 1 || currentUser?.root === true || currentUser?.role?.rep === 3;
-    const isBM        = currentUser?.role?.rep === 3;
+    const isAdmin      = currentUser?.role?.rep === 1 || currentUser?.root === true;
+    const isSupervisor = currentUser?.role?.rep === 2 &&
+        (currentUser?.role?.shortCode === 'deputy_director' || currentUser?.role?.shortCode === 'regional_manager'
+            || currentUser?.role?.shortCode === 'area_admin'
+        );
+    const isBM          = currentUser?.role?.shortCode === 'branch_manager';
+    const canValidate    = isAdmin || isSupervisor || isBM;
 
     const isDuplicateFlagged  = application?.isDuplicateFlagged;
     const isPendingValidation = application?.status === 'pending_validation';
@@ -723,11 +728,9 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
                     {isPendingValidation && !canValidate && !alreadyValidated && (
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl
                             text-xs text-amber-700">
-                            <p className="font-semibold mb-0.5">Waiting for admin review</p>
+                            <p className="font-semibold mb-0.5">Waiting for review</p>
                             <p>
-                                A system administrator needs to check the matching records
-                                and decide how to proceed. You can add a remark above to
-                                help them make the right decision.
+                                A system administrator, supervisor, or branch manager needs to check the matching records and decide how to proceed. You can add a remark above to help them make the right decision.
                             </p>
                         </div>
                     )}

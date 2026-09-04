@@ -34,6 +34,7 @@ import { useCIOfflineCache } from '@/hooks/useCIOfflineCache';
 import { fetchWrapper }      from '@/lib/fetch-wrapper';
 import { getApiBaseUrl }     from '@/lib/constants';
 import { getLatestNonPendingLoan } from '@/lib/loan-cycle';
+import CIDuplicateQueue from '@/components/ci/CIDuplicateQueue';
 
 // ── Offline: no cache screen ──────────────────────────────────────────────
 const OfflineNoCacheScreen = ({ onOpen }) => (
@@ -110,6 +111,9 @@ const CIInvestigationPage = () => {
     const [cacheInfo,         setCacheInfo]         = useState(null);
     const [offlineApps,       setOfflineApps]       = useState([]);
     const [pendingCount,      setPendingCount]      = useState(0);
+    const [duplicateCount, setDuplicateCount] = useState(0);
+
+    const [activeTab, setActiveTab] = useState('active'); // 'active' | 'duplicates'
 
     // ── Auto-load from QR scan (?code=CI-XXXX) ────────────────────────────
     useEffect(() => {
@@ -151,6 +155,13 @@ const CIInvestigationPage = () => {
             }
         }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [listRefreshKey]);
+
+    useEffect(() => {
+        if (!isOnline) return;
+        fetchWrapper.get(getApiBaseUrl() + 'laf/pending-validation-list')
+            .then(r => { if (r.success) setDuplicateCount(r.total ?? r.applications?.length ?? 0); })
+            .catch(() => {});
     }, [listRefreshKey]);
 
     // ── Load application detail ───────────────────────────────────────────
@@ -429,127 +440,164 @@ const CIInvestigationPage = () => {
                     syncing={syncing}
                 />
 
-                {/* Main layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
-
-                    {/* LEFT — applications list */}
-                    <div className="lg:col-span-4">
-                        <CIApplicationsList
-                            onSelect={loadApplication}
-                            selectedCode={selectedCode}
-                            refreshKey={listRefreshKey}
-                            offlineApps={offlineApps}
-                            isOnline={isOnline}
-                            getDrafts={getDrafts}
-                        />
-                    </div>
-
-                    {/* RIGHT — detail panel */}
-                    <div className="lg:col-span-8 space-y-4">
-                        {isOnline && (
-                            <div className="bg-white rounded-xl border border-gray-200 p-4">
-                                <p className="text-xs font-semibold text-gray-500 uppercase
-                                    tracking-wide mb-2">Or search by CI Reference Code</p>
-                                <CISearchForm onFound={res => setSearchResult(res)} />
-                            </div>
+                <div className="flex gap-1 mt-4 border-b border-gray-200">
+                    <button type="button" onClick={() => setActiveTab('active')}
+                        className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                            activeTab === 'active'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}>
+                        CI Investigation
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('duplicates')}
+                        className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                            activeTab === 'duplicates'
+                                ? 'border-orange-500 text-orange-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}>
+                        Flagged as Duplicate
+                        {duplicateCount > 0 && (
+                            <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
+                                {duplicateCount}
+                            </span>
                         )}
-
-                        {loadingDetail && (
-                            <div className="flex justify-center py-12"><Spinner /></div>
-                        )}
-
-                        {!loadingDetail && !searchResult && (
-                            <div className="text-center py-20 text-gray-300">
-                                <ChevronRight className="w-12 h-12 mx-auto mb-3
-                                    text-gray-200 rotate-180" />
-                                <p className="text-sm text-gray-400">
-                                    Select an application from the list
-                                </p>
-                                {isOnline && (
-                                    <p className="text-xs text-gray-300 mt-1">
-                                        or enter a CI Reference Code above
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {!loadingDetail && searchResult && (
-                            <>
-                                {searchResult.application?.status === 'promoted' && (
-                                    <CIPromotedClientBanner
-                                        application={searchResult.application}
-                                        investigation={searchResult.investigation}
-                                        currentUser={currentUser}
-                                        loanHistory={clientLoanHistory}
-                                    />
-                                )}
-                                {searchResult.application?.status === 'ci_declined' && (
-                                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                                        <p className="text-sm font-semibold text-red-800">
-                                            Previously declined. You can update the investigation below.
-                                        </p>
-                                    </div>
-                                )}
-                                {isOnline && (
-                                    <div className="flex justify-end">
-                                        <button onClick={() => setLafModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2
-                                                bg-blue-600 text-white text-sm font-medium
-                                                rounded-lg hover:bg-blue-700 transition-colors">
-                                            <Printer className="w-4 h-4" />
-                                            Print / Download LAF
-                                        </button>
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                    <div className="space-y-4">
-                                        <CIApplicantCard
-                                            application={searchResult.application}
-                                            loanHistory={clientLoanHistory}
-                                        />
-                                        <CILAFPhotoCard
-                                            lafPhotoUrl={searchResult.application?.lafPhotoUrl}
-                                        />
-                                    </div>
-                                    <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-4">
-                                            Investigation Form
-                                        </h3>
-                                        {searchResult.investigation && (
-                                            <div className={`mb-4 p-3 rounded-lg border text-xs ${
-                                                searchResult.investigation.isDraft
-                                                    ? 'bg-amber-50 border-amber-200 text-amber-700'
-                                                    : 'bg-gray-50 border-gray-200 text-gray-600'
-                                            }`}>
-                                                <p className="font-semibold mb-1">
-                                                    {searchResult.investigation.isDraft
-                                                        ? '⚠ Unsaved draft — not yet synced'
-                                                        : 'Previous investigation on file'}
-                                                </p>
-                                                <p>By: {searchResult.investigation.picUserName || '—'}</p>
-                                                <p>
-                                                    {searchResult.investigation.investigatedAt
-                                                        ? moment(searchResult.investigation.investigatedAt)
-                                                            .format('MMM DD, YYYY h:mm A')
-                                                        : '—'}
-                                                </p>
-                                                <p className="mt-1 italic text-gray-400">
-                                                    Submitting below will update this record.
-                                                </p>
-                                            </div>
-                                        )}
-                                        <CIReviewPanel
-                                            key={selectedCode}
-                                            applicationData={searchResult}
-                                            investigationData={searchResult.investigation}
-                                            onSaved={handleSaved}
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    </button>
                 </div>
+
+                        
+                {/* Main layout */}
+                {activeTab === 'active' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+
+                        {/* LEFT — applications list */}
+                        <div className="lg:col-span-4">
+                            <CIApplicationsList
+                                onSelect={loadApplication}
+                                selectedCode={selectedCode}
+                                refreshKey={listRefreshKey}
+                                offlineApps={offlineApps}
+                                isOnline={isOnline}
+                                getDrafts={getDrafts}
+                            />
+                        </div>
+
+                        {/* RIGHT — detail panel */}
+                        <div className="lg:col-span-8 space-y-4">
+                            {isOnline && (
+                                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase
+                                        tracking-wide mb-2">Or search by CI Reference Code</p>
+                                    <CISearchForm onFound={res => setSearchResult(res)} />
+                                </div>
+                            )}
+
+                            {loadingDetail && (
+                                <div className="flex justify-center py-12"><Spinner /></div>
+                            )}
+
+                            {!loadingDetail && !searchResult && (
+                                <div className="text-center py-20 text-gray-300">
+                                    <ChevronRight className="w-12 h-12 mx-auto mb-3
+                                        text-gray-200 rotate-180" />
+                                    <p className="text-sm text-gray-400">
+                                        Select an application from the list
+                                    </p>
+                                    {isOnline && (
+                                        <p className="text-xs text-gray-300 mt-1">
+                                            or enter a CI Reference Code above
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {!loadingDetail && searchResult && (
+                                <>
+                                    {searchResult.application?.status === 'promoted' && (
+                                        <CIPromotedClientBanner
+                                            application={searchResult.application}
+                                            investigation={searchResult.investigation}
+                                            currentUser={currentUser}
+                                            loanHistory={clientLoanHistory}
+                                            onReverted={() => {
+                                                loadApplication(searchResult.application.ciReferenceCode);
+                                                setListRefreshKey(k => k + 1);
+                                            }}
+                                        />
+                                    )}
+                                    {searchResult.application?.status === 'ci_declined' && (
+                                        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                                            <p className="text-sm font-semibold text-red-800">
+                                                Previously declined. You can update the investigation below.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {isOnline && (
+                                        <div className="flex justify-end">
+                                            <button onClick={() => setLafModalOpen(true)}
+                                                className="flex items-center gap-2 px-4 py-2
+                                                    bg-blue-600 text-white text-sm font-medium
+                                                    rounded-lg hover:bg-blue-700 transition-colors">
+                                                <Printer className="w-4 h-4" />
+                                                Print / Download LAF
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div className="space-y-4">
+                                            <CIApplicantCard
+                                                application={searchResult.application}
+                                                loanHistory={clientLoanHistory}
+                                            />
+                                            <CILAFPhotoCard
+                                                lafPhotoUrl={searchResult.application?.lafPhotoUrl}
+                                            />
+                                        </div>
+                                        <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                                                Investigation Form
+                                            </h3>
+                                            {searchResult.investigation && (
+                                                <div className={`mb-4 p-3 rounded-lg border text-xs ${
+                                                    searchResult.investigation.isDraft
+                                                        ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                                        : 'bg-gray-50 border-gray-200 text-gray-600'
+                                                }`}>
+                                                    <p className="font-semibold mb-1">
+                                                        {searchResult.investigation.isDraft
+                                                            ? '⚠ Unsaved draft — not yet synced'
+                                                            : 'Previous investigation on file'}
+                                                    </p>
+                                                    <p>By: {searchResult.investigation.picUserName || '—'}</p>
+                                                    <p>
+                                                        {searchResult.investigation.investigatedAt
+                                                            ? moment(searchResult.investigation.investigatedAt)
+                                                                .format('MMM DD, YYYY h:mm A')
+                                                            : '—'}
+                                                    </p>
+                                                    <p className="mt-1 italic text-gray-400">
+                                                        Submitting below will update this record.
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <CIReviewPanel
+                                                key={selectedCode}
+                                                applicationData={searchResult}
+                                                investigationData={searchResult.investigation}
+                                                onSaved={handleSaved}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'duplicates' && (
+                    <div className="mt-4">
+                        <CIDuplicateQueue onSelect={loadApplication} onCountChange={setDuplicateCount} />
+                    </div>
+                )}
             </div>
 
             <TempLAFModal

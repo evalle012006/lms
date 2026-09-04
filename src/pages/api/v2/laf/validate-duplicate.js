@@ -33,22 +33,28 @@ async function validateDuplicate(req, res) {
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    // Role check — admin (rep=1) only
-    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true || currentUser.role?.rep === 3; // allow BM (rep=3) to validate duplicates
-    if (!isAdmin) {
-        return res.status(200).json({
-            success: false,
-            message: 'Only system administrators can validate duplicate applications.',
-        });
-    }
-
-    // Fetch application
+    // Fetch application FIRST — the role check below needs application.isExactDuplicateMatch
     const [application] = await graph.query(
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
     if (!application) {
         return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
+
+    // Role check — exact 4-field matches require admin; fuzzy matches allow BM too
+    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true;
+    const isSupervisors = currentUser.role?.rep === 2 && 
+        (currentUser.role?.shortCode === 'deputy_director' || currentUser.role?.shortCode === 'regional_manager'
+            || currentUser.role?.shortCode === 'area_admin'
+        );
+    const isBM = currentUser.role?.shortCode === 'branch_manager';
+
+    if (!isAdmin && !isSupervisors && !isBM) {
+        return res.status(200).json({
+            success: false,
+            message: 'Only system administrators, supervisors, or branch managers can validate duplicate applications.',
+        });
     }
     if (!application.isDuplicateFlagged) {
         return res.status(200).json({ success: false, message: 'This application is not flagged for duplicate validation.' });

@@ -1,5 +1,8 @@
 import { DateTime } from 'luxon';
 import moment from 'moment';
+import momentTz from 'moment-timezone';
+
+const MANILA_TZ = 'Asia/Manila';
 
 export const getEndDate = (date, days) => {
     date = moment(date); // use a clone
@@ -398,4 +401,41 @@ export function getPreviousWorkingDay(date, excludedDays = [0, 6], holidays) {
     }
     
     return previousDay;
+}
+
+/**
+ * Earliest valid Date of Release for a v2-flow loan, given the CI approval
+ * timestamp and the loan's occurrence type.
+ *
+ * Daily:  next calendar day after CI approval (no same-day release).
+ * Weekly: Monday of the week AFTER the week containing CI approval
+ *         (week = Mon 00:00 – Sun 23:59 PHT), regardless of when the
+ *         approval action itself is performed.
+ *
+ * @param {string|Date} ciApprovedDate - ciInvestigations.investigatedAt
+ * @param {'daily'|'weekly'} occurence  - group.occurence
+ * @returns {string} 'YYYY-MM-DD' earliest allowed DOR, in PHT
+ */
+export function getEarliestDateOfRelease(ciApprovedDate, occurence) {
+    const ciDateManila = momentTz.tz(ciApprovedDate, MANILA_TZ);
+    if (occurence === 'daily') {
+        return ciDateManila.clone().add(1, 'day').startOf('day').format('YYYY-MM-DD');
+    }
+    if (occurence === 'weekly') {
+        return ciDateManila.clone().startOf('isoWeek').add(1, 'week').format('YYYY-MM-DD');
+    }
+    throw new Error(`getEarliestDateOfRelease: unsupported occurence "${occurence}"`);
+}
+
+/**
+ * @param {string|Date} dateOfRelease - candidate DOR (date-only or ISO)
+ * @param {string|Date} ciApprovedDate
+ * @param {'daily'|'weekly'} occurence
+ * @returns {{ valid: boolean, earliestDOR: string }}
+ */
+export function validateDateOfRelease(dateOfRelease, ciApprovedDate, occurence) {
+    const earliestDOR = getEarliestDateOfRelease(ciApprovedDate, occurence);
+    const dor      = momentTz.tz(dateOfRelease, MANILA_TZ).startOf('day');
+    const earliest = momentTz.tz(earliestDOR, MANILA_TZ).startOf('day');
+    return { valid: dor.isSameOrAfter(earliest), earliestDOR };
 }

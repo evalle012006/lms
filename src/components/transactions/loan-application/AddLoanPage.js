@@ -10,7 +10,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
-import { getNextValidDate } from '@/lib/date-utils';
+import { getNextValidDate, validateDateOfRelease } from '@/lib/date-utils';
 import { resolveLoanCycle } from '@/lib/loan-cycle';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
@@ -55,6 +55,7 @@ const AddLoanPage = ({
     initialGuarantorDI      = null,
     initialGuarantorAddress = null,
     initialCiName           = null,
+    initialCiApprovedDate   = null,
 }) => {
     const dispatch        = useDispatch();
     const formikRef       = useRef();
@@ -1094,6 +1095,41 @@ const AddLoanPage = ({
         values.groupName  = group?.name;
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
+
+        // ── v2 Date of Release validation ───────────────────────────────
+        // fromCI path (new client, just came out of CI approval): use the
+        // date forwarded from CIPromotedClientBanner.
+        // Non-fromCI path (reloan/balik/active): use the CI record already
+        // fetched by checkClientCI. If neither is available for a v2 branch,
+        // block rather than silently skip — this is a compliance rule, and
+        // "no CI date on file" during a v2 submission means something
+        // upstream is broken, not that the rule doesn't apply.
+        if (currentBranch?.clientFlowVersion === 'v2' && values.occurence) {
+            const resolvedCiApprovedDate = fromCI
+                ? initialCiApprovedDate
+                : ciStatus?.latestCI?.investigatedAt;
+
+            if (!resolvedCiApprovedDate) {
+                setLoading(false);
+                toast.error('Cannot determine CI approval date. Please reload this page and try again.');
+                return;
+            }
+
+            const { valid, earliestDOR } = validateDateOfRelease(
+                values.dateOfRelease, resolvedCiApprovedDate, values.occurence
+            );
+            if (!valid) {
+                setLoading(false);
+                toast.error(
+                    `Invalid Date of Release for ${values.occurence} loan. ` +
+                    `Earliest allowed date is ${earliestDOR}.`
+                );
+                return;
+            }
+
+            // Server-side re-validates this independently — see save.js
+            values.ciApprovedDate = resolvedCiApprovedDate;
+        }
 
         // group.branchId may be absent from list-by-group-occurence response.
         // Always fall back to currentUser.designatedBranchId for rep 3/4.

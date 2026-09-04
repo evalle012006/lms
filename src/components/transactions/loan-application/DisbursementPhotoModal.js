@@ -576,6 +576,9 @@ const DisbursementPhotoModal = ({
                                                 <FaceVerifyStep
                                                     key={`${getClientId(currentVerifyLoan)}-${faceVerifyKey}`}
                                                     faceTemplate={clientStatusMap[getClientId(currentVerifyLoan)]?.faceTemplate}
+                                                    clientId={getClientId(currentVerifyLoan)}
+                                                    loanId={currentVerifyLoan?._id}
+                                                    branchId={currentBranch?._id}
                                                     onVerified={handleClientVerified}
                                                     onSkip={handleClientSkipped}
                                                     onRetry={() => setFaceVerifyKey(k => k + 1)}

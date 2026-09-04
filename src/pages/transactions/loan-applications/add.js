@@ -57,6 +57,7 @@ const AddLoanApplicationPage = () => {
                 initialGuarantorBiz={q.gBiz     || null}
                 initialGuarantorDI={q.gDI       || null}
                 initialGuarantorAddress={q.gAddr || null}
+                initialCiApprovedDate={q.ciApprovedDate || null}
             />
         </Layout>
     );
