@@ -84,6 +84,13 @@ const REQUIRED_STATUS = { reloan: 'active', pending: 'completed' };
 // Without this, a client with a ci_approved LAF could re-submit via QR.
 const ACTIVE_CI_STATUSES = ['pending', 'pending_validation', 'ci_approved'];
 
+// Collapse any run of whitespace into a SQL wildcard so matching survives
+// the double-space / inconsistent-spacing artifacts common in migrated
+// name fields (e.g. "DELA  LINA" vs "DELA LINA"). _ilike is an exact
+// pattern match — without this, a single extra space silently produces
+// zero rows with no error surfaced anywhere.
+const namePattern = (v) => `%${v.trim().replace(/\s+/g, '%')}%`;
+
 export async function handler(req, res) {
     const {
         groupId, branchId, lastName, firstName, middleName, slotNo, mode,
@@ -161,18 +168,18 @@ export async function handler(req, res) {
         const clientWhere = isBalik
             ? (() => {
                 const w = {
-                    firstName: { _ilike: firstName.trim() },
-                    lastName:  { _ilike: lastName.trim() },
+                    firstName: { _ilike: namePattern(firstName) },
+                    lastName:  { _ilike: namePattern(lastName) },
                     status:    { _eq: 'offset' },
                 };
                 if (middleName?.trim() && middleName.trim().toUpperCase() !== 'N/A') {
-                    w.middleName = { _ilike: middleName.trim() };
+                    w.middleName = { _ilike: namePattern(middleName) };
                 }
                 if (branchId) w.branchId = { _eq: branchId };
                 return w;
               })()
             : {
-                lastName:  { _ilike: lastName.trim() },
+                lastName:  { _ilike: namePattern(lastName) },
                 groupId:   { _eq: groupId },
                 loans: {
                     slotNo:  { _eq: parseInt(slotNo) },
@@ -190,7 +197,7 @@ export async function handler(req, res) {
                 const anyClients = await graph.query(
                     queryQl(CLIENT_TYPE, {
                         where: {
-                            lastName: { _ilike: lastName.trim() },
+                            lastName: { _ilike: namePattern(lastName) },
                             groupId:  { _eq: groupId },
                             loans: {
                                 slotNo:  { _eq: parseInt(slotNo) },

@@ -692,7 +692,7 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
                     onClose={() => setQrOpen(false)}
                     qrData={qrData}
                     onRegenerate={() => handleQR(
-                        { ...qrData, _id: qrData.groupId }, true
+                        { ...qrData, _id: qrData._id }, true
                     )}
                 />
             )}
