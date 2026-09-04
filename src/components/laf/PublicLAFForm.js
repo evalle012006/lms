@@ -358,6 +358,29 @@ const PublicLAFForm = ({
     // Resolve signed URL for found client's existing profile photo
     const { signedUrl: foundClientPhotoUrl } = usePublicSignedUrl(foundClient?.profile || null);
 
+    // ── Auto-sync when connectivity returns ─────────────────────────────────
+    // isOnline here is already connectivity-verified (see useOnlineStatus),
+    // not the unreliable navigator.onLine. Fires once per reconnect, not on
+    // every render — autoSyncedRef resets when we go offline again so the
+    // next reconnect can trigger a fresh attempt.
+    const autoSyncedRef = useRef(false);
+
+    useEffect(() => {
+        if (!isOnline) {
+            autoSyncedRef.current = false;
+            return;
+        }
+        if (autoSyncedRef.current) return;
+        if (!currentUserToken) return; // not logged in — nothing to do silently, manual Sync Now still works
+        if (syncing) return;
+
+        const pendingCount = queue.filter(e => e.status === 'pending').length;
+        if (pendingCount === 0) return;
+
+        autoSyncedRef.current = true;
+        syncQueue();
+    }, [isOnline, currentUserToken, queue, syncing, syncQueue]);
+
     // Pre-load group clients for offline lookup — called before going to field
     const loadGroupClientsForOffline = React.useCallback(async () => {
         if (!groupId || cacheLoading) return;
