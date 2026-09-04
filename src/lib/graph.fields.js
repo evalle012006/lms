@@ -518,6 +518,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   status
   targetBranchId
   targetGroupId
+  targetLoanTerms
   selectedClientId
   sourceGroupId
   targetUserId
