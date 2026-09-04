@@ -108,7 +108,8 @@ async function getFundTransfers(req, res) {
         const modeFilter = {
             receiverBranch: {
                 code: { _neq: "B000" }
-            }
+            },
+            transferType: { _neq: 'outpost' }
         };
         
         if (user.role.rep === 1 || user.root === true) {
@@ -143,6 +144,16 @@ async function getFundTransfers(req, res) {
                 ...where,
                 ...modeFilter
             };
+        }
+    }
+
+    if (mode === 'outpost') {
+        const modeFilter = { transferType: { _eq: 'outpost' } };
+
+        if (user.role.rep === 1 || user.root === true) {
+            where = { ...status_condition, ...modeFilter };
+        } else {
+            where = { ...where, ...modeFilter };
         }
     }
 

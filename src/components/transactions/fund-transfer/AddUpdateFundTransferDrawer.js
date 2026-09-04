@@ -58,7 +58,9 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
         receiverBranchId: fundTransfer.receiverBranchId || '',
         amount: fundTransfer.amount || '',
         account: fundTransfer.account || '',
-        description: fundTransfer.description || ''
+        description: fundTransfer.description || '',
+        transferType: fundTransfer.transferType || 'branch',
+        outpostRemarks: fundTransfer.outpostRemarks || ''
     }
 
     const validationSchema = yup.object().shape({
@@ -69,10 +71,11 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
             .string()
             .required('Please select a receiver branch.')
             .test('different-branches', 'Giver and receiver branches must be different', function(value) {
+                if (this.parent.transferType === 'outpost') return true; // same branch is required for outpost
                 return value !== this.parent.giverBranchId;
             })
             .test('not-same-as-designated', 'Cannot transfer to the same branch', function(value) {
-                // For branch users, ensure they're not transferring to their own branch
+                if (this.parent.transferType === 'outpost') return true; // outpost transfers target the BM's own branch by design
                 if (currentUser?.role?.rep === 3 && currentUser?.designatedBranchId) {
                     return value !== currentUser.designatedBranchId;
                 }
@@ -89,14 +92,30 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
             .string()
             .min(5, 'Description must be at least 5 characters')
             .max(500, 'Description must not exceed 500 characters')
-            .required('Please enter transfer description.')
+            .required('Please enter transfer description.'),
+        outpostRemarks: yup
+            .string()
+            .when('transferType', {
+                is: 'outpost',
+                then: (schema) => schema
+                    .min(5, 'Please specify the outpost/LO (minimum 5 characters)')
+                    .required('Please specify which outpost/LO this transfer is from.'),
+                otherwise: (schema) => schema.notRequired()
+            })
     });
 
     const handleChangeGiverBranch = (field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
         setSelectedGiverBranch(value);
-        
+
+        if (form.values.transferType === 'outpost') {
+            // Outpost transfers always target the same branch — keep them in sync
+            setSelectedReceiverBranch(value);
+            form.setFieldValue('receiverBranchId', value);
+            return;
+        }
+
         // Reset receiver branch if it's the same as giver branch
         if (selectedReceiverBranch === value) {
             setSelectedReceiverBranch('');
@@ -114,6 +133,20 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
         const form = formikRef.current;
         form.setFieldValue(field, value);
         setSelectedAccount(value);
+    }
+
+    const handleChangeTransferType = (value) => {
+        const form = formikRef.current;
+        form.setFieldValue('transferType', value);
+
+        if (value === 'outpost' && selectedGiverBranch) {
+            setSelectedReceiverBranch(selectedGiverBranch);
+            form.setFieldValue('receiverBranchId', selectedGiverBranch);
+        } else if (value === 'branch' && selectedReceiverBranch === selectedGiverBranch) {
+            // Leaving outpost mode with an invalid same-branch receiver — clear it
+            setSelectedReceiverBranch('');
+            form.setFieldValue('receiverBranchId', '');
+        }
     }
 
     const reset = () => {
@@ -134,9 +167,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
         setLoading(true);
         
         // Additional validation
-        if (values.giverBranchId === values.receiverBranchId) {
+        if (values.transferType !== 'outpost' && values.giverBranchId === values.receiverBranchId) {
             setLoading(false);
             toast.error('Giver and receiver branches must be different.');
+            return;
+        }
+
+        if (values.transferType === 'outpost' && values.giverBranchId !== values.receiverBranchId) {
+            setLoading(false);
+            toast.error('Outpost transfers must use the same branch for giver and receiver.');
             return;
         }
 
@@ -230,8 +269,11 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
     }
 
     // Get receiver branch options (exclude selected giver branch)
-    const getReceiverBranchOptions = () => {
+    const getReceiverBranchOptions = (transferType) => {
         if (!branchList) return [];
+        if (transferType === 'outpost') {
+            return branchList.filter(branch => branch._id === selectedGiverBranch);
+        }
         return branchList.filter(branch => branch._id !== selectedGiverBranch);
     }
 
@@ -437,6 +479,34 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                     </div>
 
                                     <div className="mt-4">
+                                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Transfer Type
+                                        </label>
+                                        <div className="flex gap-4 mt-2">
+                                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <input
+                                                    type="radio"
+                                                    name="transferType"
+                                                    checked={values.transferType === 'branch'}
+                                                    onChange={() => handleChangeTransferType('branch')}
+                                                    disabled={mode === 'edit'}
+                                                />
+                                                Branch to Branch
+                                            </label>
+                                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <input
+                                                    type="radio"
+                                                    name="transferType"
+                                                    checked={values.transferType === 'outpost'}
+                                                    onChange={() => handleChangeTransferType('outpost')}
+                                                    disabled={mode === 'edit'}
+                                                />
+                                                Outpost to Main Branch
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
                                         <SelectDropdown
                                             name="giverBranchId"
                                             field="giverBranchId"
@@ -462,10 +532,10 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             field="receiverBranchId"
                                             value={selectedReceiverBranch}
                                             label="To Branch (Receiver)"
-                                            options={getReceiverBranchOptions()}
+                                            options={getReceiverBranchOptions(values.transferType)}
                                             onChange={(field, value) => handleChangeReceiverBranch(field, value)}
                                             onBlur={setFieldTouched}
-                                            disabled={!selectedGiverBranch || (mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved'))}
+                                            disabled={!selectedGiverBranch || values.transferType === 'outpost' || (mode === 'edit' && !isFinance && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved'))}
                                             placeholder="Select Receiver Branch"
                                             errors={touched.receiverBranchId && errors.receiverBranchId ? errors.receiverBranchId : undefined}
                                         />
@@ -533,6 +603,34 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             </p>
                                         )}
                                     </div>
+
+                                    {values.transferType === 'outpost' && (
+                                        <div className="mt-4">
+                                            <div className={`
+                                                flex justify-between rounded-md px-4 py-1 border mb-2 bg-white
+                                                ${values.outpostRemarks ? 'border border-main' : 'border-slate-400'}
+                                                ${errors.outpostRemarks && touched.outpostRemarks && 'border border-red-400'}
+                                            `}>
+                                                <div className="flex flex-col w-full">
+                                                    <label htmlFor="outpostRemarks" className="text-xs font-bold text-gray-500">
+                                                        Outpost / LO Remarks
+                                                    </label>
+                                                    <textarea
+                                                        name="outpostRemarks"
+                                                        value={values.outpostRemarks}
+                                                        onChange={handleChange}
+                                                        onBlur={() => setFieldTouched('outpostRemarks', true)}
+                                                        placeholder="e.g. LO12 - Juan Dela Cruz outpost"
+                                                        rows={2}
+                                                        className="p-1 pl-0 text-gray-500 font-medium border-none focus:ring-0 text-sm resize-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {errors.outpostRemarks && touched.outpostRemarks && (
+                                                <span className="text-red-400 text-xs font-medium">{errors.outpostRemarks}</span>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Transfer Summary */}
                                     {selectedGiverBranch && selectedReceiverBranch && values.amount && selectedAccount && (

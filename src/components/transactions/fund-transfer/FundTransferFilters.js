@@ -26,7 +26,8 @@ const FundTransferFilters = ({
         giverBranchId: '',
         receiverBranchId: '',
         account: '',
-        status: ''
+        status: '',
+        transferType: ''
     });
 
     // Account options
@@ -76,6 +77,12 @@ const FundTransferFilters = ({
         { value: 'rejected', label: 'Rejected' }
     ];
 
+    const transferTypeOptions = [
+        { value: '', label: 'All Types' },
+        { value: 'branch', label: 'Branch to Branch' },
+        { value: 'outpost', label: 'Outpost to Main Branch' }
+    ];
+
     // Branch options
     const branchOptions = [
         { value: '', label: 'All Branches' },
@@ -120,6 +127,13 @@ const FundTransferFilters = ({
                 return false;
             }
 
+            // Transfer type filter
+            // Default legacy records to 'branch' since transferType may be null on rows
+            // created before this column existed — don't let them fall out of the filter.
+            if (filters.transferType && (item.transferType || 'branch') !== filters.transferType) {
+                return false;
+            }
+
             return true;
         });
     };
@@ -147,7 +161,8 @@ const FundTransferFilters = ({
             giverBranchId: '',
             receiverBranchId: '',
             account: '',
-            status: ''
+            status: '',
+            transferType: ''
         });
     };
 
@@ -196,7 +211,8 @@ const FundTransferFilters = ({
                filters.giverBranchId !== '' ||
                filters.receiverBranchId !== '' ||
                filters.account !== '' ||
-               filters.status !== '';
+               filters.status !== '' ||
+               filters.transferType !== '';
     };
 
     return (
@@ -316,6 +332,21 @@ const FundTransferFilters = ({
                     />
                 </div>
 
+                {/* Transfer Type Filter */}
+                <div className="min-w-[180px]">
+                    <SelectDropdown
+                        name="transferType"
+                        field="transferType"
+                        value={filters.transferType}
+                        label=""
+                        options={transferTypeOptions}
+                        onChange={(field, value) => handleFilterChange('transferType', value)}
+                        placeholder="Transfer Type"
+                        className="text-sm"
+                        containerClassName="mb-0"
+                    />
+                </div>
+
                 {/* Clear Filters Button */}
                 {hasActiveFilters() && (
                     <button
@@ -360,6 +391,11 @@ const FundTransferFilters = ({
                         {filters.status && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
                                 Status: {filters.status}
+                            </span>
+                        )}
+                        {filters.transferType && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">
+                                Type: {transferTypeOptions.find(t => t.value === filters.transferType)?.label}
                             </span>
                         )}
                     </div>

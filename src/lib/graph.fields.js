@@ -572,6 +572,8 @@ export const TRANSFER_CLIENT_FIELDS = `
   account
   description
   status
+  transferType
+  outpostRemarks
   giverApproval
   giverApproveRejectDate
   receiverApproval

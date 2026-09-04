@@ -15,7 +15,26 @@ export default apiHandler({
 
 async function save(req, res) {
     const data = req.body;
-    
+
+    // ADDED: server-side is the authoritative gate for "at least 0" —
+    // the client's cohValid check (BranchClosingDocumentsModal.js) is UX
+    // only and can be bypassed by a direct API call. Reject anything that
+    // isn't a valid non-negative number before touching the DB.
+    const numericAmount = Number(data.amount);
+    if (data.amount === null || data.amount === undefined || data.amount === '' || isNaN(numericAmount) || numericAmount < 0) {
+        return res.status(200).json({
+            success: false,
+            message: 'A valid Cash on Hand amount (0 or greater) is required.'
+        });
+    }
+
+    if (!data.branchId || !data.dateAdded) {
+        return res.status(200).json({
+            success: false,
+            message: 'branchId and dateAdded are required.'
+        });
+    }
+
     const branchCOH = await graph.query(
         queryQl(BRANCH_COH_TYPE, {
             where: { branchId: { _eq: data.branchId },  dateAdded: { _eq: data.dateAdded } }
@@ -38,7 +57,7 @@ async function save(req, res) {
         [updatedData] = await graph.mutation(
             updateQl(BRANCH_COH_TYPE, {
                 set: {
-                    amount: data.amount,
+                    amount: numericAmount,
                     breakdown,
                     modifiedBy: data.modifiedBy,
                     modifiedDateTime: new Date(),
@@ -51,7 +70,7 @@ async function save(req, res) {
             insertQl(BRANCH_COH_TYPE, {
                 objects: [{
                     _id: generateUUID(),
-                    amount: data.amount,
+                    amount: numericAmount,
                     breakdown,
                     branchId: data.branchId,
                     insertedBy: data.insertedBy,
