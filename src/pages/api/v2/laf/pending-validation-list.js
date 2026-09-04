@@ -8,12 +8,31 @@ import { GraphProvider }            from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS }     from '@/lib/graph.fields';
 import { findUserById }             from '@/lib/graph.functions';
-import { getSignedUrlForKey }       from '@/lib/storage'; // same helper used in promote/[refCode].js
+import { S3Client, GetObjectCommand }  from '@aws-sdk/client-s3';
+import { getSignedUrl }                from '@aws-sdk/s3-request-presigner';
 
 const graph = new GraphProvider();
 const TEMP_TYPE = createGraphType(
     'temporaryLoanApplications', TEMP_LOAN_APP_FIELDS
 )('temporaryLoanApplications');
+
+const s3 = new S3Client({
+    endpoint:       'https://sgp1.digitaloceanspaces.com',
+    region:         'sgp1',
+    credentials:    {
+        accessKeyId:     process.env.SPACES_ACCESS_KEY,
+        secretAccessKey: process.env.SPACES_SECRET_KEY,
+    },
+    forcePathStyle: false,
+});
+
+async function getSignedUrlForKey(key) {
+    if (!key) return null;
+    return getSignedUrl(s3, new GetObjectCommand({
+        Bucket: process.env.SPACES_BUCKET,
+        Key:    key,
+    }), { expiresIn: 900 });
+}
 
 export default apiHandler({ get: getPendingValidationList });
 
