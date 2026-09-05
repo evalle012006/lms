@@ -362,14 +362,18 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
         setActing(true);
         try {
             if (decision === 'link') {
-                // Link LAF to existing client as reloan — safe, reversible
+                // Link LAF to existing client — server resolves reloan vs pending
+                // from the client's actual loan status, not assumed.
                 const res = await fetchWrapper.post(getApiBaseUrl() + 'laf/link-to-client', {
                     ciReferenceCode:  application.ciReferenceCode,
                     existingClientId: linkClientId,
                     note,
                 });
                 if (!res.success) throw new Error(res.message || 'Failed.');
-                toast.success('Done. The application is now linked to the existing client as a reloan. The branch manager can complete the CI investigation.');
+                toast.success(
+                    `Done. The application is now linked to the existing client as a ${res.resolvedClientType || 'returning client'}. `
+                    + `The branch manager can complete the CI investigation.`
+                );
 
             } else if (decision === 'merge_clients') {
                 // Merge two existing client records — destructive, irreversible
@@ -411,9 +415,9 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
     const confirmContent = {
         link: {
             title:       'Link applicant to existing client?',
-            message:     `This application will be converted to a reloan for ${linkClient?.lastName}, ${linkClient?.firstName} (${linkClient?.status}). The branch manager will then complete the CI investigation as normal.`,
+            message:     `This application will be linked to ${linkClient?.lastName}, ${linkClient?.firstName} as a returning client. The system will automatically determine whether this is a reloan or pending application based on their loan record. The branch manager will then complete the CI investigation as normal.`,
             warning:     null,
-            label:       'Yes, link as reloan',
+            label:       'Yes, link this client',
             cls:         'bg-blue-600 hover:bg-blue-700',
         },
         merge_clients: {
@@ -647,12 +651,13 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
                                     {decision === 'link' && linkClient && (
                                         <>
                                             <p className="font-semibold mb-0.5">
-                                                Selected: Link as reloan
+                                                Selected: Link to existing client
                                             </p>
                                             <p>
                                                 The LAF will be linked to{' '}
                                                 <strong>{linkClient.lastName}, {linkClient.firstName}</strong>
-                                                {' '}({linkClient.status}) as a returning client.
+                                                {' '}({linkClient.status}) as a returning client — the system will
+                                                determine reloan or pending based on their loan record.
                                                 All other matching records are unaffected.
                                             </p>
                                         </>
