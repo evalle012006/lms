@@ -62,6 +62,7 @@ const CIApplicationsList = ({
     offlineApps,
     isOnline,
     getDrafts,
+    onFilterChange,
 }) => {
     const [applications,  setApplications]  = useState([]);
     const [loading,       setLoading]       = useState(true);
@@ -240,7 +241,11 @@ const CIApplicationsList = ({
                 {isOnline && (
                     <div className="flex gap-1.5 mb-3 flex-wrap">
                         {statusOptions.map(opt => (
-                            <button key={opt.value} onClick={() => setStatusFilter(opt.value)}
+                            <button key={opt.value}
+                                onClick={() => {
+                                    setStatusFilter(opt.value);
+                                    onFilterChange?.();
+                                }}
                                 className={`px-2.5 py-1 rounded-full text-xs font-medium
                                     transition-colors ${
                                     statusFilter === opt.value

@@ -478,6 +478,7 @@ const CIInvestigationPage = () => {
                                 offlineApps={offlineApps}
                                 isOnline={isOnline}
                                 getDrafts={getDrafts}
+                                onFilterChange={() => { setSearchResult(null); setSelectedCode(null); }}
                             />
                         </div>
 
@@ -487,17 +488,7 @@ const CIInvestigationPage = () => {
                                 <div className="bg-white rounded-xl border border-gray-200 p-4">
                                     <p className="text-xs font-semibold text-gray-500 uppercase
                                         tracking-wide mb-2">Or search by CI Reference Code</p>
-                                    <CISearchForm onFound={res => {
-                                        if (res?.application?.status === 'pending_validation') {
-                                            toast.info(
-                                                `${res.application.firstName} ${res.application.lastName} is flagged as a possible duplicate. `
-                                                + `Opening the Flagged as Duplicate tab to resolve it.`
-                                            );
-                                            setActiveTab('duplicates');
-                                            return;
-                                        }
-                                        setSearchResult(res);
-                                    }} />
+                                    <CISearchForm onFound={res => setSearchResult(res)} />
                                 </div>
                             )}
 
@@ -594,6 +585,7 @@ const CIInvestigationPage = () => {
                                                 applicationData={searchResult}
                                                 investigationData={searchResult.investigation}
                                                 onSaved={handleSaved}
+                                                onGoToDuplicateTab={() => setActiveTab('duplicates')}
                                             />
                                         </div>
                                     </div>

@@ -11,7 +11,6 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 import { checkRealConnectivity } from '@/lib/check-online';
 import FaceLivenessStep from '@/components/laf/FaceLivenessStep';
 
@@ -72,7 +71,7 @@ const CIQuestion = ({ question, index, answer, onChange }) => (
     </div>
 );
 
-const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
+const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDuplicateTab }) => {
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
     const { isOnline }   = useOnlineStatus();
@@ -254,18 +253,6 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     return (
         <div className="space-y-6">
 
-            {/* Pending validation banner */}
-            {application?.status === 'pending_validation' && (
-                <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
-                    <p className="text-sm font-semibold text-orange-900">⏳ Awaiting Admin Validation</p>
-                    <p className="text-xs text-orange-700 mt-1">
-                        This application was flagged as a possible duplicate.
-                        A system administrator must resolve the duplicate panel below
-                        before this CI investigation can be saved.
-                    </p>
-                </div>
-            )}
-
             {/* LAF photo */}
             {lafPhotoUrl && (
                 <div>
@@ -358,13 +345,25 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 )}
             </div>
 
-            {/* Duplicate validation panel */}
-            {(applicationData?.application?.isDuplicateFlagged ||
-              applicationData?.application?.duplicateCandidateIds?.length > 0) && (
-                <CIDuplicatePanel
-                    application={applicationData.application}
-                    onValidated={onSaved}
-                />
+            {/* Locked — duplicate resolution now happens exclusively in the
+                "Flagged as Duplicate" tab, not inline here. */}
+            {application?.status === 'pending_validation' && (
+                <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
+                    <p className="text-sm font-semibold text-orange-900">
+                        ⏳ This application is flagged as a possible duplicate
+                    </p>
+                    <p className="text-xs text-orange-700 mt-1">
+                        It must be resolved in the <strong>Flagged as Duplicate</strong> tab before
+                        this investigation can be saved or approved.
+                    </p>
+                    {onGoToDuplicateTab && (
+                        <button type="button" onClick={onGoToDuplicateTab}
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white text-xs font-semibold
+                                rounded-lg hover:bg-orange-700 transition-colors">
+                            Go to Flagged as Duplicate →
+                        </button>
+                    )}
+                </div>
             )}
 
             {/* Decision */}
