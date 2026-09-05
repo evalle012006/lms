@@ -128,7 +128,7 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
 // onRetry — optional callback to parent when user clicks Try Again
 // Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
 // clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
-const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = false, clientId, loanId, branchId }) => {
+const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false, clientId, loanId, branchId }) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
@@ -290,16 +290,28 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
                 startDetectionLoop(0);
                 return;
             }
-            const thumbnailBlob = await captureDebugThumbnail(video); // grab frame BEFORE stopCamera()
+            const thumbnailBlob = await captureDebugThumbnail(video);
             stopCamera();
             const capturedDescriptor = Array.from(detection.descriptor);
-            const distance           = euclideanDistance(capturedDescriptor, faceTemplate);
-            const confidence         = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
-            const matched            = distance < MATCH_THRESHOLD;
+
+            // ── Enrollment path — no template exists, this capture BECOMES it ──
+            if (noTemplate) {
+                setResult({ enrolled: true, template: capturedDescriptor });
+                uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
+                    logFaceVerifyAttempt({
+                        clientId, loanId, branchId, distance: null, confidence: null,
+                        matched: null, photoKey,
+                    });
+                });
+                return;
+            }
+
+            // ── Existing verification path — unchanged ──
+            const distance   = euclideanDistance(capturedDescriptor, faceTemplate);
+            const confidence = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
+            const matched    = distance < MATCH_THRESHOLD;
             setResult({ matched, score: confidence / 100, distance });
 
-            // Fire-and-forget debug logging — does not block the UI or the
-            // onVerified callback below.
             uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
                 logFaceVerifyAttempt({ clientId, loanId, branchId, distance, confidence, matched, photoKey });
             });
@@ -312,7 +324,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
             toast.error('Face verification failed. Please try again.');
             setCapturing(false);
         }
-    }, [faceTemplate, stopCamera, onVerified]);
+    }, [faceTemplate, stopCamera, onVerified, noTemplate, clientId, loanId, branchId]);
 
     const startDetectionLoop = useCallback((challengeIndex) => {
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -387,24 +399,46 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
         handleStart();
     }, [handleStart, onRetry]);
 
-    if (noTemplate) {
+    if (noTemplate && !cameraOpen && !result) {
         return (
             <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
                 <p className="text-sm font-semibold text-amber-800">⚠ No Face Template on Record</p>
                 <p className="text-xs text-amber-700">
-                    This client did not complete face verification during their loan application.
+                    This client's face was never captured — likely submitted while offline.
+                    You can enroll it now using the camera, or an admin can override.
                 </p>
-                {canSkip ? (
+                <button type="button" onClick={handleStart}
+                    className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold
+                        rounded-xl hover:bg-blue-700 transition-colors">
+                    Capture Face & Enroll
+                </button>
+                {canSkip && (
                     <button type="button" onClick={onSkip}
                         className="w-full py-2.5 border border-amber-400 text-amber-700
                             text-sm font-medium rounded-xl hover:bg-amber-100 transition-colors">
                         Proceed Without Face Verification (Admin override)
                     </button>
-                ) : (
-                    <p className="text-xs text-red-600 font-medium">
-                        Contact a supervisor to authorise disbursement without face verification.
-                    </p>
                 )}
+            </div>
+        );
+    }
+
+    if (result?.enrolled) {
+        return (
+            <div className="space-y-4">
+                <div className="p-5 rounded-2xl border-2 border-green-300 bg-green-50 text-center">
+                    <p className="text-4xl mb-2">✅</p>
+                    <p className="text-base font-bold text-green-800">Face Captured</p>
+                    <p className="text-xs text-green-600 mt-1">
+                        This will be enrolled as the client's face record and disbursement can proceed.
+                    </p>
+                </div>
+                <button type="button"
+                    onClick={() => onEnroll?.({ faceTemplate: result.template, faceEnrolledAt: new Date().toISOString() })}
+                    className="w-full py-3 bg-green-600 text-white text-sm font-semibold
+                        rounded-xl hover:bg-green-700 transition-colors">
+                    Confirm & Enroll
+                </button>
             </div>
         );
     }

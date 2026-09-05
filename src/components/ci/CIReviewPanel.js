@@ -13,6 +13,7 @@ import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 import { checkRealConnectivity } from '@/lib/check-online';
+import FaceLivenessStep from '@/components/laf/FaceLivenessStep';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -74,7 +75,7 @@ const CIQuestion = ({ question, index, answer, onChange }) => (
 const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
-    const isOnline       = useOnlineStatus();
+    const { isOnline }   = useOnlineStatus();
     const { saveDraft }  = useCIDraftStorage();
 
     const { application, lafPhotoUrl } = applicationData;
@@ -97,6 +98,12 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const [saving,           setSaving]           = useState(false);
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
+    const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
+    const [enrollingFace, setEnrollingFace] = useState(false);
+    // Application was queued offline and never got its face template captured
+    // at submission time — needs enrollment now, before promotion, if we have
+    // connectivity to do it. If still offline, defer further to disbursement.
+    const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate && !faceCapture;
 
     const handleAnswerChange = (questionId, value) =>
         setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -151,6 +158,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             return;
         }
 
+        if (decision === 'approved' && isOnline && needsFaceEnrollment) {
+            toast.error('Please complete face enrollment for this client before approving — see below.');
+            return;
+        }
+
         setSaving(true);
         try {
             // ── OFFLINE PATH ─────────────────────────────────────────────
@@ -183,6 +195,21 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 const uploadData = await uploadRes.json();
                 if (!uploadData.fileKey) throw new Error('Selfie upload failed.');
                 selfieKey = uploadData.fileKey;
+            }
+
+            if (faceCapture) {
+                try {
+                    await fetchWrapper.post(getApiBaseUrl() + 'laf/enroll-face', {
+                        ciReferenceCode: application.ciReferenceCode,
+                        faceTemplate:    faceCapture.faceTemplate,
+                        faceEnrolledAt:  faceCapture.faceEnrolledAt,
+                        livenessScore:   faceCapture.livenessScore,
+                    });
+                } catch (err) {
+                    toast.error('Face enrollment failed to save — please try again.');
+                    setSaving(false);
+                    return;
+                }
             }
 
             const res = await fetchWrapper.post(
@@ -221,7 +248,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             setSaving(false);
         }
     }, [decision, declineReason, businessVerified, addressVerified,
-        selfieFile, investigationData, ciQuestions,
+        selfieFile, investigationData, ciQuestions, needsFaceEnrollment, faceCapture,
         answers, isOnline, buildPayload, saveDraft, onSaved, application]);
 
     return (
@@ -379,6 +406,31 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                         className="w-full px-3 py-2.5 border border-red-300 rounded-lg text-sm
                             focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
                 </div>
+            )}
+
+            {needsFaceEnrollment && decision === 'approved' && (
+                isOnline ? (
+                    <div>
+                        <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl mb-3">
+                            <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-blue-800">Face enrollment required</p>
+                                <p className="text-xs text-blue-600 mt-0.5">
+                                    This application was submitted offline, so the client's face was never captured.
+                                    Complete it now before approving — this must happen while you're online.
+                                </p>
+                            </div>
+                        </div>
+                        <FaceLivenessStep
+                            onVerified={(data) => setFaceCapture(data)}
+                            verified={!!faceCapture}
+                        />
+                    </div>
+                ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                        You're currently offline — face enrollment will be deferred to disbursement instead.
+                    </div>
+                )
             )}
 
             {/* Selfie section */}

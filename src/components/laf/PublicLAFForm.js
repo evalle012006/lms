@@ -460,8 +460,6 @@ const PublicLAFForm = ({
     const [submitted,  setSubmitted]  = useState(false);
     const [ciCode,     setCiCode]     = useState('');
 
-    // ── Offline mode ──────────────────────────────────────────────────────
-    const currentUserToken = useSelector(s => s.user?.token || s.auth?.token || null);
     const {
         queue, stats, addEntry, removeEntry,
         markSynced, markFailed, clearSynced, getAll,
@@ -505,11 +503,6 @@ const PublicLAFForm = ({
     // ── Sync offline queue ────────────────────────────────────────────────
     const syncQueue = useCallback(async () => {
         if (syncing) return;
-        const token = currentUserToken;
-        if (!token) {
-            toast.error('You must be logged in to sync. Please log in and try again.');
-            return;
-        }
         const pending = queue.filter(e => e.status === 'pending');
         if (pending.length === 0) { toast.info('Nothing to sync.'); return; }
         setSyncing(true);
@@ -524,12 +517,8 @@ const PublicLAFForm = ({
                     blobToBase64(entry.idPhotoBlob),
                     blobToBase64(entry.selfieBlob),
                 ]);
-                const res = await fetch('/api/v2/laf/sync', {
-                    method:  'POST',
-                    headers: {
-                        'Content-Type':  'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
+                const res = await publicFetch('/api/v2/laf/sync', {
+                    method: 'POST',
                     body: JSON.stringify({
                         ...entry.formData,
                         offlineId:      entry.id,
@@ -558,13 +547,9 @@ const PublicLAFForm = ({
         const bad = results.filter(r => !r.success).length;
         if (ok > 0)  toast.success(`${ok} application${ok > 1 ? 's' : ''} synced successfully.`);
         if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
-
-        // Clear ALL offline caches after sync — force fresh data on next prepare
         if (ok > 0) {
             try {
-                // Clear LAF member cache (group-scoped key)
                 localStorage.removeItem(CACHE_KEY);
-                // Clear CI field cache
                 localStorage.removeItem('ci_field_cache');
                 setCachedClients(null);
                 setCacheReady(false);
@@ -573,23 +558,17 @@ const PublicLAFForm = ({
                 console.warn('Failed to clear offline caches after sync:', e);
             }
         }
-    }, [syncing, queue, markSynced, markFailed, currentUserToken, CACHE_KEY]);
+    }, [syncing, queue, markSynced, markFailed, CACHE_KEY]);
 
     useEffect(() => {
-        if (!isOnline) {
-            autoSyncedRef.current = false;
-            return;
-        }
+        if (!isOnline) { autoSyncedRef.current = false; return; }
         if (autoSyncedRef.current) return;
-        if (!currentUserToken) return; // not logged in — nothing to do silently, manual Sync Now still works
         if (syncing) return;
-
         const pendingCount = queue.filter(e => e.status === 'pending').length;
         if (pendingCount === 0) return;
-
         autoSyncedRef.current = true;
         syncQueue();
-    }, [isOnline, currentUserToken, queue, syncing, syncQueue]);
+    }, [isOnline, queue, syncing, syncQueue]);
 
     useEffect(() => {
         if (clientType !== 'existing' || !isOnline || availableSlots !== null) return;
