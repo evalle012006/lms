@@ -355,12 +355,12 @@ const PublicLAFForm = ({
         try {
             const raw = localStorage.getItem(CACHE_KEY);
             if (!raw) return null;
-            const { clients, cachedAt } = JSON.parse(raw);
+            const { clients, cachedAt, groupCapacity } = JSON.parse(raw);
             if (Date.now() - cachedAt > CACHE_TTL) {
                 localStorage.removeItem(CACHE_KEY); // expired
                 return null;
             }
-            return { clients, cachedAt };
+            return { clients, cachedAt, groupCapacity };
         } catch { return null; }
     };
 
