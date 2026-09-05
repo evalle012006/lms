@@ -56,6 +56,7 @@ const AddLoanPage = ({
     initialGuarantorAddress = null,
     initialCiName           = null,
     initialCiApprovedDate   = null,
+    initialCiReferenceCode = null,
 }) => {
     const dispatch        = useDispatch();
     const formikRef       = useRef();
@@ -165,6 +166,10 @@ const AddLoanPage = ({
     const resolvedCiApprovedDate = isEdit
         ? (loanData?.ciApprovedDate || ciStatus?.latestCI?.investigatedAt || null)
         : (fromCI ? initialCiApprovedDate : ciStatus?.latestCI?.investigatedAt);
+
+    const resolvedCiReferenceCode = isEdit
+        ? (loanData?.ciReferenceCode || ciStatus?.latestCI?.ciReferenceCode || null)
+        : (fromCI ? initialCiReferenceCode : ciStatus?.latestCI?.ciReferenceCode);
 
     const guarantorKeys = useMemo(
         () => [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting].filter(Boolean),
@@ -1156,6 +1161,7 @@ const AddLoanPage = ({
 
             // Server-side re-validates this independently — see save.js
             values.ciApprovedDate = resolvedCiApprovedDate;
+            values.ciReferenceCode = resolvedCiReferenceCode;
         }
 
         // group.branchId may be absent from list-by-group-occurence response.
@@ -1381,7 +1387,6 @@ const AddLoanPage = ({
             clientId:            values.clientId,
             coMaker:             values.coMaker,
             coMakerId:           values.coMakerId,
-            // FIX: guarantor photo keys
             guarantorPhotoKey,
             guarantorIdPhotoKey,
             guarantorBirthDate:   values.guarantorBirthDate   || null,
@@ -1389,6 +1394,7 @@ const AddLoanPage = ({
             guarantorBusiness:    values.guarantorBusiness    || null,
             guarantorDailyIncome: values.guarantorDailyIncome || null,
             guarantorAddress:     values.guarantorAddress     || null,
+            ciReferenceCode: resolvedCiReferenceCode,
         };
 
         // Computed fields set in handleSaveUpdate — always override

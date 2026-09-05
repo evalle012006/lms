@@ -12,7 +12,7 @@ export default apiHandler({ post: logAttempt });
 async function logAttempt(req, res) {
     const userId = req.auth?.sub || null;
     const {
-        client_id, loan_id, branch_id,
+        client_id, loan_id, branch_id, ci_reference_code,
         distance, confidence, matched, match_threshold,
         photo_key, user_agent,
     } = req.body;
@@ -28,6 +28,7 @@ async function logAttempt(req, res) {
                 client_id,
                 loan_id: loan_id ?? null,
                 branch_id: branch_id ?? null,
+                ci_reference_code: ci_reference_code ?? null,
                 distance,
                 confidence: confidence ?? null,
                 matched,

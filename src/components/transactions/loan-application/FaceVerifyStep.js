@@ -128,7 +128,7 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
 // onRetry — optional callback to parent when user clicks Try Again
 // Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
 // clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
-const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false, clientId, loanId, branchId }) => {
+const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false, clientId, loanId, branchId, ciReferenceCode, }) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
@@ -184,12 +184,13 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
         }
     }
 
-    async function logFaceVerifyAttempt({ clientId, loanId, branchId, distance, confidence, matched, photoKey }) {
+    async function logFaceVerifyAttempt({ clientId, loanId, branchId, ciReferenceCode, distance, confidence, matched, photoKey }) {
         try {
             await fetchWrapper.post(getApiBaseUrl() + 'face-verify-attempts/log', {
                 client_id: clientId,
                 loan_id: loanId ?? null,
                 branch_id: branchId ?? null,
+                ci_reference_code: ciReferenceCode ?? null,
                 distance,
                 confidence,
                 matched,

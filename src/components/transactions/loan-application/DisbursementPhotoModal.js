@@ -597,6 +597,7 @@ const DisbursementPhotoModal = ({
                                                     clientId={getClientId(currentVerifyLoan)}
                                                     loanId={currentVerifyLoan?._id}
                                                     branchId={currentBranch?._id}
+                                                    ciReferenceCode={currentVerifyLoan?.ciReferenceCode} 
                                                     onVerified={handleClientVerified}
                                                     onEnroll={handleClientEnrolled}
                                                     onSkip={handleClientSkipped}

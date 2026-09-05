@@ -129,6 +129,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         if (application?.guarantorBusiness)      q.set('gBiz',     application.guarantorBusiness);
         if (application?.guarantorDailyIncome)   q.set('gDI',      application.guarantorDailyIncome);
         if (application?.guarantorAddress)       q.set('gAddr',    application.guarantorAddress);
+        if (application?.ciReferenceCode)        q.set('ciReferenceCode', application.ciReferenceCode);
 
         if (investigation?.investigatedAt) q.set('ciApprovedDate', investigation.investigatedAt);
 

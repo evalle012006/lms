@@ -984,6 +984,7 @@ export const FACE_VERIFY_ATTEMPT_FIELDS = `
     client_id
     loan_id
     branch_id
+    ci_reference_code
     distance
     confidence
     matched
