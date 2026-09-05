@@ -37,12 +37,13 @@ async function getSignedUrlForKey(key) {
 export default apiHandler({ get: getPendingValidationList });
 
 async function getPendingValidationList(req, res) {
+    const { search, limit: limitStr, offset: offsetStr } = req.query;
+    const limit  = Math.min(parseInt(limitStr) || 20, 50);
+    const offset = parseInt(offsetStr) || 0;
+
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    // Same three-tier gate as validate-duplicate.js — anyone who can act on
-    // these should be able to see the queue; the panel itself still enforces
-    // per-application permission when they try to actually resolve one.
     const isAdmin      = currentUser.role?.rep === 1 || currentUser.root === true;
     const isSupervisor = currentUser.role?.rep === 2 &&
         (currentUser.role?.shortCode === 'deputy_director' || currentUser.role?.shortCode === 'regional_manager'
@@ -57,22 +58,37 @@ async function getPendingValidationList(req, res) {
         });
     }
 
-    // BM sees only their own branch's flagged applications; admin/supervisor see all.
-    // Mirrors the scoping pattern already used elsewhere for branch-scoped roles.
     const where = { status: { _eq: 'pending_validation' } };
     if (isBM && !isAdmin && !isSupervisor && currentUser.designatedBranchId) {
         where.branchId = { _eq: currentUser.designatedBranchId };
     }
+    if (search?.trim()) {
+        const term = search.trim().toUpperCase();
+        where._or = [
+            { firstName: { _ilike: `%${term}%` } },
+            { lastName:  { _ilike: `%${term}%` } },
+            { ciReferenceCode: { _ilike: `%${term}%` } },
+        ];
+    }
 
-    const applications = await graph.query(
-        queryQl(TEMP_TYPE, {
-            where,
-            order_by: [{ submittedAt: 'desc' }],
-            limit: 200,
-        })
-    ).then(r => r.data?.temporaryLoanApplications ?? []);
+    const [applications, totalCount] = await Promise.all([
+        graph.query(
+            queryQl(TEMP_TYPE, {
+                where,
+                order_by: [{ submittedAt: 'desc' }],
+                limit,
+                offset,
+            })
+        ).then(r => r.data?.temporaryLoanApplications ?? []),
+        graph.query(
+            queryQl(
+                createGraphType('temporaryLoanApplications_aggregate', 'aggregate { count }')('temporaryLoanApplications_aggregate'),
+                { where }
+            )
+        ).then(r => r.data?.temporaryLoanApplications_aggregate?.aggregate?.count ?? 0)
+            .catch(() => null), // aggregate type may not be tracked — fall back below
+    ]);
 
-    // Resolve signed LAF photo URLs — CIDuplicatePanel reads application.lafPhotoUrl directly
     const withPhotos = await Promise.all(
         applications.map(async app => ({
             ...app,
@@ -85,6 +101,7 @@ async function getPendingValidationList(req, res) {
     return res.status(200).json({
         success:      true,
         applications: withPhotos,
-        total:        withPhotos.length,
+        total:        totalCount ?? withPhotos.length, // fallback if aggregate unavailable
+        hasMore:      withPhotos.length === limit,
     });
 }
