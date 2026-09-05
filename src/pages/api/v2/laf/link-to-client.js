@@ -29,9 +29,7 @@ const graph = new GraphProvider();
 
 const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 
-// FIX: added loans join — client.status alone doesn't tell us active vs
-// completed loan, which is what actually determines reloan vs pending.
-const CLIENT_TYPE = createGraphType('clients', `
+const CLIENT_TYPE = createGraphType('client', `
     _id firstName lastName status
     loans (
         where: { status: { _neq: "reject" } }
