@@ -6,6 +6,7 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
+import { findUserById } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS);
@@ -13,7 +14,7 @@ const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT
 export default apiHandler({ get: list });
 
 async function list(req, res) {
-    const currentUser = req.auth;
+    const currentUser = await findUserById(req.auth.sub);
     if (!currentUser?.root) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
