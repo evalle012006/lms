@@ -98,11 +98,14 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
     const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
-    const [enrollingFace, setEnrollingFace] = useState(false);
     // Application was queued offline and never got its face template captured
     // at submission time — needs enrollment now, before promotion, if we have
     // connectivity to do it. If still offline, defer further to disbursement.
-    const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate && !faceCapture;
+    // Kept separate from the render condition below so the success state (once
+    // captured) actually stays visible instead of the block vanishing the
+    // instant faceCapture is set.
+    const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate;
+    const faceEnrollmentBlocking = needsFaceEnrollment && !faceCapture; // still gates Save
 
     const handleAnswerChange = (questionId, value) =>
         setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -157,7 +160,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
             return;
         }
 
-        if (decision === 'approved' && isOnline && needsFaceEnrollment) {
+        if (decision === 'approved' && isOnline && faceEnrollmentBlocking) {
             toast.error('Please complete face enrollment for this client before approving — see below.');
             return;
         }
@@ -413,10 +416,13 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                         <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl mb-3">
                             <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-xs font-semibold text-blue-800">Face enrollment required</p>
+                                <p className="text-xs font-semibold text-blue-800">
+                                    {faceCapture ? 'Face enrollment complete' : 'Face enrollment required'}
+                                </p>
                                 <p className="text-xs text-blue-600 mt-0.5">
-                                    This application was submitted offline, so the client's face was never captured.
-                                    Complete it now before approving — this must happen while you're online.
+                                    {faceCapture
+                                        ? 'The client\'s face has been captured and will be saved when you submit this investigation.'
+                                        : 'This application was submitted offline, so the client\'s face was never captured. Complete it now before approving — this must happen while you\'re online.'}
                                 </p>
                             </div>
                         </div>

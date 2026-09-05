@@ -276,6 +276,7 @@ const DisbursementPhotoModal = ({
                 await fetchWrapper.post(getApiBaseUrl() + 'clients/enroll-face', {
                     clientId: cid, faceTemplate, faceEnrolledAt,
                 });
+                toast.success(`Face enrolled for ${getClientName(currentVerifyLoan)}.`);
             } catch {
                 toast.error('Failed to save face enrollment. Please try again.');
                 return; // don't advance the queue on failure
