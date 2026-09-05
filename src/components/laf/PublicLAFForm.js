@@ -407,8 +407,9 @@ const PublicLAFForm = ({
                 const now = Date.now();
                 try {
                     localStorage.setItem(CACHE_KEY, JSON.stringify({
-                        clients:  data.clients,
-                        cachedAt: now,
+                        clients:       data.clients,
+                        cachedAt:      now,
+                        groupCapacity: data.groupCapacity || 0,
                     }));
                 } catch (e) {
                     console.warn('localStorage write failed — cache in memory only:', e);
@@ -627,7 +628,16 @@ const PublicLAFForm = ({
                     toast.error('No active or completed loan found for this member. Contact your administrator.');
                     return;
                 }
-                setFoundClient({ ...found, loanStatus: (activeLoan || completedLoan).status });
+                setFoundClient({
+                    ...found,
+                    loanStatus:    (activeLoan || completedLoan).status,
+                    slotNo:        (activeLoan || completedLoan).slotNo,
+                    loanId:        (activeLoan || completedLoan)._id,
+                    loanCycle:     (activeLoan || completedLoan).loanCycle,
+                    amountRelease: (activeLoan || completedLoan).amountRelease || 0,
+                    loanBalance:   (activeLoan || completedLoan).loanBalance   || 0,
+                    loanRelease:   (activeLoan || completedLoan).loanRelease   || 0,
+                });
                 setClientType(activeLoan ? 'reloan' : 'pending');
                 const hasId = !!(found.governmentIdType && found.governmentIdNumber);
                 setIdStepNeeded(!hasId);
@@ -1775,7 +1785,7 @@ const PublicLAFForm = ({
                                                 {/* <Field label="Loan Amount (₱)" required error={touched.loanAmount && errors.loanAmount}><Input name="loanAmount" value={values.loanAmount} onChange={handleChange} onBlur={handleBlur} type="number" placeholder="5000" error={touched.loanAmount && errors.loanAmount} /></Field> */}
                                                 <Field label="Loan Purpose" required error={touched.loanPurpose && errors.loanPurpose}><Input name="loanPurpose" noUppercase value={values.loanPurpose} onChange={handleChange} onBlur={handleBlur} placeholder="Livelihood, education..." error={touched.loanPurpose && errors.loanPurpose} /></Field>
                                                 <div className="pt-2 border-t border-gray-100">
-                                                    <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor / Co-maker</p>
+                                                    <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor</p>
                                                     <div className="space-y-3">
                                                         <Field label="First Name" required error={touched.guarantorFirstName && errors.guarantorFirstName}><Input name="guarantorFirstName" value={values.guarantorFirstName} onChange={handleChange} onBlur={handleBlur} placeholder="Maria" error={touched.guarantorFirstName && errors.guarantorFirstName} /></Field>
                                                         <Field label="Last Name" required error={touched.guarantorLastName && errors.guarantorLastName}><Input name="guarantorLastName" value={values.guarantorLastName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.guarantorLastName && errors.guarantorLastName} /></Field>
