@@ -8,7 +8,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { CheckCircle, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { getLatestNonPendingLoan, resolveLoanCycle } from '@/lib/loan-cycle';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
@@ -158,8 +158,15 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             </p>
                             <p className="text-xs text-amber-700 mt-0.5">
                                 This client already has a pending loan application.
-                                Go to Loan Applications to view or approve it.
                             </p>
+                            <button type="button"
+                                onClick={() => {
+                                    const pendingLoan = loanHistory.find(l => l.status === 'pending');
+                                    if (pendingLoan) router.push(`/transactions/loan-applications/edit/${pendingLoan._id}`);
+                                }}
+                                className="mt-2 text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900">
+                                View Pending Loan →
+                            </button>
                         </div>
                     ) : groupNotAvailable ? (
                         <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
@@ -205,10 +212,17 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                     {canRevert && (
                         <div className="mt-4 pt-3 border-t border-green-200">
                             {!revertOpen ? (
-                                <button type="button" onClick={() => setRevertOpen(true)}
-                                    className="text-xs text-red-600 hover:text-red-800 underline underline-offset-2">
-                                    This was a mistake — revert this promotion
-                                </button>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Wrong client, or this shouldn't have been promoted?
+                                    </p>
+                                    <button type="button" onClick={() => setRevertOpen(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600
+                                            text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        Undo This Promotion
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2">
                                     <div className="flex items-start gap-2">
