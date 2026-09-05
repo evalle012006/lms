@@ -15,7 +15,7 @@ const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)
 const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
 const groupType =createGraphType("groups", GROUP_FIELDS)
-const branchType = createGraphType("branch", BRANCH_FIELDS)
+const branchType = createGraphType("branches", BRANCH_FIELDS)
 
 export default apiHandler({
     post: save
@@ -41,7 +41,6 @@ async function save(req, res) {
     delete loanData.groupStatus;
     delete loanData.pendings;
     delete loanData.origin;
-    delete loanData.ciApprovedDate;
 
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -86,7 +85,7 @@ async function save(req, res) {
     if (loanData.branchId && loanData.dateOfRelease && group?.occurence) {
         const [branch] = (await graph.query(queryQl(branchType(), {
             where: { _id: { _eq: loanData.branchId } }
-        }))).data?.branch ?? [];
+        }))).data?.branches ?? [];
 
         if (branch?.clientFlowVersion === 'v2') {
             if (!ciApprovedDate) {

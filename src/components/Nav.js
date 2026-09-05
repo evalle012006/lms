@@ -826,7 +826,7 @@ const MenuItems = [
                 },
                 active: false,
                 hasSub: false,
-                hidden: true,
+                hidden: false,
                 roles: ["admin"]
             },
             {

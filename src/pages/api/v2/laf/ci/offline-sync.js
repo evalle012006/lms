@@ -7,6 +7,7 @@ import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions'; // ← was missing, caused crash
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import moment from 'moment';
+import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
 
 const SPACES_ROOT = process.env.SPACES_ROOT || 'lms';
 
@@ -110,8 +111,8 @@ async function syncOfflineDrafts(req, res) {
                             ? `${user.firstName} ${user.lastName}` : null,
                         offlinePayload:  draft,
                         syncedAt:        new Date().toISOString(),
-                        investigatedAt:  draft.investigatedAt || new Date().toISOString(),
-                        dateAdded:       moment().format('YYYY-MM-DD'),
+                        investigatedAt:  draft.investigatedAt || getSystemDate().toISOString(),
+                        dateAdded:       getCurrentDateV2(),
                         insertedBy:      userId,
                     }],
                     on_conflict: {
