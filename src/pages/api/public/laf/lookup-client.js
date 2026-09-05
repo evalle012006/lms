@@ -46,6 +46,8 @@ const TEMP_LAF_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status submittedAt
 `)('temporaryLoanApplications');
 
+const GROUP_CAPACITY_TYPE = createGraphType('groups', '_id capacity')('groups');
+
 // ── Error messages per mode ───────────────────────────────────────────────
 const MODE_ERRORS = {
     reloan: {
@@ -98,6 +100,35 @@ const ACTIVE_CI_STATUSES = ['pending', 'pending_validation', 'ci_approved'];
 // zero rows with no error surfaced anywhere.
 const namePattern = (v) => `%${v.trim().replace(/\s+/g, '%')}%`;
 
+// Occupied slots = any slotNo currently tied to an active or pending loan
+// in this group. Completed/closed/offset loans free the slot back up.
+async function getOccupiedSlots(groupId) {
+    const clients = await graph.query(
+        queryQl(CLIENT_TYPE, {
+            where: { groupId: { _eq: groupId }, status: { _in: ['active', 'pending'] } },
+            limit: 200,
+        })
+    ).then(r => r.data?.clients ?? []);
+
+    const occupied = new Set();
+    clients.forEach(cl => {
+        (cl.loans || []).forEach(l => {
+            if (['active', 'pending'].includes(l.status) && l.groupId === groupId) {
+                occupied.add(l.slotNo);
+            }
+        });
+    });
+    return occupied;
+}
+
+function computeAvailableSlots(capacity, occupied) {
+    const slots = [];
+    for (let n = 1; n <= capacity; n++) {
+        if (!occupied.has(n)) slots.push(n);
+    }
+    return slots;
+}
+
 export async function handler(req, res) {
     const {
         groupId, branchId, lastName, firstName, middleName, slotNo, mode,
@@ -122,8 +153,13 @@ export async function handler(req, res) {
             })
         ).then(r => r.data?.clients ?? []);
 
+        const [group] = await graph.query(
+            queryQl(GROUP_CAPACITY_TYPE, { where: { _id: { _eq: groupId } } })
+        ).then(r => r.data?.groups ?? []);
+
         return res.status(200).json({
             success: true,
+            groupCapacity: group?.capacity || 0,
             clients: clients.map(cl => ({
                 _id:        cl._id,
                 firstName:  cl.firstName,
@@ -143,6 +179,26 @@ export async function handler(req, res) {
                     amountRelease: l.amountRelease, loanBalance: l.loanBalance, loanRelease: l.loanRelease,
                 })),
             })),
+        });
+    }
+
+    if (mode === 'slots') {
+        if (!groupId) {
+            return res.status(200).json({ success: false, message: 'groupId required for mode=slots.' });
+        }
+        const [group] = await graph.query(
+            queryQl(GROUP_CAPACITY_TYPE, { where: { _id: { _eq: groupId } } })
+        ).then(r => r.data?.groups ?? []);
+
+        if (!group) {
+            return res.status(200).json({ success: false, message: 'Group not found.' });
+        }
+
+        const occupied = await getOccupiedSlots(groupId);
+        return res.status(200).json({
+            success:        true,
+            capacity:       group.capacity,
+            availableSlots: computeAvailableSlots(group.capacity, occupied),
         });
     }
 

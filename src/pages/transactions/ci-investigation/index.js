@@ -595,7 +595,7 @@ const CIInvestigationPage = () => {
 
                 {activeTab === 'duplicates' && (
                     <div className="mt-4">
-                        <CIDuplicateQueue onSelect={loadApplication} onCountChange={setDuplicateCount} />
+                        <CIDuplicateQueue onCountChange={setDuplicateCount} />
                     </div>
                 )}
             </div>

@@ -383,6 +383,17 @@ const PublicLAFForm = ({
     // next reconnect can trigger a fresh attempt.
     const autoSyncedRef = useRef(false);
 
+    const offlineAvailableSlots = React.useMemo(() => {
+        if (!cachedClients || !storedCache?.groupCapacity) return null;
+        const occupied = new Set();
+        cachedClients.forEach(cl => (cl.loans || []).forEach(l => {
+            if (['active', 'pending'].includes(l.status)) occupied.add(l.slotNo);
+        }));
+        const slots = [];
+        for (let n = 1; n <= storedCache.groupCapacity; n++) if (!occupied.has(n)) slots.push(n);
+        return slots;
+    }, [cachedClients, storedCache?.groupCapacity]);
+
     // Pre-load group clients for offline lookup — called before going to field
     const loadGroupClientsForOffline = React.useCallback(async () => {
         if (!groupId || cacheLoading) return;
@@ -468,6 +479,7 @@ const PublicLAFForm = ({
     // Balik, Reloan, Pending — attempt but skippable (captured at disbursement if missed)
     const existingHasBiometric = !!(foundClient?.biometricCredentialId);
     const biometricRequired    = !existingHasBiometric;
+    const [availableSlots, setAvailableSlots] = useState(null);
 
     const uploadFile = useCallback(async (file, origin, uuid) => {
         const compressed = await compressImage(file);
@@ -579,6 +591,14 @@ const PublicLAFForm = ({
         syncQueue();
     }, [isOnline, currentUserToken, queue, syncing, syncQueue]);
 
+    useEffect(() => {
+        if (clientType !== 'existing' || !isOnline || availableSlots !== null) return;
+        publicFetch(`/api/public/laf/lookup-client?mode=slots&groupId=${groupId}`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setAvailableSlots(d.availableSlots); })
+            .catch(() => {}); // fail silent — dropdown falls back to full 1..30 range below
+    }, [clientType, isOnline, groupId, availableSlots]);
+
     const validateAndNext = async (schema, values, form) => {
         try {
             await schema.validate(values, { abortEarly: false });
@@ -602,7 +622,8 @@ const PublicLAFForm = ({
             const term = lookupLastName.trim().toLowerCase();
             const matches = cachedClients.filter(cl => {
                 const nameMatch = cl.lastName?.toLowerCase().includes(term);
-                const slotMatch = !lookupSlotNo || String(cl.slotNo) === String(lookupSlotNo);
+                const slotMatch = !lookupSlotNo
+                    || (cl.loans || []).some(l => String(l.slotNo) === String(lookupSlotNo));
                 return nameMatch && slotMatch;
             });
             if (matches.length === 0) {
@@ -1463,7 +1484,10 @@ const PublicLAFForm = ({
                                         <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">Select slot number...</option>
-                                            {Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+                                            {(isOnline ? availableSlots : offlineAvailableSlots)?.length
+                                                ? (isOnline ? availableSlots : offlineAvailableSlots).map(n => <option key={n} value={n}>{n}</option>)
+                                                : Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>) // fallback if fetch/cache failed
+                                            }
                                         </select>
                                     </Field>
                                 </>)}

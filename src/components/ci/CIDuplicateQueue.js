@@ -8,7 +8,7 @@ import CIDuplicatePanel from './CIDuplicatePanel';
 import Spinner from '@/components/Spinner';
 import moment from 'moment';
 
-const CIDuplicateQueue = () => {
+const CIDuplicateQueue = ({ onCountChange }) => {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading]           = useState(true);
     const [selected, setSelected]         = useState(null);
@@ -16,7 +16,9 @@ const CIDuplicateQueue = () => {
     const loadList = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchWrapper.get(getApiBaseUrl() + 'laf/pending-validation-list');
+            const res = await fetchWrapper.get(
+                getApiBaseUrl() + 'laf/pending-validation-list'
+            );
             if (res.success) {
                 setApplications(res.applications || []);
                 onCountChange?.(res.total ?? res.applications?.length ?? 0);
@@ -56,4 +58,5 @@ const CIDuplicateQueue = () => {
         </div>
     );
 };
+
 export default CIDuplicateQueue;
