@@ -109,6 +109,7 @@ async function syncOfflineDrafts(req, res) {
                         picUserId:       decision === 'approved'  ? userId : null,
                         picUserName:     decision === 'approved'
                             ? `${user.firstName} ${user.lastName}` : null,
+                        ciAnswers:       ciAnswers || [],
                         offlinePayload:  draft,
                         syncedAt:        new Date().toISOString(),
                         investigatedAt:  draft.investigatedAt || getSystemDate().toISOString(),
