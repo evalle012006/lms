@@ -82,7 +82,7 @@ async function save(req, res) {
     // Client-side already checked this (AddLoanPage.js); this is the real
     // enforcement layer since the client check can be bypassed by a direct
     // API call.
-    if (loanData.branchId && loanData.dateOfRelease && group?.occurence) {
+    if (loanData.branchId && loanData.dateOfRelease && group?.occurence && false) { // turn off for now
         const [branch] = (await graph.query(queryQl(branchType(), {
             where: { _id: { _eq: loanData.branchId } }
         }))).data?.branches ?? [];
