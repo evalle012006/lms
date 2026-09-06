@@ -61,7 +61,28 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
             || currentUser?.role?.shortCode === 'area_admin'
         );
     const isBM       = currentUser?.role?.shortCode === 'branch_manager';
-    const canRevert = (isAdmin || isSupervisor || isBM) && !isLoading;
+    // Replaces both hasPendingLoan (for Add Loan gating) and the earlier
+    // hasAnyLoan (for revert gating) with one shared, correct check.
+    const hasLinkedLoan = Array.isArray(loanHistory) && loanHistory.some(l => {
+        if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
+        if (!l.ciReferenceCode && application?.existingLoanId && l._id === application.existingLoanId) return true;
+        if (!l.ciReferenceCode && !application?.existingLoanId &&
+            (application?.clientType === 'prospect' || application?.clientType === 'balik')) {
+            return true;
+        }
+        return false;
+    });
+
+    // Still worth surfacing separately if the linked loan is specifically pending —
+    // that's a different message ("already applied, here's the pending one")
+    // than "already has an active/completed loan from this promotion."
+    const linkedPendingLoan = Array.isArray(loanHistory)
+        ? loanHistory.find(l => l.status === 'pending' &&
+            (l.ciReferenceCode === application?.ciReferenceCode || l._id === application?.existingLoanId))
+        : null;
+
+    const buttonReady = !hasLinkedLoan && !isLoading && !groupNotAvailable;
+    const canRevert   = (isAdmin || isSupervisor || isBM) && !hasLinkedLoan && !isLoading;
 
     const handleRevert = async () => {
         if (!revertReason.trim()) return;
@@ -141,8 +162,6 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         ? 'Client record updated from LAF application.'
         : 'New client record has been created.';
 
-    // Button state
-    const buttonReady = !hasPendingLoan && !isLoading && !groupNotAvailable;
 
     return (
         <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
@@ -169,6 +188,34 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                                 View Pending Loan →
                             </button>
                         </div>
+                    ) : hasLinkedLoan ? (
+                        <div className="mt-2 p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs font-semibold text-blue-800">
+                                Loan already created
+                            </p>
+                            {(() => {
+                                const linked = loanHistory.find(l =>
+                                    l.ciReferenceCode === application?.ciReferenceCode ||
+                                    l._id === application?.existingLoanId
+                                );
+                                if (!linked) {
+                                    return (
+                                        <p className="text-xs text-blue-700 mt-0.5">
+                                            This promotion already has a loan on record.
+                                        </p>
+                                    );
+                                }
+                                return (
+                                    <div className="mt-1 space-y-0.5 text-xs text-blue-700">
+                                        <p>PN: <span className="font-medium">{linked.pnNumber || '—'}</span></p>
+                                        <p>Status: <span className="font-medium capitalize">{linked.status || '—'}</span></p>
+                                        <p>Group: <span className="font-medium">{application?.groupName || '—'}</span></p>
+                                        <p>Slot No.: <span className="font-medium">{linked.slotNo ?? '—'}</span></p>
+                                        <p>Loan Cycle: <span className="font-medium">{linked.loanCycle ?? '—'}</span></p>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     ) : groupNotAvailable ? (
                         <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                             <p className="text-xs font-semibold text-amber-800">
@@ -194,17 +241,8 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                                     bg-green-600 text-white text-xs font-semibold
                                     rounded-lg hover:bg-green-700 transition-colors
                                     disabled:opacity-60 disabled:cursor-wait">
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        Loading...
-                                    </>
-                                ) : (
-                                    <>
-                                        Add Loan Application
-                                        <ArrowRight className="w-3.5 h-3.5" />
-                                    </>
-                                )}
+                                Add Loan Application
+                                <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                         )
                     )}
