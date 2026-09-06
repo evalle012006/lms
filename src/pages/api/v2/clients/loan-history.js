@@ -17,7 +17,7 @@ const CLIENT_TYPE = createGraphType('client', `
         _id loanCycle status slotNo
         amountRelease loanBalance loanTerms
         principalLoan pnNumber occurence
-        dateAdded dateOfRelease
+        dateAdded dateOfRelease ciReferenceCode
     }
 `)('clients');
 
@@ -83,6 +83,7 @@ async function getLoanHistory(req, res) {
         occurence:      l.occurence,
         dateAdded:      l.dateAdded,
         dateOfRelease:  l.dateOfRelease,
+        ciReferenceCode: l.ciReferenceCode,
         missedPayments: missedMap[l._id] || 0,
         noOfPayments:   paidMap[l._id]   || 0,
         totalPayments:  l.loanTerms      || null,
