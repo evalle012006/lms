@@ -92,7 +92,7 @@ const CIInvestigationPage = () => {
     const router      = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
-    const isOnline    = useOnlineStatus();
+    const { isOnline } = useOnlineStatus();
 
     const { getDrafts, removeDraft } = useCIDraftStorage({
         onDraftChange: count => setDraftCount(count),
