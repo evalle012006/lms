@@ -145,7 +145,7 @@ const CIApplicationsList = ({
             setLoading(false);
             initialLoadDone.current = true; // FIX: now safe for sentinel to fire
         }
-    }, [statusFilter, search]);
+    }, [statusFilter, search, isOnline]);
 
     useEffect(() => { fetchList(); }, [fetchList, refreshKey]);
 
@@ -288,10 +288,15 @@ const CIApplicationsList = ({
                     style={{ maxHeight: 'calc(100vh - 340px)' }}>
                     {applications.map(app => {
                         const photoUrl = app.lafPhotoKey ? urlMap[app.lafPhotoKey] : null;
+                        const cachedCodes = new Set((offlineAppsRef.current || []).map(a => a.ciReferenceCode));
+                        const isUnavailableOffline = !isOnline && !cachedCodes.has(app.ciReferenceCode);
+
                         return (
                             <button key={app._id}
                                 onClick={() => onSelect(app.ciReferenceCode)}
+                                disabled={isUnavailableOffline}
                                 className={`w-full flex items-center gap-3 px-4 py-3
+                                    ${isUnavailableOffline ? 'opacity-40 cursor-not-allowed' : ''}
                                     transition-colors text-left group ${
                                     selectedCode === app.ciReferenceCode
                                         ? 'bg-blue-50 border-l-4 border-l-blue-500'
@@ -337,6 +342,9 @@ const CIApplicationsList = ({
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-gray-300
                                     group-hover:text-blue-400 flex-shrink-0" />
+                                {isUnavailableOffline && (
+                                    <span className="text-xs text-red-500 font-medium">Not cached during Preparation for Field Work</span>
+                                )}
                             </button>
                         );
                     })}
