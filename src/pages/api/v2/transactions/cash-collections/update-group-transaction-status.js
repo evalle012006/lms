@@ -86,6 +86,16 @@ async function processBranchApproval(branchId, dateFor, mode, userId, userName, 
                 return;
             }
 
+            // ADDED: Cash on Hand must be recorded for this branch/date before closing.
+            const hasCOHRecord = await branchCOHRecordExists(branchId, dateFor);
+            if (!hasCOHRecord) {
+                response = {
+                    error: true,
+                    message: "Cannot approve branch. Cash on Hand has not been recorded for today. Please save Cash on Hand before closing."
+                };
+                return;
+            }
+
             // FIXED: Check for pending fund transfers at branch level
             const pendingFundTransfers = await checkBranchFundTransfers(branchId, dateFor);
             
@@ -682,6 +692,31 @@ async function checkUnacknowledgedClosingDocuments(branchId, dateFor, userId) {
             .map(doc => doc.doc_type);
     } catch (error) {
         console.error('Error checking document acknowledgments:', error);
+        throw error;
+    }
+}
+
+/**
+ * Returns true if a branchCOH row exists for this branch/date.
+ * Existence alone is the gate here — amount validity (>=0) is enforced
+ * at save time in save-update-coh.js, not re-validated here.
+ */
+async function branchCOHRecordExists(branchId, dateFor) {
+    try {
+        const result = await graph.query(
+            queryQl(
+                createGraphType('branchCOH', `_id`)('cohRecords'),
+                {
+                    where: {
+                        branchId: { _eq: branchId },
+                        dateAdded: { _eq: dateFor },
+                    },
+                },
+            ),
+        );
+        return (result?.data?.cohRecords || []).length > 0;
+    } catch (error) {
+        console.error('Error checking branch COH record:', error);
         throw error;
     }
 }

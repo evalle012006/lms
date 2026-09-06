@@ -29,7 +29,8 @@ import {
     X,
     PanelLeftClose,
     PanelLeftOpen,
-    ReceiptText
+    ReceiptText,
+    Eye
 } from 'lucide-react';
 import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
@@ -810,6 +811,18 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Edit {...props} />,
                     notActive: (props) => <Edit {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "Face Verify Attempts",
+                url: "/settings/face-verify-attempts",
+                icon: {
+                    active: (props) => <Eye {...props} />,
+                    notActive: (props) => <Eye {...props} />,
                 },
                 active: false,
                 hasSub: false,

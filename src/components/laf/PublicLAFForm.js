@@ -66,10 +66,24 @@ const PH_ID_TYPES = [
 ];
 
 const CLIENT_TYPES = [
-    { value: 'prospect', label: 'Prospect',      desc: 'First-time applicant' },
-    { value: 'reloan',   label: 'Reloan',         desc: 'Has active/ongoing loan' },
-    { value: 'pending',  label: 'Pending Member', desc: 'Loan completed, applying again' },
-    { value: 'balik',    label: 'Balik',          desc: 'Returning after loan offset/closure' },
+    {
+        value: 'prospect', label: 'Prospect',
+        labelTl: 'Bagong Kasapi',
+        desc: 'First-time applicant',
+        descTl: 'Ito ang una mong pagkuha ng loan sa amin.',
+    },
+    {
+        value: 'existing', label: 'Reloan / Pending',
+        labelTl: 'May Umiiral na Loan',
+        desc: 'Has an existing loan on file',
+        descTl: 'May aktibong loan ka pa (Reloan), o kumpleto na ang huling bayad mo at muling aaplay (Pending).',
+    },
+    {
+        value: 'balik', label: 'Balik',
+        labelTl: 'Balik-Kasapi',
+        desc: 'Returning after loan offset/closure',
+        descTl: 'Dating kasapi ka na bumalik matapos maisara o ma-offset ang huling loan mo.',
+    },
 ];
 
 const Field = ({ label, error, required, children }) => (
@@ -219,6 +233,9 @@ const ClientPhoto = ({ photoUrl, firstName, lastName, onZoom, size = 'md' }) => 
 // ── BalikMatchCard — each card in multi-match list has its own signed URL ──
 const BalikMatchCard = ({ match, branchName, onSelect }) => {
     const { signedUrl: photoUrl } = usePublicSignedUrl(match.profile || null);
+    const birthMonthYear = match.birthdate
+        ? new Date(match.birthdate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        : null;
     return (
         <button type="button" onClick={onSelect}
             className="w-full text-left flex items-center gap-3 p-3 bg-white border border-gray-200
@@ -235,7 +252,7 @@ const BalikMatchCard = ({ match, branchName, onSelect }) => {
                 </p>
                 <p className="text-xs text-gray-500 mt-0.5">
                     {branchName || 'Unknown Branch'}
-                    {match.lastLoan ? ` · Last loan: ₱${Number(match.lastLoan.amountRelease).toLocaleString()} (Cycle ${match.lastLoan.loanCycle})` : ''}
+                    {birthMonthYear ? ` · Born ${birthMonthYear}` : ''}
                 </p>
             </div>
         </button>
@@ -275,7 +292,7 @@ const PublicLAFForm = ({
     // si('Biometric') to not match the current step number).
     const STEPS = React.useMemo(() => {
         if (!clientType) return ['Type'];
-        const isExisting = clientType === 'reloan' || clientType === 'pending';
+        const isExisting = clientType === 'reloan' || clientType === 'pending' || clientType === 'existing';
         // Biometric is skipped in offline mode — captured at disbursement
         const addBiometric = requireClientBiometric && isOnline;
         if (isExisting) {
@@ -338,12 +355,12 @@ const PublicLAFForm = ({
         try {
             const raw = localStorage.getItem(CACHE_KEY);
             if (!raw) return null;
-            const { clients, cachedAt } = JSON.parse(raw);
+            const { clients, cachedAt, groupCapacity } = JSON.parse(raw);
             if (Date.now() - cachedAt > CACHE_TTL) {
                 localStorage.removeItem(CACHE_KEY); // expired
                 return null;
             }
-            return { clients, cachedAt };
+            return { clients, cachedAt, groupCapacity };
         } catch { return null; }
     };
 
@@ -354,6 +371,7 @@ const PublicLAFForm = ({
     const [cachedAt,         setCachedAt]          = useState(storedCache?.cachedAt || null);
     const [idStepNeeded,     setIdStepNeeded]      = useState(false);
     const [photoZoom,        setPhotoZoom]         = useState(false);
+    const [balikFallback, setBalikFallback] = useState(false);
 
     // Resolve signed URL for found client's existing profile photo
     const { signedUrl: foundClientPhotoUrl } = usePublicSignedUrl(foundClient?.profile || null);
@@ -365,21 +383,16 @@ const PublicLAFForm = ({
     // next reconnect can trigger a fresh attempt.
     const autoSyncedRef = useRef(false);
 
-    useEffect(() => {
-        if (!isOnline) {
-            autoSyncedRef.current = false;
-            return;
-        }
-        if (autoSyncedRef.current) return;
-        if (!currentUserToken) return; // not logged in — nothing to do silently, manual Sync Now still works
-        if (syncing) return;
-
-        const pendingCount = queue.filter(e => e.status === 'pending').length;
-        if (pendingCount === 0) return;
-
-        autoSyncedRef.current = true;
-        syncQueue();
-    }, [isOnline, currentUserToken, queue, syncing, syncQueue]);
+    const offlineAvailableSlots = React.useMemo(() => {
+        if (!cachedClients || !storedCache?.groupCapacity) return null;
+        const occupied = new Set();
+        cachedClients.forEach(cl => (cl.loans || []).forEach(l => {
+            if (['active', 'pending'].includes(l.status)) occupied.add(l.slotNo);
+        }));
+        const slots = [];
+        for (let n = 1; n <= storedCache.groupCapacity; n++) if (!occupied.has(n)) slots.push(n);
+        return slots;
+    }, [cachedClients, storedCache?.groupCapacity]);
 
     // Pre-load group clients for offline lookup — called before going to field
     const loadGroupClientsForOffline = React.useCallback(async () => {
@@ -394,8 +407,9 @@ const PublicLAFForm = ({
                 const now = Date.now();
                 try {
                     localStorage.setItem(CACHE_KEY, JSON.stringify({
-                        clients:  data.clients,
-                        cachedAt: now,
+                        clients:       data.clients,
+                        cachedAt:      now,
+                        groupCapacity: data.groupCapacity || 0,
                     }));
                 } catch (e) {
                     console.warn('localStorage write failed — cache in memory only:', e);
@@ -447,8 +461,6 @@ const PublicLAFForm = ({
     const [submitted,  setSubmitted]  = useState(false);
     const [ciCode,     setCiCode]     = useState('');
 
-    // ── Offline mode ──────────────────────────────────────────────────────
-    const currentUserToken = useSelector(s => s.user?.token || s.auth?.token || null);
     const {
         queue, stats, addEntry, removeEntry,
         markSynced, markFailed, clearSynced, getAll,
@@ -461,11 +473,12 @@ const PublicLAFForm = ({
     const [syncProgress,     setSyncProgress]     = useState(null);
     const [syncResults,      setSyncResults]      = useState([]);
 
-    const isExistingClient  = clientType === 'reloan' || clientType === 'pending';
+    const isExistingClient  = clientType === 'reloan' || clientType === 'pending' || clientType === 'existing';
     // For biometric: only Prospect requires it mandatorily.
     // Balik, Reloan, Pending — attempt but skippable (captured at disbursement if missed)
     const existingHasBiometric = !!(foundClient?.biometricCredentialId);
     const biometricRequired    = !existingHasBiometric;
+    const [availableSlots, setAvailableSlots] = useState(null);
 
     const uploadFile = useCallback(async (file, origin, uuid) => {
         const compressed = await compressImage(file);
@@ -491,11 +504,6 @@ const PublicLAFForm = ({
     // ── Sync offline queue ────────────────────────────────────────────────
     const syncQueue = useCallback(async () => {
         if (syncing) return;
-        const token = currentUserToken;
-        if (!token) {
-            toast.error('You must be logged in to sync. Please log in and try again.');
-            return;
-        }
         const pending = queue.filter(e => e.status === 'pending');
         if (pending.length === 0) { toast.info('Nothing to sync.'); return; }
         setSyncing(true);
@@ -510,12 +518,8 @@ const PublicLAFForm = ({
                     blobToBase64(entry.idPhotoBlob),
                     blobToBase64(entry.selfieBlob),
                 ]);
-                const res = await fetch('/api/v2/laf/sync', {
-                    method:  'POST',
-                    headers: {
-                        'Content-Type':  'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
+                const res = await publicFetch('/api/v2/laf/sync', {
+                    method: 'POST',
                     body: JSON.stringify({
                         ...entry.formData,
                         offlineId:      entry.id,
@@ -544,13 +548,9 @@ const PublicLAFForm = ({
         const bad = results.filter(r => !r.success).length;
         if (ok > 0)  toast.success(`${ok} application${ok > 1 ? 's' : ''} synced successfully.`);
         if (bad > 0) toast.error(`${bad} application${bad > 1 ? 's' : ''} failed to sync.`);
-
-        // Clear ALL offline caches after sync — force fresh data on next prepare
         if (ok > 0) {
             try {
-                // Clear LAF member cache (group-scoped key)
                 localStorage.removeItem(CACHE_KEY);
-                // Clear CI field cache
                 localStorage.removeItem('ci_field_cache');
                 setCachedClients(null);
                 setCacheReady(false);
@@ -559,11 +559,25 @@ const PublicLAFForm = ({
                 console.warn('Failed to clear offline caches after sync:', e);
             }
         }
-    }, [syncing, queue, markSynced, markFailed, currentUserToken, CACHE_KEY]);
+    }, [syncing, queue, markSynced, markFailed, CACHE_KEY]);
 
-    // ── REMOVED: standalone checkDuplicates function that was called post-step-advance.
-    // Duplicate check is now inlined in goNext under the Personal step handler
-    // to ensure it runs BEFORE setStep — see FIX below.
+    useEffect(() => {
+        if (!isOnline) { autoSyncedRef.current = false; return; }
+        if (autoSyncedRef.current) return;
+        if (syncing) return;
+        const pendingCount = queue.filter(e => e.status === 'pending').length;
+        if (pendingCount === 0) return;
+        autoSyncedRef.current = true;
+        syncQueue();
+    }, [isOnline, queue, syncing, syncQueue]);
+
+    useEffect(() => {
+        if (clientType !== 'existing' || !isOnline || availableSlots !== null) return;
+        publicFetch(`/api/public/laf/lookup-client?mode=slots&groupId=${groupId}`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setAvailableSlots(d.availableSlots); })
+            .catch(() => {}); // fail silent — dropdown falls back to full 1..30 range below
+    }, [clientType, isOnline, groupId, availableSlots]);
 
     const validateAndNext = async (schema, values, form) => {
         try {
@@ -588,7 +602,8 @@ const PublicLAFForm = ({
             const term = lookupLastName.trim().toLowerCase();
             const matches = cachedClients.filter(cl => {
                 const nameMatch = cl.lastName?.toLowerCase().includes(term);
-                const slotMatch = !lookupSlotNo || String(cl.slotNo) === String(lookupSlotNo);
+                const slotMatch = !lookupSlotNo
+                    || (cl.loans || []).some(l => String(l.slotNo) === String(lookupSlotNo));
                 return nameMatch && slotMatch;
             });
             if (matches.length === 0) {
@@ -596,6 +611,36 @@ const PublicLAFForm = ({
             } else if (matches.length > 1 && clientType === 'balik') {
                 setBalikMatches(matches);
                 setFoundClient(null);
+            } else if (clientType === 'existing') {
+                const found = matches[0];
+                const loans = found.loans || [];
+                const activeLoan    = loans.find(l => l.status === 'active');
+                const completedLoan = loans.find(l => l.status === 'completed');
+
+                if (activeLoan && completedLoan) {
+                    toast.error(
+                        `This member has conflicting loan records (active + completed). ` +
+                        `This must be resolved by an administrator before proceeding.`
+                    );
+                    return;
+                }
+                if (!activeLoan && !completedLoan) {
+                    toast.error('No active or completed loan found for this member. Contact your administrator.');
+                    return;
+                }
+                setFoundClient({
+                    ...found,
+                    loanStatus:    (activeLoan || completedLoan).status,
+                    slotNo:        (activeLoan || completedLoan).slotNo,
+                    loanId:        (activeLoan || completedLoan)._id,
+                    loanCycle:     (activeLoan || completedLoan).loanCycle,
+                    amountRelease: (activeLoan || completedLoan).amountRelease || 0,
+                    loanBalance:   (activeLoan || completedLoan).loanBalance   || 0,
+                    loanRelease:   (activeLoan || completedLoan).loanRelease   || 0,
+                });
+                setClientType(activeLoan ? 'reloan' : 'pending');
+                const hasId = !!(found.governmentIdType && found.governmentIdNumber);
+                setIdStepNeeded(!hasId);
             } else {
                 const found = matches[0];
                 setFoundClient(found);
@@ -613,9 +658,7 @@ const PublicLAFForm = ({
         }
         setLookupLooking(true);
         try {
-            const mode = clientType === 'pending' ? 'pending'
-                       : clientType === 'balik'   ? 'balik'
-                       : 'reloan';
+            const mode = clientType === 'balik' ? 'balik' : 'existing';
             const p = new URLSearchParams({ mode, groupId });
             if (clientType === 'balik') {
                 // Balik: firstName + lastName mandatory, middleName + branchId optional
@@ -632,10 +675,12 @@ const PublicLAFForm = ({
             const data = await res.json();
             if (data.success && data.multipleFound) {
                 setBalikMatches(data.clients || []);
+                setBalikFallback(!!data.balikFallback);
                 setFoundClient(null);
             } else if (data.success && data.client) {
                 setBalikMatches([]);
                 setFoundClient(data.client);
+                if (data.resolvedType) setClientType(data.resolvedType);
                 // Signal STEPS to include ID step if client has no ID on record
                 const hasId = !!(data.client.governmentIdType && data.client.governmentIdNumber);
                 setIdStepNeeded(!hasId);
@@ -1168,7 +1213,7 @@ const PublicLAFForm = ({
                                 {CLIENT_TYPES.map(ct => {
                                     const isBalikOffline = ct.value === 'balik' && !isOnline;
                                     const isLookupOffline = !isOnline && !cacheReady &&
-                                        (ct.value === 'reloan' || ct.value === 'pending');
+                                        (ct.value === 'reloan' || ct.value === 'pending' || ct.value === 'existing');
                                     const isDisabled = isBalikOffline || isLookupOffline;
                                     return (
                                     <button key={ct.value} type="button"
@@ -1189,16 +1234,26 @@ const PublicLAFForm = ({
                                                     : 'border-gray-200 bg-white hover:border-blue-300'
                                         }`}>
                                         <p className={`text-sm font-semibold ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
-                                            {ct.label}
+                                            {ct.label}{ct.labelTl && ct.labelTl !== ct.label ? ` (${ct.labelTl})` : ''}
                                             {isBalikOffline && <span className="ml-2 text-xs font-normal text-amber-600">Online only</span>}
                                         </p>
-                                        <p className="text-xs text-gray-500 mt-0.5">
-                                            {isBalikOffline
+                                        {(() => {
+                                            const disabledCopy = isBalikOffline
                                                 ? 'Balik clients require server-side cross-branch matching — not available offline'
                                                 : isLookupOffline
                                                     ? 'Requires cached data — use Prepare for Field'
-                                                    : ct.desc}
-                                        </p>
+                                                    : null;
+                                            return (
+                                                <>
+                                                    <p className={`text-xs mt-0.5 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        {disabledCopy || ct.desc}
+                                                    </p>
+                                                    {!isDisabled && ct.descTl && (
+                                                        <p className="text-xs text-gray-400 mt-0.5 italic">{ct.descTl}</p>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </button>
                                     );
                                 })}
@@ -1391,9 +1446,7 @@ const PublicLAFForm = ({
                                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
                                     {clientType === 'balik'
                                         ? 'Enter your last name to find your previous member record. Your loan must have been offset/closed.'
-                                        : clientType === 'pending'
-                                            ? 'Enter your last name and slot number. Your latest loan must be completed (fully paid).'
-                                            : 'Enter your last name and slot number. You must have an active loan to apply for Reloan.'}
+                                        : 'Enter your last name and slot number. We\'ll check your loan record automatically.'}
                                 </div>
                                 {clientType === 'balik' ? (<>
                                     <Field label="First Name" required>
@@ -1420,7 +1473,10 @@ const PublicLAFForm = ({
                                         <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">Select slot number...</option>
-                                            {Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+                                            {(isOnline ? availableSlots : offlineAvailableSlots)?.length
+                                                ? (isOnline ? availableSlots : offlineAvailableSlots).map(n => <option key={n} value={n}>{n}</option>)
+                                                : Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>) // fallback if fetch/cache failed
+                                            }
                                         </select>
                                     </Field>
                                 </>)}
@@ -1428,16 +1484,23 @@ const PublicLAFForm = ({
                                     className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                                     {lookupLooking ? (<><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Searching...</>) : 'Find My Record'}
                                 </button>
-                                {/* Multiple Balik matches — show selection list */}
-                                {clientType === 'balik' && balikMatches.length > 1 && !foundClient && (
+                                {/* Balik matches — multiple candidates, OR a single fallback match found
+                                    only after dropping the branch filter. Both need explicit confirmation. */}
+                                {clientType === 'balik' && balikMatches.length >= 1 && !foundClient && (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-semibold text-amber-700">
-                                            ⚠ Multiple matching records found. Please select the correct one:
-                                        </p>
+                                        {balikFallback ? (
+                                            <p className="text-xs font-semibold text-amber-700">
+                                                ⚠ No match found in the branch you selected — here's who we found instead. Please confirm:
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs font-semibold text-amber-700">
+                                                ⚠ Multiple matching records found. Please select the correct one:
+                                            </p>
+                                        )}
                                         {balikMatches.map(m => (
                                             <BalikMatchCard key={m._id} match={m}
                                                 branchName={branchList.find(b => b._id === m.branchId)?.name}
-                                                onSelect={() => { setFoundClient(m); setBalikMatches([]); }}
+                                                onSelect={() => { setFoundClient(m); setBalikMatches([]); setBalikFallback(false); }}
                                             />
                                         ))}
                                     </div>
@@ -1722,7 +1785,7 @@ const PublicLAFForm = ({
                                                 {/* <Field label="Loan Amount (₱)" required error={touched.loanAmount && errors.loanAmount}><Input name="loanAmount" value={values.loanAmount} onChange={handleChange} onBlur={handleBlur} type="number" placeholder="5000" error={touched.loanAmount && errors.loanAmount} /></Field> */}
                                                 <Field label="Loan Purpose" required error={touched.loanPurpose && errors.loanPurpose}><Input name="loanPurpose" noUppercase value={values.loanPurpose} onChange={handleChange} onBlur={handleBlur} placeholder="Livelihood, education..." error={touched.loanPurpose && errors.loanPurpose} /></Field>
                                                 <div className="pt-2 border-t border-gray-100">
-                                                    <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor / Co-maker</p>
+                                                    <p className="text-sm font-semibold text-gray-700 mb-3">Guarantor</p>
                                                     <div className="space-y-3">
                                                         <Field label="First Name" required error={touched.guarantorFirstName && errors.guarantorFirstName}><Input name="guarantorFirstName" value={values.guarantorFirstName} onChange={handleChange} onBlur={handleBlur} placeholder="Maria" error={touched.guarantorFirstName && errors.guarantorFirstName} /></Field>
                                                         <Field label="Last Name" required error={touched.guarantorLastName && errors.guarantorLastName}><Input name="guarantorLastName" value={values.guarantorLastName} onChange={handleChange} onBlur={handleBlur} placeholder="Santos" error={touched.guarantorLastName && errors.guarantorLastName} /></Field>

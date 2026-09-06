@@ -572,6 +572,8 @@ export const TRANSFER_CLIENT_FIELDS = `
   account
   description
   status
+  transferType
+  outpostRemarks
   giverApproval
   giverApproveRejectDate
   receiverApproval
@@ -861,6 +863,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   loanRelease
   amountRelease
   guarantorAddress
+  isExactDuplicateMatch
 `;
 
 export const CI_INVESTIGATION_FIELDS = `
@@ -974,4 +977,20 @@ export const CLOSING_DOCUMENT_REVIEWS_FIELDS = `
   view_count
   acknowledged
   acknowledged_at
+`;
+
+export const FACE_VERIFY_ATTEMPT_FIELDS = `
+    _id
+    client_id
+    loan_id
+    branch_id
+    ci_reference_code
+    distance
+    confidence
+    matched
+    match_threshold
+    photo_key
+    user_agent
+    inserted_by
+    captured_at
 `;

@@ -142,6 +142,18 @@ const FundTransferPage = () => {
             totalType: 'none'
         },
         {
+            Header: "Type",
+            accessor: 'transferType',
+            Cell: ({ value }) => (
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    value === 'outpost' ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                    {value === 'outpost' ? 'Outpost' : 'Branch'}
+                </span>
+            ),
+            totalType: 'none'
+        },
+        {
             Header: "Amount",
             accessor: 'amountStr',
             totalType: 'sum',
@@ -210,6 +222,18 @@ const FundTransferPage = () => {
         {
             Header: "To Branch",
             accessor: 'receiverBranch.name',
+            totalType: 'none'
+        },
+        {
+            Header: "Type",
+            accessor: 'transferType',
+            Cell: ({ value }) => (
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    value === 'outpost' ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                    {value === 'outpost' ? 'Outpost' : 'Branch'}
+                </span>
+            ),
             totalType: 'none'
         },
         {

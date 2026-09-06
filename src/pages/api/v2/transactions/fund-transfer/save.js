@@ -102,10 +102,26 @@ async function saveFundTransfer(req, res) {
         }
 
         // Business logic validation
-        if (fundTransfer.giverBranchId === fundTransfer.receiverBranchId) {
+        const transferType = fundTransfer.transferType === 'outpost' ? 'outpost' : 'branch';
+
+        if (transferType === 'branch' && fundTransfer.giverBranchId === fundTransfer.receiverBranchId) {
             return res.status(400).send({
                 success: false,
-                message: "Giver and receiver branches must be different."
+                message: "Giver and receiver branches must be different for a branch-to-branch transfer."
+            });
+        }
+
+        if (transferType === 'outpost' && fundTransfer.giverBranchId !== fundTransfer.receiverBranchId) {
+            return res.status(400).send({
+                success: false,
+                message: "Outpost transfers must use the same branch as giver and receiver."
+            });
+        }
+
+        if (transferType === 'outpost' && (!fundTransfer.outpostRemarks || fundTransfer.outpostRemarks.trim().length < 5)) {
+            return res.status(400).send({
+                success: false,
+                message: "Please specify which outpost/LO this transfer is from (minimum 5 characters)."
             });
         }
 
@@ -164,6 +180,8 @@ async function saveFundTransfer(req, res) {
                     description: fundTransfer.description.trim(),
                     giverBranchId: fundTransfer.giverBranchId,
                     receiverBranchId: fundTransfer.receiverBranchId,
+                    transferType: transferType,
+                    outpostRemarks: transferType === 'outpost' ? fundTransfer.outpostRemarks.trim() : null,
                     giverApprovalId: null,
                     receiverApprovalId: null,
                     status: 'pending',

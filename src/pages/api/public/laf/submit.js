@@ -31,7 +31,7 @@ const TEMP_LAF_CHECK_TYPE = createGraphType('temporaryLoanApplications', `
 
 // Used for server-side prospect name duplicate check against both tables
 const CLIENT_NAME_TYPE = createGraphType('client', `
-    _id firstName lastName middleName status
+    _id firstName lastName middleName birthdate status
 `)('clients');
 
 const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
@@ -97,8 +97,9 @@ async function submitLAF(req, res) {
     // isDuplicateFlagged and duplicateCandidateIds extracted as `let`
     // so server can override client-sent values after running its own name check.
     // Client-sent values are NEVER trusted for prospects — server always re-derives.
-    let isDuplicateFlagged    = false; // always reset — server derives below
-    let duplicateCandidateIds = [];
+    let isDuplicateFlagged      = false; // always reset — server derives below
+    let duplicateCandidateIds   = [];
+    let isExactDuplicateMatch   = false; // new — drives admin-only vs BM-allowed validation
 
     // Basic presence check
     if (!groupId || !qrToken) {
@@ -246,6 +247,7 @@ async function submitLAF(req, res) {
     if (clientType === 'prospect') {
         const firstUpper   = firstName?.trim().toUpperCase();
         const lastUpper    = lastName?.trim().toUpperCase();
+        const middleUpper  = middleName?.trim().toUpperCase() || null;
 
         if (firstUpper && lastUpper) {
             const [nameMatchClients, nameMatchLAFs] = await Promise.all([
@@ -289,6 +291,17 @@ async function submitLAF(req, res) {
             if (nameMatchClients.length > 0) {
                 isDuplicateFlagged    = true;
                 duplicateCandidateIds = nameMatchClients.map(c => c._id);
+
+                // Exact match = ALL FOUR fields (first, last, middle, birthdate) match a
+                // candidate exactly. Requires middleName to be present on the submission —
+                // a missing middle name can never resolve to an exact match, per the
+                // 3-field-vs-4-field question flagged earlier (still open).
+                isExactDuplicateMatch = middleUpper && birthdate
+                    ? nameMatchClients.some(c =>
+                        c.middleName?.toUpperCase() === middleUpper &&
+                        c.birthdate === birthdate
+                    )
+                    : false;
             }
         }
     }
@@ -363,9 +376,10 @@ async function submitLAF(req, res) {
                 // Balik history
                 oldGroupId: oldGroupId || null,
                 oldLoId:    oldLoId    || null,
-                // FIX: always use server-derived values — client-sent values ignored
+                // always use server-derived values — client-sent values ignored
                 isDuplicateFlagged:    isDuplicateFlagged,
                 duplicateCandidateIds: duplicateCandidateIds,
+                isExactDuplicateMatch: isExactDuplicateMatch,
                 isBalikUnmatched:      isBalikUnmatched || false,
                 // Client changes from Confirm step (reloan/pending/balik)
                 clientChanges: clientChanges && typeof clientChanges === 'object'

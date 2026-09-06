@@ -126,16 +126,23 @@ async function checkDuplicate(req, res) {
         const scoredClients = Array.from(scoreMap.values())
             .map(c => {
                 let score = c._baseScore;
+                let isExactMatch = false;
                 if (birthdate && c.birthdate) {
                     if (birthdate === c.birthdate) {
                         score = 1.0;
+                        // Exact match requires ALL FOUR fields to match, not just birthdate.
+                        isExactMatch = (
+                            firstUpper === c.firstName?.toUpperCase() &&
+                            lastUpper  === c.lastName?.toUpperCase()  &&
+                            middleUpper && middleUpper === c.middleName?.toUpperCase() &&
+                            birthdate === c.birthdate
+                        );
                     } else if (score < 1.0) {
                         score = Math.max(score - 0.1, 0.7);
                     }
                 }
-                return { ...c, similarityScore: score };
+                return { ...c, similarityScore: score, isExactMatch };
             })
-            .sort((a, b) => b.similarityScore - a.similarityScore);
 
         // ── Build unified duplicates array ────────────────────────────────
         // Client matches: source='client', status from clients table

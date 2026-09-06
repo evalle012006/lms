@@ -10,7 +10,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
-import { getNextValidDate } from '@/lib/date-utils';
+import { getEarliestDateOfRelease, getNextValidDate, validateDateOfRelease } from '@/lib/date-utils';
 import { resolveLoanCycle } from '@/lib/loan-cycle';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
@@ -55,6 +55,8 @@ const AddLoanPage = ({
     initialGuarantorDI      = null,
     initialGuarantorAddress = null,
     initialCiName           = null,
+    initialCiApprovedDate   = null,
+    initialCiReferenceCode = null,
 }) => {
     const dispatch        = useDispatch();
     const formikRef       = useRef();
@@ -155,6 +157,20 @@ const AddLoanPage = ({
 
     const [saveAndAddMore, setSaveAndAddMore] = useState(false);
 
+    // Single source of truth for "which CI approval date governs this loan's DOR."
+    // - Edit mode: read the value persisted on the loan record at creation —
+    //   deliberately NOT re-fetched live, so an open edit session can't have
+    //   its validation basis shift if a newer CI gets approved mid-edit.
+    // - fromCI (new client, just promoted): date forwarded via URL param.
+    // - Everything else (reloan/balik/active): live CI lookup from checkClientCI.
+    const resolvedCiApprovedDate = isEdit
+        ? (loanData?.ciApprovedDate || ciStatus?.latestCI?.investigatedAt || null)
+        : (fromCI ? initialCiApprovedDate : ciStatus?.latestCI?.investigatedAt);
+
+    const resolvedCiReferenceCode = isEdit
+        ? (loanData?.ciReferenceCode || ciStatus?.latestCI?.ciReferenceCode || null)
+        : (fromCI ? initialCiReferenceCode : ciStatus?.latestCI?.ciReferenceCode);
+
     const guarantorKeys = useMemo(
         () => [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting].filter(Boolean),
         [guarantorPhotoKeyExisting, guarantorIdPhotoKeyExisting]
@@ -224,10 +240,22 @@ const AddLoanPage = ({
         if (!currentDate || !initialDateRelease) return;
         const holidays = (holidayList || []).map(h => h.date);
         const initialMin = moment(currentDate);
-        setMinDate(initialMin.toDate());
+        let computedMinDate = initialMin.toDate();
+        // v2: DOR can't fall inside the CI-approval-blocked window, even if
+        // the holiday/weekend-based minimum would otherwise allow it.
+        if (currentBranch?.clientFlowVersion === 'v2' && resolvedCiApprovedDate && groupOccurence) {
+            try {
+                console.log({ resolvedCiApprovedDate, groupOccurence, computedMinDate, loanData });
+                const earliestDOR = getEarliestDateOfRelease(resolvedCiApprovedDate, groupOccurence);
+                const earliestDORDate = moment(earliestDOR).toDate();
+                if (earliestDORDate > computedMinDate) computedMinDate = earliestDORDate;
+            } catch { /* unsupported occurence value mid-load — ignore, submit-time check still guards */ }
+        }
+
+        setMinDate(computedMinDate);
         const nDays = initialMin.format('dddd') === 'Monday' ? 4 : 8;
         setMaxDate(getNextValidDate(moment(initialMin).add(nDays, 'days').format('YYYY-MM-DD'), holidays).toDate());
-    }, [currentDate, holidayList, initialDateRelease]);
+    }, [currentDate, holidayList, initialDateRelease, currentBranch, resolvedCiApprovedDate, groupOccurence]);
 
     // ── Slot numbers — from group.availableSlots ─────────────
     useEffect(() => {
@@ -330,6 +358,15 @@ const AddLoanPage = ({
             if (res.success && res.loan) {
                 const l = res.loan;
                 setLoanData(l);
+
+                // Fallback CI lookup — only matters when l.ciApprovedDate is
+                // missing (pre-migration record, or persistence gap). When
+                // it IS present, resolvedCiApprovedDate uses it directly and
+                // this live lookup is just unused extra data in ciStatus.
+                if (l.clientId) {
+                    checkClientCI(l.clientId);
+                }
+
                 // Pre-populate Formik fields once mounted
                 setTimeout(() => {
                     const form = formikRef.current;
@@ -1095,6 +1132,38 @@ const AddLoanPage = ({
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
 
+        // ── v2 Date of Release validation ───────────────────────────────
+        // fromCI path (new client, just came out of CI approval): use the
+        // date forwarded from CIPromotedClientBanner.
+        // Non-fromCI path (reloan/balik/active): use the CI record already
+        // fetched by checkClientCI. If neither is available for a v2 branch,
+        // block rather than silently skip — this is a compliance rule, and
+        // "no CI date on file" during a v2 submission means something
+        // upstream is broken, not that the rule doesn't apply.
+        if (currentBranch?.clientFlowVersion === 'v2' && values.occurence) {
+            if (!resolvedCiApprovedDate) {
+                setLoading(false);
+                toast.error('Cannot determine CI approval date. Please reload this page and try again.');
+                return;
+            }
+
+            const { valid, earliestDOR } = validateDateOfRelease(
+                values.dateOfRelease, resolvedCiApprovedDate, values.occurence
+            );
+            if (!valid) {
+                setLoading(false);
+                toast.error(
+                    `Invalid Date of Release for ${values.occurence} loan. ` +
+                    `Earliest allowed date is ${earliestDOR}.`
+                );
+                return;
+            }
+
+            // Server-side re-validates this independently — see save.js
+            values.ciApprovedDate = resolvedCiApprovedDate;
+            values.ciReferenceCode = resolvedCiReferenceCode;
+        }
+
         // group.branchId may be absent from list-by-group-occurence response.
         // Always fall back to currentUser.designatedBranchId for rep 3/4.
         const branch      = (Array.isArray(branchList) ? branchList : []).find(b => b._id === group?.branchId);
@@ -1318,7 +1387,6 @@ const AddLoanPage = ({
             clientId:            values.clientId,
             coMaker:             values.coMaker,
             coMakerId:           values.coMakerId,
-            // FIX: guarantor photo keys
             guarantorPhotoKey,
             guarantorIdPhotoKey,
             guarantorBirthDate:   values.guarantorBirthDate   || null,
@@ -1326,6 +1394,7 @@ const AddLoanPage = ({
             guarantorBusiness:    values.guarantorBusiness    || null,
             guarantorDailyIncome: values.guarantorDailyIncome || null,
             guarantorAddress:     values.guarantorAddress     || null,
+            ciReferenceCode: resolvedCiReferenceCode,
         };
 
         // Computed fields set in handleSaveUpdate — always override

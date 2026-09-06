@@ -11,8 +11,8 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 import { checkRealConnectivity } from '@/lib/check-online';
+import FaceLivenessStep from '@/components/laf/FaceLivenessStep';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -71,10 +71,10 @@ const CIQuestion = ({ question, index, answer, onChange }) => (
     </div>
 );
 
-const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
+const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDuplicateTab }) => {
     const currentUser    = useSelector(state => state.user.data);
     const systemSettings = useSelector(state => state.systemSettings.data);
-    const isOnline       = useOnlineStatus();
+    const { isOnline }   = useOnlineStatus();
     const { saveDraft }  = useCIDraftStorage();
 
     const { application, lafPhotoUrl } = applicationData;
@@ -97,6 +97,15 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
     const [saving,           setSaving]           = useState(false);
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
+    const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
+    // Application was queued offline and never got its face template captured
+    // at submission time — needs enrollment now, before promotion, if we have
+    // connectivity to do it. If still offline, defer further to disbursement.
+    // Kept separate from the render condition below so the success state (once
+    // captured) actually stays visible instead of the block vanishing the
+    // instant faceCapture is set.
+    const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate;
+    const faceEnrollmentBlocking = needsFaceEnrollment && !faceCapture; // still gates Save
 
     const handleAnswerChange = (questionId, value) =>
         setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -151,6 +160,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             return;
         }
 
+        if (decision === 'approved' && isOnline && faceEnrollmentBlocking) {
+            toast.error('Please complete face enrollment for this client before approving — see below.');
+            return;
+        }
+
         setSaving(true);
         try {
             // ── OFFLINE PATH ─────────────────────────────────────────────
@@ -183,6 +197,21 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 const uploadData = await uploadRes.json();
                 if (!uploadData.fileKey) throw new Error('Selfie upload failed.');
                 selfieKey = uploadData.fileKey;
+            }
+
+            if (faceCapture) {
+                try {
+                    await fetchWrapper.post(getApiBaseUrl() + 'laf/enroll-face', {
+                        ciReferenceCode: application.ciReferenceCode,
+                        faceTemplate:    faceCapture.faceTemplate,
+                        faceEnrolledAt:  faceCapture.faceEnrolledAt,
+                        livenessScore:   faceCapture.livenessScore,
+                    });
+                } catch (err) {
+                    toast.error('Face enrollment failed to save — please try again.');
+                    setSaving(false);
+                    return;
+                }
             }
 
             const res = await fetchWrapper.post(
@@ -221,23 +250,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
             setSaving(false);
         }
     }, [decision, declineReason, businessVerified, addressVerified,
-        selfieFile, investigationData, ciQuestions,
+        selfieFile, investigationData, ciQuestions, needsFaceEnrollment, faceCapture,
         answers, isOnline, buildPayload, saveDraft, onSaved, application]);
 
     return (
         <div className="space-y-6">
-
-            {/* Pending validation banner */}
-            {application?.status === 'pending_validation' && (
-                <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
-                    <p className="text-sm font-semibold text-orange-900">⏳ Awaiting Admin Validation</p>
-                    <p className="text-xs text-orange-700 mt-1">
-                        This application was flagged as a possible duplicate.
-                        A system administrator must resolve the duplicate panel below
-                        before this CI investigation can be saved.
-                    </p>
-                </div>
-            )}
 
             {/* LAF photo */}
             {lafPhotoUrl && (
@@ -331,13 +348,25 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                 )}
             </div>
 
-            {/* Duplicate validation panel */}
-            {(applicationData?.application?.isDuplicateFlagged ||
-              applicationData?.application?.duplicateCandidateIds?.length > 0) && (
-                <CIDuplicatePanel
-                    application={applicationData.application}
-                    onValidated={onSaved}
-                />
+            {/* Locked — duplicate resolution now happens exclusively in the
+                "Flagged as Duplicate" tab, not inline here. */}
+            {application?.status === 'pending_validation' && (
+                <div className="p-4 bg-orange-50 border border-orange-300 rounded-xl">
+                    <p className="text-sm font-semibold text-orange-900">
+                        ⏳ This application is flagged as a possible duplicate
+                    </p>
+                    <p className="text-xs text-orange-700 mt-1">
+                        It must be resolved in the <strong>Flagged as Duplicate</strong> tab before
+                        this investigation can be saved or approved.
+                    </p>
+                    {onGoToDuplicateTab && (
+                        <button type="button" onClick={onGoToDuplicateTab}
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white text-xs font-semibold
+                                rounded-lg hover:bg-orange-700 transition-colors">
+                            Go to Flagged as Duplicate →
+                        </button>
+                    )}
+                </div>
             )}
 
             {/* Decision */}
@@ -379,6 +408,34 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved }) => {
                         className="w-full px-3 py-2.5 border border-red-300 rounded-lg text-sm
                             focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
                 </div>
+            )}
+
+            {needsFaceEnrollment && decision === 'approved' && (
+                isOnline ? (
+                    <div>
+                        <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl mb-3">
+                            <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-blue-800">
+                                    {faceCapture ? 'Face enrollment complete' : 'Face enrollment required'}
+                                </p>
+                                <p className="text-xs text-blue-600 mt-0.5">
+                                    {faceCapture
+                                        ? 'The client\'s face has been captured and will be saved when you submit this investigation.'
+                                        : 'This application was submitted offline, so the client\'s face was never captured. Complete it now before approving — this must happen while you\'re online.'}
+                                </p>
+                            </div>
+                        </div>
+                        <FaceLivenessStep
+                            onVerified={(data) => setFaceCapture(data)}
+                            verified={!!faceCapture}
+                        />
+                    </div>
+                ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                        You're currently offline — face enrollment will be deferred to disbursement instead.
+                    </div>
+                )
             )}
 
             {/* Selfie section */}

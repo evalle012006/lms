@@ -269,6 +269,24 @@ const DisbursementPhotoModal = ({
         ? verifyIndex >= verificationQueue.length
         : true;
 
+    const handleClientEnrolled = async ({ faceTemplate, faceEnrolledAt }) => {
+        const cid = getClientId(currentVerifyLoan);
+        if (cid) {
+            try {
+                await fetchWrapper.post(getApiBaseUrl() + 'clients/enroll-face', {
+                    clientId: cid, faceTemplate, faceEnrolledAt,
+                });
+                toast.success(`Face enrolled for ${getClientName(currentVerifyLoan)}.`);
+            } catch {
+                toast.error('Failed to save face enrollment. Please try again.');
+                return; // don't advance the queue on failure
+            }
+            setFaceMatchScores(prev => ({ ...prev, [cid]: null })); // no match score for a fresh enrollment
+        }
+        setVerifyIndex(i => i + 1);
+        setFaceVerifyKey(k => k + 1);
+    };
+
     const handleClientVerified = (result) => {
         const cid = getClientId(currentVerifyLoan);
         if (cid) {
@@ -576,13 +594,15 @@ const DisbursementPhotoModal = ({
                                                 <FaceVerifyStep
                                                     key={`${getClientId(currentVerifyLoan)}-${faceVerifyKey}`}
                                                     faceTemplate={clientStatusMap[getClientId(currentVerifyLoan)]?.faceTemplate}
+                                                    clientId={getClientId(currentVerifyLoan)}
+                                                    loanId={currentVerifyLoan?._id}
+                                                    branchId={currentBranch?._id}
+                                                    ciReferenceCode={currentVerifyLoan?.ciReferenceCode} 
                                                     onVerified={handleClientVerified}
+                                                    onEnroll={handleClientEnrolled}
                                                     onSkip={handleClientSkipped}
                                                     onRetry={() => setFaceVerifyKey(k => k + 1)}
-                                                    canSkip={
-                                                        currentUser?.role?.rep === 1 ||
-                                                        currentUser?.root === true
-                                                    }
+                                                    canSkip={currentUser?.role?.rep === 1 || currentUser?.root === true}
                                                 />
                                             </div>
                                         )}

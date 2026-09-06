@@ -2,13 +2,19 @@
 // FIX: Accept loanHistory as prop from ci-investigation/index.js (already fetched there)
 // — eliminates duplicate loan-history API call
 // — fixes stuck "Loading..." button (banner was re-fetching but parent already had data)
+// NEW: Revert Promotion — admin/supervisor/BM only, typed-reason confirm gate,
+//      calls /api/v2/laf/revert-promotion. Hidden when a loan already exists,
+//      since that case must go through loan cancellation instead (backend-enforced).
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { getLatestNonPendingLoan, resolveLoanCycle } from '@/lib/loan-cycle';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
+import { toast } from 'react-toastify';
 
-const CIPromotedClientBanner = ({ application, investigation, currentUser, loanHistory }) => {
+const CIPromotedClientBanner = ({ application, investigation, currentUser, loanHistory, onReverted }) => {
     const router = useRouter();
 
     const clientId         = application?.existingClientId || application?.promotedClientId;
@@ -39,6 +45,45 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     // For existing clients: loanHistory is always fetched by loadApplication in parent
     // Loading while parent fetches loan-history (null = not yet received)
     const isLoading = loanHistory === null;
+
+    // Any loan at all (not just pending) blocks revert — matches the backend guard,
+    // which rejects revert if any loan record exists under this application/client.
+    const hasAnyLoan = Array.isArray(loanHistory) && loanHistory.length > 0;
+
+    // ── Revert Promotion state ─────────────────────────────────────────────
+    const [revertOpen, setRevertOpen]     = useState(false);
+    const [revertReason, setRevertReason] = useState('');
+    const [reverting, setReverting]       = useState(false);
+
+    const isAdmin      = currentUser?.role?.rep === 1 || currentUser?.root === true;
+    const isSupervisor = currentUser?.role?.rep === 2 &&
+        (currentUser?.role?.shortCode === 'deputy_director' || currentUser?.role?.shortCode === 'regional_manager'
+            || currentUser?.role?.shortCode === 'area_admin'
+        );
+    const isBM       = currentUser?.role?.shortCode === 'branch_manager';
+    const canRevert = (isAdmin || isSupervisor || isBM) && !isLoading;
+
+    const handleRevert = async () => {
+        if (!revertReason.trim()) return;
+        setReverting(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'laf/revert-promotion', {
+                ciReferenceCode: application.ciReferenceCode,
+                reason: revertReason.trim(),
+            });
+            if (!res.success) throw new Error(res.message || 'Revert failed.');
+            toast.success(res.deleted
+                ? 'Client record removed. This application has been reverted.'
+                : 'Promotion reverted.');
+            setRevertOpen(false);
+            setRevertReason('');
+            onReverted?.();
+        } catch (err) {
+            toast.error(err.message || 'Failed to revert promotion.');
+        } finally {
+            setReverting(false);
+        }
+    };
 
     const handleAddLoan = () => {
         if (!clientId) return;
@@ -84,6 +129,9 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         if (application?.guarantorBusiness)      q.set('gBiz',     application.guarantorBusiness);
         if (application?.guarantorDailyIncome)   q.set('gDI',      application.guarantorDailyIncome);
         if (application?.guarantorAddress)       q.set('gAddr',    application.guarantorAddress);
+        if (application?.ciReferenceCode)        q.set('ciReferenceCode', application.ciReferenceCode);
+
+        if (investigation?.investigatedAt) q.set('ciApprovedDate', investigation.investigatedAt);
 
         router.push(`/transactions/loan-applications/add?${q.toString()}`);
     };
@@ -111,8 +159,15 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             </p>
                             <p className="text-xs text-amber-700 mt-0.5">
                                 This client already has a pending loan application.
-                                Go to Loan Applications to view or approve it.
                             </p>
+                            <button type="button"
+                                onClick={() => {
+                                    const pendingLoan = loanHistory.find(l => l.status === 'pending');
+                                    if (pendingLoan) router.push(`/transactions/loan-applications/edit/${pendingLoan._id}`);
+                                }}
+                                className="mt-2 text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900">
+                                View Pending Loan →
+                            </button>
                         </div>
                     ) : groupNotAvailable ? (
                         <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
@@ -152,6 +207,55 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                                 )}
                             </button>
                         )
+                    )}
+
+                    {/* ── Revert Promotion ────────────────────────────────── */}
+                    {canRevert && (
+                        <div className="mt-4 pt-3 border-t border-green-200">
+                            {!revertOpen ? (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Wrong client, or this shouldn't have been promoted?
+                                    </p>
+                                    <button type="button" onClick={() => setRevertOpen(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600
+                                            text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        Undo This Promotion
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <p className="text-xs text-red-700">
+                                            {isExistingClient
+                                                ? "This will revert the client's record to its prior state. This cannot be undone."
+                                                : 'This will permanently delete the client record created by this promotion. This cannot be undone.'}
+                                        </p>
+                                    </div>
+                                    <textarea value={revertReason} onChange={e => setRevertReason(e.target.value)}
+                                        placeholder="Type the reason for reverting this promotion (required)..."
+                                        rows={2}
+                                        className="w-full px-3 py-2 text-xs border border-red-200 rounded-lg
+                                            focus:outline-none focus:ring-2 focus:ring-red-300 resize-none bg-white" />
+                                    <div className="flex gap-2">
+                                        <button type="button"
+                                            onClick={() => { setRevertOpen(false); setRevertReason(''); }}
+                                            className="flex-1 py-2 border border-gray-300 text-gray-600 text-xs font-medium
+                                                rounded-lg hover:bg-gray-50">
+                                            Cancel
+                                        </button>
+                                        <button type="button" onClick={handleRevert}
+                                            disabled={!revertReason.trim() || reverting}
+                                            className="flex-1 py-2 bg-red-600 text-white text-xs font-semibold
+                                                rounded-lg hover:bg-red-700 disabled:opacity-50">
+                                            {reverting ? 'Reverting…' : 'Confirm Revert'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
