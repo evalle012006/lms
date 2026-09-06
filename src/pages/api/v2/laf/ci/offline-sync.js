@@ -75,7 +75,7 @@ async function syncOfflineDrafts(req, res) {
                 tempApplicationId, findings,
                 businessVerified, addressVerified,
                 decision, declineReason,
-                selfieBase64,
+                selfieBase64, ciAnswers,
             } = draft;
 
             if (decision === 'approved' && !draft.selfieKey && !selfieBase64) {
@@ -122,6 +122,7 @@ async function syncOfflineDrafts(req, res) {
                             'decision', 'declineReason', 'selfieKey',
                             'picUserId', 'picUserName', 'syncedAt',
                             'investigatedAt', 'offlinePayload',
+                            'ciAnswers',
                         ],
                     },
                 })
