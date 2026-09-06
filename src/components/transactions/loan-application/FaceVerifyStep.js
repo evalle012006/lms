@@ -300,7 +300,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
                 setResult({ enrolled: true, template: capturedDescriptor });
                 uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
                     logFaceVerifyAttempt({
-                        clientId, loanId, branchId, distance: null, confidence: null,
+                        clientId, loanId, branchId, ciReferenceCode, distance: null, confidence: null,
                         matched: null, photoKey,
                     });
                 });
@@ -314,7 +314,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
             setResult({ matched, score: confidence / 100, distance });
 
             uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
-                logFaceVerifyAttempt({ clientId, loanId, branchId, distance, confidence, matched, photoKey });
+                logFaceVerifyAttempt({ clientId, loanId, branchId, ciReferenceCode, distance, confidence, matched, photoKey });
             });
 
             if (matched) {
@@ -325,7 +325,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
             toast.error('Face verification failed. Please try again.');
             setCapturing(false);
         }
-    }, [faceTemplate, stopCamera, onVerified, noTemplate, clientId, loanId, branchId]);
+    }, [faceTemplate, stopCamera, onVerified, noTemplate, clientId, loanId, branchId, ciReferenceCode]);
 
     const startDetectionLoop = useCallback((challengeIndex) => {
         if (intervalRef.current) clearInterval(intervalRef.current);

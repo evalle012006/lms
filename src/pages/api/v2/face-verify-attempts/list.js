@@ -25,7 +25,35 @@ async function list(req, res) {
     const offset = (page - 1) * limit;
     const matchedFilter = req.query.matched === 'true' ? true
         : req.query.matched === 'false' ? false : undefined;
-    const where = matchedFilter !== undefined ? { matched: { _eq: matchedFilter } } : {};
+    const search = req.query.search?.trim();
+
+    const andConditions = [];
+    if (matchedFilter !== undefined) andConditions.push({ matched: { _eq: matchedFilter } });
+
+    if (search) {
+        // Resolve any clients whose name matches, so we can filter attempts
+        // by client_id too — there's no tracked relationship to join through.
+        const matchingClients = await graph.query(
+            queryQl(CLIENT_TYPE, {
+                where: {
+                    _or: [
+                        { firstName: { _ilike: `%${search}%` } },
+                        { lastName:  { _ilike: `%${search}%` } },
+                    ],
+                },
+            })
+        ).then(r => r.data?.clients ?? []);
+        const matchingClientIds = matchingClients.map(c => c._id);
+
+        andConditions.push({
+            _or: [
+                { ci_reference_code: { _ilike: `%${search}%` } },
+                ...(matchingClientIds.length ? [{ client_id: { _in: matchingClientIds } }] : []),
+            ],
+        });
+    }
+
+    const where = andConditions.length ? { _and: andConditions } : {};
 
     const { attempts, countAgg } = await graph.query(
         queryQl(ATTEMPT_TYPE('attempts'), { where, order_by: [{ captured_at: 'desc' }], limit, offset }),
