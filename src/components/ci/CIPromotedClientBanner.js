@@ -61,7 +61,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
             || currentUser?.role?.shortCode === 'area_admin'
         );
     const isBM       = currentUser?.role?.shortCode === 'branch_manager';
-    const canRevert  = (isAdmin || isSupervisor || isBM) && !hasAnyLoan && !isLoading;
+    const canRevert = (isAdmin || isSupervisor || isBM) && !isLoading;
 
     const handleRevert = async () => {
         if (!revertReason.trim()) return;
