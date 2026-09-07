@@ -98,9 +98,6 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
     const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
-    const [groupLeader, setGroupLeader] = useState(
-        investigationData?.groupLeader ?? application?.groupLeader ?? false
-    );
     const [leaderCheckLoading, setLeaderCheckLoading] = useState(false);
     const [leaderConfirmOpen,  setLeaderConfirmOpen]  = useState(false);
     const [existingLeaderInfo, setExistingLeaderInfo] = useState(null); // { firstName, lastName } or null
@@ -113,6 +110,28 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     // instant faceCapture is set.
     const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate;
     const faceEnrollmentBlocking = needsFaceEnrollment && !faceCapture; // still gates Save
+
+    const [existingClientGroupLeader, setExistingClientGroupLeader] = useState(null);
+
+    useEffect(() => {
+        if (!application?.existingClientId) return;
+        fetchWrapper.post(getApiBaseUrl() + 'clients/by-ids', { ids: [application.existingClientId] })
+            .then(res => {
+                const c = res?.clients?.[0] || null;
+                if (c) setExistingClientGroupLeader({ groupLeader: !!c.groupLeader, status: c.status });
+            })
+            .catch(() => {});
+    }, [application?.existingClientId]);
+
+    const [groupLeader, setGroupLeader] = useState(
+        investigationData?.groupLeader ?? application?.groupLeader ?? false
+    );
+
+    useEffect(() => {
+        if (existingClientGroupLeader?.status === 'active' && existingClientGroupLeader?.groupLeader) {
+            setGroupLeader(true);
+        }
+    }, [existingClientGroupLeader]);
 
     const handleGroupLeaderToggle = useCallback(async (nextValue) => {
         if (!nextValue) {
