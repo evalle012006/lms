@@ -9,6 +9,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import {
+    captureBestFrame,
+    isTooDark,
+    canvasToDebugThumbnail,
+} from '@/lib/face-capture-utils';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
@@ -146,7 +151,7 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         setCameraError(null);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -255,21 +260,6 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         }, LANDMARK_INTERVAL);
     }, []);
 
-    async function captureDebugThumbnail(video) {
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 320;
-            canvas.height = 240;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return await new Promise((resolve) => {
-                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
-            });
-        } catch {
-            return null;
-        }
-    }
-
     async function uploadEnrollmentThumbnail(blob) {
         if (!blob) return null;
         try {
@@ -293,8 +283,17 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         const video   = videoRef.current;
         if (!faceapi || !video) { setCapturing(false); return; }
         try {
+            const bestCanvas = await captureBestFrame(video);
+
+            if (isTooDark(bestCanvas)) {
+                toast.error('Lighting is too dark for an accurate scan. Please move somewhere brighter and try again.');
+                setCapturing(false);
+                startDetectionLoop(0);
+                return;
+            }
+
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
+                .detectSingleFace(bestCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
             if (!detection) {
@@ -304,17 +303,14 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
                 startDetectionLoop(0);
                 return;
             }
-            // Capture the exact frame the descriptor came from — this is the
-            // real "what did the algorithm see" reference, unlike the LAF
-            // display photo which may be taken at a different moment.
-            const thumbnailBlob = await captureDebugThumbnail(video);
+            const thumbnailBlob = await canvasToDebugThumbnail(bestCanvas);
             stopCamera();
             const faceEnrollPhotoKey = await uploadEnrollmentThumbnail(thumbnailBlob);
             onVerified({
                 faceTemplate:      Array.from(detection.descriptor),
                 faceEnrolledAt:    new Date().toISOString(),
                 livenessScore:     detection.detection.score,
-                faceEnrollPhotoKey, // NEW — may be null if upload failed; never block enrollment on this
+                faceEnrollPhotoKey,
             });
         } catch (err) {
             console.error('[FaceLiveness] descriptor extraction failed:', err);

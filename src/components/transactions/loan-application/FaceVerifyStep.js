@@ -6,6 +6,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import {
+    captureBestFrame,
+    isTooDark,
+    canvasToDebugThumbnail,
+} from '@/lib/face-capture-utils';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
@@ -150,23 +155,6 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
     const currentChallenge = CHALLENGES[challengeIdx];
     const noTemplate = !faceTemplate || !Array.isArray(faceTemplate) || faceTemplate.length !== 128;
 
-    // Captures a downscaled JPEG thumbnail from the current video frame.
-    // Best-effort only — never throws into the calling flow.
-    async function captureDebugThumbnail(video) {
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 320;
-            canvas.height = 240;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return await new Promise((resolve) => {
-                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
-            });
-        } catch {
-            return null;
-        }
-    }
-
     async function uploadDebugThumbnail(blob, clientId) {
         if (!blob) return null;
         try {
@@ -225,7 +213,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
         setCameraError(null);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -280,8 +268,20 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
         const video   = videoRef.current;
         if (!faceapi || !video) { setCapturing(false); return; }
         try {
+            // Sample several frames, keep the sharpest, and run detection +
+            // thumbnail off that ONE frozen canvas — not the live video —
+            // so the two can never drift apart the way they did before.
+            const bestCanvas = await captureBestFrame(video);
+
+            if (isTooDark(bestCanvas)) {
+                toast.error('Lighting is too dark for an accurate scan. Please move somewhere brighter and try again.');
+                setCapturing(false);
+                startDetectionLoop(0);
+                return;
+            }
+
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
+                .detectSingleFace(bestCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
             if (!detection) {
@@ -291,7 +291,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
                 startDetectionLoop(0);
                 return;
             }
-            const thumbnailBlob = await captureDebugThumbnail(video);
+            const thumbnailBlob = await canvasToDebugThumbnail(bestCanvas);
             stopCamera();
             const capturedDescriptor = Array.from(detection.descriptor);
 
