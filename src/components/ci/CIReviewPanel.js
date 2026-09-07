@@ -2,7 +2,7 @@
 // FIX: businessVerified and addressVerified are now required before saving
 // FIX: Checkboxes show visual confirmed state with green styling + checkmark
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
