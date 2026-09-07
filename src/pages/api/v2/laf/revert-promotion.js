@@ -2,9 +2,19 @@
 // POST { ciReferenceCode, reason }
 // Admin, supervisor, or branch manager. Reverts a 'promoted' application.
 //   - existingClientId was null (prospect)  → snapshot + hard-delete client, LAF, CI investigation
-//   - existingClientId was set (reloan/pending/balik) → revert client.status, no delete
-//     (Balik only, and only if no loan has been created yet under this application —
-//      see loan-existence guard below)
+//   - existingClientId was set (reloan/pending/balik) → revert client.status (balik only), no delete
+//
+// Loan guard (all branches): a linked loan blocks revert ONLY if it has moved
+// past 'pending' (active/completed/closed/etc.) — nothing irreversible has
+// happened to a pending loan yet, so revert stays safe. If a pending loan
+// IS linked, it gets rejected (status → 'reject') as part of the revert, so
+// it doesn't end up an orphaned pending record pointing at a reverted/deleted
+// promotion.
+//
+// OPEN QUESTION (not yet confirmed): does flipping a loan to status='reject'
+// have any side effects elsewhere (group slot availability, cash-collections)
+// that need to be mirrored here? Not verified — see conversation. Proceeding
+// on the assumption that a bare status/rejectReason update is sufficient.
 
 import { apiHandler }       from '@/services/api-handler';
 import { GraphProvider }    from '@/lib/graph/graph.provider';
@@ -18,8 +28,26 @@ const graph = new GraphProvider();
 const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
+const LOAN_TYPE   = createGraphType('loans', '_id status ciReferenceCode clientId pnNumber')('loans');
 
 export default apiHandler({ post: revertPromotion });
+
+// Reject a pending loan as part of a revert — avoids leaving a pending loan
+// record orphaned/pointing at a promotion that no longer exists in its
+// promoted state.
+async function rejectPendingLoan(loanId, reason, userId) {
+    await graph.mutation(
+        updateQl(LOAN_TYPE, {
+            where: { _id: { _eq: loanId } },
+            set: {
+                status:           'reject',
+                rejectReason:     `Promotion reverted: ${reason}`,
+                modifiedBy:       userId,
+                modifiedDateTime: new Date(),
+            },
+        })
+    );
+}
 
 async function revertPromotion(req, res) {
     const { ciReferenceCode, reason } = req.body;
@@ -60,23 +88,28 @@ async function revertPromotion(req, res) {
             queryQl(CLIENT_TYPE, { where: { _id: { _eq: application.promotedClientId } } })
         ).then(r => r.data?.clients ?? []);
 
-        // ── Guard: any loan on this client blocks the delete ──────────────
-        // A promoted prospect who already has a loan attached is no longer a
-        // simple "ghost" — deleting the client would orphan the loan record.
+        // ── Guard: a non-pending loan on this client blocks the delete ────
+        // A promoted prospect who already has an active/completed loan is no
+        // longer a simple "ghost" — deleting the client would orphan real
+        // transaction history. A pending loan, however, hasn't disbursed
+        // anything yet — safe to reject-and-revert.
         const [existingLoan] = await graph.query(
-            queryQl(
-                createGraphType('loans', '_id status clientId')('loans'),
-                { where: { clientId: { _eq: application.promotedClientId } }, limit: 1 }
-            )
+            queryQl(LOAN_TYPE, { where: { clientId: { _eq: application.promotedClientId } }, limit: 1 })
         ).then(r => r.data?.loans ?? []);
 
-        if (existingLoan) {
+        if (existingLoan && existingLoan.status !== 'pending') {
             return res.status(200).json({
                 success: false,
-                message: 'This client already has a loan on file. This can no longer be reverted '
+                message: 'This client already has an active or completed loan on file. This can no longer be reverted '
                     + 'as a simple ghost-client cleanup — please handle it through the loan '
                     + 'cancellation process instead.',
             });
+        }
+
+        // Reject the pending loan BEFORE the client record is deleted below,
+        // so it never ends up pointing at a client that no longer exists.
+        if (existingLoan) {
+            await rejectPendingLoan(existingLoan._id, reason.trim(), currentUser._id);
         }
 
         const [investigation] = await graph.query(
@@ -84,6 +117,10 @@ async function revertPromotion(req, res) {
         ).then(r => r.data?.ciInvestigations ?? []);
 
         // ── Snapshot BEFORE delete — this is the audit trail ──────────────
+        // OPEN QUESTION (not yet confirmed): should existingLoan's pre-revert
+        // state also be captured here, now that this action actively mutates
+        // it (reject)? Not included below — beforeData only covers
+        // client/application/investigation, matching the pre-existing shape.
         await logAudit(req, {
             action:      'LAF_PROMOTION_REVERTED_GHOST_CLIENT',
             category:    'CI',
@@ -91,10 +128,11 @@ async function revertPromotion(req, res) {
             entityType:  'client',
             entityId:    application.promotedClientId,
             description: `Ghost client cleanup: ${client?.firstName} ${client?.lastName} `
-                + `(CI ${ciReferenceCode}) permanently deleted by ${currentUser.firstName} ${currentUser.lastName}. Reason: ${reason.trim()}`,
+                + `(CI ${ciReferenceCode}) permanently deleted by ${currentUser.firstName} ${currentUser.lastName}. Reason: ${reason.trim()}`
+                + (existingLoan ? ` Linked pending loan (${existingLoan.pnNumber || existingLoan._id}) rejected as part of this revert.` : ''),
             beforeData:  { client, application, investigation },
             afterData:   null,
-            metadata:    { ciReferenceCode, revertedBy: currentUser._id, reason: reason.trim() },
+            metadata:    { ciReferenceCode, revertedBy: currentUser._id, reason: reason.trim(), rejectedLoanId: existingLoan?._id || null },
             branchId:    application.branchId,
             userId:      currentUser._id,
             userName:    `${currentUser.firstName} ${currentUser.lastName}`,
@@ -125,27 +163,29 @@ async function revertPromotion(req, res) {
         return res.status(200).json({ success: true, deleted: true, message: 'Ghost client record removed.' });
     }
 
-    // ── Existing client — revert status, no delete ────────────────────────
+    // ── Existing client (reloan/pending/existing/balik) ────────────────────
+    // Loan guard applies to ALL of these client types now, not just balik —
+    // a linked loan blocks revert only once it's past 'pending'.
+    const [existingLoan] = await graph.query(
+        queryQl(LOAN_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } }, limit: 1 })
+    ).then(r => r.data?.loans ?? []);
+
+    if (existingLoan && existingLoan.status !== 'pending') {
+        return res.status(200).json({
+            success: false,
+            message: 'A loan has already been created and is active or completed for this client under this application. '
+                + 'This can no longer be reverted automatically — please handle it through the loan cancellation process instead.',
+        });
+    }
+
+    if (existingLoan) {
+        await rejectPendingLoan(existingLoan._id, reason.trim(), currentUser._id);
+    }
+
+    // Per business rule: status only flips offset → pending when a loan is
+    // actually created, not at promotion itself. Balik-specific — reloan/
+    // pending/existing clients have no such status to revert.
     if (application.clientType === 'balik') {
-        // Per business rule: status only flips offset → pending when a loan is
-        // actually created, not at promotion itself. Reverting is only safe if
-        // no loan was ever created under this application — otherwise there's
-        // real transaction history a status flip can't undo.
-        const [existingLoan] = await graph.query(
-            queryQl(
-                createGraphType('loans', '_id status ciReferenceCode')('loans'),
-                { where: { ciReferenceCode: { _eq: ciReferenceCode } }, limit: 1 }
-            )
-        ).then(r => r.data?.loans ?? []);
-
-        if (existingLoan) {
-            return res.status(200).json({
-                success: false,
-                message: 'A loan has already been created for this client under this application. '
-                    + 'This can no longer be reverted automatically — please handle it through the loan cancellation process instead.',
-            });
-        }
-
         await graph.mutation(
             updateQl(CLIENT_TYPE, {
                 where: { _id: { _eq: application.existingClientId } },
@@ -161,8 +201,9 @@ async function revertPromotion(req, res) {
         entityType:  'client',
         entityId:    application.existingClientId,
         description: `Promotion reverted for existing client (CI ${ciReferenceCode}) by `
-            + `${currentUser.firstName} ${currentUser.lastName}. Reason: ${reason.trim()}`,
-        metadata: { ciReferenceCode, revertedBy: currentUser._id, reason: reason.trim() },
+            + `${currentUser.firstName} ${currentUser.lastName}. Reason: ${reason.trim()}`
+            + (existingLoan ? ` Linked pending loan (${existingLoan.pnNumber || existingLoan._id}) rejected as part of this revert.` : ''),
+        metadata: { ciReferenceCode, revertedBy: currentUser._id, reason: reason.trim(), rejectedLoanId: existingLoan?._id || null },
         branchId: application.branchId,
         userId:   currentUser._id,
         userName: `${currentUser.firstName} ${currentUser.lastName}`,
