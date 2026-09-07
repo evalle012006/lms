@@ -67,7 +67,8 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
         if (!l.ciReferenceCode && application?.existingLoanId && l._id === application.existingLoanId) return true;
         if (!l.ciReferenceCode && !application?.existingLoanId &&
-            (application?.clientType === 'prospect' || application?.clientType === 'balik')) {
+            (application?.clientType === 'prospect' || application?.clientType === 'balik') &&
+            l.status !== 'closed') {
             return true;
         }
         return false;
