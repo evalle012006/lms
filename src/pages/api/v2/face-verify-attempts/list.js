@@ -10,7 +10,7 @@ import { findUserById } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS);
-const CLIENT_TYPE  = createGraphType('client', `_id firstName lastName profile`)('clients');
+const CLIENT_TYPE = createGraphType('client', `_id firstName lastName profile faceEnrollPhotoKey`)('clients');
 
 export default apiHandler({ get: list });
 
@@ -76,7 +76,7 @@ async function list(req, res) {
         clientName: clientMap[a.client_id]
             ? `${clientMap[a.client_id].firstName} ${clientMap[a.client_id].lastName}`
             : null,
-        clientEnrollmentPhotoKey: clientMap[a.client_id]?.profile ?? null,
+        clientEnrollmentPhotoKey: clientMap[a.client_id]?.faceEnrollPhotoKey ?? clientMap[a.client_id]?.profile ?? null,
     }));
 
     return res.status(200).json({ success: true, attempts: enriched, total: countAgg.aggregate.count, page, limit });

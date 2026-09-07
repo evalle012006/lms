@@ -954,6 +954,7 @@ const PublicLAFForm = ({
                         : null,
                     faceEnrolledAt: biometricData?.faceEnrolledAt || null,
                     livenessScore:  biometricData?.livenessScore  || null,
+                    faceEnrollPhotoKey: biometricData?.faceEnrollPhotoKey || null,
                     civilStatus:  values.civilStatus  || null,
                     yearsOfStay:  values.yearsOfStay  || null,
                     business:     values.business     || null,

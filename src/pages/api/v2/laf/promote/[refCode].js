@@ -168,6 +168,7 @@ async function promoteApplication(req, res) {
 
             if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;
             if (application.faceEnrolledAt) updatePayload.faceEnrolledAt = application.faceEnrolledAt;
+            if (application.faceEnrollPhotoKey) updatePayload.faceEnrollPhotoKey = application.faceEnrollPhotoKey;
             if (application.livenessScore != null && !existingClient?.livenessScore) {
                 updatePayload.livenessScore = application.livenessScore;
             }
@@ -269,6 +270,8 @@ async function promoteApplication(req, res) {
                     biometricDeviceName:     application.biometricDeviceName     || null,
                     faceTemplate:            application.faceTemplate            || null,
                     faceEnrolledAt:          application.faceEnrolledAt          || null,
+                    faceEnrollPhotoKey:      application.faceEnrollPhotoKey      || null,
+                    livenessScore:           application.livenessScore != null ? application.livenessScore : null,
                     civilStatus:             application.civilStatus             || null,
                     yearsOfStay:             application.yearsOfStay             || null,
                     business:                application.business                || null,

@@ -3,8 +3,16 @@
 // — eliminates duplicate loan-history API call
 // — fixes stuck "Loading..." button (banner was re-fetching but parent already had data)
 // NEW: Revert Promotion — admin/supervisor/BM only, typed-reason confirm gate,
-//      calls /api/v2/laf/revert-promotion. Hidden when a loan already exists,
-//      since that case must go through loan cancellation instead (backend-enforced).
+//      calls /api/v2/laf/revert-promotion.
+//      Revert is blocked only when a linked loan exists AND has moved past
+//      'pending' (active/completed/etc.) — backend enforces the same rule
+//      and additionally rejects a linked pending loan as part of reverting.
+// FIX: hasLinkedLoan replaces the old hasPendingLoan-only / hasAnyLoan checks
+//      for gating "Add Loan Application" — matches on ciReferenceCode
+//      (primary) with a legacy fallback for prospect/balik only, excluding
+//      closed loans. See conversation history for why existingLoanId is NOT
+//      usable as a link — it points at the client's PRIOR loan, not one
+//      created by this promotion.
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -46,10 +54,6 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     // Loading while parent fetches loan-history (null = not yet received)
     const isLoading = loanHistory === null;
 
-    // Any loan at all (not just pending) blocks revert — matches the backend guard,
-    // which rejects revert if any loan record exists under this application/client.
-    const hasAnyLoan = Array.isArray(loanHistory) && loanHistory.length > 0;
-
     // ── Revert Promotion state ─────────────────────────────────────────────
     const [revertOpen, setRevertOpen]     = useState(false);
     const [revertReason, setRevertReason] = useState('');
@@ -60,38 +64,36 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         (currentUser?.role?.shortCode === 'deputy_director' || currentUser?.role?.shortCode === 'regional_manager'
             || currentUser?.role?.shortCode === 'area_admin'
         );
-    const isBM       = currentUser?.role?.shortCode === 'branch_manager';
+    const isBM = currentUser?.role?.shortCode === 'branch_manager';
 
-    const hasLinkedLoan = Array.isArray(loanHistory) && loanHistory.some(l => {
-    // Only a real forward-link: a loan whose ciReferenceCode matches this
-    // promotion. existingLoanId is NOT usable here — it points at the
-    // client's prior loan (the one that qualified them to reapply), not
-    // at anything this promotion created.
-    if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
-
-    // Legacy fallback for balik/prospect only, where a brand-new loan with
-    // no ciReferenceCode is otherwise undetectable. Exclude closed loans —
-    // those are the client's resolved history, not evidence of a new loan
-    // from this promotion.
-    if (!l.ciReferenceCode &&
-        (application?.clientType === 'prospect' || application?.clientType === 'balik') &&
-        l.status !== 'closed') {
-        return true;
-    }
-
-    return false;
-});
-
-    // Still worth surfacing separately if the linked loan is specifically pending —
-    // that's a different message ("already applied, here's the pending one")
-    // than "already has an active/completed loan from this promotion."
-    const linkedPendingLoan = Array.isArray(loanHistory)
-        ? loanHistory.find(l => l.status === 'pending' &&
-            (l.ciReferenceCode === application?.ciReferenceCode || l._id === application?.existingLoanId))
+    // The loan (if any) tied to THIS promotion — used both to gate "Add Loan
+    // Application" and to decide whether revert is blocked.
+    // Primary match: ciReferenceCode set on the loan (all client types,
+    // going forward). Legacy fallback: prospect/balik only, where a
+    // brand-new loan may predate the ciReferenceCode fix and so can't be
+    // matched that way — excludes closed loans, which are resolved history,
+    // not evidence of a new loan from this promotion.
+    const linkedLoan = Array.isArray(loanHistory)
+        ? loanHistory.find(l => {
+            if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
+            if (!l.ciReferenceCode &&
+                (application?.clientType === 'prospect' || application?.clientType === 'balik') &&
+                l.status !== 'closed') {
+                return true;
+            }
+            return false;
+        })
         : null;
 
+    const hasLinkedLoan = !!linkedLoan;
+
+    // Revert is blocked only once the linked loan has moved past pending —
+    // nothing irreversible has happened to a pending loan yet, and the
+    // backend will reject it automatically as part of processing the revert.
+    const hasBlockingLoanForRevert = hasLinkedLoan && linkedLoan.status !== 'pending';
+
     const buttonReady = !hasLinkedLoan && !isLoading && !groupNotAvailable;
-    const canRevert   = (isAdmin || isSupervisor || isBM) && !hasLinkedLoan && !isLoading;
+    const canRevert    = (isAdmin || isSupervisor || isBM) && !hasBlockingLoanForRevert && !isLoading;
 
     const handleRevert = async () => {
         if (!revertReason.trim()) return;
@@ -171,7 +173,6 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         ? 'Client record updated from LAF application.'
         : 'New client record has been created.';
 
-
     return (
         <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
             <div className="flex items-start gap-3">
@@ -202,28 +203,13 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             <p className="text-xs font-semibold text-blue-800">
                                 Loan already created
                             </p>
-                            {(() => {
-                                const linked = loanHistory.find(l =>
-                                    l.ciReferenceCode === application?.ciReferenceCode ||
-                                    l._id === application?.existingLoanId
-                                );
-                                if (!linked) {
-                                    return (
-                                        <p className="text-xs text-blue-700 mt-0.5">
-                                            This promotion already has a loan on record.
-                                        </p>
-                                    );
-                                }
-                                return (
-                                    <div className="mt-1 space-y-0.5 text-xs text-blue-700">
-                                        <p>PN: <span className="font-medium">{linked.pnNumber || '—'}</span></p>
-                                        <p>Status: <span className="font-medium capitalize">{linked.status || '—'}</span></p>
-                                        <p>Group: <span className="font-medium">{application?.groupName || '—'}</span></p>
-                                        <p>Slot No.: <span className="font-medium">{linked.slotNo ?? '—'}</span></p>
-                                        <p>Loan Cycle: <span className="font-medium">{linked.loanCycle ?? '—'}</span></p>
-                                    </div>
-                                );
-                            })()}
+                            <div className="mt-1 space-y-0.5 text-xs text-blue-700">
+                                <p>PN: <span className="font-medium">{linkedLoan.pnNumber || '—'}</span></p>
+                                <p>Status: <span className="font-medium capitalize">{linkedLoan.status || '—'}</span></p>
+                                <p>Group: <span className="font-medium">{application?.groupName || '—'}</span></p>
+                                <p>Slot No.: <span className="font-medium">{linkedLoan.slotNo ?? '—'}</span></p>
+                                <p>Loan Cycle: <span className="font-medium">{linkedLoan.loanCycle ?? '—'}</span></p>
+                            </div>
                         </div>
                     ) : groupNotAvailable ? (
                         <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
@@ -262,7 +248,9 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             {!revertOpen ? (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-2">
-                                        Wrong client, or this shouldn't have been promoted?
+                                        {hasLinkedLoan
+                                            ? 'Wrong client, or this shouldn\'t have been promoted? Reverting will also reject the pending loan above.'
+                                            : 'Wrong client, or this shouldn\'t have been promoted?'}
                                     </p>
                                     <button type="button" onClick={() => setRevertOpen(true)}
                                         className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600
@@ -277,8 +265,10 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                                         <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                                         <p className="text-xs text-red-700">
                                             {isExistingClient
-                                                ? "This will revert the client's record to its prior state. This cannot be undone."
-                                                : 'This will permanently delete the client record created by this promotion. This cannot be undone.'}
+                                                ? "This will revert the client's record to its prior state."
+                                                : 'This will permanently delete the client record created by this promotion.'}
+                                            {hasLinkedLoan ? ' The pending loan linked to this application will also be rejected.' : ''}
+                                            {' '}This cannot be undone.
                                         </p>
                                     </div>
                                     <textarea value={revertReason} onChange={e => setRevertReason(e.target.value)}

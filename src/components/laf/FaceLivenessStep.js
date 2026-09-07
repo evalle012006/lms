@@ -255,6 +255,38 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         }, LANDMARK_INTERVAL);
     }, []);
 
+    async function captureDebugThumbnail(video) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return await new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
+            });
+        } catch {
+            return null;
+        }
+    }
+
+    async function uploadEnrollmentThumbnail(blob) {
+        if (!blob) return null;
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'face-enroll-thumbnail.jpg');
+            formData.append('origin', 'face-enroll-thumbnail');
+            formData.append('uuid', `faceenroll-${Date.now()}`);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) return null;
+            const data = await res.json();
+            return data.fileKey || null;
+        } catch {
+            return null;
+        }
+    }
+
     const extractDescriptor = useCallback(async () => {
         setCapturing(true);
         const faceapi = faceApiRef.current;
@@ -272,11 +304,17 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
                 startDetectionLoop(0);
                 return;
             }
+            // Capture the exact frame the descriptor came from — this is the
+            // real "what did the algorithm see" reference, unlike the LAF
+            // display photo which may be taken at a different moment.
+            const thumbnailBlob = await captureDebugThumbnail(video);
             stopCamera();
+            const faceEnrollPhotoKey = await uploadEnrollmentThumbnail(thumbnailBlob);
             onVerified({
-                faceTemplate:   Array.from(detection.descriptor),
-                faceEnrolledAt: new Date().toISOString(),
-                livenessScore:  detection.detection.score,
+                faceTemplate:      Array.from(detection.descriptor),
+                faceEnrolledAt:    new Date().toISOString(),
+                livenessScore:     detection.detection.score,
+                faceEnrollPhotoKey, // NEW — may be null if upload failed; never block enrollment on this
             });
         } catch (err) {
             console.error('[FaceLiveness] descriptor extraction failed:', err);

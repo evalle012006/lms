@@ -85,6 +85,7 @@ async function submitLAF(req, res) {
         faceTemplate,
         faceEnrolledAt,
         livenessScore,
+        faceEnrollPhotoKey,
         // Borrower personal info
         civilStatus,
         yearsOfStay,
@@ -390,6 +391,7 @@ async function submitLAF(req, res) {
                 faceTemplate:   faceTemplate   || null,
                 faceEnrolledAt: faceEnrolledAt || null,
                 livenessScore:  livenessScore  != null ? livenessScore : null,
+                faceEnrollPhotoKey: faceEnrollPhotoKey || null,
                 // Borrower personal info
                 civilStatus:  civilStatus  || null,
                 yearsOfStay:  yearsOfStay  || null,
