@@ -28,7 +28,7 @@ const graph = new GraphProvider();
 const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CLIENT_TYPE = createGraphType('client', CLIENT_FIELDS)('clients');
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
-const LOAN_TYPE   = createGraphType('loans', '_id status ciReferenceCode clientId pnNumber')('loans');
+const LOAN_TYPE = createGraphType('loans', '_id status ciReferenceCode clientId pnNumber slotNo groupId')('loans');
 
 export default apiHandler({ post: revertPromotion });
 
@@ -45,6 +45,39 @@ async function rejectPendingLoan(loanId, reason, userId) {
                 modifiedBy:       userId,
                 modifiedDateTime: new Date(),
             },
+        })
+    );
+}
+
+// New helper — mirrors updateGroup() in transactions/loans/save.js, reversed.
+// Adds the loan's slotNo back into the group's availableSlots and decrements
+// noOfClients. If the group was 'full', reopens it to 'available'.
+// Only called for balik/prospect reverts, where a NEW slot was reserved by
+// this promotion — reloan/pending/existing clients keep their existing slot,
+// so nothing needs to be freed for them.
+async function freeGroupSlot(groupId, slotNo) {
+    if (!groupId || slotNo == null) return;
+
+    const [group] = await graph.query(
+        queryQl(createGraphType('groups', '_id availableSlots noOfClients capacity status')('groups'), {
+            where: { _id: { _eq: groupId } },
+        })
+    ).then(r => r.data?.groups ?? []);
+
+    if (!group) return;
+
+    const availableSlots = Array.isArray(group.availableSlots) ? [...group.availableSlots] : [];
+    if (!availableSlots.includes(slotNo)) {
+        availableSlots.push(slotNo);
+    }
+
+    const noOfClients = Math.max((group.noOfClients || 0) - 1, 0);
+    const status = group.status === 'full' ? 'available' : group.status;
+
+    await graph.mutation(
+        updateQl(createGraphType('groups', '_id')('groups'), {
+            where: { _id: { _eq: groupId } },
+            set: { availableSlots, noOfClients, status },
         })
     );
 }
@@ -110,6 +143,7 @@ async function revertPromotion(req, res) {
         // so it never ends up pointing at a client that no longer exists.
         if (existingLoan) {
             await rejectPendingLoan(existingLoan._id, reason.trim(), currentUser._id);
+            await freeGroupSlot(existingLoan.groupId, existingLoan.slotNo);
         }
 
         const [investigation] = await graph.query(
@@ -180,6 +214,9 @@ async function revertPromotion(req, res) {
 
     if (existingLoan) {
         await rejectPendingLoan(existingLoan._id, reason.trim(), currentUser._id);
+        if (application.clientType === 'balik') {
+            await freeGroupSlot(existingLoan.groupId, existingLoan.slotNo);
+        }
     }
 
     // Per business rule: status only flips offset → pending when a loan is
