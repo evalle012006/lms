@@ -143,6 +143,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
         if (application?.middleName)  q.set('middleName',  application.middleName);
         if (application?.birthdate)   q.set('birthdate',   application.birthdate);
         if (application?.lafPhotoUrl) q.set('photoUrl',    encodeURIComponent(application.lafPhotoUrl));
+        if (application?.groupLeader) q.set('groupLeader', '1');
 
         // Contact: prefer contactNumber, fall back to clientChanges
         const contact = application?.contactNumber

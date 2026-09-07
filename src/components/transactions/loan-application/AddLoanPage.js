@@ -43,6 +43,7 @@ const AddLoanPage = ({
     initialSlotNo     = null,
     initialLoanCycle  = null,
     initialBirthdate  = null,
+    initialGroupLeader = false,
     initialPhotoUrl   = null,
     // Guarantor from LAF record (authoritative — overrides stale client record)
     initialGuarantorFN      = null,
@@ -100,7 +101,7 @@ const AddLoanPage = ({
     );
     const [slotNumber, setSlotNumber]             = useState([]);
     const [loanTerms, setLoanTerms]               = useState(60);
-    const [groupLeader, setGroupLeader]           = useState(false);
+    const [groupLeader, setGroupLeader]           = useState(!!initialGroupLeader);
     const [selectedCoMaker, setSelectedCoMaker]   = useState(null);
     const [coMakerChecking, setCoMakerChecking]     = useState(false);
     const [coMakerPending, setCoMakerPending]       = useState(false);
@@ -862,6 +863,14 @@ const AddLoanPage = ({
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
+        if (c.groupLeader) {
+            setTimeout(() => {
+                const glMin = groupOccurence === 'weekly'
+                    ? transactionSettings?.minWeeklyMcbuWithdrawalGL
+                    : transactionSettings?.minDailyMcbuWithdrawalGL;
+                if (glMin != null) formikRef.current?.setFieldValue('mcbu', glMin);
+            }, 150); // same delay pattern already used for slotNo/loanCycle restoration
+        }
         if (clientType === 'active' || clientType === 'advance') {
             // ── Restore slot/loanCycle/comaker from the client's existing loan ──
             const sl             = c.loans?.[0]?.slotNo;
@@ -1583,8 +1592,16 @@ const AddLoanPage = ({
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
-        mcbu:                (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
-                                 ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
+        mcbu: (() => {
+            if (initialGroupLeader) {
+                return groupOccurence === 'weekly'
+                    ? (transactionSettings?.minWeeklyMcbuWithdrawalGL || 0)
+                    : (transactionSettings?.minDailyMcbuWithdrawalGL  || 0);
+            }
+            return (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
+                ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+                : 0;
+        })(),
         csf:                 0,
         dateGranted:         null,
         principalLoan:       5000,
