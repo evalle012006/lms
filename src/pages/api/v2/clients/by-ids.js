@@ -15,7 +15,7 @@ const graph = new GraphProvider();
 
 const CLIENT_TYPE = createGraphType('client', `
     _id firstName lastName middleName birthdate
-    branchName status profile
+    branchName status profile groupLeader
     governmentIdType governmentIdNumber
 `)('clients');
 

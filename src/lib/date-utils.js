@@ -3,6 +3,11 @@ import moment from 'moment';
 import momentTz from 'moment-timezone';
 
 const MANILA_TZ = 'Asia/Manila';
+// TEMPORARY: DOR-vs-CI-approval validation disabled per business request
+// (2026-09-06). Flip to true to re-enable both client (AddLoanPage.js) and
+// server (save.js) enforcement. Remove this flag entirely once the rule
+// is confirmed stable and permanently on.
+export const ENFORCE_CI_DOR_VALIDATION = false;
 
 export const getEndDate = (date, days) => {
     date = moment(date); // use a clone

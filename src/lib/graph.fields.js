@@ -866,6 +866,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   amountRelease
   guarantorAddress
   isExactDuplicateMatch
+  groupLeader
 `;
 
 export const CI_INVESTIGATION_FIELDS = `

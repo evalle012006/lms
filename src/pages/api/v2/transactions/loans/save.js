@@ -3,7 +3,7 @@ import logger from '@/logger';
 import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { BRANCH_FIELDS, CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
-import { validateDateOfRelease } from '@/lib/date-utils';
+import { ENFORCE_CI_DOR_VALIDATION, validateDateOfRelease } from '@/lib/date-utils';
 import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
@@ -82,7 +82,7 @@ async function save(req, res) {
     // Client-side already checked this (AddLoanPage.js); this is the real
     // enforcement layer since the client check can be bypassed by a direct
     // API call.
-    if (loanData.branchId && loanData.dateOfRelease && group?.occurence && false) { // turn off for now
+        if (ENFORCE_CI_DOR_VALIDATION && loanData.branchId && loanData.dateOfRelease && group?.occurence) {
         const [branch] = (await graph.query(queryQl(branchType(), {
             where: { _id: { _eq: loanData.branchId } }
         }))).data?.branches ?? [];

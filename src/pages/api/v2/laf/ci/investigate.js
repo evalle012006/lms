@@ -36,6 +36,7 @@ async function saveInvestigation(req, res) {
         ciReferenceCode, tempApplicationId,
         findings, businessVerified, addressVerified,
         decision, declineReason, selfieKey, ciAnswers,
+        groupLeader,
     } = req.body;
 
     if (decision === 'approved' && !selfieKey) {
@@ -98,7 +99,10 @@ async function saveInvestigation(req, res) {
 
     await graph.mutation(
         updateQl(TEMP_TYPE, {
-            set: { status: decision === 'approved' ? 'ci_approved' : 'ci_declined' },
+            set: {
+                status: decision === 'approved' ? 'ci_approved' : 'ci_declined',
+                groupLeader: !!groupLeader,
+            },
             where: { ciReferenceCode: { _eq: ciReferenceCode } },
         })
     );

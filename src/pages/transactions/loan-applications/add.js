@@ -42,6 +42,7 @@ const AddLoanApplicationPage = () => {
                 initialLastName={q.lastName     || null}
                 initialMiddleName={q.middleName || null}
                 initialBirthdate={q.birthdate   || null}
+                initialGroupLeader={q.groupLeader === '1'}
                 initialPhotoUrl={q.photoUrl ? decodeURIComponent(q.photoUrl) : null}
                 initialContact={q.contactNumber || null}
                 initialAddress={q.address       || null}

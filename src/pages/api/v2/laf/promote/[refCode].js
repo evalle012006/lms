@@ -146,6 +146,17 @@ async function promoteApplication(req, res) {
             if (application.addressZipCode)     updatePayload.addressZipCode     = application.addressZipCode;
             if (application.landmark)           updatePayload.landmark           = application.landmark;
             if (application.distanceFromBranch) updatePayload.distanceFromBranch = application.distanceFromBranch;
+            
+            if (application.groupLeader) {
+                // Supervisor explicitly turned it ON during this CI review — always honor that.
+                updatePayload.groupLeader = true;
+            } else if (existingClient?.status !== 'active' || !existingClient?.groupLeader) {
+                // Toggle was left off/default. Only write false if there's nothing worth
+                // protecting: either the client isn't active yet, or they weren't already
+                // a group leader. An active client who IS currently groupLeader:true
+                // keeps that status untouched — CI review isn't a demotion mechanism.
+                updatePayload.groupLeader = false;
+            }
 
             if (application.lafPhotoKey) updatePayload.profile = application.lafPhotoKey;
 
@@ -280,7 +291,7 @@ async function promoteApplication(req, res) {
                     status:                  'pending',
                     delinquent:              false,
                     duplicate:               false,
-                    groupLeader:             false,
+                    groupLeader:             !!application.groupLeader,
                     archived:                false,
                     insertedBy:              investigation?.picUserId            || null,
                     dateAdded:               moment().format('YYYY-MM-DD'),

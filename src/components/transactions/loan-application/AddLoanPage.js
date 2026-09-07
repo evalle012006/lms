@@ -10,7 +10,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
-import { getEarliestDateOfRelease, getNextValidDate, validateDateOfRelease } from '@/lib/date-utils';
+import { getEarliestDateOfRelease, getNextValidDate, validateDateOfRelease, ENFORCE_CI_DOR_VALIDATION } from '@/lib/date-utils';
 import { resolveLoanCycle } from '@/lib/loan-cycle';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
@@ -43,6 +43,7 @@ const AddLoanPage = ({
     initialSlotNo     = null,
     initialLoanCycle  = null,
     initialBirthdate  = null,
+    initialGroupLeader = false,
     initialPhotoUrl   = null,
     // Guarantor from LAF record (authoritative — overrides stale client record)
     initialGuarantorFN      = null,
@@ -100,7 +101,7 @@ const AddLoanPage = ({
     );
     const [slotNumber, setSlotNumber]             = useState([]);
     const [loanTerms, setLoanTerms]               = useState(60);
-    const [groupLeader, setGroupLeader]           = useState(false);
+    const [groupLeader, setGroupLeader]           = useState(!!initialGroupLeader);
     const [selectedCoMaker, setSelectedCoMaker]   = useState(null);
     const [coMakerChecking, setCoMakerChecking]     = useState(false);
     const [coMakerPending, setCoMakerPending]       = useState(false);
@@ -243,7 +244,7 @@ const AddLoanPage = ({
         let computedMinDate = initialMin.toDate();
         // v2: DOR can't fall inside the CI-approval-blocked window, even if
         // the holiday/weekend-based minimum would otherwise allow it.
-        if (currentBranch?.clientFlowVersion === 'v2' && resolvedCiApprovedDate && groupOccurence && false) { // turn off for now
+        if (ENFORCE_CI_DOR_VALIDATION && currentBranch?.clientFlowVersion === 'v2' && resolvedCiApprovedDate && groupOccurence) {
             try {
                 const earliestDOR = getEarliestDateOfRelease(resolvedCiApprovedDate, groupOccurence);
                 const earliestDORDate = moment(earliestDOR).toDate();
@@ -252,7 +253,9 @@ const AddLoanPage = ({
         }
 
         setMinDate(computedMinDate);
-        const nDays = initialMin.format('dddd') === 'Monday' ? 4 : 8;
+        const nDays = groupOccurence === 'weekly'
+            ? 14 // enough to reach into the following week regardless of current weekday
+            : (initialMin.format('dddd') === 'Monday' ? 4 : 8);
         setMaxDate(getNextValidDate(moment(initialMin).add(nDays, 'days').format('YYYY-MM-DD'), holidays).toDate());
     }, [currentDate, holidayList, initialDateRelease, currentBranch, resolvedCiApprovedDate, groupOccurence]);
 
@@ -860,6 +863,14 @@ const AddLoanPage = ({
             checkClientCI(value, clientType === 'offset');
         }
         setGroupLeader(c.groupLeader || false);
+        if (c.groupLeader) {
+            setTimeout(() => {
+                const glMin = groupOccurence === 'weekly'
+                    ? transactionSettings?.minWeeklyMcbuWithdrawalGL
+                    : transactionSettings?.minDailyMcbuWithdrawalGL;
+                if (glMin != null) formikRef.current?.setFieldValue('mcbu', glMin);
+            }, 150); // same delay pattern already used for slotNo/loanCycle restoration
+        }
         if (clientType === 'active' || clientType === 'advance') {
             // ── Restore slot/loanCycle/comaker from the client's existing loan ──
             const sl             = c.loans?.[0]?.slotNo;
@@ -1139,26 +1150,30 @@ const AddLoanPage = ({
         // block rather than silently skip — this is a compliance rule, and
         // "no CI date on file" during a v2 submission means something
         // upstream is broken, not that the rule doesn't apply.
-        if (currentBranch?.clientFlowVersion === 'v2' && values.occurence) { // turn off for now
-            // if (!resolvedCiApprovedDate) {
-            //     setLoading(false);
-            //     toast.error('Cannot determine CI approval date. Please reload this page and try again.');
-            //     return;
-            // }
+        if (currentBranch?.clientFlowVersion === 'v2' && values.occurence) {
+            if (ENFORCE_CI_DOR_VALIDATION) {
+                if (!resolvedCiApprovedDate) {
+                    setLoading(false);
+                    toast.error('Cannot determine CI approval date. Please reload this page and try again.');
+                    return;
+                }
 
-            // const { valid, earliestDOR } = validateDateOfRelease(
-            //     values.dateOfRelease, resolvedCiApprovedDate, values.occurence
-            // );
-            // if (!valid) {
-            //     setLoading(false);
-            //     toast.error(
-            //         `Invalid Date of Release for ${values.occurence} loan. ` +
-            //         `Earliest allowed date is ${earliestDOR}.`
-            //     );
-            //     return;
-            // }
+                const { valid, earliestDOR } = validateDateOfRelease(
+                    values.dateOfRelease, resolvedCiApprovedDate, values.occurence
+                );
+                if (!valid) {
+                    setLoading(false);
+                    toast.error(
+                        `Invalid Date of Release for ${values.occurence} loan. ` +
+                        `Earliest allowed date is ${earliestDOR}.`
+                    );
+                    return;
+                }
+            }
 
-            // Server-side re-validates this independently — see save.js
+            // ciApprovedDate/ciReferenceCode still captured and sent regardless
+            // of the flag — these are just data persistence for audit purposes,
+            // not the validation gate itself.
             values.ciApprovedDate = resolvedCiApprovedDate;
             values.ciReferenceCode = resolvedCiReferenceCode;
         }
@@ -1577,8 +1592,16 @@ const AddLoanPage = ({
         clientId:            '',
         fullName:            '',
         admissionDate:       '',
-        mcbu:                (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
-                                 ? (transactionSettings?.minWeeklyMcbuCollection || 0) : 0,
+        mcbu: (() => {
+            if (initialGroupLeader) {
+                return groupOccurence === 'weekly'
+                    ? (transactionSettings?.minWeeklyMcbuWithdrawalGL || 0)
+                    : (transactionSettings?.minDailyMcbuWithdrawalGL  || 0);
+            }
+            return (groupOccurence === 'weekly' && loWeeklyScheduleType === 'standard')
+                ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+                : 0;
+        })(),
         csf:                 0,
         dateGranted:         null,
         principalLoan:       5000,
