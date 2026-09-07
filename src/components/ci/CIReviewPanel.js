@@ -98,6 +98,13 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
     const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
+    const [groupLeader, setGroupLeader] = useState(
+        investigationData?.groupLeader ?? application?.groupLeader ?? false
+    );
+    const [leaderCheckLoading, setLeaderCheckLoading] = useState(false);
+    const [leaderConfirmOpen,  setLeaderConfirmOpen]  = useState(false);
+    const [existingLeaderInfo, setExistingLeaderInfo] = useState(null); // { firstName, lastName } or null
+
     // Application was queued offline and never got its face template captured
     // at submission time — needs enrollment now, before promotion, if we have
     // connectivity to do it. If still offline, defer further to disbursement.
@@ -106,6 +113,48 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     // instant faceCapture is set.
     const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate;
     const faceEnrollmentBlocking = needsFaceEnrollment && !faceCapture; // still gates Save
+
+    const handleGroupLeaderToggle = useCallback(async (nextValue) => {
+        if (!nextValue) {
+            // Turning OFF never needs a confirmation.
+            setGroupLeader(false);
+            return;
+        }
+
+        if (!application?.groupId) {
+            // No group context yet (shouldn't normally happen at CI-review stage) — just set it.
+            setGroupLeader(true);
+            return;
+        }
+
+        setLeaderCheckLoading(true);
+        try {
+            const excludeClientId = application?.existingClientId || application?.promotedClientId || '';
+            const params = new URLSearchParams({ groupId: application.groupId });
+            if (excludeClientId) params.set('excludeClientId', excludeClientId);
+
+            const res = await fetchWrapper.get(getApiBaseUrl() + `laf/group-leader-check?${params}`);
+            if (res.success && res.hasExistingLeader) {
+                setExistingLeaderInfo(res.existingLeaders[0] || null);
+                setLeaderConfirmOpen(true); // don't set groupLeader yet — wait for confirm
+            } else {
+                setGroupLeader(true);
+            }
+        } catch {
+            // Fail open with a warning rather than silently blocking the toggle —
+            // matches the fail-open pattern used elsewhere in this file (e.g. ID dup check).
+            toast.warning('Could not verify existing group leader — proceeding anyway.');
+            setGroupLeader(true);
+        } finally {
+            setLeaderCheckLoading(false);
+        }
+    }, [application]);
+
+    const confirmSetGroupLeader = () => {
+        setGroupLeader(true);
+        setLeaderConfirmOpen(false);
+        setExistingLeaderInfo(null);
+    };
 
     const handleAnswerChange = (questionId, value) =>
         setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -127,7 +176,8 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
         selfieKey,
         ciAnswers:     buildCiAnswers(),
         investigatedAt: new Date().toISOString(),
-    }), [application, businessVerified, addressVerified, decision, declineReason, buildCiAnswers]);
+        groupLeader,
+    }), [application, businessVerified, addressVerified, decision, declineReason, groupLeader, buildCiAnswers]);
 
     const handleSave = useCallback(async () => {
         if (application?.status === 'pending_validation') {
@@ -366,6 +416,63 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                             Go to Flagged as Duplicate →
                         </button>
                     )}
+                </div>
+            )}
+
+            {/* Group Leader */}
+            <div className="p-4 border-2 border-blue-200 bg-blue-50 rounded-xl">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-900">👑 Group Leader</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                            Group leaders must meet a higher minimum initial MCBU when their loan is created.
+                        </p>
+                    </div>
+                    <button type="button"
+                        disabled={leaderCheckLoading}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors
+                            border-2 flex-shrink-0 disabled:opacity-50 ${
+                            groupLeader ? 'bg-blue-500 border-blue-600' : 'bg-gray-200 border-gray-300'
+                        }`}
+                        onClick={() => handleGroupLeaderToggle(!groupLeader)}>
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${
+                            groupLeader ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                    </button>
+                </div>
+                {leaderCheckLoading && (
+                    <p className="text-xs text-blue-600 mt-2">Checking existing group leader…</p>
+                )}
+            </div>
+
+            {/* Group leader confirmation modal */}
+            {leaderConfirmOpen && (
+                <div className="fixed inset-0 z-[9999] bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl p-5 max-w-sm w-full space-y-3">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900">Group already has a leader</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    {existingLeaderInfo
+                                        ? `${existingLeaderInfo.lastName}, ${existingLeaderInfo.firstName} is already the group leader for this group.`
+                                        : 'This group already has an active or pending group leader.'}
+                                    {' '}Setting this client as group leader too will not remove that status from
+                                    the existing leader — both will be marked as group leader.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setLeaderConfirmOpen(false)}
+                                className="flex-1 py-2 border border-gray-300 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button type="button" onClick={confirmSetGroupLeader}
+                                className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
+                                Set as Group Leader Anyway
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
