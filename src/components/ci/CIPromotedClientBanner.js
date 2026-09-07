@@ -61,18 +61,26 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
             || currentUser?.role?.shortCode === 'area_admin'
         );
     const isBM       = currentUser?.role?.shortCode === 'branch_manager';
-    // Replaces both hasPendingLoan (for Add Loan gating) and the earlier
-    // hasAnyLoan (for revert gating) with one shared, correct check.
+
     const hasLinkedLoan = Array.isArray(loanHistory) && loanHistory.some(l => {
-        if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
-        if (!l.ciReferenceCode && application?.existingLoanId && l._id === application.existingLoanId) return true;
-        if (!l.ciReferenceCode && !application?.existingLoanId &&
-            (application?.clientType === 'prospect' || application?.clientType === 'balik') &&
-            l.status !== 'closed') {
-            return true;
-        }
-        return false;
-    });
+    // Only a real forward-link: a loan whose ciReferenceCode matches this
+    // promotion. existingLoanId is NOT usable here — it points at the
+    // client's prior loan (the one that qualified them to reapply), not
+    // at anything this promotion created.
+    if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
+
+    // Legacy fallback for balik/prospect only, where a brand-new loan with
+    // no ciReferenceCode is otherwise undetectable. Exclude closed loans —
+    // those are the client's resolved history, not evidence of a new loan
+    // from this promotion.
+    if (!l.ciReferenceCode &&
+        (application?.clientType === 'prospect' || application?.clientType === 'balik') &&
+        l.status !== 'closed') {
+        return true;
+    }
+
+    return false;
+});
 
     // Still worth surfacing separately if the linked loan is specifically pending —
     // that's a different message ("already applied, here's the pending one")
