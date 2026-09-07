@@ -1473,10 +1473,7 @@ const PublicLAFForm = ({
                                         <select value={lookupSlotNo} onChange={e => setLookupSlotNo(e.target.value)}
                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">Select slot number...</option>
-                                            {(isOnline ? availableSlots : offlineAvailableSlots)?.length
-                                                ? (isOnline ? availableSlots : offlineAvailableSlots).map(n => <option key={n} value={n}>{n}</option>)
-                                                : Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>) // fallback if fetch/cache failed
-                                            }
+                                            {Array.from({ length: 30 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
                                         </select>
                                     </Field>
                                 </>)}
