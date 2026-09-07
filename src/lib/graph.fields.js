@@ -100,6 +100,7 @@ export const CLIENT_FIELDS = `
   distanceFromBranch
   faceTemplate
   faceEnrolledAt
+  faceEnrollPhotoKey
   mergedIntoClientId
   mergedAt
   mergedBy
@@ -855,6 +856,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   faceTemplate
   faceEnrolledAt
   livenessScore
+  faceEnrollPhotoKey
   promotedAt
   civilStatus
   yearsOfStay
