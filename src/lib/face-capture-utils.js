@@ -81,12 +81,30 @@ export function isTooDark(canvas, threshold = MIN_BRIGHTNESS) {
     return getAverageBrightness(canvas) < threshold;
 }
 
-// Downscales a full-resolution canvas to a small debug/reference thumbnail.
+// Downscales a full-resolution canvas to a small debug/reference thumbnail,
+// preserving aspect ratio (fit-within a bounding box) rather than stretching
+// to an exact width/height — stretching a 16:9 source into a 4:3 box
+// visibly squashes faces.
 export async function canvasToDebugThumbnail(canvas) {
+    const sourceRatio = canvas.width / canvas.height;
+    const boxRatio     = THUMBNAIL_WIDTH / THUMBNAIL_HEIGHT;
+
+    let drawWidth, drawHeight;
+    if (sourceRatio > boxRatio) {
+        // source is wider than the box — constrain by width
+        drawWidth  = THUMBNAIL_WIDTH;
+        drawHeight = THUMBNAIL_WIDTH / sourceRatio;
+    } else {
+        // source is taller/narrower than the box — constrain by height
+        drawHeight = THUMBNAIL_HEIGHT;
+        drawWidth  = THUMBNAIL_HEIGHT * sourceRatio;
+    }
+
     const thumb = document.createElement('canvas');
-    thumb.width  = THUMBNAIL_WIDTH;
-    thumb.height = THUMBNAIL_HEIGHT;
-    thumb.getContext('2d').drawImage(canvas, 0, 0, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+    thumb.width  = Math.round(drawWidth);
+    thumb.height = Math.round(drawHeight);
+    thumb.getContext('2d').drawImage(canvas, 0, 0, thumb.width, thumb.height);
+
     return new Promise((resolve) => {
         thumb.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
     });
