@@ -1139,9 +1139,11 @@ const ModernBranchCashCollections = () => {
         // console.log(dailyTotal, weeklyTotal);
 
         const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c.name).map(item => {
-          const formattedName = filter === 'branch' && item.code ? 
-            `${item.code} - ${item.name}` : 
-            item.name;
+          const formattedName = filter === 'branch' && item.code
+              ? `${item.code} - ${item.name}`
+              : filter === 'group' && item.occurence === 'weekly' && item.groupDay
+                ? `${item.name} (${item.groupDay.charAt(0).toUpperCase() + item.groupDay.slice(1)})`
+                : item.name;
 
           // Get current day name for weekly group filtering
           const currentDayName = moment(currentDate).format('dddd').toLowerCase();
@@ -2095,6 +2097,8 @@ const ModernBranchCashCollections = () => {
     return dataSource.find(item => item.totalData === true);
   }, [branchCollectionData, data, currentFilter]);
 
+  const DAY_ORDER = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7 };
+
   const sortedData = useMemo(() => {
     let dataToSort = filteredData;
     
@@ -2105,6 +2109,26 @@ const ModernBranchCashCollections = () => {
         const loNoB = parseInt(b.loNo) || 0;
         return loNoA - loNoB;
       });
+    }
+
+    // NEW: For group view, sort weekly groups Mon -> Fri by groupDay.
+    // Non-weekly groups are left untouched, in their original position.
+    if (currentFilter === 'group') {
+      const weekly = filteredData.filter(item => item.occurence === 'weekly');
+      const nonWeekly = filteredData.filter(item => item.occurence !== 'weekly');
+
+      const weeklySorted = [...weekly].sort((a, b) => {
+        const dayA = DAY_ORDER[a.groupDay?.toLowerCase()] || 99;
+        const dayB = DAY_ORDER[b.groupDay?.toLowerCase()] || 99;
+        if (dayA !== dayB) return dayA - dayB;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      // Reassemble: weekly (day-sorted) first, then non-weekly in original order.
+      // If you'd rather interleave and preserve absolute original positions
+      // instead of grouping weekly-first, let me know — that's a different,
+      // slightly more involved reassembly.
+      dataToSort = [...weeklySorted, ...nonWeekly];
     }
     
     // Apply additional sorting if configured
