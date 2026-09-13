@@ -215,10 +215,10 @@ upsert_table() {
       SELECT string_agg(format('%I = EXCLUDED.%I', column_name, column_name), ', ')
       INTO cols
       FROM information_schema.columns
-      WHERE table_schema = '${SCHEMA}' AND table_name = '${TABLE}' AND column_name <> 'id';
+      WHERE table_schema = '${SCHEMA}' AND table_name = '${TABLE}' AND column_name <> '_id';
 
       EXECUTE format(
-        'INSERT INTO ${SCHEMA}.%I SELECT * FROM staging_${TABLE} ON CONFLICT (id) DO UPDATE SET %s',
+        'INSERT INTO ${SCHEMA}.%I SELECT * FROM staging_${TABLE} ON CONFLICT (_id) DO UPDATE SET %s',
         '${TABLE}', cols
       );
     END \$\$;
@@ -237,7 +237,7 @@ skip_if_exists_table() {
   dev_psql -v ON_ERROR_STOP=1 -q -c "
     INSERT INTO ${SCHEMA}.\"${TABLE}\"
     SELECT * FROM staging_${TABLE}
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (_id) DO NOTHING;
   "
   local COUNT
   COUNT=$(dev_psql -t -A -c "SELECT COUNT(*) FROM ${SCHEMA}.\"${TABLE}\";")
@@ -270,25 +270,30 @@ echo ""
 # --- Dump, in dependency order, all computed against PROD directly ----------
 log "Dumping from PROD..."
 
-dump_table_to_csv divisions "id IN (
-  SELECT \"divisionId\" FROM regions WHERE id IN (
-    SELECT \"regionId\" FROM areas WHERE id IN (
-      SELECT \"areaId\" FROM branches WHERE id IN ${BRANCH_IDS_SQL}
+# NOTE: PK confirmed as "_id" (from the error hint on branches/areas).
+# FK column names below (divisionId/regionId/areaId/branchId) are STILL
+# UNCONFIRMED GUESSES — do not run again until you've pasted the
+# information_schema output and these are corrected to the real names.
+
+dump_table_to_csv divisions "_id IN (
+  SELECT \"divisionId\" FROM regions WHERE _id IN (
+    SELECT \"regionId\" FROM areas WHERE _id IN (
+      SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
     )
   )
 )"
 
-dump_table_to_csv regions "id IN (
-  SELECT \"regionId\" FROM areas WHERE id IN (
-    SELECT \"areaId\" FROM branches WHERE id IN ${BRANCH_IDS_SQL}
+dump_table_to_csv regions "_id IN (
+  SELECT \"regionId\" FROM areas WHERE _id IN (
+    SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
   )
 )"
 
-dump_table_to_csv areas "id IN (
-  SELECT \"areaId\" FROM branches WHERE id IN ${BRANCH_IDS_SQL}
+dump_table_to_csv areas "_id IN (
+  SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
 )"
 
-dump_table_to_csv branches "id IN ${BRANCH_IDS_SQL}"
+dump_table_to_csv branches "_id IN ${BRANCH_IDS_SQL}"
 
 dump_table_to_csv users "\"branchId\" IN ${BRANCH_IDS_SQL}"
 
