@@ -194,55 +194,77 @@ dump_table_to_csv() {
 # without disabling FK checks.
 # =============================================================================
 
-_stage_csv() {
+# =============================================================================
+# PREFLIGHT: confirm _id actually has a unique/PK constraint on DEV before we
+# rely on ON CONFLICT (_id) anywhere. Fail fast and clearly instead of letting
+# every table fail individually mid-run.
+# =============================================================================
+
+check_pk_constraint() {
   local TABLE=$1
+  local COUNT
+  COUNT=$(dev_psql -t -A -c "
+    SELECT COUNT(*) FROM pg_constraint c
+    JOIN pg_class t ON c.conrelid = t.oid
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+    WHERE t.relname = '${TABLE}' AND a.attname = '_id' AND c.contype IN ('p','u');
+  " 2>/dev/null)
+  if [ -z "$COUNT" ] || [ "$COUNT" -eq 0 ] 2>/dev/null; then
+    error "[$TABLE] has no PRIMARY KEY or UNIQUE constraint on _id on DEV — ON CONFLICT (_id) cannot work. Fix the schema, or this script, before proceeding."
+  fi
+  success "[$TABLE] _id has a unique/PK constraint on DEV"
+}
+
+# =============================================================================
+# LOAD one table: single psql session does CREATE TEMP TABLE + \COPY + the
+# insert, so the temp table survives long enough to be used (a prior version
+# of this script split these across separate psql invocations, each of which
+# is its own connection — temp tables don't survive across connections, which
+# is why you saw "relation staging_x does not exist").
+# =============================================================================
+
+_load_table() {
+  local TABLE=$1
+  local MODE=$2   # "upsert" (prod wins on conflict) or "skip" (dev wins, insert-if-missing)
   local CSVFILE="$DUMP_DIR/${TABLE}.csv"
-  [ -s "$CSVFILE" ] || { warn "[$TABLE] no CSV / zero rows — skipping load"; return 1; }
+  local SQLFILE="$DUMP_DIR/.load_${TABLE}.sql"
 
-  dev_psql -v ON_ERROR_STOP=1 -q -c "CREATE TEMP TABLE staging_${TABLE} (LIKE ${SCHEMA}.\"${TABLE}\" INCLUDING ALL);"
-  dev_psql -v ON_ERROR_STOP=1 -q -c "\COPY staging_${TABLE} FROM '${CSVFILE}' WITH CSV HEADER"
-}
+  [ -s "$CSVFILE" ] || { warn "[$TABLE] no CSV / zero rows — skipping load"; return 0; }
 
-upsert_table() {
-  # Prod overwrites dev on conflict — used for divisions/regions/areas.
-  local TABLE=$1
-  _stage_csv "$TABLE" || return 0
+  {
+    echo "CREATE TEMP TABLE staging_${TABLE} (LIKE ${SCHEMA}.\"${TABLE}\" INCLUDING ALL);"
+    echo "\\COPY staging_${TABLE} FROM '${CSVFILE}' WITH CSV HEADER"
+    if [ "$MODE" = "upsert" ]; then
+      cat <<SQL
+DO \$do\$
+DECLARE cols text;
+BEGIN
+  SELECT string_agg(format('%I = EXCLUDED.%I', column_name, column_name), ', ')
+  INTO cols
+  FROM information_schema.columns
+  WHERE table_schema = '${SCHEMA}' AND table_name = '${TABLE}' AND column_name <> '_id';
 
-  dev_psql -v ON_ERROR_STOP=1 -q -c "
-    DO \$\$
-    DECLARE cols text;
-    BEGIN
-      SELECT string_agg(format('%I = EXCLUDED.%I', column_name, column_name), ', ')
-      INTO cols
-      FROM information_schema.columns
-      WHERE table_schema = '${SCHEMA}' AND table_name = '${TABLE}' AND column_name <> '_id';
+  EXECUTE format(
+    'INSERT INTO ${SCHEMA}.%I SELECT * FROM staging_${TABLE} ON CONFLICT (_id) DO UPDATE SET %s',
+    '${TABLE}', cols
+  );
+END \$do\$;
+SQL
+    else
+      echo "INSERT INTO ${SCHEMA}.\"${TABLE}\" SELECT * FROM staging_${TABLE} ON CONFLICT (_id) DO NOTHING;"
+    fi
+  } > "$SQLFILE"
 
-      EXECUTE format(
-        'INSERT INTO ${SCHEMA}.%I SELECT * FROM staging_${TABLE} ON CONFLICT (_id) DO UPDATE SET %s',
-        '${TABLE}', cols
-      );
-    END \$\$;
-  "
-  local BEFORE_AFTER
-  BEFORE_AFTER=$(dev_psql -t -A -c "SELECT COUNT(*) FROM ${SCHEMA}.\"${TABLE}\";")
-  success "[$TABLE] upserted (dev now has $BEFORE_AFTER total rows)"
-  dev_psql -q -c "DROP TABLE IF EXISTS staging_${TABLE};"
-}
+  dev_psql -v ON_ERROR_STOP=1 -q -f "$SQLFILE" >/dev/null 2>"$DUMP_DIR/.err_load_${TABLE}.txt"
+  local RC=$?
+  if [ $RC -ne 0 ]; then
+    warn "[$TABLE] load failed: $(cat "$DUMP_DIR/.err_load_${TABLE}.txt")"
+    return 1
+  fi
 
-skip_if_exists_table() {
-  # Never overwrites an existing dev row — used for branches/users.
-  local TABLE=$1
-  _stage_csv "$TABLE" || return 0
-
-  dev_psql -v ON_ERROR_STOP=1 -q -c "
-    INSERT INTO ${SCHEMA}.\"${TABLE}\"
-    SELECT * FROM staging_${TABLE}
-    ON CONFLICT (_id) DO NOTHING;
-  "
   local COUNT
   COUNT=$(dev_psql -t -A -c "SELECT COUNT(*) FROM ${SCHEMA}.\"${TABLE}\";")
-  success "[$TABLE] inserted where missing (dev now has $COUNT total rows)"
-  dev_psql -q -c "DROP TABLE IF EXISTS staging_${TABLE};"
+  success "[$TABLE] loaded (${MODE}); dev now has $COUNT total row(s)"
 }
 
 # =============================================================================
@@ -270,41 +292,32 @@ echo ""
 # --- Dump, in dependency order, all computed against PROD directly ----------
 log "Dumping from PROD..."
 
-# NOTE: PK confirmed as "_id" (from the error hint on branches/areas).
-# FK column names below (divisionId/regionId/areaId/branchId) are STILL
-# UNCONFIRMED GUESSES — do not run again until you've pasted the
-# information_schema output and these are corrected to the real names.
+# NOTE: PK confirmed as "_id". FK derivation simplified — "branches" already
+# carries areaId/regionId/divisionId directly (flattened/denormalized), so we
+# read ancestors straight off branches instead of walking areas -> regions ->
+# divisions. users links to branches via "designatedBranchId", not "branchId".
 
-dump_table_to_csv divisions "_id IN (
-  SELECT \"divisionId\" FROM regions WHERE _id IN (
-    SELECT \"regionId\" FROM areas WHERE _id IN (
-      SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
-    )
-  )
-)"
+check_pk_constraint divisions
+check_pk_constraint regions
+check_pk_constraint areas
+check_pk_constraint branches
+check_pk_constraint users
+echo ""
 
-dump_table_to_csv regions "_id IN (
-  SELECT \"regionId\" FROM areas WHERE _id IN (
-    SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
-  )
-)"
-
-dump_table_to_csv areas "_id IN (
-  SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL}
-)"
-
-dump_table_to_csv branches "_id IN ${BRANCH_IDS_SQL}"
-
-dump_table_to_csv users "\"branchId\" IN ${BRANCH_IDS_SQL}"
+dump_table_to_csv divisions "_id IN (SELECT \"divisionId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL})"
+dump_table_to_csv regions   "_id IN (SELECT \"regionId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL})"
+dump_table_to_csv areas     "_id IN (SELECT \"areaId\" FROM branches WHERE _id IN ${BRANCH_IDS_SQL})"
+dump_table_to_csv branches  "_id IN ${BRANCH_IDS_SQL}"
+dump_table_to_csv users     "\"designatedBranchId\" IN ${BRANCH_IDS_SQL}"
 
 echo ""
 log "Loading into DEV (parents first, so FK constraints are satisfied naturally)..."
 
-upsert_table divisions
-upsert_table regions
-upsert_table areas
-skip_if_exists_table branches
-skip_if_exists_table users
+_load_table divisions upsert
+_load_table regions   upsert
+_load_table areas     upsert
+_load_table branches  skip
+_load_table users     skip
 
 echo ""
 success "Done. Dump files kept at: $DUMP_DIR"
