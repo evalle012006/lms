@@ -226,11 +226,17 @@ export default function QrCollectPage() {
                                 recomputes the authoritative value at submit time
                                 regardless of what's shown here. */}
                             {client.occurence === 'daily' ? (
-                                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                <div className={`rounded-lg px-3 py-2 ${isWholeInstallments ? 'bg-gray-50' : 'bg-red-50 border border-red-100'}`}>
                                     <p className="text-[10px] uppercase tracking-wide text-gray-400">MCBU Collection (auto-computed)</p>
-                                    <p className="text-sm font-medium text-gray-800">
-                                        ₱{computedDailyMcbu.toLocaleString()}
-                                    </p>
+                                    {isWholeInstallments ? (
+                                        <p className="text-sm font-medium text-gray-800">
+                                            ₱{computedDailyMcbu.toLocaleString()}
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm font-medium text-red-600">
+                                            Payment must be a whole multiple of ₱{activeLoan.toLocaleString()}
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <NumberField label="MCBU Collection" value={form.mcbuCol}
