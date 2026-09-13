@@ -25,6 +25,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
     ${CLIENT_FIELDS}
     branch { _id name code }
+    lo { _id firstName lastName }
 `)('clients');
 
 export default apiHandler({ post: generateClientQR });
@@ -125,6 +126,7 @@ async function generateClientQR(req, res) {
             branchId:      client.branchId,
             branchName:    client.branch?.name,
             loId:          client.loId,
+            loName:        client.lo ? `${client.lo.firstName} ${client.lo.lastName}` : null,
         },
         message: isRegeneration
             ? 'QR code regenerated. The previous QR code is now invalid.'
