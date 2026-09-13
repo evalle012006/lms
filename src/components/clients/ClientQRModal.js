@@ -59,7 +59,7 @@ export default function ClientQRModal({ show, onClose, onRegenerate, qrData }) {
     if (!qrData) return null;
 
     return (
-        <Modal show={show} onClose={onClose} title="Client Collection QR" size="sm">
+        <Modal show={show} onClose={onClose} title="Client Collection QR" size="md">
             <div className="space-y-4">
                 <div className="text-center">
                     <p className="text-sm font-medium text-gray-900">{qrData.clientName}</p>

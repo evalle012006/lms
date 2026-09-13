@@ -7,12 +7,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import moment from 'moment';
-import { QrCode, RefreshCw, X } from 'lucide-react';
+import { QrCode, RefreshCw, X, Download, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 
-const POPOVER_WIDTH = 220;
+const POPOVER_WIDTH = 240;
 
 /**
  * Props:
@@ -101,6 +101,24 @@ export default function ClientQRIconPopover({ client, onQrUpdated }) {
         }
     };
 
+    const handleDownload = () => {
+        if (!dataUrl) return;
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `ambercash-client-qr-${(client.fullName || 'client').replace(/\s+/g, '-').toLowerCase()}.png`;
+        a.click();
+        toast.success('QR code downloaded.');
+    };
+
+    const handleOpenTab = () => {
+        if (!qrUrl) return;
+        window.open(qrUrl, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleCopyUrl = () => {
+        navigator.clipboard.writeText(qrUrl || '').then(() => toast.success('URL copied to clipboard.'));
+    };
+
     if (client.status !== 'active') return null;
 
     const popover = open && popoverPos && (
@@ -131,15 +149,25 @@ export default function ClientQRIconPopover({ client, onQrUpdated }) {
                 </p>
             )}
 
-            <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={generating}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-md hover:bg-amber-100 disabled:opacity-50"
-            >
-                <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} /> Regenerate
-            </button>
-            <p className="text-center text-[10px] text-amber-600 mt-1">
+            <div className="grid grid-cols-2 gap-1.5">
+                <button type="button" onClick={handleDownload}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                    <Download className="w-3.5 h-3.5" /> Download
+                </button>
+                <button type="button" onClick={handleOpenTab}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                    <ExternalLink className="w-3.5 h-3.5" /> Open
+                </button>
+                <button type="button" onClick={handleCopyUrl}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                    <Copy className="w-3.5 h-3.5" /> Copy URL
+                </button>
+                <button type="button" onClick={handleGenerate} disabled={generating}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-md hover:bg-amber-100 disabled:opacity-50">
+                    <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} /> Redo
+                </button>
+            </div>
+            <p className="text-center text-[10px] text-amber-600 mt-1.5">
                 Regenerating invalidates the current code immediately.
             </p>
         </div>
