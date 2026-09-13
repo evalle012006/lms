@@ -41,10 +41,9 @@ import { setClient } from "@/redux/actions/clientActions";
 import PaymentHistoryModal from "./PaymentHistoryModal";
 import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
-import { GraduationCap, QrCode } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 import ClientProgramsTab from './programs/ClientProgramsTab';
-import ClientQRModal from './ClientQRModal';
-import ButtonOutline from "@/lib/ui/ButtonOutline";
+import ClientQRIconPopover from "./ClientQRIconPopover";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -71,52 +70,11 @@ const ClientDetailPage = () => {
     // disbursementPhotoKey lives on the loan record — resolved after activeLoan is set
     const { signedUrl: disbursementPhotoUrl } = useSignedUrl(activeLoan?.disbursementPhotoKey || null);
 
-    const [showQrModal, setShowQrModal] = useState(false);
-    const [qrData, setQrData] = useState(null);
-    const [generatingQr, setGeneratingQr] = useState(false);
-
     useEffect(() => {
         if (client?._id) {
             getClientDetails();
         }
     }, [client?._id]);
-
-    const handleGenerateQr = async () => {
-        setGeneratingQr(true);
-        const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/generate-qr', { clientId: client._id });
-        setGeneratingQr(false);
-        if (res.success) {
-            dispatch(setClient({ ...client, qrToken: res.qr.qrToken, qrGeneratedAt: res.qr.qrGeneratedAt }));
-            setQrData({
-                ...res.qr,
-                url: `${window.location.origin}/transactions/cash-collection/qr-collect/${res.qr.qrToken}`,
-            });
-            setShowQrModal(true);
-        } else {
-            toast.error(res.message || 'Failed to generate QR code.');
-        }
-    };
-
-    const handleOpenQr = () => {
-        // Viewing an already-issued QR must NOT call generate-qr — that endpoint
-        // always issues a fresh token, which would silently invalidate any
-        // printed copy every time someone just wants to look at it again.
-        if (client.qrToken) {
-            setQrData({
-                qrToken: client.qrToken,
-                qrGeneratedAt: client.qrGeneratedAt,
-                clientName: `${client.lastName}, ${client.firstName}`,
-                branchName: client.branchName,
-                loName: null, // not resolved from Redux client data — see flag below
-                url: `${window.location.origin}/transactions/cash-collection/qr-collect/${client.qrToken}`,
-            });
-            setShowQrModal(true);
-        } else {
-            handleGenerateQr();
-        }
-    };
-
-    const handleCloseQrModal = () => setShowQrModal(false);
 
     const getClientDetails = async () => {
         if (!client?._id) return;
@@ -366,8 +324,14 @@ const ClientDetailPage = () => {
         <div className="bg-gray-50 min-h-full">
             {/* Header Section */}
             <div className="bg-white border-b border-gray-200">
-                <div className="px-6 py-6">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                <div className="px-6 py-6 relative">
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                        <ClientQRIconPopover
+                            client={client}
+                            onQrUpdated={(changes) => dispatch(setClient({ ...client, ...changes }))}
+                        />
+                    </div>
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 pr-14 md:pr-0">
                         <div className="flex items-start space-x-4">
                             {/* Profile Image */}
                             <div className="relative group">
@@ -441,22 +405,6 @@ const ClientDetailPage = () => {
                             </div>
                         </div>
                     </div>
-                    {client.status === 'active' && (
-                        <div className="flex flex-col items-end gap-1">
-                            <ButtonOutline
-                                label={generatingQr ? 'Generating…' : client.qrToken ? 'View QR Code' : 'Generate QR Code'}
-                                type="button"
-                                className="p-2"
-                                onClick={handleOpenQr}
-                                disabled={generatingQr}
-                            />
-                            <span className="text-xs text-gray-400">
-                                {client.qrToken
-                                    ? `QR issued ${moment(client.qrGeneratedAt).format('MMM D, YYYY')}`
-                                    : 'No QR issued yet'}
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Tabs */}
@@ -893,13 +841,6 @@ const ClientDetailPage = () => {
                 show={showPaymentHistoryModal}
                 onClose={handleClosePaymentHistoryModal}
                 loan={selectedLoanForHistory}
-            />
-
-            <ClientQRModal
-                show={showQrModal}
-                onClose={handleCloseQrModal}
-                onRegenerate={handleGenerateQr}
-                qrData={qrData}
             />
 
             {/* Profile Image Preview Modal — unchanged */}
