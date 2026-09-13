@@ -44,6 +44,7 @@ import { useSignedUrl } from "hooks/useSignedUrl";
 import { GraduationCap, QrCode } from 'lucide-react';
 import ClientProgramsTab from './programs/ClientProgramsTab';
 import ClientQRModal from './ClientQRModal';
+import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
