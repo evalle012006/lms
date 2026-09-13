@@ -16,8 +16,8 @@ import { apiHandler }                         from '@/services/api-handler';
 import { GraphProvider }                      from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl }           from '@/lib/graph/graph.util';
 import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
-import { findUserById }                       from '@/lib/graph.functions';
-import { getSystemDate }                      from '@/lib/date-utils'; // per established convention: event-time checks use getSystemDate(), not real Date()
+import { findUserById, loadSettingsSystemDate } from '@/lib/graph.functions';
+
 import moment                                 from 'moment-timezone';
 import { resolveWeeklyMcbuMinimum }           from '@/lib/mcbu-target-utils';
 import { holidayType } from '../settings/holidays/common';
@@ -86,7 +86,7 @@ async function getScanInfo(req, res) {
     // ── Secondary hard-ceiling check (term-based failsafe) ───────────────
     // NOT fetched/verified here — flagged below, see note.
 
-    const today    = moment(getSystemDate()).tz('Asia/Manila');
+    const today    = moment(await loadSettingsSystemDate()).tz('Asia/Manila');
     const dayName  = today.format('dddd'); // 'Monday', etc.
     const dateStr  = today.format('YYYY-MM-DD');
 

@@ -138,6 +138,15 @@ export default function QrCollectPage() {
 
     const { client, loan, dayValidity, existingDraft, limits } = scanInfo;
 
+    // Live display-only estimate — mirrors submit.js's authoritative
+    // server-side formula (noPaymentsToday * minDailyMcbuCollection), but
+    // this value is NEVER what actually gets saved; it's purely so the
+    // person sees a sensible number before submitting, not a promise it'll
+    // match exactly (the server may compute a different figure if settings
+    // changed between page load and submit).
+    const noPaymentsToday = (parseFloat(form.paymentCollection) || 0) / (loan.activeLoan || 1);
+    const computedDailyMcbu = Math.round((limits?.minMcbuCollectionPerInstallment ?? 0) * noPaymentsToday);
+
     return (
         <div className="min-h-screen bg-gray-50 flex items-start justify-center p-4 pt-10">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -206,9 +215,25 @@ export default function QrCollectPage() {
                         </>
                     ) : (
                         <>
-                            <NumberField label="MCBU Collection" value={form.mcbuCol}
-                                hint={limits?.minMcbuCollection ? `Minimum ₱${limits.minMcbuCollection}` : null}
-                                onChange={(v) => setForm(f => ({ ...f, mcbuCol: v }))} />
+                            {/* MCBU on daily collection is auto-computed, not a free
+                                input — matches the desktop's implementation. Weekly
+                                keeps it as a real input, per instruction. The
+                                displayed figure recalculates live as Payment
+                                Collection changes; the server independently
+                                recomputes the authoritative value at submit time
+                                regardless of what's shown here. */}
+                            {client.occurence === 'daily' ? (
+                                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">MCBU Collection (auto-computed)</p>
+                                    <p className="text-sm font-medium text-gray-800">
+                                        ₱{computedDailyMcbu.toLocaleString()}
+                                    </p>
+                                </div>
+                            ) : (
+                                <NumberField label="MCBU Collection" value={form.mcbuCol}
+                                    hint={limits?.minMcbuCollectionPerInstallment ? `~₱${limits.minMcbuCollectionPerInstallment} per installment` : null}
+                                    onChange={(v) => setForm(f => ({ ...f, mcbuCol: v }))} />
+                            )}
                             {client.groupLeader && (
                                 <NumberField label="CSF Collection" value={form.csfCollection}
                                     hint={limits?.minCsfCollection ? `Minimum ₱${limits.minCsfCollection}` : null}

@@ -3,9 +3,9 @@ import { apiHandler }                          from '@/services/api-handler';
 import { GraphProvider }                       from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
-import { findUserById }                        from '@/lib/graph.functions';
+import { findUserById, loadSettingsSystemDate } from '@/lib/graph.functions';
 import { generateUUID }                        from '@/lib/utils';
-import { getSystemDate }                       from '@/lib/date-utils';
+
 import { logAudit }                            from '@/lib/audit';
 import { holidayType }                         from '@/pages/api/v2/settings/holidays/common';
 import moment                                  from 'moment-timezone';
@@ -91,7 +91,7 @@ async function submitQrCollection(req, res) {
         return res.status(200).json({ success: false, code: 'NO_ACTIVE_LOAN', message: 'This client has no active loan.' });
     }
 
-    const today    = moment(getSystemDate()).tz('Asia/Manila');
+    const today    = moment(await loadSettingsSystemDate()).tz('Asia/Manila');
     const dayName  = today.format('dddd');
     const dateStr  = today.format('YYYY-MM-DD');
     const monthDay = today.format('MM-DD');
@@ -132,11 +132,29 @@ async function submitQrCollection(req, res) {
         });
     }
 
-    if (mcbuVal > 0) {
+    // MCBU on DAILY collection is NOT a free-input field, same as the
+    // desktop's implementation — it's server-computed from the simple,
+    // common-case rate (noPaymentsToday * minDailyMcbuCollection), never
+    // trusted from the client at all for daily. This deliberately does NOT
+    // replicate the desktop's ~20 conditional branches for excess/advance/
+    // mispayment-recovery scenarios — those are genuinely complex edge
+    // cases, out of scope here by the same reasoning that kept the whole QR
+    // form to raw-amount capture in the first place. If one of those edge
+    // cases applies to a given client, the office reviews and corrects it
+    // at merge time — a QR row is a draft, not a blind auto-finalized entry.
+    //
+    // Weekly keeps mcbuCol as a real input, per your instruction — only
+    // daily changes here.
+    let effectiveMcbuVal = mcbuVal;
+
+    if (occurence === 'daily') {
         const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
-        const minMcbuCol = occurence === 'weekly'
-            ? resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday
-            : (settings?.minDailyMcbuCollection ?? 0) * noPaymentsToday;
+        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * noPaymentsToday);
+        // mcbuVal (whatever the client sent) is intentionally discarded below —
+        // effectiveMcbuVal is what actually gets saved into the payload.
+    } else if (mcbuVal > 0) {
+        const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
+        const minMcbuCol = resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday;
 
         if (mcbuVal < minMcbuCol && Number.isInteger(minMcbuCol)) {
             return res.status(200).json({
@@ -235,7 +253,7 @@ async function submitQrCollection(req, res) {
     }
 
     const payload = {
-        mcbuCol: parseFloat(mcbuCol) || 0,
+        mcbuCol: effectiveMcbuVal,
         csfCollection: parseFloat(csfCollection) || 0,
         paymentCollection: parseFloat(paymentCollection) || 0,
         mcbuWithdrawFlag: !!mcbuWithdrawFlag,
