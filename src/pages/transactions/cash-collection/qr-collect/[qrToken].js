@@ -145,7 +145,10 @@ export default function QrCollectPage() {
     // match exactly (the server may compute a different figure if settings
     // changed between page load and submit).
     const noPaymentsToday = (parseFloat(form.paymentCollection) || 0) / (loan.activeLoan || 1);
-    const computedDailyMcbu = Math.round((limits?.minMcbuCollectionPerInstallment ?? 0) * noPaymentsToday);
+    const isWholeInstallments = Math.abs(noPaymentsToday - Math.round(noPaymentsToday)) < 1e-6;
+    const computedDailyMcbu = isWholeInstallments
+        ? Math.round((limits?.minMcbuCollectionPerInstallment ?? 0) * Math.round(noPaymentsToday))
+        : null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-start justify-center p-4 pt-10">
@@ -245,7 +248,8 @@ export default function QrCollectPage() {
                         </>
                     )}
 
-                    <button type="submit" disabled={submitting}
+                    <button type="submit"
+                        disabled={submitting || (client.occurence === 'daily' && !isWholeInstallments)}
                         className="w-full py-2.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
                         {submitting ? 'Submitting…' : existingDraft ? 'Update Collection' : 'Submit Collection'}
                     </button>

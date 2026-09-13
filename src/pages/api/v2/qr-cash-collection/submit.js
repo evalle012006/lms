@@ -132,6 +132,16 @@ async function submitQrCollection(req, res) {
         });
     }
 
+    const isWholeInstallments = Math.abs(noPaymentsToday - Math.round(noPaymentsToday)) < 1e-6;
+
+    if (!isWholeInstallments) {
+        return res.status(200).json({
+            success: false,
+            code: 'PAYMENT_NOT_MULTIPLE_OF_ACTIVE_LOAN',
+            message: `Payment collection must be a whole multiple of the daily target amount (₱${activeLoan}).`,
+        });
+    }
+
     // MCBU on DAILY collection is NOT a free-input field, same as the
     // desktop's implementation — it's server-computed from the simple,
     // common-case rate (noPaymentsToday * minDailyMcbuCollection), never
@@ -149,7 +159,7 @@ async function submitQrCollection(req, res) {
 
     if (occurence === 'daily') {
         const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
-        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * noPaymentsToday);
+        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * Math.round(noPaymentsToday));
         // mcbuVal (whatever the client sent) is intentionally discarded below —
         // effectiveMcbuVal is what actually gets saved into the payload.
     } else if (mcbuVal > 0) {
