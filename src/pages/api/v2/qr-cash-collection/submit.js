@@ -96,7 +96,7 @@ async function submitQrCollection(req, res) {
     const dateStr  = today.format('YYYY-MM-DD');
     const monthDay = today.format('MM-DD');
 
-    const group     = client.group?.[0];
+    const group     = client.group;
     const occurence = group?.occurence;
 
     // ── Minimum-amount validation ────────────────────────────────────────

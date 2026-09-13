@@ -90,7 +90,7 @@ async function getScanInfo(req, res) {
     const dayName  = today.format('dddd'); // 'Monday', etc.
     const dateStr  = today.format('YYYY-MM-DD');
 
-    const group    = client.group?.[0];
+    const group    = client.group;
     const occurence = group?.occurence; // 'daily' | 'weekly'
 
     let dayValidity = { allowed: true, restrictedToFlaggedTypes: false };
