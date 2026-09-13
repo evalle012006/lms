@@ -106,9 +106,31 @@ async function getLoanWithCashCollection(req, res) {
                 const isJustPlaceholder = !existingRow || existingRow.origin === 'pre-save' || existingRow.draft === true;
 
                 if (qrEntry.status === 'pending' && isJustPlaceholder) {
-                    row.mcbuCol = qrEntry.payload.mcbuCol;
-                    row.csfCollection = qrEntry.payload.csfCollection;
-                    row.paymentCollection = qrEntry.payload.paymentCollection;
+                    const mcbuCol = qrEntry.payload.mcbuCol || 0;
+                    const csfCollection = qrEntry.payload.csfCollection || 0;
+                    const paymentCollection = qrEntry.payload.paymentCollection || 0;
+
+                    row.mcbuCol = mcbuCol;
+                    row.csfCollection = csfCollection;
+                    row.paymentCollection = paymentCollection;
+
+                    // Mirror the desktop's own live-typing recalculation
+                    // (handlePaymentCollectionChange in [uuid].js) so a
+                    // QR-merged row looks the same as if a human had typed
+                    // these exact numbers in manually — mcbu/csf accumulate,
+                    // loanBalance decreases, noOfPayments increases by
+                    // however many installments this payment represents.
+                    // Only the *Str display fields are left untouched here —
+                    // the frontend's own transform already re-derives those
+                    // from these raw numbers, so updating them here too
+                    // would be redundant and risks the two falling out of
+                    // sync if that transform ever changes independently.
+                    row.mcbu = (row.mcbu || 0) + mcbuCol;
+                    row.csf = (row.csf || 0) + csfCollection;
+                    row.loanBalance = (row.loanBalance || 0) - paymentCollection;
+
+                    const noPaymentsToday = paymentCollection / (row.activeLoan || 1);
+                    row.noOfPayments = (row.noOfPayments || 0) + noPaymentsToday;
                 }
                 // Badge fields apply regardless of pending/merged — a saved,
                 // QR-originated row should still show its provenance.

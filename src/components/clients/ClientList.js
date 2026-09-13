@@ -73,7 +73,7 @@ export default function ClientList({
     return (
         <div>
             {isDesktop ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto" style={{ minHeight: clients.length < 4 ? '220px' : undefined }}>
                     <div className="min-w-max">
                         <DenseHeader variant={rowVariant} />
                         {clients.map(c => (
