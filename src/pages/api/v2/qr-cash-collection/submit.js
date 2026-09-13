@@ -132,13 +132,14 @@ async function submitQrCollection(req, res) {
         });
     }
 
+    const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
     const isWholeInstallments = Math.abs(noPaymentsToday - Math.round(noPaymentsToday)) < 1e-6;
 
     if (!isWholeInstallments) {
         return res.status(200).json({
             success: false,
             code: 'PAYMENT_NOT_MULTIPLE_OF_ACTIVE_LOAN',
-            message: `Payment collection must be a whole multiple of the daily target amount (₱${activeLoan}).`,
+            message: `Payment collection must be a whole multiple of the daily target amount (₱${loan.activeLoan}).`,
         });
     }
 
@@ -158,12 +159,10 @@ async function submitQrCollection(req, res) {
     let effectiveMcbuVal = mcbuVal;
 
     if (occurence === 'daily') {
-        const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
         effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * Math.round(noPaymentsToday));
         // mcbuVal (whatever the client sent) is intentionally discarded below —
         // effectiveMcbuVal is what actually gets saved into the payload.
     } else if (mcbuVal > 0) {
-        const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
         const minMcbuCol = resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday;
 
         if (mcbuVal < minMcbuCol && Number.isInteger(minMcbuCol)) {
