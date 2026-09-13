@@ -161,10 +161,18 @@ dump_table_to_csv() {
   local OUTFILE="$DUMP_DIR/${TABLE}.csv"
   local TMPFILE="$DUMP_DIR/.copy_${TABLE}.sql"
 
-  printf '\\COPY (SELECT * FROM %s."%s" WHERE %s) TO STDOUT WITH CSV HEADER\n' \
-    "$SCHEMA" "$TABLE" "$WHERE_CLAUSE" > "$TMPFILE"
+  # \COPY is a psql meta-command and MUST be a single line — collapse any
+  # newlines/extra whitespace in the WHERE clause before building it, or the
+  # command silently truncates at the first newline.
+  local WHERE_ONELINE
+  WHERE_ONELINE=$(echo "$WHERE_CLAUSE" | tr '\n' ' ' | tr -s ' ')
 
-  prod_psql -f "$TMPFILE" > "$OUTFILE" 2>"$DUMP_DIR/.err_${TABLE}.txt"
+  printf '\\COPY (SELECT * FROM %s."%s" WHERE %s) TO STDOUT WITH CSV HEADER\n' \
+    "$SCHEMA" "$TABLE" "$WHERE_ONELINE" > "$TMPFILE"
+
+  # -v ON_ERROR_STOP=1 so a broken command fails loudly (non-zero exit) instead
+  # of silently exiting 0 with an empty file.
+  prod_psql -v ON_ERROR_STOP=1 -f "$TMPFILE" > "$OUTFILE" 2>"$DUMP_DIR/.err_${TABLE}.txt"
   local RC=$?
   rm -f "$TMPFILE"
 
