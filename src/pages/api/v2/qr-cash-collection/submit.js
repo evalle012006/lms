@@ -10,6 +10,7 @@ import { logAudit }                            from '@/lib/audit';
 import { holidayType }                         from '@/pages/api/v2/settings/holidays/common';
 import moment                                  from 'moment-timezone';
 import crypto                                  from 'crypto';
+import { resolveWeeklyMcbuMinimum }             from '@/lib/mcbu-target-utils';
 
 const graph = new GraphProvider();
 
@@ -29,6 +30,7 @@ const QR_ENTRY_TYPE = createGraphType('qr_cash_collection_entries', QR_CASH_COLL
 // for this client today?") using the same fields, so the point-of-entry
 // check here and the point-of-save check there never disagree.
 const CASH_COLLECTION_CHECK_TYPE = createGraphType('cashCollections', '_id draft origin')('cashCollectionCheck');
+const SETTINGS_TYPE = createGraphType('transactionSettings', 'minDailyMcbuCollection minWeeklyMcbuCollection minWeeklyMcbuCollectionAccelerated minCsfCollection')('txSettings');
 
 export default apiHandler({ post: submitQrCollection });
 
@@ -96,6 +98,79 @@ async function submitQrCollection(req, res) {
 
     const group     = client.group?.[0];
     const occurence = group?.occurence;
+
+    // ── Minimum-amount validation ────────────────────────────────────────
+    // Mirrors the EXACT logic in [uuid].js's handlePaymentValidation for both
+    // daily and weekly pages — this is not a simplified server-side version,
+    // it is the same formula, since diverging would mean office and QR
+    // submissions get judged by different rules for the same client.
+    //
+    // MCBU's minimum is PROPORTIONAL, not flat: it scales with how many
+    // installments' worth of payment is being made today
+    // (noPaymentsToday = paymentCollection / activeLoan). Daily groups use
+    // minDailyMcbuCollection directly; weekly groups use
+    // resolveWeeklyMcbuMinimum (standard vs accelerated schedule), the same
+    // shared utility the desktop page imports — not reimplemented here.
+    //
+    // Both MCBU and CSF must be divisible by 5, matching the desktop's rule.
+    const [settings] = await graph.query(queryQl(SETTINGS_TYPE, { limit: 1 })).then(r => r.data?.txSettings ?? []);
+
+    const mcbuVal    = parseFloat(mcbuCol) || 0;
+    const csfVal     = parseFloat(csfCollection) || 0;
+    const paymentVal = parseFloat(paymentCollection) || 0;
+
+    // Required: a QR submission exists to confirm a real collection happened.
+    // A $0 payment (a genuine missed payment) is a real, valid outcome in
+    // this system, but recording "nothing was collected" isn't something
+    // the QR flow is meant to do — that's the office's mispayment tracking,
+    // not a field submission. Flagging this interpretation explicitly.
+    if (paymentVal <= 0) {
+        return res.status(200).json({
+            success: false,
+            code: 'PAYMENT_REQUIRED',
+            message: 'Payment collection must be greater than zero.',
+        });
+    }
+
+    if (mcbuVal > 0) {
+        const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
+        const minMcbuCol = occurence === 'weekly'
+            ? resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday
+            : (settings?.minDailyMcbuCollection ?? 0) * noPaymentsToday;
+
+        if (mcbuVal < minMcbuCol && Number.isInteger(minMcbuCol)) {
+            return res.status(200).json({
+                success: false,
+                code: 'MCBU_BELOW_MINIMUM',
+                message: `Minimum MCBU collection is ${minMcbuCol}.`,
+            });
+        }
+        if (mcbuVal > 5 && mcbuVal % 5 !== 0) {
+            return res.status(200).json({
+                success: false,
+                code: 'MCBU_NOT_DIVISIBLE',
+                message: 'MCBU collection must be divisible by 5.',
+            });
+        }
+    }
+
+    if (csfVal > 0) {
+        const minCsf = settings?.minCsfCollection ?? 0;
+        if (csfVal < minCsf) {
+            return res.status(200).json({
+                success: false,
+                code: 'CSF_BELOW_MINIMUM',
+                message: `Minimum CSF collection is ${minCsf}.`,
+            });
+        }
+        if (csfVal > 5 && csfVal % 5 !== 0) {
+            return res.status(200).json({
+                success: false,
+                code: 'CSF_NOT_DIVISIBLE',
+                message: 'CSF collection must be divisible by 5.',
+            });
+        }
+    }
 
     // ── Day-validity ──────────────────────────────────────────────────
     if (occurence === 'daily') {

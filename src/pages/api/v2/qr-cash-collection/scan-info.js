@@ -19,17 +19,22 @@ import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIEL
 import { findUserById }                       from '@/lib/graph.functions';
 import { getSystemDate }                      from '@/lib/date-utils'; // per established convention: event-time checks use getSystemDate(), not real Date()
 import moment                                 from 'moment-timezone';
+import { resolveWeeklyMcbuMinimum }           from '@/lib/mcbu-target-utils';
 import { holidayType } from '../settings/holidays/common';
 
 const graph = new GraphProvider();
 
 const CLIENT_TYPE = createGraphType('client', `
     ${CLIENT_FIELDS}
+    branch { name }
+    lo { firstName lastName }
     group { ${GROUP_FIELDS} }
     loans (where: { status: { _eq: "active" } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
         ${LOAN_FIELDS}
     }
 `)('clients');
+
+const SETTINGS_TYPE = createGraphType('transactionSettings', 'minDailyMcbuCollection minWeeklyMcbuCollection minWeeklyMcbuCollectionAccelerated minCsfCollection')('txSettings');
 
 const QR_ENTRY_TYPE = createGraphType('qr_cash_collection_entries', QR_CASH_COLLECTION_ENTRY_FIELDS)('qrEntries');
 
@@ -131,18 +136,44 @@ async function getScanInfo(req, res) {
         });
     }
 
+    const [settings] = await graph.query(queryQl(SETTINGS_TYPE, { limit: 1 })).then(r => r.data?.txSettings ?? []);
+
+    // NOTE: minMcbuCollection returned here is the BASE per-installment rate
+    // only (daily flat rate, or weekly standard/accelerated rate depending
+    // on the group's weeklyScheduleType) — it is NOT multiplied by
+    // noPaymentsToday, since that depends on paymentCollection, which the
+    // person hasn't entered yet at scan-info time. The frontend hint should
+    // say "minimum ~X per installment", and the REAL enforced minimum
+    // (proportional, computed the same way submit.js computes it) only gets
+    // checked once they actually submit. Don't treat this value as the
+    // final answer — it's a starting-point hint, submit.js is authoritative.
+    const baseMcbuMin = occurence === 'weekly'
+        ? resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType)
+        : (settings?.minDailyMcbuCollection ?? 0);
+
     return res.status(200).json({
         success: true,
         client: {
             _id: client._id,
             fullName: client.fullName || `${client.lastName}, ${client.firstName}`,
-            branchName: client.branchName,
-            groupName: client.groupName,
+            branchName: client.branch?.name || client.branchName,
+            loName: client.lo ? `${client.lo.firstName} ${client.lo.lastName}` : null,
+            groupName: group?.name || client.groupName,
+            occurence: occurence || null,
+            groupLeader: !!client.groupLeader,
         },
         loan: {
-            loanBalance: loan.loanBalance,
+            status: loan.status,
+            amountRelease: loan.amountRelease,
             activeLoan: loan.activeLoan,
-            targetCollection: loan.activeLoan, // read-only display context, mirrors the row's own targetCollection derivation for the active/regular case
+            loanBalance: loan.loanBalance,
+            mcbu: loan.mcbu,
+            csf: client.groupLeader ? loan.csf : null, // never expose CSF to a non-group-leader's screen at all
+            targetCollection: loan.activeLoan,
+        },
+        limits: {
+            minMcbuCollectionPerInstallment: baseMcbuMin,
+            minCsfCollection: settings?.minCsfCollection ?? 0,
         },
         dayValidity,
         collectionDate: dateStr,

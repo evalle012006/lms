@@ -1,5 +1,4 @@
 // src/pages/transactions/cash-collection/qr-collect/[qrToken].js
-// (moved from src/pages/qr-collect/[qrToken].js — no other changes)
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
@@ -17,6 +16,15 @@ const ERROR_MESSAGES = {
     DAY_NOT_VALID: null,
     ALREADY_PROCESSED: null,
 };
+
+function statusPillClass(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'active') return 'bg-green-100 text-green-700';
+    if (s === 'completed') return 'bg-blue-100 text-blue-700';
+    if (s === 'closed') return 'bg-zinc-200 text-zinc-700';
+    if (s === 'pending') return 'bg-yellow-100 text-yellow-700';
+    return 'bg-gray-100 text-gray-600';
+}
 
 export default function QrCollectPage() {
     const router = useRouter();
@@ -128,13 +136,26 @@ export default function QrCollectPage() {
         );
     }
 
-    const { client, loan, dayValidity, existingDraft } = scanInfo;
+    const { client, loan, dayValidity, existingDraft, limits } = scanInfo;
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-start justify-center p-4 pt-10">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+
+                {/* ── Header ────────────────────────────────────────────────
+                    Client name stays the prominent element (same size as
+                    before). Branch / LO / Group / Occurence sit underneath
+                    as a compact, secondary info row — this is orientation
+                    context for the person scanning, not data they act on,
+                    so it's deliberately smaller and less visually loud than
+                    the name itself. */}
                 <h1 className="text-lg font-semibold text-gray-900">{client.fullName}</h1>
-                <p className="text-sm text-gray-500">{client.groupName} · {client.branchName}</p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                    <span>{client.branchName}</span>
+                    {client.loName && <span>· {client.loName}</span>}
+                    {client.groupName && <span>· {client.groupName}</span>}
+                    {client.occurence && <span className="capitalize">· {client.occurence}</span>}
+                </div>
 
                 {existingDraft && (
                     <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
@@ -142,9 +163,26 @@ export default function QrCollectPage() {
                     </div>
                 )}
 
+                {/* ── Read-only details ────────────────────────────────────
+                    Loan status as a pill (matches the office page's status
+                    color convention), everything else as plain figures.
+                    CSF only ever appears here if the client is a group
+                    leader — for anyone else, loan.csf is already null from
+                    the API, so it's never rendered or exposed at all. */}
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2 flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-[10px] uppercase tracking-wide text-gray-400">Loan Status</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusPillClass(loan.status)}`}>
+                            {loan.status || '-'}
+                        </span>
+                    </div>
+                    <ReadOnlyField label="Amount Release" value={loan.amountRelease} />
+                    <ReadOnlyField label="Active Loan" value={loan.activeLoan} />
                     <ReadOnlyField label="Loan Balance" value={loan.loanBalance} />
-                    <ReadOnlyField label="Target Collection" value={loan.targetCollection} />
+                    <ReadOnlyField label="MCBU" value={loan.mcbu} />
+                    {client.groupLeader && (
+                        <ReadOnlyField label="CSF" value={loan.csf} />
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -169,12 +207,15 @@ export default function QrCollectPage() {
                     ) : (
                         <>
                             <NumberField label="MCBU Collection" value={form.mcbuCol}
+                                hint={limits?.minMcbuCollection ? `Minimum ₱${limits.minMcbuCollection}` : null}
                                 onChange={(v) => setForm(f => ({ ...f, mcbuCol: v }))} />
-                            {scanInfo.client.groupLeader && (
+                            {client.groupLeader && (
                                 <NumberField label="CSF Collection" value={form.csfCollection}
+                                    hint={limits?.minCsfCollection ? `Minimum ₱${limits.minCsfCollection}` : null}
                                     onChange={(v) => setForm(f => ({ ...f, csfCollection: v }))} />
                             )}
                             <NumberField label="Payment Collection" value={form.paymentCollection}
+                                hint="Required"
                                 onChange={(v) => setForm(f => ({ ...f, paymentCollection: v }))} />
                         </>
                     )}
@@ -198,10 +239,13 @@ function ReadOnlyField({ label, value }) {
     );
 }
 
-function NumberField({ label, value, onChange }) {
+function NumberField({ label, value, onChange, hint }) {
     return (
         <div>
-            <label className="block text-xs text-gray-500 mb-1">{label}</label>
+            <div className="flex items-baseline justify-between mb-1">
+                <label className="block text-xs text-gray-500">{label}</label>
+                {hint && <span className="text-[10px] text-gray-400">{hint}</span>}
+            </div>
             <input
                 type="number"
                 inputMode="decimal"
