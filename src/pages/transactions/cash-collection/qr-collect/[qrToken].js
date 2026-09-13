@@ -234,7 +234,7 @@ export default function QrCollectPage() {
                                         </p>
                                     ) : (
                                         <p className="text-sm font-medium text-red-600">
-                                            Payment must be a whole multiple of ₱{activeLoan.toLocaleString()}
+                                            Payment must be a whole multiple of ₱{loan.activeLoan.toLocaleString()}
                                         </p>
                                     )}
                                 </div>
