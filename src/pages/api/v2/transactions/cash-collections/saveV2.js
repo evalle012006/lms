@@ -10,7 +10,7 @@
  * The core save logic remains unchanged from the original save.js
  */
 
-import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, DENOMINATION_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
+import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, DENOMINATION_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID, safeNumber } from '@/lib/utils';
@@ -38,6 +38,8 @@ const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`);
 const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
 const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`);
 const DENOMINATION_TYPE = createGraphType('denomination', `${DENOMINATION_FIELDS}`);
+const QR_ENTRY_TYPE = createGraphType('qr_cash_collection_entries', `${QR_CASH_COLLECTION_ENTRY_FIELDS}`);
+const QR_CHECK_TYPE = createGraphType('cashCollections', '_id draft origin');
 
 export default apiHandler({
     post: saveWithProtection
@@ -325,6 +327,7 @@ async function executeSave(req, user_id, transactionId) {
     if (data.collection.length > 0) {
         let existCC = [];
         let newCC = [];
+        const qrMergeUpdates = [];
         
         logger.debug({user_id, transactionId, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         
@@ -412,6 +415,34 @@ async function executeSave(req, user_id, transactionId) {
 
                 logger.debug({user_id, transactionId, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, clientId: collection.clientId});
                 
+                if (collection.qrEntryId) {
+                    // Never trust the frontend's _id mapping for a QR-sourced row —
+                    // always re-check the actual current DB state directly. A
+                    // pre-save placeholder (or an office-started draft) may already
+                    // exist and needs to be upserted onto, not duplicated; a real
+                    // finalized (non-draft) transaction must never be touched by a
+                    // QR-sourced payload.
+                    const [existingRealRow] = await graph.query(
+                        queryQl(QR_CHECK_TYPE('qr_precheck'), {
+                            where: { clientId: { _eq: collection.clientId }, dateAdded: { _eq: currentDate } },
+                            limit: 1,
+                        })
+                    ).then(res => res.data?.qr_precheck ?? []);
+
+                    if (existingRealRow && existingRealRow.draft !== true) {
+                        logger.warn({
+                            user_id, transactionId, page: 'Cash Collection SaveV2',
+                            message: 'Skipped QR-sourced collection — a finalized non-draft transaction already exists for this client today',
+                            clientId: collection.clientId,
+                        });
+                        return; // skip this cc entirely — not saved, its qr entry stays unmarked
+                    }
+
+                    if (existingRealRow) {
+                        collection._id = existingRealRow._id;
+                    }
+                }
+
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
@@ -419,13 +450,25 @@ async function executeSave(req, user_id, transactionId) {
 
                     await fixCashCollectionReference(existCollection);
                     existCC.push(existCollection);
+
+                    if (collection.qrEntryId) {
+                        qrMergeUpdates.push({ qrEntryId: collection.qrEntryId, cashCollectionId: existCollection._id });
+                    }
                 } else {
+                    if (collection.qrEntryId && !collection._id) {
+                        collection._id = generateUUID();
+                    }
+
                     collection.insertedDateTime = new Date();
                     const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;
 
                     await fixCashCollectionReference(collection);
                     newCC.push(collection);
+
+                    if (collection.qrEntryId) {
+                        qrMergeUpdates.push({ qrEntryId: collection.qrEntryId, cashCollectionId: collection._id });
+                    }
                 }
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
@@ -448,6 +491,15 @@ async function executeSave(req, user_id, transactionId) {
         if (existCC.length > 0) {
             await updateCollection(mutationQl, existCC);
         }
+
+        qrMergeUpdates.forEach(({ qrEntryId, cashCollectionId }) => {
+            mutationQl.push(
+                updateQl(QR_ENTRY_TYPE('qr_merge_' + (mutationQl.length + 1)), {
+                    set: { status: 'merged', mergedIntoCashCollectionId: cashCollectionId, updatedDateTime: new Date() },
+                    where: { _id: { _eq: qrEntryId } },
+                })
+            );
+        });
 
         if (overallTotalNetCollection > 0) {
             await updateDenomination(mutationQl, data.collection[0]?.groupId, currentDate, overallTotalNetCollection);
@@ -540,7 +592,7 @@ const assignNullValues = (obj, origin) => {
 async function saveCollection(mutationQL, collections, currentDate) {
     const objects = collections.map(c => ({
         ... cleanUpCollection(c),
-        _id: generateUUID(),
+        _id: c._id || generateUUID(),
         dateAdded: currentDate,
     }));
 

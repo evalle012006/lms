@@ -109,6 +109,9 @@ export const CLIENT_FIELDS = `
   business
   dailyIncome
   livenessScore
+  qrToken
+  qrGeneratedAt
+  qrGeneratedBy
   `;
 
 export const LOAN_FIELDS = `
@@ -996,4 +999,22 @@ export const FACE_VERIFY_ATTEMPT_FIELDS = `
     user_agent
     inserted_by
     captured_at
+`;
+
+export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
+    _id
+    clientId
+    groupId
+    branchId
+    loanId
+    collectionDate
+    payload
+    referenceCode
+    status
+    scannedBy
+    scannedAt
+    qrTokenUsed
+    mergedIntoCashCollectionId
+    insertedDateTime
+    updatedDateTime
 `;

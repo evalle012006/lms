@@ -903,14 +903,16 @@ const CashCollectionDetailsPage = () => {
                             advance: cc.advance ? cc.advance : false,
                             csf: safeNumber(cc.csf),
                             csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
-                            csfCollection: 0,
-                            csfCollectionStr: '-',
+                            csfCollection: cc.csfCollection ? cc.csfCollection : 0,
+                            csfCollectionStr: cc.client.groupLeader ? formatPricePhp(cc.csfCollection) : '-',
                             csfWithdrawal: 0,
                             csfWithdrawalStr: '-',
                             csfReturnAmt: 0,
                             csfReturnAmtStr: '-',
                             _dirty: true,
                             editHistory: cc.editHistory ? cc.editHistory : [],
+                            qrSourced: cc.qrSourced || false,
+                            qrReferenceCode: cc.qrReferenceCode || null,
                         }
     
                         delete cc._id;
@@ -4080,6 +4082,10 @@ const CashCollectionDetailsPage = () => {
                                 <tbody>
                                     {data && data.map((cc, index) => {
                                         let rowBg = 'even:bg-gray-100';
+                                        if (cc.qrSourced) {
+                                            rowBg = 'bg-cyan-100';
+                                        }
+
                                         if (cc.status === 'pending') {
                                             rowBg = 'bg-yellow-100';
                                         } else if (cc.status === 'completed') {
