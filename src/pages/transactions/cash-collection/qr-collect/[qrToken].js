@@ -163,7 +163,7 @@ export default function QrCollectPage() {
                     so it's deliberately smaller and less visually loud than
                     the name itself. */}
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 relative">
+                    <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 relative border border-gray-100">
                         <PrivateImage src={client.profile} alt={client.fullName} layout="fill" objectFit="cover" />
                     </div>
                     <h1 className="text-lg font-semibold text-gray-900">{client.fullName}</h1>

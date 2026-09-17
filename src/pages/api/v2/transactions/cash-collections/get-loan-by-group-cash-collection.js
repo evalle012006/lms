@@ -121,14 +121,14 @@ async function getLoanWithCashCollection(req, res) {
                     const noPaymentsToday = paymentCollection / (row.activeLoan || 1);
                     row.noOfPayments = (row.noOfPayments || 0) + noPaymentsToday;
 
-                    // Full-payment finalization — mirrors [uuid].js's own
-                    // handlePaymentCollectionChange exactly: when the payment
-                    // brings loanBalance to zero (or below, from a full-loan
-                    // payoff), fullPayment is set to the loan's ORIGINAL
-                    // amountRelease (not the payment amount itself),
-                    // loanBalance clamps to 0, and amountRelease zeroes out.
+                    row.excess = paymentCollection > (row.activeLoan || 0)
+                        ? paymentCollection - row.activeLoan
+                        : 0;
+
                     if (row.loanBalance <= 0) {
                         row.fullPayment = row.amountRelease;
+                        row.status = 'completed';
+                        row.fullPaymentDate = date;
                         row.loanBalance = 0;
                         row.amountRelease = 0;
                     }
