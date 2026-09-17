@@ -161,6 +161,7 @@ async function getScanInfo(req, res) {
             groupName: group?.name || client.groupName,
             occurence: occurence || null,
             groupLeader: !!client.groupLeader,
+            profile: client.profile || null, // raw storage key — frontend resolves via useSignedUrl, same as everywhere else
         },
         loan: {
             status: loan.status,

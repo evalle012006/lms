@@ -7,6 +7,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
 import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import PrivateImage from '@/components/common/PrivateImage';
 
 const ERROR_MESSAGES = {
     INVALID_QR: 'This QR code is not valid.',
@@ -161,7 +162,12 @@ export default function QrCollectPage() {
                     context for the person scanning, not data they act on,
                     so it's deliberately smaller and less visually loud than
                     the name itself. */}
-                <h1 className="text-lg font-semibold text-gray-900">{client.fullName}</h1>
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 relative">
+                        <PrivateImage src={client.profile} alt={client.fullName} layout="fill" objectFit="cover" />
+                    </div>
+                    <h1 className="text-lg font-semibold text-gray-900">{client.fullName}</h1>
+                </div>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
                     <span>{client.branchName}</span>
                     {client.loName && <span>· {client.loName}</span>}

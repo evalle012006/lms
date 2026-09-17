@@ -14,7 +14,7 @@
 import { apiHandler }                          from '@/services/api-handler';
 import { GraphProvider }                       from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl }  from '@/lib/graph/graph.util';
-import { CLIENT_FIELDS }                       from '@/lib/graph.fields';
+import { CLIENT_FIELDS, LOAN_FIELDS }          from '@/lib/graph.fields';
 import { findUserById }                        from '@/lib/graph.functions';
 import { generateUUID }                        from '@/lib/utils';
 import { logAudit }                            from '@/lib/audit';
@@ -26,6 +26,9 @@ const CLIENT_TYPE = createGraphType('client', `
     ${CLIENT_FIELDS}
     branch { _id name code }
     lo { _id firstName lastName }
+    loans (where: { status: { _in: ["pending", "active"] } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
+        ${LOAN_FIELDS}
+    }
 `)('clients');
 
 export default apiHandler({ post: generateClientQR });
@@ -61,10 +64,17 @@ async function generateClientQR(req, res) {
         return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
-    if (client.status !== 'active') {
+    // CHANGED: gate is now on the LOAN's status (pending or active), not the
+    // client record's own status — per explicit instruction. This is a real
+    // behavior shift in both directions: a client whose overall status isn't
+    // "active" but who already has a pending/active loan is now eligible
+    // (e.g. a just-approved loan not yet reflected in client.status), while
+    // an "active" client with NO pending/active loan (fully paid off,
+    // between cycles) is now BLOCKED, where it previously was not.
+    if (!client.loans?.length) {
         return res.status(200).json({
             success: false,
-            message: 'QR codes can only be generated for active clients.',
+            message: 'QR codes can only be generated for clients with a pending or active loan.',
         });
     }
 

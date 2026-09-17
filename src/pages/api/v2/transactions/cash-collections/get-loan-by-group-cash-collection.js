@@ -111,26 +111,27 @@ async function getLoanWithCashCollection(req, res) {
                     const paymentCollection = qrEntry.payload.paymentCollection || 0;
 
                     row.mcbuCol = mcbuCol;
-                    row.csfCollectionQr = csfCollection;
+                    row.csfCollection = csfCollection;
                     row.paymentCollection = paymentCollection;
 
-                    // Mirror the desktop's own live-typing recalculation
-                    // (handlePaymentCollectionChange in [uuid].js) so a
-                    // QR-merged row looks the same as if a human had typed
-                    // these exact numbers in manually — mcbu/csf accumulate,
-                    // loanBalance decreases, noOfPayments increases by
-                    // however many installments this payment represents.
-                    // Only the *Str display fields are left untouched here —
-                    // the frontend's own transform already re-derives those
-                    // from these raw numbers, so updating them here too
-                    // would be redundant and risks the two falling out of
-                    // sync if that transform ever changes independently.
                     row.mcbu = (row.mcbu || 0) + mcbuCol;
                     row.csf = (row.csf || 0) + csfCollection;
                     row.loanBalance = (row.loanBalance || 0) - paymentCollection;
 
                     const noPaymentsToday = paymentCollection / (row.activeLoan || 1);
                     row.noOfPayments = (row.noOfPayments || 0) + noPaymentsToday;
+
+                    // Full-payment finalization — mirrors [uuid].js's own
+                    // handlePaymentCollectionChange exactly: when the payment
+                    // brings loanBalance to zero (or below, from a full-loan
+                    // payoff), fullPayment is set to the loan's ORIGINAL
+                    // amountRelease (not the payment amount itself),
+                    // loanBalance clamps to 0, and amountRelease zeroes out.
+                    if (row.loanBalance <= 0) {
+                        row.fullPayment = row.amountRelease;
+                        row.loanBalance = 0;
+                        row.amountRelease = 0;
+                    }
                 }
                 // Badge fields apply regardless of pending/merged — a saved,
                 // QR-originated row should still show its provenance.
