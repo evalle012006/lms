@@ -111,7 +111,7 @@ async function getLoanWithCashCollection(req, res) {
                     const paymentCollection = qrEntry.payload.paymentCollection || 0;
 
                     row.mcbuCol = mcbuCol;
-                    row.csfCollection = csfCollection;
+                    row.csfCollectionQr = csfCollection;
                     row.paymentCollection = paymentCollection;
 
                     row.mcbu = (row.mcbu || 0) + mcbuCol;
