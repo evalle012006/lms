@@ -279,7 +279,8 @@ async function submitQrCollection(req, res) {
                 where: { _id: { _eq: existingEntry._id } },
                 set: {
                     payload,
-                    scannedBy: currentUser._id,
+                    lastEditBy: currentUser._id,
+                    lastEditedByName: `${currentUser.firstName} ${currentUser.lastName}`,
                     scannedAt: moment().toISOString(),
                     qrTokenUsed: qrToken,
                     updatedDateTime: moment().toISOString(),
@@ -305,6 +306,7 @@ async function submitQrCollection(req, res) {
                     referenceCode,
                     status: 'pending',
                     scannedBy: currentUser._id,
+                    scannedByName: `${currentUser.firstName} ${currentUser.lastName}`,
                     scannedAt: moment().toISOString(),
                     qrTokenUsed: qrToken,
                     insertedDateTime: moment().toISOString(),

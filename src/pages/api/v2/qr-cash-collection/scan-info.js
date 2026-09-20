@@ -181,5 +181,16 @@ async function getScanInfo(req, res) {
         // If a pending entry already exists, the form opens pre-filled for
         // amendment rather than starting blank.
         existingDraft: existingEntry && existingEntry.status === 'pending' ? existingEntry.payload : null,
+        // Audit snapshot of who created/last touched this draft — shown on
+        // the page so a BM/LO can see who originally scanned it and who (if
+        // anyone) amended it since.
+        existingEntryMeta: existingEntry && existingEntry.status === 'pending' ? {
+            scannedBy: existingEntry.scannedBy,
+            scannedByName: existingEntry.scannedByName,
+            scannedAt: existingEntry.scannedAt,
+            lastEditBy: existingEntry.lastEditBy || null,
+            lastEditedByName: existingEntry.lastEditedByName || null,
+            updatedDateTime: existingEntry.updatedDateTime,
+        } : null,
     });
 }

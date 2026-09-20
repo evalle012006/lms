@@ -8,6 +8,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
 import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import PrivateImage from '@/components/common/PrivateImage';
+import moment from 'moment';
 
 const ERROR_MESSAGES = {
     INVALID_QR: 'This QR code is not valid.',
@@ -137,7 +138,7 @@ export default function QrCollectPage() {
         );
     }
 
-    const { client, loan, dayValidity, existingDraft, limits } = scanInfo;
+    const { client, loan, dayValidity, existingDraft, existingEntryMeta, limits } = scanInfo;
 
     // Live display-only estimate — mirrors submit.js's authoritative
     // server-side formula (noPaymentsToday * minDailyMcbuCollection), but
@@ -176,8 +177,22 @@ export default function QrCollectPage() {
                 </div>
 
                 {existingDraft && (
-                    <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
-                        A draft already exists for today. Submitting will update it.
+                    <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700 space-y-1">
+                        <p>A draft already exists for today. Submitting will update it.</p>
+                        {existingEntryMeta && (
+                            <div className="pt-1 border-t border-amber-100 text-amber-600 space-y-0.5">
+                                <p>
+                                    Scanned by {existingEntryMeta.scannedByName || 'Unknown'}
+                                    {existingEntryMeta.scannedAt && ` · ${moment(existingEntryMeta.scannedAt).format('MMM D, h:mm A')}`}
+                                </p>
+                                {existingEntryMeta.lastEditedByName && (
+                                    <p>
+                                        Last edited by {existingEntryMeta.lastEditedByName}
+                                        {existingEntryMeta.updatedDateTime && ` · ${moment(existingEntryMeta.updatedDateTime).format('MMM D, h:mm A')}`}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

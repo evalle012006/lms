@@ -136,6 +136,7 @@ async function createDelinquentAlerts(collection, loan, client, branch, user, th
 
 async function saveWithProtection(req, res) {
     const user_id = req?.auth?.sub;
+    const user = await findUserById(user_id);
     const transactionId = generateUUID();
     let response = {};
     let statusCode = 200;
@@ -195,7 +196,7 @@ async function saveWithProtection(req, res) {
                 });
 
                 // Call the actual save logic - returns offsetCollections
-                offsetCollections = await executeSave(req, user_id, transactionId);
+                offsetCollections = await executeSave(req, user_id, transactionId, user);
 
                 // Success!
                 logger.info({
@@ -235,7 +236,6 @@ async function saveWithProtection(req, res) {
         if (offsetCollections.length > 0) {
             for (const offset of offsetCollections) {
                 try {
-                    const user = await findUserById(user_id);
                     const branches = await findBranches({ _id: { _eq: offset.branchId } });
                     const branch = branches?.[0];
 
@@ -312,7 +312,7 @@ async function saveWithProtection(req, res) {
 // Returns: Array of offset collections for notification
 // ============================================
 
-async function executeSave(req, user_id, transactionId) {
+async function executeSave(req, user_id, transactionId, user) {
     let data = req.body;
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
@@ -367,7 +367,6 @@ async function executeSave(req, user_id, transactionId) {
 
                         const branches = await findBranches({ _id: { _eq: collection.branchId } });
                         const branch   = branches?.[0];
-                        const user     = await findUserById(user_id);
 
                         await createDelinquentAlerts(collection, loan, clientData, branch, user, delinquentAlertThreshold);
                     }
@@ -444,6 +443,8 @@ async function executeSave(req, user_id, transactionId) {
                 }
 
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
+                    collection.modifiedBy = user_id;
+                    collection.modifiedByName = `${user?.firstName} ${user?.lastName}`;
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
@@ -459,6 +460,8 @@ async function executeSave(req, user_id, transactionId) {
                         collection._id = generateUUID();
                     }
 
+                    collection.insertedBy = user_id;
+                    collection.insertedByName = `${user?.firstName} ${user?.lastName}`;
                     collection.insertedDateTime = new Date();
                     const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;

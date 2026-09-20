@@ -375,6 +375,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   groupStatus
   history
   insertedBy
+  insertedByName
   insertedDateTime
   latePayment
   loanBalance
@@ -395,6 +396,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   mcbuWithdrawFlag
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   mpdc
   noMispayment
@@ -1012,6 +1014,9 @@ export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
     referenceCode
     status
     scannedBy
+    scannedByName
+    lastEditBy
+    lastEditedByName
     scannedAt
     qrTokenUsed
     mergedIntoCashCollectionId
