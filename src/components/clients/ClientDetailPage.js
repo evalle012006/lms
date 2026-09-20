@@ -33,9 +33,6 @@ import {
     UserCircleIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import ButtonSolid from "@/lib/ui/ButtonSolid";
-import ButtonOutline from "@/lib/ui/ButtonOutline";
-import TableComponent, { StatusPill } from '@/lib/table';
 import Spinner from "../Spinner";
 import placeholder from '/public/images/image-placeholder.png';
 import { formatPricePhp, checkFileSize } from "@/lib/utils";
@@ -46,6 +43,7 @@ import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
 import { GraduationCap } from 'lucide-react';
 import ClientProgramsTab from './programs/ClientProgramsTab';
+import ClientQRIconPopover from "./ClientQRIconPopover";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -326,8 +324,14 @@ const ClientDetailPage = () => {
         <div className="bg-gray-50 min-h-full">
             {/* Header Section */}
             <div className="bg-white border-b border-gray-200">
-                <div className="px-6 py-6">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                <div className="px-6 py-6 relative">
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                        <ClientQRIconPopover
+                            client={client}
+                            onQrUpdated={(changes) => dispatch(setClient({ ...client, ...changes }))}
+                        />
+                    </div>
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 pr-14 md:pr-0">
                         <div className="flex items-start space-x-4">
                             {/* Profile Image */}
                             <div className="relative group">

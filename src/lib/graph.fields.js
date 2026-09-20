@@ -109,6 +109,9 @@ export const CLIENT_FIELDS = `
   business
   dailyIncome
   livenessScore
+  qrToken
+  qrGeneratedAt
+  qrGeneratedBy
   `;
 
 export const LOAN_FIELDS = `
@@ -138,6 +141,7 @@ export const LOAN_FIELDS = `
   guarantorMiddleName
   history
   insertedBy
+  insertedByName
   insertedDateTime
   lastUpdated
   ldfApproved
@@ -162,6 +166,7 @@ export const LOAN_FIELDS = `
   mcbuWithdrawal
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   noBadDebtPayment
   noOfPayments
@@ -372,6 +377,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   groupStatus
   history
   insertedBy
+  insertedByName
   insertedDateTime
   latePayment
   loanBalance
@@ -392,6 +398,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   mcbuWithdrawFlag
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   mpdc
   noMispayment
@@ -996,4 +1003,25 @@ export const FACE_VERIFY_ATTEMPT_FIELDS = `
     user_agent
     inserted_by
     captured_at
+`;
+
+export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
+    _id
+    clientId
+    groupId
+    branchId
+    loanId
+    collectionDate
+    payload
+    referenceCode
+    status
+    scannedBy
+    scannedByName
+    lastEditBy
+    lastEditedByName
+    scannedAt
+    qrTokenUsed
+    mergedIntoCashCollectionId
+    insertedDateTime
+    updatedDateTime
 `;

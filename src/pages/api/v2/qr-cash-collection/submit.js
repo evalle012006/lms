@@ -1,0 +1,345 @@
+// src/pages/api/v2/qr-cash-collection/submit.js
+import { apiHandler }                          from '@/services/api-handler';
+import { GraphProvider }                       from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
+import { findUserById, loadSettingsSystemDate } from '@/lib/graph.functions';
+import { generateUUID }                        from '@/lib/utils';
+
+import { logAudit }                            from '@/lib/audit';
+import { holidayType }                         from '@/pages/api/v2/settings/holidays/common';
+import moment                                  from 'moment-timezone';
+import crypto                                  from 'crypto';
+import { resolveWeeklyMcbuMinimum }             from '@/lib/mcbu-target-utils';
+
+const graph = new GraphProvider();
+
+const CLIENT_TYPE = createGraphType('client', `
+    ${CLIENT_FIELDS}
+    group { ${GROUP_FIELDS} }
+    loans (where: { status: { _eq: "active" } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
+        ${LOAN_FIELDS}
+    }
+`)('clients');
+
+const QR_ENTRY_TYPE = createGraphType('qr_cash_collection_entries', QR_CASH_COLLECTION_ENTRY_FIELDS)('qrEntries');
+
+// Minimal check type — same pattern as saveV2.js's QR_CHECK_TYPE, kept
+// consistent between the two endpoints deliberately: both need to answer
+// the same question ("is there already a finalized, non-draft transaction
+// for this client today?") using the same fields, so the point-of-entry
+// check here and the point-of-save check there never disagree.
+const CASH_COLLECTION_CHECK_TYPE = createGraphType('cashCollections', '_id draft origin')('cashCollectionCheck');
+const SETTINGS_TYPE = createGraphType('transactionSettings', 'minDailyMcbuCollection minWeeklyMcbuCollection minWeeklyMcbuCollectionAccelerated minCsfCollection')('txSettings');
+
+export default apiHandler({ post: submitQrCollection });
+
+async function submitQrCollection(req, res) {
+    const {
+        qrToken,
+        mcbuCol = 0,
+        csfCollection = 0,
+        paymentCollection = 0,
+        mcbuWithdrawFlag = false,
+        offsetTransFlag = false,
+    } = req.body;
+
+    if (!qrToken) {
+        return res.status(200).json({ success: false, message: 'qrToken required.' });
+    }
+
+    const currentUser = await findUserById(req.auth.sub);
+    if (!currentUser) {
+        return res.status(200).json({ success: false, message: 'User not found.' });
+    }
+
+    const [client] = await graph.query(
+        queryQl(CLIENT_TYPE, { where: { qrToken: { _eq: qrToken } } })
+    ).then(r => r.data?.clients ?? []);
+
+    if (!client) {
+        return res.status(200).json({ success: false, code: 'INVALID_QR', message: 'This QR code is not valid.' });
+    }
+
+    // ── Auth: LO (exact) or BM (branch match) only ──────────────────────
+    if (currentUser.role.rep === 4 && client.loId !== currentUser._id) {
+        return res.status(200).json({ success: false, code: 'FORBIDDEN', message: 'You are not the assigned Loan Officer for this client.' });
+    }
+    if (currentUser.role.rep === 3 && client.branchId !== currentUser.designatedBranchId) {
+        return res.status(200).json({ success: false, code: 'FORBIDDEN', message: 'This client is not in your branch.' });
+    }
+    if (![3, 4].includes(currentUser.role.rep)) {
+        return res.status(200).json({ success: false, code: 'FORBIDDEN', message: 'Only Loan Officers and Branch Managers can use this feature.' });
+    }
+
+    // ── CSF gate: group leader only ──────────────────────────────────────
+    if (parseFloat(csfCollection) > 0 && !client.groupLeader) {
+        return res.status(200).json({
+            success: false,
+            code: 'CSF_NOT_ALLOWED',
+            message: 'CSF collection can only be submitted for a group leader.',
+        });
+    }
+
+    // ── Live status gate ──────────────────────────────────────────────
+    if (client.status !== 'active') {
+        return res.status(200).json({ success: false, code: 'CLIENT_INACTIVE', message: 'This client is no longer active.' });
+    }
+
+    const loan = client.loans?.[0];
+    if (!loan || loan.status !== 'active') {
+        return res.status(200).json({ success: false, code: 'NO_ACTIVE_LOAN', message: 'This client has no active loan.' });
+    }
+
+    const today    = moment(await loadSettingsSystemDate()).tz('Asia/Manila');
+    const dayName  = today.format('dddd');
+    const dateStr  = today.format('YYYY-MM-DD');
+    const monthDay = today.format('MM-DD');
+
+    const group     = client.group;
+    const occurence = group?.occurence;
+
+    // ── Minimum-amount validation ────────────────────────────────────────
+    // Mirrors the EXACT logic in [uuid].js's handlePaymentValidation for both
+    // daily and weekly pages — this is not a simplified server-side version,
+    // it is the same formula, since diverging would mean office and QR
+    // submissions get judged by different rules for the same client.
+    //
+    // MCBU's minimum is PROPORTIONAL, not flat: it scales with how many
+    // installments' worth of payment is being made today
+    // (noPaymentsToday = paymentCollection / activeLoan). Daily groups use
+    // minDailyMcbuCollection directly; weekly groups use
+    // resolveWeeklyMcbuMinimum (standard vs accelerated schedule), the same
+    // shared utility the desktop page imports — not reimplemented here.
+    //
+    // Both MCBU and CSF must be divisible by 5, matching the desktop's rule.
+    const [settings] = await graph.query(queryQl(SETTINGS_TYPE, { limit: 1 })).then(r => r.data?.txSettings ?? []);
+
+    const mcbuVal    = parseFloat(mcbuCol) || 0;
+    const csfVal     = parseFloat(csfCollection) || 0;
+    const paymentVal = parseFloat(paymentCollection) || 0;
+
+    // Required: a QR submission exists to confirm a real collection happened.
+    // A $0 payment (a genuine missed payment) is a real, valid outcome in
+    // this system, but recording "nothing was collected" isn't something
+    // the QR flow is meant to do — that's the office's mispayment tracking,
+    // not a field submission. Flagging this interpretation explicitly.
+    if (paymentVal <= 0) {
+        return res.status(200).json({
+            success: false,
+            code: 'PAYMENT_REQUIRED',
+            message: 'Payment collection must be greater than zero.',
+        });
+    }
+
+    const noPaymentsToday = paymentVal / (loan.activeLoan || 1);
+    const isWholeInstallments = Math.abs(noPaymentsToday - Math.round(noPaymentsToday)) < 1e-6;
+
+    if (!isWholeInstallments) {
+        return res.status(200).json({
+            success: false,
+            code: 'PAYMENT_NOT_MULTIPLE_OF_ACTIVE_LOAN',
+            message: `Payment collection must be a whole multiple of the daily target amount (₱${loan.activeLoan}).`,
+        });
+    }
+
+    // MCBU on DAILY collection is NOT a free-input field, same as the
+    // desktop's implementation — it's server-computed from the simple,
+    // common-case rate (noPaymentsToday * minDailyMcbuCollection), never
+    // trusted from the client at all for daily. This deliberately does NOT
+    // replicate the desktop's ~20 conditional branches for excess/advance/
+    // mispayment-recovery scenarios — those are genuinely complex edge
+    // cases, out of scope here by the same reasoning that kept the whole QR
+    // form to raw-amount capture in the first place. If one of those edge
+    // cases applies to a given client, the office reviews and corrects it
+    // at merge time — a QR row is a draft, not a blind auto-finalized entry.
+    //
+    // Weekly keeps mcbuCol as a real input, per your instruction — only
+    // daily changes here.
+    let effectiveMcbuVal = mcbuVal;
+
+    if (occurence === 'daily') {
+        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * Math.round(noPaymentsToday));
+        // mcbuVal (whatever the client sent) is intentionally discarded below —
+        // effectiveMcbuVal is what actually gets saved into the payload.
+    } else if (mcbuVal > 0) {
+        const minMcbuCol = resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday;
+
+        if (mcbuVal < minMcbuCol && Number.isInteger(minMcbuCol)) {
+            return res.status(200).json({
+                success: false,
+                code: 'MCBU_BELOW_MINIMUM',
+                message: `Minimum MCBU collection is ${minMcbuCol}.`,
+            });
+        }
+        if (mcbuVal > 5 && mcbuVal % 5 !== 0) {
+            return res.status(200).json({
+                success: false,
+                code: 'MCBU_NOT_DIVISIBLE',
+                message: 'MCBU collection must be divisible by 5.',
+            });
+        }
+    }
+
+    if (csfVal > 0) {
+        const minCsf = settings?.minCsfCollection ?? 0;
+        if (csfVal < minCsf) {
+            return res.status(200).json({
+                success: false,
+                code: 'CSF_BELOW_MINIMUM',
+                message: `Minimum CSF collection is ${minCsf}.`,
+            });
+        }
+        if (csfVal > 5 && csfVal % 5 !== 0) {
+            return res.status(200).json({
+                success: false,
+                code: 'CSF_NOT_DIVISIBLE',
+                message: 'CSF collection must be divisible by 5.',
+            });
+        }
+    }
+
+    // ── Day-validity ──────────────────────────────────────────────────
+    if (occurence === 'daily') {
+        const isWeekend = ['Saturday', 'Sunday'].includes(dayName);
+        const holidays  = await graph.query(queryQl(holidayType, {})).then(r => r.data?.holidays ?? []);
+        const isHoliday = holidays.some(h => h.date === monthDay);
+
+        if (isWeekend) {
+            return res.status(200).json({ success: false, code: 'DAY_NOT_VALID', message: 'Collections are not scheduled on weekends.' });
+        }
+        if (isHoliday) {
+            return res.status(200).json({ success: false, code: 'DAY_NOT_VALID', message: 'Collections are not scheduled on holidays.' });
+        }
+    }
+
+    const isOffDay = occurence === 'weekly' && group.day && group.day !== dayName;
+
+    if (isOffDay && !mcbuWithdrawFlag && !offsetTransFlag) {
+        return res.status(200).json({
+            success: false,
+            code: 'REGULAR_COLLECTION_NOT_ALLOWED',
+            message: 'Regular collection is only allowed on this group\'s scheduled day. Only flagged transaction types are permitted today.',
+        });
+    }
+
+    // ── NEW: check the REAL cashCollections table, not just our own staging
+    // table. A pre-save placeholder (origin: 'pre-save') or an office-started
+    // draft (draft: true) doesn't block submission — but a real finalized
+    // entry does, and this needs to be caught here, at the point the LO is
+    // actually submitting, not silently discovered later when saveV2.js
+    // rejects it after the fact.
+    const [existingRealRow] = await graph.query(
+        queryQl(CASH_COLLECTION_CHECK_TYPE, {
+            where: { clientId: { _eq: client._id }, dateAdded: { _eq: dateStr } },
+            limit: 1,
+        })
+    ).then(r => r.data?.cashCollectionCheck ?? []);
+
+    if (existingRealRow && existingRealRow.draft !== true && existingRealRow.origin !== 'pre-save') {
+        return res.status(200).json({
+            success: false,
+            code: 'ALREADY_PROCESSED',
+            message: 'This client\'s collection for today has already been recorded by the office.',
+        });
+    }
+
+    // ── Already-processed / existing-draft check (our own staging table) ──
+    const [existingEntry] = await graph.query(
+        queryQl(QR_ENTRY_TYPE, {
+            where: { clientId: { _eq: client._id }, collectionDate: { _eq: dateStr } },
+            order_by: [{ insertedDateTime: 'desc' }],
+            limit: 1,
+        })
+    ).then(r => r.data?.qrEntries ?? []);
+
+    if (existingEntry && existingEntry.status === 'merged') {
+        return res.status(200).json({
+            success: false,
+            code: 'ALREADY_PROCESSED',
+            message: 'This client\'s collection for today has already been recorded by the office.',
+        });
+    }
+
+    const payload = {
+        mcbuCol: effectiveMcbuVal,
+        csfCollection: parseFloat(csfCollection) || 0,
+        paymentCollection: parseFloat(paymentCollection) || 0,
+        mcbuWithdrawFlag: !!mcbuWithdrawFlag,
+        offsetTransFlag: !!offsetTransFlag,
+    };
+
+    let referenceCode = existingEntry?.referenceCode;
+    let isAmendment = false;
+
+    if (existingEntry && existingEntry.status === 'pending') {
+        isAmendment = true;
+        await graph.mutation(
+            updateQl(QR_ENTRY_TYPE, {
+                where: { _id: { _eq: existingEntry._id } },
+                set: {
+                    payload,
+                    lastEditBy: currentUser._id,
+                    lastEditedByName: `${currentUser.firstName} ${currentUser.lastName}`,
+                    qrTokenUsed: qrToken,
+                    updatedDateTime: moment().toISOString(),
+                },
+            })
+        );
+    } else {
+        const branchCode = client.branchId?.slice(-4).toUpperCase() || 'XXXX';
+        const dateCode    = today.format('MMDDYY');
+        const suffix      = crypto.randomBytes(3).toString('hex').toUpperCase();
+        referenceCode     = `QR-${branchCode}-${dateCode}-${suffix}`;
+
+        await graph.mutation(
+            insertQl(QR_ENTRY_TYPE, {
+                objects: [{
+                    _id: generateUUID(),
+                    clientId: client._id,
+                    groupId: client.groupId,
+                    branchId: client.branchId,
+                    loanId: loan._id,
+                    collectionDate: dateStr,
+                    payload,
+                    referenceCode,
+                    status: 'pending',
+                    scannedBy: currentUser._id,
+                    scannedByName: `${currentUser.firstName} ${currentUser.lastName}`,
+                    scannedAt: moment().toISOString(),
+                    qrTokenUsed: qrToken,
+                    insertedDateTime: moment().toISOString(),
+                    updatedDateTime: moment().toISOString(),
+                }],
+            })
+        );
+    }
+
+    await logAudit(req, {
+        action:      isAmendment ? 'QR_DRAFT_AMENDED' : 'QR_DRAFT_SUBMITTED',
+        category:    'QR',
+        severity:    'INFO',
+        entityType:  'client',
+        entityId:    client._id,
+        description: `QR collection ${isAmendment ? 'amended' : 'submitted'} for "${client.fullName}" by ${currentUser.firstName} ${currentUser.lastName}`,
+        afterData:   { referenceCode, payload },
+        branchId:    client.branchId,
+        branchName:  client.branchName,
+    });
+
+    const nowIso = moment().toISOString();
+
+    return res.status(200).json({
+        success: true,
+        referenceCode,
+        message: isAmendment ? 'Collection updated.' : 'Collection submitted successfully.',
+        entryMeta: {
+            scannedBy: isAmendment ? existingEntry.scannedBy : currentUser._id,
+            scannedByName: isAmendment ? existingEntry.scannedByName : `${currentUser.firstName} ${currentUser.lastName}`,
+            scannedAt: isAmendment ? existingEntry.scannedAt : nowIso,
+            lastEditBy: isAmendment ? currentUser._id : null,
+            lastEditedByName: isAmendment ? `${currentUser.firstName} ${currentUser.lastName}` : null,
+            updatedDateTime: nowIso,
+        },
+    });
+}
