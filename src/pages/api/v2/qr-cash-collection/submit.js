@@ -281,7 +281,6 @@ async function submitQrCollection(req, res) {
                     payload,
                     lastEditBy: currentUser._id,
                     lastEditedByName: `${currentUser.firstName} ${currentUser.lastName}`,
-                    scannedAt: moment().toISOString(),
                     qrTokenUsed: qrToken,
                     updatedDateTime: moment().toISOString(),
                 },
@@ -328,9 +327,19 @@ async function submitQrCollection(req, res) {
         branchName:  client.branchName,
     });
 
+    const nowIso = moment().toISOString();
+
     return res.status(200).json({
         success: true,
         referenceCode,
         message: isAmendment ? 'Collection updated.' : 'Collection submitted successfully.',
+        entryMeta: {
+            scannedBy: isAmendment ? existingEntry.scannedBy : currentUser._id,
+            scannedByName: isAmendment ? existingEntry.scannedByName : `${currentUser.firstName} ${currentUser.lastName}`,
+            scannedAt: isAmendment ? existingEntry.scannedAt : nowIso,
+            lastEditBy: isAmendment ? currentUser._id : null,
+            lastEditedByName: isAmendment ? `${currentUser.firstName} ${currentUser.lastName}` : null,
+            updatedDateTime: nowIso,
+        },
     });
 }

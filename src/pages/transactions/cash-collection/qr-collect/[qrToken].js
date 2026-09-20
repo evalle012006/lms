@@ -39,6 +39,7 @@ export default function QrCollectPage() {
     const [errorMessage, setErrorMessage] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [submittedRef, setSubmittedRef] = useState(null);
+    const [submittedMeta, setSubmittedMeta] = useState(null);
 
     const [form, setForm] = useState({
         mcbuCol: '',
@@ -102,6 +103,7 @@ export default function QrCollectPage() {
 
         if (res.success) {
             setSubmittedRef(res.referenceCode);
+            setSubmittedMeta(res.entryMeta || null);
             toast.success(res.message);
         } else {
             toast.error(res.message || 'Failed to submit.');
@@ -134,7 +136,9 @@ export default function QrCollectPage() {
                 icon={<CheckCircle className="w-8 h-8 text-green-500" />}
                 text="Collection submitted"
                 subtext={`Reference code: ${submittedRef}`}
-            />
+            >
+                <EntryMetaInfo meta={submittedMeta} className="text-xs text-gray-400 space-y-0.5 mt-1" />
+            </CenteredMessage>
         );
     }
 
@@ -179,20 +183,7 @@ export default function QrCollectPage() {
                 {existingDraft && (
                     <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700 space-y-1">
                         <p>A draft already exists for today. Submitting will update it.</p>
-                        {existingEntryMeta && (
-                            <div className="pt-1 border-t border-amber-100 text-amber-600 space-y-0.5">
-                                <p>
-                                    Scanned by {existingEntryMeta.scannedByName || 'Unknown'}
-                                    {existingEntryMeta.scannedAt && ` · ${moment(existingEntryMeta.scannedAt).format('MMM D, h:mm A')}`}
-                                </p>
-                                {existingEntryMeta.lastEditedByName && (
-                                    <p>
-                                        Last edited by {existingEntryMeta.lastEditedByName}
-                                        {existingEntryMeta.updatedDateTime && ` · ${moment(existingEntryMeta.updatedDateTime).format('MMM D, h:mm A')}`}
-                                    </p>
-                                )}
-                            </div>
-                        )}
+                        <EntryMetaInfo meta={existingEntryMeta} className="pt-1 border-t border-amber-100 text-amber-600 space-y-0.5" />
                     </div>
                 )}
 
@@ -315,12 +306,31 @@ function NumberField({ label, value, onChange, hint }) {
     );
 }
 
-function CenteredMessage({ icon, text, subtext }) {
+function CenteredMessage({ icon, text, subtext, children }) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
             {icon}
             <p className="text-sm text-gray-700">{text}</p>
             {subtext && <p className="text-xs text-gray-400">{subtext}</p>}
+            {children}
+        </div>
+    );
+}
+
+function EntryMetaInfo({ meta, className = '' }) {
+    if (!meta) return null;
+    return (
+        <div className={className}>
+            <p>
+                Scanned by {meta.scannedByName || 'Unknown'}
+                {meta.scannedAt && ` · ${moment(meta.scannedAt).format('MMM D, h:mm A')}`}
+            </p>
+            {meta.lastEditedByName && (
+                <p>
+                    Last edited by {meta.lastEditedByName}
+                    {meta.updatedDateTime && ` · ${moment(meta.updatedDateTime).format('MMM D, h:mm A')}`}
+                </p>
+            )}
         </div>
     );
 }

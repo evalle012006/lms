@@ -141,6 +141,7 @@ export const LOAN_FIELDS = `
   guarantorMiddleName
   history
   insertedBy
+  insertedByName
   insertedDateTime
   lastUpdated
   ldfApproved
@@ -165,6 +166,7 @@ export const LOAN_FIELDS = `
   mcbuWithdrawal
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   noBadDebtPayment
   noOfPayments
