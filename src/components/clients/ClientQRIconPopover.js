@@ -11,6 +11,7 @@ import { QrCode, RefreshCw, X, Download, ExternalLink, Copy } from 'lucide-react
 import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import { buildQrBadgeDataUrl } from '@/lib/qrBadge';
 
 const POPOVER_WIDTH = 240;
 
@@ -35,13 +36,21 @@ export default function ClientQRIconPopover({ client, onQrUpdated }) {
 
     useEffect(() => {
         if (!qrUrl || !open) { setDataUrl(null); return; }
+        const qrSize = 220;
         QRCode.toDataURL(qrUrl, {
-            width: 220,
+            width: qrSize,
             margin: 1,
             color: { dark: '#1e293b', light: '#ffffff' },
             errorCorrectionLevel: 'H',
-        }).then(setDataUrl).catch(console.error);
-    }, [qrUrl, open]);
+        })
+            .then(rawQrDataUrl => buildQrBadgeDataUrl(rawQrDataUrl, {
+                clientName: client.fullName,
+                branchName: client.branchName,
+                groupName: client.groupName,
+            }, qrSize))
+            .then(setDataUrl)
+            .catch(console.error);
+    }, [qrUrl, open, client.fullName, client.branchName, client.groupName]);
 
     const openPopover = () => {
         const rect = triggerRef.current?.getBoundingClientRect();
@@ -137,7 +146,7 @@ export default function ClientQRIconPopover({ client, onQrUpdated }) {
 
             <div className="flex justify-center mb-2">
                 {dataUrl ? (
-                    <img src={dataUrl} alt="Client collection QR" className="w-40 h-40 rounded-md border border-gray-100" />
+                    <img src={dataUrl} alt="Client collection QR" className="w-40 h-auto rounded-md border border-gray-100" />
                 ) : (
                     <div className="w-40 h-40 rounded-md bg-gray-100 animate-pulse" />
                 )}

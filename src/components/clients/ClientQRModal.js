@@ -7,6 +7,7 @@ import moment from 'moment';
 import { X, Download, ExternalLink, RefreshCw, Copy } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Modal from '@/lib/ui/Modal';
+import { buildQrBadgeDataUrl } from '@/lib/qrBadge';
 
 /**
  * Props:
@@ -21,13 +22,21 @@ export default function ClientQRModal({ show, onClose, onRegenerate, qrData }) {
 
     useEffect(() => {
         if (!qrData?.url || !show) return;
+        const qrSize = 400;
         QRCode.toDataURL(qrData.url, {
-            width: 400,
+            width: qrSize,
             margin: 2,
             color: { dark: '#1e293b', light: '#ffffff' },
             errorCorrectionLevel: 'H',
-        }).then(setDataUrl).catch(console.error);
-    }, [qrData?.url, show]);
+        })
+            .then(rawQrDataUrl => buildQrBadgeDataUrl(rawQrDataUrl, {
+                clientName: qrData.clientName,
+                branchName: qrData.branchName,
+                groupName: qrData.groupName,
+            }, qrSize))
+            .then(setDataUrl)
+            .catch(console.error);
+    }, [qrData?.url, qrData?.clientName, qrData?.branchName, qrData?.groupName, show]);
 
     const handleDownload = () => {
         if (!dataUrl) return;
