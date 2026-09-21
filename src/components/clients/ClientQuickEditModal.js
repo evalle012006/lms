@@ -1,15 +1,12 @@
 // src/components/clients/ClientQuickEditModal.js
 // Restricted edit surface for Active/Offset clients — ONLY duplicate and
-// groupLeader are editable in the UI. branchId/groupId/loId/status must
-// go through their proper reassignment/transfer flows, never through this
-// shortcut. The save itself still sends the FULL record via
-// saveClientPartial — see that file for why: the previous version sent
-// only { _id, duplicate, groupLeader } on the assumption the backend
-// merges partial updates, and that assumption was wrong.
+// groupLeader are editable. branchId/groupId/loId/status must go through
+// their proper reassignment/transfer flows, never through this shortcut.
 import React, { useState } from 'react';
 import Modal from '@/lib/ui/Modal';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
-import { saveClientPartial } from '@/lib/clients/save-client-partial';
 
 export default function ClientQuickEditModal({ client, show, onClose, onSaved }) {
     const [duplicate, setDuplicate] = useState(!!client?.duplicate);
@@ -20,7 +17,14 @@ export default function ClientQuickEditModal({ client, show, onClose, onSaved })
 
     const handleSave = async () => {
         setSaving(true);
-        const res = await saveClientPartial(client._id, { duplicate, groupLeader });
+        // updateClient (clients/index.js) fetches the existing record
+        // server-side and merges — sending only the changed fields is
+        // sufficient, the rest of the record is untouched.
+        const res = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', {
+            _id: client._id,
+            duplicate,
+            groupLeader,
+        });
         setSaving(false);
 
         if (res.success) {
@@ -49,7 +53,7 @@ export default function ClientQuickEditModal({ client, show, onClose, onSaved })
                     </button>
                     <button type="button" onClick={handleSave} disabled={saving}
                         className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50">
-                        {saving ? 'Saving...' : 'Save'}
+                        {saving ? 'Saving…' : 'Save'}
                     </button>
                 </div>
             </div>

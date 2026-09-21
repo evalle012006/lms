@@ -15,26 +15,17 @@ import { getApiBaseUrl } from "@/lib/constants";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import moment from "moment";
-import {
-    Pencil,
-    UserMinus,
-    Trash2,
-    Users,
+import { 
+    Pencil, 
+    UserMinus, 
+    Trash2, 
+    Users, 
     Users2,
-    CheckCircle,
-    Search
+    CheckCircle, 
+    Search 
 } from 'lucide-react';
 import ClientSearchV2 from "./ClientSearchV2";
 import { useRouter } from "next/router";
-// NEW — see save-client-partial.js. `clients/` PUT does not reliably merge
-// partial payloads with the existing DB record; handleTransferAction and
-// handleUnmarkDuplicateAction below used to mutate the table row in place
-// and send it directly, which is fragile in its own right (see notes below)
-// and, more importantly, is exactly the shape of call that produced null
-// firstName/lastName on both offset and prospect clients elsewhere in this
-// app. Route both through the same safe utility instead of hand-rolling
-// the payload here too.
-import { saveClientPartial } from "@/lib/clients/save-client-partial";
 
 const ViewClientsByGroupPage = ({
     groupId, status, client, setClientParent, setMode,
@@ -54,6 +45,7 @@ const ViewClientsByGroupPage = ({
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
 
+    // New state for filtered lists
     const [filteredActiveList, setFilteredActiveList] = useState([]);
     const [filteredDuplicateList, setFilteredDuplicateList] = useState([]);
     const [filteredExcludedList, setFilteredExcludedList] = useState([]);
@@ -65,6 +57,7 @@ const ViewClientsByGroupPage = ({
 
     const [filteredList, setFilteredList] = useState([]);
 
+    // Filter states
     const [filters, setFilters] = useState({
         branch: '',
         lo: '',
@@ -78,6 +71,7 @@ const ViewClientsByGroupPage = ({
         'excluded-prospects'
     ]);
 
+    // Get current list based on selected tab
     const getCurrentList = () => {
         switch (selectedTab) {
             case 'new-prospects':
@@ -91,44 +85,54 @@ const ViewClientsByGroupPage = ({
         }
     };
 
+    // Get filtered lists based on current selections
     const getFilteredOptions = (list) => {
         if (!list) return { branches: [], los: [], groups: [], clients: [] };
 
+        // Get all unique branches
         const branches = [...new Set(list.map(item => item.branchName))]
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b));
 
+        // Filter list by selected branch
         let branchFiltered = list;
         if (filters.branch) {
             branchFiltered = list.filter(item => item.branchName === filters.branch);
         }
 
+        // Get loan officers for selected branch
         const los = [...new Set(branchFiltered.map(item => item.loName))]
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b));
 
+        // Filter by selected loan officer
         let loFiltered = branchFiltered;
         if (filters.lo) {
             loFiltered = branchFiltered.filter(item => item.loName === filters.lo);
         }
 
+        // Get groups for selected loan officer
         const groups = [...new Set(loFiltered.map(item => item.groupName))]
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b));
 
+        // Filter by selected group
         let groupFiltered = loFiltered;
         if (filters.group) {
             groupFiltered = loFiltered.filter(item => item.groupName === filters.group);
         }
 
+        // Get clients that match all filters
         const clients = groupFiltered;
 
         return { branches, los, groups, clients };
     };
 
     const handleFilterChange = (field, value) => {
+        // Create new filters object with the updated value
         const newFilters = { ...filters, [field]: value };
-
+        
+        // Reset subsequent filters when a parent filter changes
         if (field === 'branch') {
             newFilters.lo = '';
             newFilters.group = '';
@@ -139,46 +143,56 @@ const ViewClientsByGroupPage = ({
         } else if (field === 'group') {
             newFilters.name = '';
         }
-
+        
+        // Update filters state
         setFilters(newFilters);
-
+        
+        // Determine which list to filter
         let listToFilter;
         if (status === 'pending') {
+            // For pending status with tabs
             listToFilter = selectedTab === 'new-prospects' ? activeList :
                            selectedTab === 'duplicate-prospects' ? duplicateList :
                            selectedTab === 'excluded-prospects' ? excludedList : [];
         } else {
+            // For non-pending status
             listToFilter = list;
         }
-
+        
+        // If the list is empty, return early
         if (!listToFilter || listToFilter.length === 0) return;
-
+        
+        // Apply branch filter
         let filteredData = listToFilter;
         if (newFilters.branch) {
             filteredData = filteredData.filter(item => item.branchName === newFilters.branch);
         }
-
+        
+        // Apply loan officer filter
         if (newFilters.lo) {
             filteredData = filteredData.filter(item => item.loName === newFilters.lo);
         }
-
+        
+        // Apply group filter
         if (newFilters.group) {
             filteredData = filteredData.filter(item => item.groupName === newFilters.group);
         }
-
+        
+        // Apply name filter
         if (newFilters.name) {
             const searchTerm = newFilters.name.toLowerCase();
             filteredData = filteredData.filter(item => {
                 const fullName = item.name?.toLowerCase() || '';
                 const firstName = item.firstName?.toLowerCase() || '';
                 const lastName = item.lastName?.toLowerCase() || '';
-
-                return fullName.includes(searchTerm) ||
-                       firstName.includes(searchTerm) ||
+                
+                return fullName.includes(searchTerm) || 
+                       firstName.includes(searchTerm) || 
                        lastName.includes(searchTerm);
             });
         }
-
+        
+        // Update the appropriate filtered list based on current status
         if (status === 'pending') {
             switch (selectedTab) {
                 case 'new-prospects':
@@ -192,6 +206,7 @@ const ViewClientsByGroupPage = ({
                     break;
             }
         } else {
+            // For non-pending status
             setFilteredList(filteredData);
         }
     };
@@ -218,18 +233,23 @@ const ViewClientsByGroupPage = ({
     }, [selectedTab]);
 
     const renderFilters = () => {
+        // Choose the appropriate list based on status
         let listToUse;
         if (status === 'pending') {
+            // For pending status with tabs
             listToUse = getCurrentList();
         } else {
+            // For non-pending status
             listToUse = list;
         }
-
+    
+        // Get filter options from the appropriate list
         const { branches, los, groups } = getFilteredOptions(listToUse);
-
+    
         return (
             <div className="p-4 bg-white shadow mb-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Branch Filter */}
                     <select
                         className="p-2 w-full border rounded-md"
                         value={filters.branch}
@@ -240,7 +260,8 @@ const ViewClientsByGroupPage = ({
                             <option key={branch} value={branch}>{branch}</option>
                         ))}
                     </select>
-
+    
+                    {/* Loan Officer Filter */}
                     <select
                         className="p-2 w-full border rounded-md"
                         value={filters.lo}
@@ -251,7 +272,8 @@ const ViewClientsByGroupPage = ({
                             <option key={lo} value={lo}>{lo}</option>
                         ))}
                     </select>
-
+    
+                    {/* Group Filter */}
                     <select
                         className="p-2 w-full border rounded-md"
                         value={filters.group}
@@ -262,7 +284,8 @@ const ViewClientsByGroupPage = ({
                             <option key={group} value={group}>{group}</option>
                         ))}
                     </select>
-
+    
+                    {/* Client Name Filter */}
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search className="h-4 w-4 text-gray-400" />
@@ -283,16 +306,17 @@ const ViewClientsByGroupPage = ({
     const createClientObject = (client) => {
         const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
         const ciName = client?.ciName || '';
-
-        const cashCollections = Array.isArray(client?.cashCollections) ?
+        
+        // Create new arrays instead of spreading potentially mutable arrays
+        const cashCollections = Array.isArray(client?.cashCollections) ? 
             client.cashCollections.map(collection => ({...collection})) : [];
-        const groups = Array.isArray(client?.groups) ?
+        const groups = Array.isArray(client?.groups) ? 
             client.groups.map(group => ({...group})) : [];
-        const lo = Array.isArray(client?.lo) ?
+        const lo = Array.isArray(client?.lo) ? 
             client.lo.map(officer => ({...officer})) : [];
-        const loans = Array.isArray(client?.loans) ?
+        const loans = Array.isArray(client?.loans) ? 
             client.loans.map(loan => ({...loan})) : [];
-
+    
         return {
             ...client,
             cashCollections,
@@ -319,6 +343,10 @@ const ViewClientsByGroupPage = ({
         };
     };
 
+    // admin: should be viewed first per branch -> group -> clients
+    // am: branch -> group -> clients
+    // bm: all groups -> clients
+    // lo: assigned groups -> clients
     const getListClient = async () => {
         let url = getApiBaseUrl() + 'clients/list';
         if (groupId) {
@@ -333,7 +361,7 @@ const ViewClientsByGroupPage = ({
                     })
                     .map(loan => createClientObject({
                         ...loan.client,
-                        ...loan
+                        ...loan 
                     }));
                 dispatch(setClientList(clients));
             } else if (response.error) {
@@ -454,37 +482,32 @@ const ViewClientsByGroupPage = ({
         setClientParent({});
     }
 
-    // FIXED — previously: mutated `row` in place, sent it as-is (`{...client,
-    // ...display-derived fields}` from createClientObject, so this was
-    // probably safe today, but only by accident — nothing prevented a future
-    // change to createClientObject or the API response shape from silently
-    // dropping firstName/lastName the way ClientQuickEditModal's 3-field
-    // payload did). Also fixed: the original swallowed request failures
-    // with a bare console.log and no toast, and never reset `setLoading`
-    // on that path — a failed exclude left the page's spinner stuck forever.
-    const handleTransferAction = async (row) => {
-        if (row.status !== 'pending') {
-            toast.error('Client must be in pending status to transfer.');
-            return;
-        }
-
-        setLoading(true);
-        const willBeArchived = !(row.archived === true);
-
-        const res = await saveClientPartial(row._id, {
-            archived: willBeArchived,
-            archivedBy: currentUser._id,
-            archivedDate: moment().format('YYYY-MM-DD'),
-        });
-
-        if (res.success) {
-            toast.success('Client successfully updated.');
-            setTimeout(() => {
-                fetchData();
-            }, 800);
+    const handleTransferAction = (row) => {
+        setLoading(true)
+        let clientData = row;
+        if (clientData.status == 'pending')  {
+            if (clientData.hasOwnProperty("archived") && clientData.archived == true) {
+                clientData.archived = false;
+                clientData.archivedBy = currentUser._id;
+            } else {
+                clientData.archived = true;
+                clientData.archivedBy = currentUser._id;
+            }
+            clientData.archivedDate = moment().format('YYYY-MM-DD');
+            delete clientData.group;
+            delete clientData.loans;
+            delete clientData.lo;
+            fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData)
+                .then(response => {
+                    setTimeout(() => {
+                        fetchData();
+                    }, 800);
+                    toast.success('Client successfully updated.');
+                }).catch(error => {
+                    console.log(error);
+                });
         } else {
-            toast.error(res.message || 'Failed to update client.');
-            setLoading(false);
+            toast.error('Client must be in pending status to transfer.');
         }
     }
 
@@ -498,16 +521,18 @@ const ViewClientsByGroupPage = ({
         setShowClientInfoModal(false);
     }
 
-    // FIXED — same reasoning as handleTransferAction above.
     const handleUnmarkDuplicateAction = async (row) => {
-        const response = await saveClientPartial(row._id, { duplicate: false });
+        let clientData = row;
+        clientData.duplicate = false;
+        
+        const response = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
         if (response.success) {
             toast.success('Client successfully updated.');
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } else {
-            toast.error(response.message || 'Failed to update client.');
+            toast.error('Failed to update client.');
         }
     }
 
@@ -675,7 +700,7 @@ const ViewClientsByGroupPage = ({
         let mounted = true;
 
         mounted && fetchData();
-
+        
         return () => {
             mounted = false;
         };
@@ -718,6 +743,14 @@ const ViewClientsByGroupPage = ({
                     Header: "Loan Balance",
                     accessor: 'loanBalanceStr'
                 },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments'
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
                 {
                     Header: "Delinquent",
                     accessor: 'delinquent',
@@ -779,6 +812,14 @@ const ViewClientsByGroupPage = ({
                     Header: "Loan Balance",
                     accessor: 'loanBalanceStr'
                 },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments',
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
                 {
                     Header: "Delinquent",
                     accessor: 'delinquent',
@@ -846,6 +887,14 @@ const ViewClientsByGroupPage = ({
                     Header: "Loan Balance",
                     accessor: 'loanBalanceStr'
                 },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments',
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
                 {
                     Header: "Delinquent",
                     accessor: 'delinquent',
@@ -995,21 +1044,22 @@ const ViewClientsByGroupPage = ({
             const active = list
                 .filter(client => !client.archived && !client?.duplicate)
                 .map(client => ({...client}));
-
+                
             const excluded = list
                 .filter(client => client.archived)
                 .map(client => ({...client}));
-
+                
             const duplicates = list
                 .filter(client => client.duplicate)
                 .map(client => ({...client}));
-
+    
             setActiveList(active);
             setFilteredActiveList(active);
             setExcludedList(excluded);
             setFilteredExcludedList(excluded);
             setDuplicateList(duplicates);
             setFilteredDuplicateList(duplicates);
+            // for non pending
             setFilteredList(list);
         }
     }, [list]);
@@ -1045,8 +1095,8 @@ const ViewClientsByGroupPage = ({
                                     <TableComponent
                                         columns={columns}
                                         data={filteredActiveList}
-                                        hasActionButtons={false}
-                                        dropDownActions={dropDownActions}
+                                        hasActionButtons={false} 
+                                        dropDownActions={dropDownActions} 
                                         dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
@@ -1056,8 +1106,10 @@ const ViewClientsByGroupPage = ({
                                     <TableComponent
                                         columns={duplicateColumns}
                                         data={filteredDuplicateList}
-                                        hasActionButtons={false}
-                                        dropDownActions={adminDropDownActions}
+                                        // hasActionButtons={true}
+                                        // rowActionButtons={rowActionButtonsAdmin}
+                                        hasActionButtons={false} 
+                                        dropDownActions={adminDropDownActions} 
                                         dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
@@ -1067,8 +1119,8 @@ const ViewClientsByGroupPage = ({
                                     <TableComponent
                                         columns={columns}
                                         data={filteredExcludedList}
-                                        hasActionButtons={false}
-                                        dropDownActions={dropDownActions}
+                                        hasActionButtons={false} 
+                                        dropDownActions={dropDownActions} 
                                         dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
@@ -1081,8 +1133,8 @@ const ViewClientsByGroupPage = ({
                                 <TableComponent
                                     columns={columns}
                                     data={filteredList}
-                                    hasActionButtons={false}
-                                    dropDownActions={dropDownActions}
+                                    hasActionButtons={false} 
+                                    dropDownActions={dropDownActions} 
                                     dropDownActionOrigin="client-list"
                                     showFilters={true}
                                     rowClick={handleShowClientInfoModal}
@@ -1110,7 +1162,7 @@ const ViewClientsByGroupPage = ({
                     <ButtonSolid label={`${deleteMessage.btnLabel}`} type="button" className="p-2" onClick={handleDelete} />
                 </div>
             </Dialog>
-            <ClientSearchV2
+            <ClientSearchV2 
                 show={showSearchModal}
                 onClose={() => setShowSearchModal(false)}
                 origin="duplicate_check"

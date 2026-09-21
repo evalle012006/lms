@@ -7,7 +7,6 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
 import moment from 'moment';
-import { saveClientPartial } from '@/lib/clients/save-client-partial';
 
 const MENU_WIDTH = 176; // w-44
 
@@ -98,12 +97,15 @@ export default function ClientRowActions({
         }
 
         const willBeArchived = !(client.archived === true);
-        const res = await saveClientPartial(client._id, {
-            archived: willBeArchived,
-            archivedBy: currentUser._id,
-            archivedDate: moment().format('YYYY-MM-DD'),
-        });
+        const clientData = { ...client };
+        clientData.archived = willBeArchived;
+        clientData.archivedBy = currentUser._id;
+        clientData.archivedDate = moment().format('YYYY-MM-DD');
+        delete clientData.group;
+        delete clientData.loans;
+        delete clientData.lo;
 
+        const res = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
         if (res.success) {
             toast.success('Client successfully updated.');
             onExcluded?.(client._id, { archived: willBeArchived });
