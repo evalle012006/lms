@@ -913,6 +913,16 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                             qrSourced: cc.qrSourced || false,
                             qrReferenceCode: cc.qrReferenceCode || null,
+                            paymentCollectionQr: safeNumber(cc?.paymentCollectionQr) > 0 ? safeNumber(cc?.paymentCollectionQr) : 0,
+                        }
+
+                        if (collection.qrSourced && collection.noOfPayments == collection.loanTerms) {
+                            collection.fullPayment = collection?.loanRelease;
+                            collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
+                            collection.loanBalance = 0;
+                            collection.loanBalanceStr = 0;
+                            collection.amountRelease = 0;
+                            collection.amountReleaseStr = 0;
                         }
     
                         delete cc._id;
@@ -3180,41 +3190,45 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else {
                                 if (remarks.value === 'reloaner') {
-                                    // Reset mcbu to previous value if there were previous offset/reloaner remarks
-                                    if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
-                                        if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
-                                            const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
-                                            temp.mcbu = prevMcbu;
+                                    if (temp?.qrSourced && temp?.paymentCollectionQr == temp.paymentCollection) {
+                                        // do nothing...
+                                    } else {
+                                        // Reset mcbu to previous value if there were previous offset/reloaner remarks
+                                        if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
+                                            if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
+                                                const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
+                                                temp.mcbu = prevMcbu;
+                                            }
                                         }
-                                    }
 
-                                    temp.mcbu = temp.mcbu - safeNumber(temp.mcbuCol);
+                                        temp.mcbu = temp.mcbu - safeNumber(temp.mcbuCol);
 
-                                    // Calculate mcbuCol based on payment collection and loan status
-                                    temp.mcbuCol = 0;
-                                    temp.mcbuColStr = '-';
-                                    
-                                    // Determine the active loan amount for calculation
-                                    const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
-                                    if (temp.paymentCollection > 0 && activeLoan > 0) {
-                                        // Calculate number of payments made today
-                                        const noPaymentsToday = temp.paymentCollection / activeLoan;
-                                        // Calculate base MCBU collection
-                                        let calculatedMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
-                                        temp.mcbuCol = calculatedMcbuCol;
-                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
-                                    }
-
-                                    if (temp.status === 'completed' && temp.noOfPayments === temp.loanTerms && temp?.prevData?.noOfPayments === temp.loanTerms) {
+                                        // Calculate mcbuCol based on payment collection and loan status
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
-                                    }
+                                        
+                                        // Determine the active loan amount for calculation
+                                        const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
+                                        if (temp.paymentCollection > 0 && activeLoan > 0) {
+                                            // Calculate number of payments made today
+                                            const noPaymentsToday = temp.paymentCollection / activeLoan;
+                                            // Calculate base MCBU collection
+                                            let calculatedMcbuCol = resolveWeeklyMcbuMinimum(transactionSettings, temp.group?.weeklyScheduleType) * noPaymentsToday;
+                                            temp.mcbuCol = calculatedMcbuCol;
+                                            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                        }
 
-                                    // Add mcbuCol to total MCBU (only if mcbuCol > 0)
-                                    if (temp.mcbuCol > 0) {
-                                        const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
-                                        temp.mcbu = currentMcbu + temp.mcbuCol;
-                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        if (temp.status === 'completed' && temp.noOfPayments === temp.loanTerms && temp?.prevData?.noOfPayments === temp.loanTerms) {
+                                            temp.mcbuCol = 0;
+                                            temp.mcbuColStr = '-';
+                                        }
+
+                                        // Add mcbuCol to total MCBU (only if mcbuCol > 0)
+                                        if (temp.mcbuCol > 0) {
+                                            const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
+                                            temp.mcbu = currentMcbu + temp.mcbuCol;
+                                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        }
                                     }
 
                                     // Update prevData to include the new mcbuCol

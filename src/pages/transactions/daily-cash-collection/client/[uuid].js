@@ -908,6 +908,16 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                             qrSourced: cc.qrSourced || false,
                             qrReferenceCode: cc.qrReferenceCode || null,
+                            paymentCollectionQr: safeNumber(cc?.paymentCollectionQr) > 0 ? safeNumber(cc?.paymentCollectionQr) : 0,
+                        }
+
+                        if (collection.qrSourced && collection.noOfPayments == collection.loanTerms) {
+                            collection.fullPayment = collection?.loanRelease;
+                            collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
+                            collection.loanBalance = 0;
+                            collection.loanBalanceStr = 0;
+                            collection.amountRelease = 0;
+                            collection.amountReleaseStr = 0;
                         }
 
                         delete cc._id;
@@ -1749,7 +1759,6 @@ const CashCollectionDetailsPage = () => {
                 if ((cc.remarks == '' && cc.paymentCollection > 0) && (cc.remarks && ['reloaner-cont', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                     const noPaymentsToday = cc.paymentCollection / cc.activeLoan;
                     const expectedMcbu = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
-                    
                     if (!cc.mcbuCol) {
                         errorMsg.add(`Error occured. No MCBU Collection detected.`);
                     } else if (cc.mcbuCol < expectedMcbu) {
@@ -3132,34 +3141,38 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else {
                                 if (remarks.value === 'reloaner-cont') {
-                                    // Reset mcbu to previous value if there were previous offset/reloaner remarks
-                                    if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner-") || temp?.remarks?.value?.startsWith('offset'))) {
-                                        if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
-                                            const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
-                                            temp.mcbu = prevMcbu;
+                                    if (temp?.qrSourced && temp?.paymentCollectionQr == temp.paymentCollection) {
+                                        // do nothing...
+                                    } else {
+                                        // Reset mcbu to previous value if there were previous offset/reloaner remarks
+                                        if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner-") || temp?.remarks?.value?.startsWith('offset'))) {
+                                            if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
+                                                const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
+                                                temp.mcbu = prevMcbu;
+                                            }
                                         }
-                                    }
 
-                                    temp.mcbu = temp.mcbu - safeNumber(temp.mcbuCol);
+                                        temp.mcbu = temp.mcbu - safeNumber(temp.mcbuCol);
 
-                                    // Calculate mcbuCol based on payment collection and loan status
-                                    temp.mcbuCol = 0;
-                                    temp.mcbuColStr = '-';
-                                    
-                                    // Determine the active loan amount for calculation
-                                    const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
-                                    if (temp.paymentCollection > 0 && activeLoan > 0) {
-                                        const noPaymentsToday = temp.paymentCollection / activeLoan;
-                                        let calculatedMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
-                                        temp.mcbuCol = calculatedMcbuCol;
-                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
-                                    }
-
-                                    // Special handling for completed loans at end of term
-                                    if (temp.status === 'completed' && temp.noOfPayments === temp.loanTerms && temp?.prevData?.noOfPayments === temp.loanTerms) {
-                                        // Don't add MCBU collection for completed loans at end of term
+                                        // Calculate mcbuCol based on payment collection and loan status
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
+                                        
+                                        // Determine the active loan amount for calculation
+                                        const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
+                                        if (temp.paymentCollection > 0 && activeLoan > 0) {
+                                            const noPaymentsToday = temp.paymentCollection / activeLoan;
+                                            let calculatedMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                                            temp.mcbuCol = calculatedMcbuCol;
+                                            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                        }
+
+                                        // Special handling for completed loans at end of term
+                                        if (temp.status === 'completed' && temp.noOfPayments === temp.loanTerms && temp?.prevData?.noOfPayments === temp.loanTerms) {
+                                            // Don't add MCBU collection for completed loans at end of term
+                                            temp.mcbuCol = 0;
+                                            temp.mcbuColStr = '-';
+                                        }
                                     }
 
                                     // Add mcbuCol to total MCBU (only if mcbuCol > 0)
