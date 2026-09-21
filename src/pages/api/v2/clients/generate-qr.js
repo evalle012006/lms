@@ -137,6 +137,7 @@ async function generateClientQR(req, res) {
             branchName:    client.branch?.name,
             loId:          client.loId,
             loName:        client.lo ? `${client.lo.firstName} ${client.lo.lastName}` : null,
+            groupName:     client.groupName || null,
         },
         message: isRegeneration
             ? 'QR code regenerated. The previous QR code is now invalid.'
