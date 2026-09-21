@@ -113,6 +113,7 @@ async function getLoanWithCashCollection(req, res) {
                     row.mcbuCol = mcbuCol;
                     row.csfCollectionQr = csfCollection;
                     row.paymentCollection = paymentCollection;
+                    row.paymentCollectionQr = paymentCollection;
 
                     row.mcbu = (row.mcbu || 0) + mcbuCol;
                     row.csf = (row.csf || 0) + csfCollection;
@@ -125,13 +126,12 @@ async function getLoanWithCashCollection(req, res) {
                         ? paymentCollection - row.activeLoan
                         : 0;
 
-                    if (row.loanBalance <= 0) {
-                        row.fullPayment = row.amountRelease;
-                        row.status = 'completed';
-                        row.fullPaymentDate = date;
-                        row.loanBalance = 0;
-                        row.amountRelease = 0;
-                    }
+                    // if (row.loanBalance <= 0) {
+                    //     row.fullPayment = row.amountRelease;
+                    //     row.fullPaymentDate = date;
+                    //     row.loanBalance = 0;
+                    //     row.amountRelease = 0;
+                    // }
                 }
                 // Badge fields apply regardless of pending/merged — a saved,
                 // QR-originated row should still show its provenance.
