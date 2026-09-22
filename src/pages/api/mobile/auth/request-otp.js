@@ -67,6 +67,19 @@ async function issueOtp({ contactNumber, purpose, clientId = null }) {
     if (devLoggingEnabled) {
         console.log(`[DEV ONLY] OTP for ${contactNumber}: ${code}`);
     }
+
+    // Returned to the caller ONLY so the HTTP response can include it when
+    // debug mode is on (see the two call sites below) — this is the ONE
+    // moment the raw code exists anywhere outside the SMS itself; it's
+    // bcrypt-hashed above and never stored in plaintext. Deliberately not
+    // written to any table or cache: with 5 replica containers behind nginx
+    // in staging, an in-memory or DB-lookup approach could easily be read
+    // back from a different instance than the one that generated it, or
+    // just linger longer than intended. Returning it synchronously in the
+    // same request/response has neither problem — and it's still gated by
+    // the exact same double condition (NODE_ENV + explicit env flag) as the
+    // console.log above, so this can never fire in production.
+    return { debugCode: devLoggingEnabled ? code : null };
 }
 
 async function requestOtp(req, res) {
@@ -113,8 +126,8 @@ async function requestOtp(req, res) {
         ).then(r => r.data?.client_accounts ?? []);
 
         if (existingAccount) {
-            await issueOtp({ contactNumber: normalized, purpose: 'login' });
-            return res.status(200).json({ success: true, flow: 'login' });
+            const { debugCode } = await issueOtp({ contactNumber: normalized, purpose: 'login' });
+            return res.status(200).json({ success: true, flow: 'login', ...(debugCode && { debugCode }) });
         }
 
         // 2. No account yet — see how many active `client` records share this number.
@@ -168,9 +181,9 @@ async function requestOtp(req, res) {
         // The client_accounts row itself is only created on successful
         // verify-otp, not here (see verify-otp.js). target._id travels with
         // the OTP row so verify-otp doesn't have to (and can't) re-derive it.
-        await issueOtp({ contactNumber: normalized, purpose: 'enrollment', clientId: target._id });
+        const { debugCode } = await issueOtp({ contactNumber: normalized, purpose: 'enrollment', clientId: target._id });
         await logEnrollmentAttempt({ method: 'auto_contact_match', outcome: 'otp_sent', contactNumber: normalized, clientId: target._id });
-        return res.status(200).json({ success: true, flow: 'enrollment' });
+        return res.status(200).json({ success: true, flow: 'enrollment', ...(debugCode && { debugCode }) });
 
     } catch (error) {
         console.error('request-otp error:', error);
