@@ -50,7 +50,7 @@ async function issueOtp({ contactNumber, purpose, clientId = null }) {
         })
     );
 
-    const devLoggingEnabled = process.env.NODE_ENV !== 'production' && process.env.MOBILE_OTP_DEBUG_LOG === 'true';
+    const devLoggingEnabled = process.env.MOBILE_OTP_DEBUG_LOG === 'true';
 
     try {
         await sendClientOTPSMS({ contactNumber, code });
