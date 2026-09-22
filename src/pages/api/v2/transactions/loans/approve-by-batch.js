@@ -336,11 +336,16 @@ async function updateGroup(group, addToMutationList) {
 
 async function updateClient(loan, addToMutationList) {
   let [client] = await findClients({ _id: { _eq: loan?.clientId ?? null } });
-
+ 
   if (!!client) {
-
+ 
     client.dateModified = moment(getCurrentDate()).format('YYYY-MM-DD');
-
+ 
+    // ADDITION 1: capture status BEFORE it gets overwritten below, so we can
+    // tell "just became active" apart from "was already active" — the SMS
+    // should fire once, not on every subsequent loan approval for the same client.
+    const wasActiveBefore = client.status === 'active';
+ 
     if (client.status === "offset") {
       client.status = "active";
       client.groupName = loan?.groupName;
@@ -351,17 +356,31 @@ async function updateClient(loan, addToMutationList) {
       client.oldLoId = null;
       
     }
-
+ 
     const clientId = client._id;
     client.status = "active";
     delete client._id;
-
+ 
     addToMutationList(alias => updateQl(clientType(alias), {
       where: { _id: { _eq: clientId } },
       set: filterGraphFields(CLIENT_FIELDS, { ...client }),
     }));
+ 
+    // ADDITION 2: a client becoming active is now automatically eligible to
+    // self-enroll in the mobile app (see request-otp.js's auto-enroll path,
+    // which already requires client.status === 'active'). This just lets
+    // them know — it does NOT create their client_accounts row; that still
+    // only happens when they complete OTP verification themselves.
+    // Fire-and-forget: this must never block or fail loan approval.
+    if (!wasActiveBefore && client.contactNumber) {
+      notifyMobileAppEligibility({
+        clientId,
+        contactNumber: client.contactNumber,
+        firstName: client.firstName,
+      }).catch(err => console.error('Failed to send mobile app eligibility SMS:', err));
+    }
   }
-
+ 
   return { success: true, client };
 }
 

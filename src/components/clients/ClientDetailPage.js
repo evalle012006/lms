@@ -41,9 +41,10 @@ import { setClient } from "@/redux/actions/clientActions";
 import PaymentHistoryModal from "./PaymentHistoryModal";
 import PrivateImage from "@/components/common/PrivateImage";
 import { useSignedUrl } from "hooks/useSignedUrl";
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Smartphone } from 'lucide-react';
 import ClientProgramsTab from './programs/ClientProgramsTab';
 import ClientQRIconPopover from "./ClientQRIconPopover";
+import MobileAccessIconPopover from './MobileAccessIconPopover.js';
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -326,6 +327,7 @@ const ClientDetailPage = () => {
             <div className="bg-white border-b border-gray-200">
                 <div className="px-6 py-6 relative">
                     <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                        <MobileAccessIconPopover client={client} />
                         <ClientQRIconPopover
                             client={client}
                             onQrUpdated={(changes) => dispatch(setClient({ ...client, ...changes }))}

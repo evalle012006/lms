@@ -293,6 +293,11 @@ export const SETTINGS_FIELDS = `
   requireGovernmentId
   requireSelfieWithId
   smsEnabled
+  smsSenderName
+  smsNotificationsEnabled
+  smsNotificationsSenderName
+  smsOtpEnabled
+  smsOtpSenderName
   ciQuestions
   requireStaffBiometric
   qrAllowedStartTime

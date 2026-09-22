@@ -5,7 +5,13 @@ module.exports = {
     },
     reactStrictMode: false,
     serverRuntimeConfig: {
-        secret: 'A39518F3263ABF7687DC89697A21A'
+        secret: 'A39518F3263ABF7687DC89697A21A',
+        // Separate secret for client (mobile app) tokens — see
+        // src/services/client-jwt-middleware.js for why this is kept apart
+        // from the staff `secret` above. Sourced from env, not hardcoded:
+        // that existing hardcoded staff secret is a live leak now that this
+        // repo is public — don't add a second one.
+        clientSecret: process.env.CLIENT_JWT_SECRET,
     },
     publicRuntimeConfig: {
         apiUrl: process.env.NEXT_PUBLIC_API_URL
