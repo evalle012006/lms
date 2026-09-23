@@ -693,18 +693,6 @@ const MenuItems = [
                 hidden: false,
                 roles: [] // Available to all roles, you can restrict if needed
             },
-            {
-                label: "TEST",
-                url: "/transactions/branch-manager/cash-collection", 
-                icon: {
-                    active: (props) => <Ticket {...props} />,
-                    notActive: (props) => <Ticket {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["admin"]
-            },
         ]
     },
     {
