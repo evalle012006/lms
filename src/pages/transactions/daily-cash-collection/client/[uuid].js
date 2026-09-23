@@ -4058,9 +4058,9 @@ const CashCollectionDetailsPage = () => {
                                 <tbody>
                                     {data && data.map((cc, index) => {
                                         let rowBg = 'even:bg-gray-100';
-                                        if (cc.qrSourced) {
-                                            rowBg = 'bg-cyan-100';
-                                        }
+                                        // if (cc.qrSourced) {
+                                        //     rowBg = 'bg-cyan-100';
+                                        // }
 
                                         if (cc.status === 'pending') {
                                             rowBg = 'bg-yellow-100';
