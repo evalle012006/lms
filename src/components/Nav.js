@@ -30,7 +30,9 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     ReceiptText,
-    Eye
+    Eye,
+    MessageSquare,
+    Smartphone
 } from 'lucide-react';
 import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
@@ -823,6 +825,30 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Eye {...props} />,
                     notActive: (props) => <Eye {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "SMS Settings",
+                url: "/settings/sms",
+                icon: {
+                    active: (props) => <MessageSquare {...props} />,
+                    notActive: (props) => <MessageSquare {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "Mobile Login Settings",
+                url: "/settings/mobile-login",
+                icon: {
+                    active: (props) => <Smartphone {...props} />,
+                    notActive: (props) => <Smartphone {...props} />,
                 },
                 active: false,
                 hasSub: false,

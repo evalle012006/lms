@@ -302,6 +302,7 @@ export const SETTINGS_FIELDS = `
   requireStaffBiometric
   qrAllowedStartTime
   qrAllowedEndTime
+  passwordLoginEnabled
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `

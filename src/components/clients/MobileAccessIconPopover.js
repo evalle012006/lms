@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { Smartphone, X } from 'lucide-react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import { isValidPhilippineMobile } from '@/lib/phone-utils';
 
 const POPOVER_WIDTH = 260;
 
@@ -28,6 +29,10 @@ export default function MobileAccessIconPopover({ client }) {
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(false);
     const [activating, setActivating] = useState(false);
+    // Shown once, right after activation or a reset — this is the ONLY
+    // place the plaintext password ever exists outside the client's own
+    // memory. Cleared on close; never persisted, never logged.
+    const [generatedPassword, setGeneratedPassword] = useState(null);
     const triggerRef = useRef(null);
     const popoverRef = useRef(null);
     const isClientActive = client.status === 'active';
@@ -53,6 +58,7 @@ export default function MobileAccessIconPopover({ client }) {
     const closePopover = () => {
         setOpen(false);
         setPopoverPos(null);
+        setGeneratedPassword(null);
     };
 
     useEffect(() => {
@@ -81,8 +87,13 @@ export default function MobileAccessIconPopover({ client }) {
     };
 
     async function handleActivate() {
-        if (!client.contactNumber) {
-            alert('This client has no contact number on file — add one before enabling mobile access.');
+        // Matches the server-side check in approve.js — this is just for
+        // immediate feedback without a round trip; the real enforcement is
+        // server-side. A plain truthiness check here previously let a
+        // placeholder value like "NA" through, since it's a non-empty
+        // string — this is the actual fix for that.
+        if (!isValidPhilippineMobile(client.contactNumber)) {
+            alert(`This client's contact number ("${client.contactNumber || 'none on file'}") is not a valid mobile number. Update their contact info before enabling mobile access.`);
             return;
         }
         setActivating(true);
@@ -90,8 +101,13 @@ export default function MobileAccessIconPopover({ client }) {
             const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/mobile-enrollment/approve', {
                 clientId: client._id, contactNumber: client.contactNumber, firstName: client.firstName,
             });
-            if (res.success) await loadStatus();
-            else alert(res.message || 'Failed to enable mobile access.');
+            if (res.success) {
+                setGeneratedPassword(res.initialPassword);
+                if (res.warning) alert(res.warning);
+                await loadStatus();
+            } else {
+                alert(res.message || 'Failed to enable mobile access.');
+            }
         } finally {
             setActivating(false);
         }
@@ -105,6 +121,23 @@ export default function MobileAccessIconPopover({ client }) {
             });
             if (res.success) await loadStatus();
             else alert(res.message || 'Failed to reactivate account.');
+        } finally {
+            setActivating(false);
+        }
+    }
+
+    async function handleResetPassword() {
+        if (!window.confirm('Generate a new password for this client? Their current password will stop working immediately.')) return;
+        setActivating(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/mobile-enrollment/reset-password', {
+                clientId: client._id,
+            });
+            if (res.success) {
+                setGeneratedPassword(res.newPassword);
+            } else {
+                alert(res.message || 'Failed to reset password.');
+            }
         } finally {
             setActivating(false);
         }
@@ -128,6 +161,29 @@ export default function MobileAccessIconPopover({ client }) {
 
             {loading ? (
                 <div className="h-16 flex items-center justify-center text-xs text-gray-400">Checking…</div>
+            ) : generatedPassword ? (
+                <div>
+                    <p className="text-[11px] text-gray-500 mb-1">
+                        Give this to the client now — it won't be shown again:
+                    </p>
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 mb-2">
+                        <span className="font-mono text-sm font-bold tracking-widest text-gray-900">{generatedPassword}</span>
+                        <button
+                            type="button"
+                            onClick={() => navigator.clipboard?.writeText(generatedPassword)}
+                            className="text-[11px] text-blue-600 hover:underline"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setGeneratedPassword(null)}
+                        className="w-full px-2 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                        Done
+                    </button>
+                </div>
             ) : (
                 <>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${info.style}`}>
@@ -165,6 +221,17 @@ export default function MobileAccessIconPopover({ client }) {
                             className="mt-2 w-full px-2 py-1.5 text-xs font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
                         >
                             {activating ? 'Reactivating…' : 'Reactivate Access'}
+                        </button>
+                    )}
+
+                    {status?.state === 'active' && (
+                        <button
+                            type="button"
+                            onClick={handleResetPassword}
+                            disabled={activating}
+                            className="mt-2 w-full px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                        >
+                            {activating ? 'Resetting…' : 'Reset Password'}
                         </button>
                     )}
                 </>

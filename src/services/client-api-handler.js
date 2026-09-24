@@ -10,6 +10,8 @@ const UNAUTHENTICATED_PATHS = [
     '/api/mobile/auth/self-register',
     '/api/mobile/auth/refresh',   // by design — this is called precisely when the access token has expired
     '/api/mobile/auth/logout',    // takes the refresh token itself, not the (possibly expired) access token
+    '/api/mobile/auth/config',    // checked from the login screen, before any token exists
+    '/api/mobile/auth/login-password', // this IS a login endpoint — no token yet
 ];
 
 const clientApiHandler = (handler) => async (req, res) => {

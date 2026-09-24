@@ -45,6 +45,8 @@ import { GraduationCap, Smartphone } from 'lucide-react';
 import ClientProgramsTab from './programs/ClientProgramsTab';
 import ClientQRIconPopover from "./ClientQRIconPopover";
 import MobileAccessIconPopover from './MobileAccessIconPopover.js';
+import PhotoCard from "./PhotoCard";
+import LafCiHistoryTab from "./LafCiHistoryTab";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -87,18 +89,15 @@ const ClientDetailPage = () => {
             
             if (response.success) {
                 let loanData = [];
-                
-                if (response.client && response.client.length > 0) {
-                    response.client.forEach(clientItem => {
-                        if (clientItem.loans && clientItem.loans.length > 0) {
-                            clientItem.loans.forEach(loan => {
-                                loanData.push({
-                                    ...loan,
-                                    groupName: loan.groupName || clientItem.groupName,
-                                    slotNo: loan.slotNo > 0 ? loan.slotNo : clientItem.slotNo,
-                                });
-                            });
-                        }
+
+                const clientItem = response.client;
+                if (clientItem && clientItem.loans.length > 0) {
+                    clientItem.loans.forEach(loan => {
+                        loanData.push({
+                            ...loan,
+                            groupName: loan.groupName || clientItem.groupName,
+                            slotNo: loan.slotNo > 0 ? loan.slotNo : clientItem.slotNo,
+                        });
                     });
                 }
                 
@@ -251,6 +250,7 @@ const ClientDetailPage = () => {
     const tabs = [
         { id: 'overview',   label: 'Overview',      icon: UserIcon },
         { id: 'loans',      label: 'Loan History',  icon: CurrencyDollarIcon },
+        { id: 'laf-ci',     label: 'LAF / CI History', icon: IdentificationIcon },
         { id: 'documents',  label: 'Documents',     icon: DocumentTextIcon },
         { id: 'programs',   label: 'Programs',      icon: GraduationCap },
     ];
@@ -312,6 +312,15 @@ const ClientDetailPage = () => {
         if (client?.slotNo)    return client.slotNo;
         return '-';
     };
+
+    // Whether any of the "additional" personal-info fields are present —
+    // controls whether that extra block renders at all in the Overview tab.
+    const hasAdditionalPersonalInfo = !!(
+        client?.civilStatus || client?.yearsOfStay || client?.business
+        || (client?.dailyIncome !== null && client?.dailyIncome !== undefined && client?.dailyIncome !== '')
+        || client?.governmentIdType || client?.governmentIdNumber
+        || client?.landmark || client?.distanceFromBranch
+    );
 
     if (!client) {
         return (
@@ -474,6 +483,61 @@ const ClientDetailPage = () => {
                                         <span>{formatFullAddress()}</span>
                                     </p>
                                 </div>
+
+                                {/* Additional personal info — only shown when present, since many
+                                    older/migrated client records won't have these LAF-era fields
+                                    populated. Government ID mirrors the banner in the Documents tab. */}
+                                {hasAdditionalPersonalInfo && (
+                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                                        {client.civilStatus && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Civil Status</label>
+                                                <p className="mt-1 text-sm text-gray-900">{client.civilStatus}</p>
+                                            </div>
+                                        )}
+                                        {client.yearsOfStay && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Years of Stay</label>
+                                                <p className="mt-1 text-sm text-gray-900">{client.yearsOfStay}</p>
+                                            </div>
+                                        )}
+                                        {client.business && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Business</label>
+                                                <p className="mt-1 text-sm text-gray-900">{client.business}</p>
+                                            </div>
+                                        )}
+                                        {(client.dailyIncome !== null && client.dailyIncome !== undefined && client.dailyIncome !== '') && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Daily Income</label>
+                                                <p className="mt-1 text-sm text-gray-900">{formatPricePhp(client.dailyIncome)}</p>
+                                            </div>
+                                        )}
+                                        {(client.governmentIdType || client.governmentIdNumber) && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Government ID</label>
+                                                <p className="mt-1 text-sm text-gray-900 flex items-center">
+                                                    <IdentificationIcon className="w-4 h-4 mr-1 text-gray-400" />
+                                                    {client.governmentIdType ? client.governmentIdType.toUpperCase() : ''}
+                                                    {client.governmentIdNumber ? ` · ${client.governmentIdNumber}` : ''}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {client.landmark && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Landmark</label>
+                                                <p className="mt-1 text-sm text-gray-900">{client.landmark}</p>
+                                            </div>
+                                        )}
+                                        {client.distanceFromBranch && (
+                                            <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Distance from Branch</label>
+                                                <p className="mt-1 text-sm text-gray-900">{client.distanceFromBranch}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase">Date Added</label>
@@ -760,6 +824,10 @@ const ClientDetailPage = () => {
                             )}
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'laf-ci' && (
+                    <LafCiHistoryTab client={client} />
                 )}
 
                 {/* ── FIX: Documents Tab — now shows all client photos ──────────────── */}
