@@ -8,7 +8,8 @@ import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
-import { ExternalLink, ImageOff, X, User } from 'lucide-react';
+import PhotoComparisonOverlay, { PhotoThumb } from '@/components/shared/PhotoComparisonOverlay';
+import { ExternalLink } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 const MATCH_FILTERS = [
@@ -179,91 +180,17 @@ const FaceVerifyAttemptsPage = () => {
             {/* CHANGED: replaced single-image preview modal with a side-by-side
                 comparison overlay, matching CIDuplicatePanel's pattern */}
             {zoomAttempt && (
-                <ComparisonZoomOverlay
-                    enrollUrl={zoomAttempt.clientEnrollmentPhotoKey ? urlMap[zoomAttempt.clientEnrollmentPhotoKey] : null}
-                    captureUrl={zoomAttempt.photo_key ? urlMap[zoomAttempt.photo_key] : null}
-                    clientName={zoomAttempt.clientName || zoomAttempt.client_id}
+                <PhotoComparisonOverlay
+                    leftUrl={zoomAttempt.clientEnrollmentPhotoKey ? urlMap[zoomAttempt.clientEnrollmentPhotoKey] : null}
+                    rightUrl={zoomAttempt.photo_key ? urlMap[zoomAttempt.photo_key] : null}
+                    leftLabel="Enrolled"
+                    rightLabel="Captured"
+                    title={`Photo Comparison — ${zoomAttempt.clientName || zoomAttempt.client_id}`}
                     onClose={() => setZoomAttempt(null)}
                 />
             )}
         </Layout>
     );
 };
-
-const PhotoThumb = ({ url, label, onClick }) => (
-    <div className="text-center">
-        {url ? (
-            <img src={url} alt={label} onClick={onClick}
-                className="w-14 h-14 rounded-lg object-cover border border-gray-200 cursor-pointer" />
-        ) : (
-            <div className="w-14 h-14 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center">
-                <ImageOff className="w-4 h-4 text-gray-300" />
-            </div>
-        )}
-        <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
-    </div>
-);
-
-// NEW: side-by-side comparison overlay, matching CIDuplicatePanel's
-// ComparisonZoomOverlay pattern exactly (same layout, same "tap outside to
-// close" affordance) so this page's zoom behavior feels consistent with the
-// rest of the app instead of introducing a third distinct pattern.
-const ComparisonZoomOverlay = ({ enrollUrl, captureUrl, clientName, onClose }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex flex-col"
-        onClick={onClose}>
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-            onClick={e => e.stopPropagation()}>
-            <p className="text-white text-sm font-semibold">
-                Photo Comparison — {clientName}
-            </p>
-            <button type="button" onClick={onClose}
-                className="p-2 bg-white bg-opacity-10 rounded-full text-white
-                    hover:bg-opacity-20 transition-colors">
-                <X className="w-5 h-5" />
-            </button>
-        </div>
-        <div className="flex flex-1 items-center justify-center gap-6 px-6 pb-6 min-h-0"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex flex-col items-center gap-3 flex-1 min-w-0 max-w-sm h-full">
-                <span className="text-white text-xs font-semibold uppercase tracking-widest
-                    bg-white bg-opacity-10 px-3 py-1 rounded-full">Enrolled</span>
-                <div className="flex-1 w-full flex items-center justify-center min-h-0">
-                    {enrollUrl ? (
-                        <img src={enrollUrl} alt="Enrolled"
-                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
-                    ) : (
-                        <div className="w-48 h-48 rounded-2xl bg-white bg-opacity-10
-                            flex items-center justify-center">
-                            <User className="w-16 h-16 text-white opacity-30" />
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="w-px h-20 bg-white bg-opacity-20" />
-                <span className="text-white text-xs font-bold opacity-50">VS</span>
-                <div className="w-px h-20 bg-white bg-opacity-20" />
-            </div>
-            <div className="flex flex-col items-center gap-3 flex-1 min-w-0 max-w-sm h-full">
-                <span className="text-white text-xs font-semibold uppercase tracking-widest
-                    bg-white bg-opacity-10 px-3 py-1 rounded-full">Captured</span>
-                <div className="flex-1 w-full flex items-center justify-center min-h-0">
-                    {captureUrl ? (
-                        <img src={captureUrl} alt="Captured"
-                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
-                    ) : (
-                        <div className="w-48 h-48 rounded-2xl bg-white bg-opacity-10
-                            flex items-center justify-center">
-                            <User className="w-16 h-16 text-white opacity-30" />
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-        <p className="text-center text-white text-xs opacity-30 pb-4 flex-shrink-0">
-            Tap anywhere outside to close
-        </p>
-    </div>
-);
 
 export default FaceVerifyAttemptsPage;

@@ -30,9 +30,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     ReceiptText,
-    Eye,
-    Smartphone,
-    MessageSquare
+    Eye
 } from 'lucide-react';
 import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
@@ -695,6 +693,18 @@ const MenuItems = [
                 hidden: false,
                 roles: [] // Available to all roles, you can restrict if needed
             },
+            {
+                label: "TEST",
+                url: "/transactions/branch-manager/cash-collection", 
+                icon: {
+                    active: (props) => <Ticket {...props} />,
+                    notActive: (props) => <Ticket {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
         ]
     },
     {
@@ -820,30 +830,6 @@ const MenuItems = [
                 roles: ["admin"]
             },
             {
-                label: "Mobile Enrollment",
-                url: "/settings/mobile-enrollment",
-                icon: {
-                    active: (props) => <Smartphone {...props} />,
-                    notActive: (props) => <Smartphone {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["admin"]
-            },
-            {
-                label: "SMS Settings",
-                url: "/settings/sms",
-                icon: {
-                    active: (props) => <MessageSquare {...props} />,
-                    notActive: (props) => <MessageSquare {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["admin"]
-            },
-            {
                 label: "System",
                 url: "/settings/system",
                 icon: {
@@ -877,7 +863,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: true,
-                roles: ["super-admin"]
+                roles: ["admin"]
             }
         ]
     }

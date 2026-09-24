@@ -25,6 +25,8 @@ import ButtonOutline from '@/lib/ui/ButtonOutline';
 import Spinner from '@/components/Spinner';
 import FaceVerifyStep from '@/components/transactions/loan-application/FaceVerifyStep';
 import PhotoCapture from '@/components/clients/PhotoCapture';
+import LafCiGallery from '@/components/transactions/loan-application/LafCiGallery';
+import FaceVerifyComparisonPanel from '@/components/transactions/loan-application/FaceVerifyComparisonPanel';
 
 const DisbursementPhotoModal = ({
     show,
@@ -130,7 +132,7 @@ const DisbursementPhotoModal = ({
             Promise.all(
                 clientIds.map(id =>
                     fetchWrapper.get(getApiBaseUrl() + `clients?clientId=${id}`)
-                        .then(res => ({ id, record: res.client?.[0] || res.clients?.[0] }))
+                        .then(res => ({ id, record: res.client || null }))
                         .catch(() => ({ id, record: null }))
                 )
             ),
@@ -386,6 +388,9 @@ const DisbursementPhotoModal = ({
                         ))}
                     </div>
 
+                    {/* ── Application & investigation documents (read-only review) ─ */}
+                    <LafCiGallery loans={loans} />
+
                     {/* ── Step 1: Disbursement Photo ──────────────────────── */}
                     <div>
                         <div className="flex items-center gap-2 mb-2">
@@ -551,26 +556,38 @@ const DisbursementPhotoModal = ({
                                                 const isPending = !isSkipped && queuePos > verifyIndex;
 
                                                 return (
-                                                    <div key={l._id || idx}
-                                                        className={`flex items-center justify-between px-3 py-2 text-xs ${
-                                                            isCurrent ? 'bg-blue-50' : 'bg-white'
-                                                        }`}>
-                                                        <span className="font-medium text-gray-700">{getClientName(l)}</span>
-                                                        {isSkipped ? (
-                                                            <span className="flex items-center gap-1 text-amber-600 font-medium">
-                                                                <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-                                                                Skipped — legacy client, no new-flow record
-                                                            </span>
-                                                        ) : isDone ? (
-                                                            <span className="flex items-center gap-1 text-green-600 font-medium">
-                                                                <CheckCircleIcon className="w-3.5 h-3.5" />
-                                                                Verified
-                                                            </span>
-                                                        ) : isCurrent ? (
-                                                            <span className="text-blue-600 font-medium">In progress</span>
-                                                        ) : isPending ? (
-                                                            <span className="text-gray-400">Pending</span>
-                                                        ) : null}
+                                                    <div key={l._id || idx} className={isCurrent ? 'bg-blue-50' : 'bg-white'}>
+                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                            <span className="font-medium text-gray-700">{getClientName(l)}</span>
+                                                            {isSkipped ? (
+                                                                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                                                    <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                                                                    Skipped — legacy client, no new-flow record
+                                                                </span>
+                                                            ) : isDone ? (
+                                                                <span className="flex items-center gap-1 text-green-600 font-medium">
+                                                                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                                                                    Verified
+                                                                </span>
+                                                            ) : isCurrent ? (
+                                                                <span className="text-blue-600 font-medium">In progress</span>
+                                                            ) : isPending ? (
+                                                                <span className="text-gray-400">Pending</span>
+                                                            ) : null}
+                                                        </div>
+                                                        {/* Regardless of matched/mismatched outcome, once this client's
+                                                            attempt is logged, show what was captured at application vs.
+                                                            at verification — same comparison as the Face Verification
+                                                            Attempt Log page. */}
+                                                        {isDone && (
+                                                            <div className="px-3 pb-2">
+                                                                <FaceVerifyComparisonPanel
+                                                                    clientId={cid}
+                                                                    loanId={l?._id}
+                                                                    clientName={getClientName(l)}
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
