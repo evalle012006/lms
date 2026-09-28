@@ -428,7 +428,7 @@ async function executeSave(req, user_id, transactionId, user) {
                         })
                     ).then(res => res.data?.qr_precheck ?? []);
 
-                    if (existingRealRow && existingRealRow.draft !== true) {
+                    if (existingRealRow && existingRealRow.draft !== true && existingRealRow.origin !== 'pre-save') {
                         logger.warn({
                             user_id, transactionId, page: 'Cash Collection SaveV2',
                             message: 'Skipped QR-sourced collection — a finalized non-draft transaction already exists for this client today',

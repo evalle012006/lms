@@ -96,16 +96,13 @@ async function getLoanWithCashCollection(req, res) {
 
             const qrEntry = qrByClientId.get(row.clientId);
             if (qrEntry) {
-                // "Nothing real saved yet" means either no row at all, OR
-                // only a pre-save placeholder (origin still 'pre-save' —
-                // saveV2.js nulls this out the moment a real save happens).
-                // Without this check, weekly groups using pre-save-collections
-                // would NEVER show a QR-sourced value, since a placeholder
-                // row always exists before the office opens the page.
                 const existingRow = row.current?.[0];
                 const isJustPlaceholder = !existingRow || existingRow.origin === 'pre-save' || existingRow.draft === true;
+                const hasNoAmountsYet = !existingRow || (
+                    !existingRow.paymentCollection && !existingRow.mcbuCol && !existingRow.csfCollection
+                );
 
-                if (qrEntry.status === 'pending' && isJustPlaceholder) {
+                if (qrEntry.status === 'pending' && isJustPlaceholder && hasNoAmountsYet) {
                     const mcbuCol = qrEntry.payload.mcbuCol || 0;
                     const csfCollection = qrEntry.payload.csfCollection || 0;
                     const paymentCollection = qrEntry.payload.paymentCollection || 0;
@@ -126,12 +123,23 @@ async function getLoanWithCashCollection(req, res) {
                         ? paymentCollection - row.activeLoan
                         : 0;
 
-                    // if (row.loanBalance <= 0) {
-                    //     row.fullPayment = row.amountRelease;
-                    //     row.fullPaymentDate = date;
-                    //     row.loanBalance = 0;
-                    //     row.amountRelease = 0;
-                    // }
+                    if (existingRow) {
+                        const isFullPayoff = row.loanBalance <= 0;
+                        Object.assign(existingRow, {
+                            mcbuCol,
+                            csfCollection,
+                            paymentCollection,
+                            mcbu: row.mcbu,
+                            csf: row.csf,
+                            loanBalance: row.loanBalance,
+                            noOfPayments: row.noOfPayments,
+                            excess: row.excess,
+                            amountRelease: row.amountRelease,
+                            // fullPayment on `row` is an array until a payoff
+                            // happens, so only copy it when it's a real number.
+                            ...(isFullPayoff ? { fullPayment: row.fullPayment, fullPaymentDate: row.fullPaymentDate } : {}),
+                        });
+                    }
                 }
                 // Badge fields apply regardless of pending/merged — a saved,
                 // QR-originated row should still show its provenance.
