@@ -213,7 +213,7 @@ async function submitQrCollection(req, res) {
         }
     }
 
-    const isOffDay = occurence === 'weekly' && group.day && group.day !== dayName;
+    const isOffDay = occurence === 'weekly' && group.day && group.day.toLowerCase() !== dayName.toLowerCase();
 
     if (isOffDay && !mcbuWithdrawFlag && !offsetTransFlag) {
         return res.status(200).json({

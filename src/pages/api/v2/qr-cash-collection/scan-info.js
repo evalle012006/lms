@@ -108,7 +108,7 @@ async function getScanInfo(req, res) {
             dayValidity = { allowed: false, reason: 'Collections are not scheduled on holidays.' };
         }
     } else if (occurence === 'weekly') {
-        if (group.day && group.day !== dayName) {
+        if (group.day && group.day.toLowerCase() !== dayName.toLowerCase()) {
             // Off-day: only flagged transaction types allowed, not a regular collection.
             dayValidity = { allowed: true, restrictedToFlaggedTypes: true };
         }
