@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
@@ -15,6 +15,20 @@ import RadioButton from "@/lib/ui/radio-button";
 import { getApiBaseUrl } from "@/lib/constants";
 import { setUserList } from "@/redux/actions/userActions";
 
+const DAYS = [
+    { label: 'All Week', value: 'all', dayNo: 0 },
+    { label: 'Monday', value: 'monday', dayNo: 1 },
+    { label: 'Tuesday', value: 'tuesday', dayNo: 2 },
+    { label: 'Wednesday', value: 'wednesday', dayNo: 3 },
+    { label: 'Thursday', value: 'thursday', dayNo: 4 },
+    { label: 'Friday', value: 'friday', dayNo: 5 }
+];
+
+// Weekly groups must pick a specific day; "All Week" is reserved for daily groups
+const WEEKLY_DAYS = DAYS.filter(d => d.value !== 'all');
+
+const GROUP_NUMBER_OPTIONS = Array.from({ length: 15 }, (_, i) => ({ label: i + 1, value: i + 1 }));
+
 const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -22,19 +36,19 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
     const formikRef = useRef();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
-    const [day, setDay] = useState('');
-    const [dayNo, setDayNo] = useState('');
+    // Daily is the default, so day defaults to "All Week" (dayNo 0)
+    const [day, setDay] = useState('all');
+    const [dayNo, setDayNo] = useState(0);
     const [occurence, setOccurence] = useState('daily');
     const [branchId, setBranchId] = useState();
-    const [branchOfficers, setBranchOfficers] = useState(userList);
-    const days = [
-        {label: 'All Week', value: 'all', dayNo: 0},
-        {label: 'Monday', value: 'monday', dayNo: 1}, 
-        {label: 'Tuesday', value: 'tuesday', dayNo: 2}, 
-        {label: 'Wednesday', value: 'wednesday', dayNo: 3}, 
-        {label: 'Thursday', value: 'thursday', dayNo: 4}, 
-        {label: 'Friday', value: 'friday', dayNo: 5}
-    ];
+
+    // Derived, not stored: always reflects the current userList + selected branch.
+    // NOTE: assumes users carry `designatedBranchId`. Verify against your users/list payload.
+    const branchOfficers = useMemo(() => {
+        if (!currentUser.root) return userList;   // non-root: list is already branch-scoped
+        if (!branchId) return [];                 // root: must pick a branch first
+        return userList.filter(u => u.designatedBranchId === branchId);
+    }, [userList, branchId, currentUser.root]);
 
     const initialValues = {
         name: group.name,
@@ -48,7 +62,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         loanOfficerId: group.loanOfficerId,
         loanOfficerName: group.loanOfficerName,
         availableSlots: group.availableSlots
-    }
+    };
 
     const validationSchema = yup.object().shape({
         name: yup
@@ -64,78 +78,130 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             .number()
             .typeError('Capacity must be a number')
             .integer('Capacity must be a whole number')
-            .min(1, 'Capacity must be greater than 0')
+            .min(
+                Math.max(group.noOfClients || 0, 1),
+                group.noOfClients
+                    ? `Capacity cannot be less than current clients (${group.noOfClients})`
+                    : 'Capacity must be greater than 0'
+            )
             .required('Please enter capacity'),
-
     });
-    
+
+    // Fetch the LO list once on mount if the store is empty.
+    // Root: fetch all LOs (filtered client-side by branch). BM: scoped to own branch.
     useEffect(() => {
-        if (userList.length === 0) {
-            const getListUser = async (branchId) => {
-                let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
-                    const response = await fetchWrapper.get(url);
-                    if (response.success) {
-                        let userDataList = [];
-                        response.users && response.users.map(u => {
-                            const name = `${u.firstName} ${u.lastName}`;
-                            userDataList.push(
-                                {
-                                    ...u,
-                                    name: name,
-                                    label: name,
-                                    value: u._id
-                                }
-                            );
-                        });
-                        userDataList.sort((a, b) => { return a.loNo - b.loNo; });
-                        dispatch(setUserList(userDataList));
-                    } else {
-                        toast.error('Error retrieving user list.');
-                    }
+        if (userList.length > 0) return;
+        let cancelled = false;
+
+        const load = async () => {
+            const params = { loOnly: true };
+            if (currentUser.role.rep === 3) {
+                params.branchId = currentUser.designatedBranchId;
             }
 
-            getListUser(branchId);
-        }
-    }, [userList])
+            try {
+                const response = await fetchWrapper.get(getApiBaseUrl() + 'users/list?' + new URLSearchParams(params));
+                if (cancelled) return;
+
+                if (response.success) {
+                    const list = (response.users || [])
+                        .map(u => {
+                            const name = `${u.firstName} ${u.lastName}`;
+                            return { ...u, name, label: name, value: u._id };
+                        })
+                        .sort((a, b) => a.loNo - b.loNo);
+                    dispatch(setUserList(list));
+                } else {
+                    toast.error('Error retrieving user list.');
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error(error);
+                    toast.error('Error retrieving user list.');
+                }
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleBranchChange = (selected) => {
         setBranchId(selected);
-        const branch = branchList.find(b => b._id === selected);
-        const newUserList = userList.filter(u => u.designatedBranch === branch.code);
-        setBranchOfficers(newUserList);
-    }
+        // Clear the LO so a stale officer from the previous branch can't be submitted
+        formikRef.current?.setFieldValue('loanOfficerId', '');
+    };
 
-    const handleSaveUpdate = (values, action) => {
-        setLoading(true);
-        values.day = day;
-        values.dayNo = dayNo;
+    const resetLocalState = () => {
+        setDay('all');
+        setDayNo(0);
+        setOccurence('daily');
+    };
+
+    // Switching occurrence resets the day so a weekly pick can't leak into a daily group
+    const handleOccurenceChange = (type) => {
+        setOccurence(type);
+        if (type === 'daily') {
+            setDay('all');
+            setDayNo(0);
+            formikRef.current?.setFieldValue('day', 'all');
+        } else {
+            setDay('');
+            setDayNo('');
+            formikRef.current?.setFieldValue('day', '');
+        }
+    };
+
+    const handleSaveUpdate = (rawValues, action) => {
+        // Work on a copy instead of mutating Formik's values object
+        const values = { ...rawValues };
+
+        if (occurence === 'daily') {
+            values.day = 'all';
+            values.dayNo = 0;
+        } else {
+            if (!day || day === 'all') {
+                toast.error('Please select a day for weekly groups.');
+                action.setSubmitting(false);
+                return;
+            }
+            values.day = day;
+            values.dayNo = dayNo;
+        }
         values.capacity = parseInt(values.capacity, 10);
         values.occurence = occurence;
         values.noOfClients = group.noOfClients;
 
         if (!currentUser.root) {
-            // Branch/LO fields are hidden for non-root users (BM and LO alike) —
-            // they can only ever act on their own branch, never pick one from a list.
+            // Non-root users can only act on their own branch.
             values.branchId = currentUser.designatedBranchId;
             values.branchName = currentUser.designatedBranch;
 
             if (currentUser.role.rep === 4) {
-                // LO: also locked into being their own loan officer
+                // LO: locked into being their own loan officer
                 values.loanOfficerId = currentUser._id;
                 values.loanOfficerName = `${currentUser.firstName} ${currentUser.lastName}`;
-            } else {
-                // BM (rep === 3): editing a group that already has a loan officer
-                // assigned — since the field is hidden, preserve whatever the
-                // group already had rather than inventing a value.
+            } else if (mode === 'edit') {
+                // BM editing: LO dropdown is disabled, preserve what the group already has
                 values.loanOfficerId = group.loanOfficerId;
                 values.loanOfficerName = group.loanOfficerName;
+            } else {
+                // BM adding: must use the LO they picked in the dropdown
+                const officer = branchOfficers.find(u => u._id === values.loanOfficerId);
+                if (!officer) {
+                    toast.error('Please select a loan officer.');
+                    action.setSubmitting(false);
+                    return;
+                }
+                values.loanOfficerName = officer.label;
             }
         } else {
-            // Root: branch/LO dropdowns are visible and drive branchId/branchOfficers state
+            // Root: branch/LO dropdowns drive branchId / branchOfficers
             const branch = branchList.find(b => b._id === branchId);
             if (!branch) {
-                setLoading(false);
                 toast.error('Selected branch could not be found. Please reselect the branch and try again.');
+                action.setSubmitting(false);
                 return;
             }
             values.branchId = branch._id;
@@ -143,13 +209,15 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
             const officer = branchOfficers.find(u => u._id === values.loanOfficerId);
             if (!officer) {
-                setLoading(false);
                 toast.error('Selected loan officer could not be found. Please reselect and try again.');
+                action.setSubmitting(false);
                 return;
             }
             values.loanOfficerName = officer.label;
         }
-        
+
+        setLoading(true);
+
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'groups/save/';
 
@@ -159,20 +227,24 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
-                    if (response.error) {
-                        toast.error(response.message);
-                    } else if (response.success) {
+                    if (response.error || !response.success) {
                         setLoading(false);
-                        setShowSidebar(false);
-                        toast.success('Group successfully added.');
-                        action.setSubmitting = false;
-                        action.resetForm({values: ''});
-                        setDay('');
-                        setDayNo('');
-                        onClose();
+                        toast.error(response.message || 'Failed to add group.');
+                        return;
                     }
-                }).catch(error => {
-                    console.log(error)
+                    setLoading(false);
+                    setShowSidebar(false);
+                    toast.success('Group successfully added.');
+                    action.setSubmitting(false);
+                    action.resetForm();
+                    resetLocalState();
+                    onClose();
+                })
+                .catch(error => {
+                    console.error(error);
+                    setLoading(false);
+                    action.setSubmitting(false);
+                    toast.error('Failed to add group.');
                 });
         } else if (mode === 'edit') {
             const apiUrl = getApiBaseUrl() + 'groups';
@@ -180,76 +252,71 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
             const oldCapacity = group.capacity;
             if (values.capacity > oldCapacity) {
-                // append new slot numbers above the old capacity — never touch occupied ones
+                // Append new slot numbers above the old capacity, never touch occupied ones
                 const newSlots = [];
                 for (let i = oldCapacity + 1; i <= values.capacity; i++) newSlots.push(i);
                 values.availableSlots = [...(group.availableSlots || []), ...newSlots].sort((a, b) => a - b);
             } else {
-                // capacity unchanged or increased-then-decreased back — leave availableSlots as-is,
-                // we already blocked capacity < noOfClients above
+                // Capacity unchanged or decreased: leave availableSlots as-is.
+                // Capacity < noOfClients is blocked by the yup schema.
                 values.availableSlots = group.availableSlots;
             }
             values.status = values.noOfClients >= values.capacity ? 'full' : 'available';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
+                    if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message || 'Failed to update group.');
+                        return;
+                    }
                     setLoading(false);
                     setShowSidebar(false);
                     toast.success('Group successfully updated.');
-                    action.setSubmitting = false;
-                    action.resetForm({values: ''});
-                    setDay('');
-                    setDayNo('');
+                    action.setSubmitting(false);
+                    action.resetForm();
+                    resetLocalState();
                     onClose();
-                }).catch(error => {
-                    console.log(error);
+                })
+                .catch(error => {
+                    console.error(error);
+                    setLoading(false);
+                    action.setSubmitting(false);
+                    toast.error('Failed to update group.');
                 });
         }
-    }
+    };
 
     const handleCancel = () => {
         setShowSidebar(false);
-        formikRef.current.resetForm();
-        setDay('');
-        setDayNo('');
+        formikRef.current?.resetForm();
+        resetLocalState();
         onClose();
-    }
+    };
 
-    const handleChangeDay = async (field, value) => {
-        setLoading(true);
-        const form = formikRef.current;
-        const day = days.find(d => d.value === value);
-        // set formik field value and state
-        setDayNo(day.dayNo);
+    const handleChangeDay = (field, value) => {
+        const selectedDay = DAYS.find(d => d.value === value);
+        if (!selectedDay) return;
+        setDayNo(selectedDay.dayNo);
         setDay(value);
-        form.setFieldValue(field, value);
-        setLoading(false);
-    }
+        formikRef.current?.setFieldValue(field, value);
+    };
 
     useEffect(() => {
-        let mounted = true;
-
         if (Object.keys(group).length > 0) {
-            setDay(group && group.day ? group.day.toLowerCase() : 'all');
-            setDayNo(group && group.dayNo);
-            setOccurence(group && group.occurence);
-            setBranchId(group && group.branchId);
+            setDay(group.day ? group.day.toLowerCase() : 'all');
+            setDayNo(group.dayNo ?? 0);
+            setOccurence(group.occurence || 'daily');
+            setBranchId(group.branchId);
         }
-
-        mounted && setLoading(false);
-
-        return () => {
-            mounted = false;
-        };
+        setLoading(false);
     }, [group]);
 
     return (
         <React.Fragment>
             <SideBar title={mode === 'add' ? 'Add Group' : 'Edit Group'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
-                    // <div className="flex items-center justify-center h-screen">
-                        <Spinner />
-                    // </div>
+                    <Spinner />
                 ) : (
                     <div className="px-2">
                         <Formik enableReinitialize={true}
@@ -258,13 +325,11 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                             validationSchema={validationSchema}
                             innerRef={formikRef}>{({
                                 values,
-                                actions,
                                 touched,
                                 errors,
                                 handleChange,
                                 handleSubmit,
                                 setFieldValue,
-                                resetForm,
                                 isSubmitting,
                                 isValidating,
                                 setFieldTouched
@@ -280,38 +345,42 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
-                                    {mode === 'add' && 
+                                    {mode === 'add' &&
                                         <div className="flex flex-col mt-4 text-gray-500">
                                             <div>Group Occurence</div>
                                             <div className="flex flex-row ml-4">
-                                                <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" disabled={mode === 'edit'} onChange={() => setOccurence('daily')} />
-                                                <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" disabled={mode === 'edit'} onChange={() => setOccurence('weekly')} />
+                                                <RadioButton id="radio_daily" name="radio-occurence" label="Daily" checked={occurence === 'daily'} value="daily" onChange={() => handleOccurenceChange('daily')} />
+                                                <RadioButton id="radio_weekly" name="radio-occurence" label="Weekly" checked={occurence === 'weekly'} value="weekly" onChange={() => handleOccurenceChange('weekly')} />
                                             </div>
                                         </div>
                                     }
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="day"
-                                            field="day"
-                                            value={day}
-                                            label="Day"
-                                            options={days}
-                                            onChange={(field, value) => handleChangeDay(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Day"
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputNumber
-                                            name="dayNo"
-                                            value={dayNo}
-                                            onChange={handleChange}
-                                            label="Day No"
-                                            placeholder="Enter day number"
-                                            disabled={true}
-                                            setFieldValue={setFieldValue}
-                                        />
-                                    </div>
+                                    {occurence === 'weekly' && (
+                                        <>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="day"
+                                                    field="day"
+                                                    value={day}
+                                                    label="Day"
+                                                    options={WEEKLY_DAYS}
+                                                    onChange={(field, value) => handleChangeDay(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Day"
+                                                />
+                                            </div>
+                                            <div className="mt-4">
+                                                <InputNumber
+                                                    name="dayNo"
+                                                    value={dayNo}
+                                                    onChange={handleChange}
+                                                    label="Day No"
+                                                    placeholder="Enter day number"
+                                                    disabled={true}
+                                                    setFieldValue={setFieldValue}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="mt-4">
                                         <InputText
                                             name="time"
@@ -324,32 +393,16 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                     </div>
                                     <div className="mt-4">
                                         <SelectDropdown
-                                                name="groupNo"
-                                                field="groupNo"
-                                                value={values.groupNo}
-                                                label="Group Number"
-                                                options={[
-                                                    { label: 1, value: 1 },
-                                                    { label: 2, value: 2 },
-                                                    { label: 3, value: 3 },
-                                                    { label: 4, value: 4 },
-                                                    { label: 5, value: 5 },
-                                                    { label: 6, value: 6 },
-                                                    { label: 7, value: 7 },
-                                                    { label: 8, value: 8 },
-                                                    { label: 9, value: 9 },
-                                                    { label: 10, value: 10 },
-                                                    { label: 11, value: 11 },
-                                                    { label: 12, value: 12 },
-                                                    { label: 13, value: 13 },
-                                                    { label: 14, value: 14 },
-                                                    { label: 15, value: 15 }
-                                                ]}
-                                                onChange={setFieldValue}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Group Number"
-                                                errors={touched.groupNo && errors.groupNo ? errors.groupNo : undefined}
-                                            />
+                                            name="groupNo"
+                                            field="groupNo"
+                                            value={values.groupNo}
+                                            label="Group Number"
+                                            options={GROUP_NUMBER_OPTIONS}
+                                            onChange={setFieldValue}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Group Number"
+                                            errors={touched.groupNo && errors.groupNo ? errors.groupNo : undefined}
+                                        />
                                     </div>
                                     <div className="mt-4">
                                         <InputNumber
@@ -363,22 +416,20 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                         />
                                     </div>
                                     {currentUser.root && (
-                                        <React.Fragment>
-                                            <div className="mt-4">
-                                                <SelectDropdown
-                                                    name="branchId"
-                                                    field="branchId"
-                                                    value={branchId}
-                                                    label="Branch"
-                                                    options={branchList}
-                                                    onChange={(e, selected) => handleBranchChange(selected)}
-                                                    onBlur={setFieldTouched}
-                                                    placeholder="Select Branch"
-                                                    disabled={mode === 'edit'}
-                                                    errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
-                                                />
-                                            </div>
-                                        </React.Fragment>
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="branchId"
+                                                field="branchId"
+                                                value={branchId}
+                                                label="Branch"
+                                                options={branchList}
+                                                onChange={(e, selected) => handleBranchChange(selected)}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Branch"
+                                                disabled={mode === 'edit'}
+                                                errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
+                                            />
+                                        </div>
                                     )}
                                     {currentUser.role.rep <= 3 && (
                                         <div className="mt-4">
@@ -407,7 +458,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                 )}
             </SideBar>
         </React.Fragment>
-    )
-}
+    );
+};
 
 export default AddUpdateGroup;
