@@ -67,6 +67,35 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             .required('Please enter capacity'),
 
     });
+    
+    useEffect(() => {
+        if (userList.length === 0) {
+            const getListUser = async (branchId) => {
+                let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let userDataList = [];
+                        response.users && response.users.map(u => {
+                            const name = `${u.firstName} ${u.lastName}`;
+                            userDataList.push(
+                                {
+                                    ...u,
+                                    name: name,
+                                    label: name,
+                                    value: u._id
+                                }
+                            );
+                        });
+                        userDataList.sort((a, b) => { return a.loNo - b.loNo; });
+                        dispatch(setUserList(userDataList));
+                    } else {
+                        toast.error('Error retrieving user list.');
+                    }
+            }
+
+            getListUser(branchId);
+        }
+    }, [userList])
 
     const handleBranchChange = (selected) => {
         setBranchId(selected);
