@@ -348,21 +348,23 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                     errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
                                                 />
                                             </div>
-                                            <div className="mt-4">
-                                                <SelectDropdown
-                                                    name="loanOfficerId"
-                                                    field="loanOfficerId"
-                                                    value={values.loanOfficerId}
-                                                    label="Loan Officer"
-                                                    options={branchOfficers}
-                                                    onChange={setFieldValue}
-                                                    onBlur={setFieldTouched}
-                                                    disabled={mode === 'edit'}
-                                                    placeholder="Select Loan Officer"
-                                                    errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
-                                                />
-                                            </div>
                                         </React.Fragment>
+                                    )}
+                                    {currentUser.role.rep <= 3 && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="loanOfficerId"
+                                                field="loanOfficerId"
+                                                value={values.loanOfficerId}
+                                                label="Loan Officer"
+                                                options={branchOfficers}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                disabled={mode === 'edit'}
+                                                placeholder="Select Loan Officer"
+                                                errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
+                                            />
+                                        </div>
                                     )}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
