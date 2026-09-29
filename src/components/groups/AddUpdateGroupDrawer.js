@@ -13,6 +13,7 @@ import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
 import { getApiBaseUrl } from "@/lib/constants";
+import { setUserList } from "@/redux/actions/userActions";
 
 const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
     const currentUser = useSelector(state => state.user.data);
