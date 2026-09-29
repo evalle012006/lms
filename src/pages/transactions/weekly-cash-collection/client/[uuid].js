@@ -913,6 +913,7 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                             qrSourced: cc.qrSourced || false,
                             qrReferenceCode: cc.qrReferenceCode || null,
+                            qrEntryId: cc.qrEntryId || null,
                             paymentCollectionQr: safeNumber(cc?.paymentCollectionQr) > 0 ? safeNumber(cc?.paymentCollectionQr) : 0,
                         }
 

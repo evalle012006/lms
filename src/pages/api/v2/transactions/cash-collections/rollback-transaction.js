@@ -111,16 +111,10 @@ async function revert(req, res) {
                     )
                 );
 
-                // Un-merge any QR entry that pointed at this now-deleted row. Blind
-                // update — if no QR entry matches (the common case), this mutation
-                // just affects zero rows, no need to query first.
                 mutationQL.push(
-                    updateQl(
-                        QR_ENTRY_TYPE(`qr_unmerge_${mutationQL.length}`),
-                        {
-                            set: { status: 'pending', mergedIntoCashCollectionId: null },
-                            where: { mergedIntoCashCollectionId: { _eq: cashCollection._id } }
-                        }
+                    deleteQl(
+                        QR_ENTRY_TYPE(`qr_delete_${mutationQL.length}`),
+                        { mergedIntoCashCollectionId: { _eq: cashCollection._id } }
                     )
                 );
 
