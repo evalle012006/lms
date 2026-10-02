@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
@@ -21,6 +21,7 @@ const BranchesPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -237,17 +238,64 @@ const BranchesPage = () => {
     
             setLoading(false);
      }
+    const filteredBranches = list?.filter((branch) => {
+    const search = searchTerm.toLowerCase().trim();
+
+    if (!search) return true;
+
+    return (
+        branch.code?.toLowerCase().includes(search) ||
+        branch.name?.toLowerCase().includes(search) ||
+        branch.phoneNumber?.toLowerCase().includes(search) ||
+        branch.address?.toLowerCase().includes(search) ||
+        branch.email?.toLowerCase().includes(search) ||
+        branch.clientFlowVersion?.toLowerCase().includes(search)
+    );
+}) || [];
 
     return (
         <Layout actionButtons={currentUser.root || (currentUser.role && currentUser.role.rep < 2) ? actionButtons : null}>
-            <div className="pb-4">
-                {loading ?
-                    (
-                        // <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        // </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+    <div className="pb-4">
+    <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <input
+                type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search branches..."
+                className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-10 pr-10 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-500/10"/>
+
+            {searchTerm && (
+                <button
+                    type="button" onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear search">
+                    <XMarkIcon className="h-4 w-4" />
+                </button>
+            )}
             </div>
+        {/* Branch Count */}
+        <div className="hidden whitespace-nowrap text-sm text-gray-500 sm:block">
+            <span className="font-semibold text-gray-700">
+                {filteredBranches.length}
+            </span>
+            {" "}branches
+        </div>
+        </div>
+    </div>
+
+    {/* Branch Table */}
+    {loading ? (
+        <Spinner />
+    ) : (
+        <TableComponent
+            columns={columns}
+            data={filteredBranches}
+            hasActionButtons={true}
+            rowActionButtons={rowActionButtons}
+            showFilters={false}/>
+    )}</div>
             <AddUpdateBranch mode={mode} branch={branch} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

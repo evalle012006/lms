@@ -195,15 +195,15 @@ const Layout = ({
     const getMainContentMargin = () => {
         if (isMobile) return 'ml-0';
         if (!isNavVisible) return 'ml-0';
-        if (isNavCollapsed) return 'lg:ml-16';
-        return 'ml-0 lg:ml-64';
+        if (isNavCollapsed) return 'lg:ml-[74px]';
+        return 'ml-0 lg:ml-[270px]';
     };
 
     // Calculate the nav width for the fixed positioning
     const getNavWidth = () => {
-        if (!isNavVisible) return 'w-0';
-        if (isNavCollapsed && !isMobile) return 'lg:w-16';
-        return isMobile ? 'w-full' : 'w-full lg:w-64';
+    if (!isNavVisible) return 'w-0';
+    if (isNavCollapsed && !isMobile) return 'lg:w-[74px]';
+    return isMobile ? 'w-full' : 'w-full lg:w-[270px]';
     };
 
     return (
@@ -238,7 +238,7 @@ const Layout = ({
                     </div>
                 )}
                 
-                <div className={`
+                <div className={`className="p-4 sm:p-6 lg:p-8"
                     ${bgwhite ? 'bg-white' : ''} 
                     flex-1
                     ${vScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}

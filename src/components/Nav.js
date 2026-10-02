@@ -4,7 +4,6 @@ import {
     LayoutDashboard, 
     Store,
     Banknote,
-    Bell,
     Building,
     Building2,
     BarChart3,
@@ -110,7 +109,7 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
       
       {/* Dropdown */}
       <div 
-        className="fixed bg-white rounded-md shadow-xl border border-gray-200 overflow-hidden min-w-[200px] w-max z-[60]"
+        className="fixed min-w-[200px] w-max overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl z-[60]"
         style={{
           top: Math.max(position.top, 10),
           left: Math.min(position.left, window.innerWidth - 220),
@@ -127,7 +126,9 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
             <div 
               key={idx}
               className={`flex items-center px-4 py-3 text-sm cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap
-                ${normUrl(activePath) === normUrl(subItem.url)? 'bg-teal-50 text-teal-600 border-l-2 border-teal-600' : 'text-gray-800'}
+                ${normUrl(activePath) === normUrl(subItem.url)
+                  ? 'bg-[#1597d4]/10 text-[#1597d4] font-semibold'
+                  : 'text-gray-800 hover:bg-gray-50'}
               `}
               style={{ pointerEvents: 'auto' }}
               onMouseEnter={() => console.log('Mouse enter:', subItem.label)}
@@ -709,6 +710,7 @@ const MenuItems = [
             },
         ]
     },
+    /* Hide daw sabi ni boss
     {
         label: "Reports",
         url: "#reports",
@@ -759,18 +761,7 @@ const MenuItems = [
             },
         ]
     },
-    {
-        label: "Notifications",
-        url: "/notifications",
-        icon: {
-            active: (props) => <Bell {...props} />,
-            notActive: (props) => <Bell {...props} />,
-        },
-        active: false,
-        hasSub: false,
-        hidden: false,
-        roles: []
-    },
+    */
     {
         label: "Settings",
         url: "#settings",
@@ -920,12 +911,9 @@ const setStoredCollapseState = (isCollapsed) => {
 };
 
 // Role-based visibility helper
-const isItemVisibleForRole = (item, userShortCode, userRoot, userTransactionType, isNotificationEnabled, parentRoles = null) => {
-  // If notifications are disabled, hide notification-related items
-  if (!isNotificationEnabled && item.label === 'Notifications') {
-    return false;
-  }
-  
+const isItemVisibleForRole = (item,userShortCode,userRoot,userTransactionType,parentRoles = null) => {
+
+    
   // Root users can see everything except items specifically excluded
   if (userRoot) {
     // Hide daily/weekly transactions for root users, they use BM transactions
@@ -1068,8 +1056,8 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
           <div 
             className={`flex justify-center items-center p-3 cursor-pointer transition-all duration-200 relative
               ${isActive 
-                ? 'bg-teal-600 text-white' 
-                : 'text-white hover:bg-gray-700'
+                ? 'bg-white text-[#1597d4] shadow-sm'
+                : 'text-white/75 hover:bg-white/10 hover:text-white'
               }
               ${item.hasSub && isCollapsedDropdownOpen ? 'bg-gray-600' : ''}
             `}
@@ -1104,10 +1092,10 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
       {item.hasSub ? (
         // Menu items with submenus - no Link wrapper
         <div 
-          className={`flex items-center p-3 cursor-pointer transition-all duration-200 relative
+          className={`flex items-center rounded-xl px-3 py-3 cursor-pointer transition-all duration-200 relative text-sm
             ${isActive 
-              ? 'bg-teal-600 text-white' 
-              : 'text-white hover:bg-gray-700'
+              ? 'bg-white text-[#1597d4] shadow-sm'
+              : 'text-white/75 hover:bg-white/10 hover:text-white'
             }
           `}
           onClick={handleClick}
@@ -1119,36 +1107,35 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
       ) : (
         // Regular menu items - wrapped in Link
         <Link href={item.url}>
-          <div 
-            className={`flex items-center p-3 cursor-pointer transition-all duration-200 relative
-              ${isActive 
-                ? 'bg-teal-600 text-white' 
-                : 'text-white hover:bg-gray-700'
-              }
-            `}
-            onClick={handleClick}
+          <div
+            className={`flex items-center rounded-xl px-3 py-3 cursor-pointer transition-all duration-200 relative text-sm
+            ${
+            isActive
+              ? 'bg-white text-[#1597d4] shadow-sm'
+              : 'text-white/75 hover:bg-white/10 hover:text-white'
+            }
+          `}
+          onClick={handleClick}
           >
-            <IconComponent className="w-5 h-5 flex-shrink-0 ml-1" />
-            <span className="ml-3 font-medium flex-1">{displayLabel}</span>
+          <IconComponent className="w-5 h-5 flex-shrink-0 ml-1" />
+            <span className="ml-3 font-medium flex-1">
+              {displayLabel}
+            </span>
           </div>
         </Link>
-      )}
-      
+        )}
       {/* Submenu */}
       {item.hasSub && isSubmenuOpen && !isCollapsed && (
-        <div className="ml-8 mt-2 relative z-[55]">
-          {/* Left border indicator */}
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-400"></div>
-          
+        <div className="relative ml-5 mt-1 border-l border-white/10 pl-3 z-[55]">
           <ul className="space-y-1">
             {item.subMenuItems.filter(subItem => !subItem.hidden).map((subItem, idx) => (
               <li key={idx}>
                 <Link href={subItem.url}>
                   <div 
-                    className={`flex items-center p-2 cursor-pointer transition-all duration-200 relative z-[55]
+                    className={`flex items-center rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-200 relative z-[55] text-sm
                       ${normUrl(activePath) === normUrl(subItem.url)
-                        ? 'bg-teal-500 text-white' 
-                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                        ? 'bg-white text-[#1597d4] font-semibold shadow-sm' 
+                        : 'text-white/65 hover:bg-white/10 hover:text-white'
                       }
                     `}
                     onClick={(e) => {
@@ -1184,8 +1171,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
   const [state, localDispatch] = useReducer(reducer, initialState);
   const { activePath, isCollapsed, openSubmenus, collapsedDropdown } = state;
   const userState = useSelector(state => state.user.data);
-  const systemSettings = useSelector(state => state.systemSettings?.data);
-
+  
   const getActivePath = useCallback(() => {
     return normUrl(router.asPath);
   }, [router.asPath]);
@@ -1200,8 +1186,6 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     const userShortCode = userState?.role?.shortCode;
     const userRoot = userState?.root || false;
     const userTransactionType = userState?.transactionType;
-    const isNotificationEnabled = systemSettings?.enableNotifications !== false;
-    console.log('Notification setting:', isNotificationEnabled);
     // console.log('🔍 Nav Debug - User info:', {
     //   userShortCode,
     //   userRoot,
@@ -1210,7 +1194,8 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
 
     // First, filter items based on visibility
     const visibleItems = MenuItems.filter(item => {
-      const isVisible = isItemVisibleForRole(item, userShortCode, userRoot, userTransactionType, isNotificationEnabled);
+      const isVisible = isItemVisibleForRole(item,userShortCode,userRoot,userTransactionType);
+
       // console.log(`🔍 Nav Debug - Item "${item.label}" visibility:`, {
       //   isVisible,
       //   itemRoles: item.roles,
@@ -1236,8 +1221,9 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
             userShortCode, 
             userRoot, 
             userTransactionType,
-            item.roles // Pass parent's roles for inheritance check
+            item.roles
           );
+
           // console.log(`🔍 Nav Debug - SubItem "${subItem.label}" of "${item.label}" visibility:`, {
           //   subItemVisible,
           //   subItemRoles: subItem.roles,
@@ -1405,21 +1391,20 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
       )}
 
       {/* Sidebar */}
-      <div className={`bg-main fixed top-0 left-0 h-full overflow-y-auto transition-all duration-300 ease-in-out transform z-[55] 
+      <div className={`fixed left-0 top-0 z-[55] flex h-screen flex-col overflow-y-auto bg-[#1597d4] text-white shadow-xl transition-all duration-300 ease-in-out transform
         ${isVisible || !isMobile ? 'translate-x-0' : '-translate-x-full'}
-        ${isCollapsed && !isMobile ? 'w-16' : 'w-64'}`}
+        ${isCollapsed && !isMobile ? 'w-[74px]' : 'w-[270px]'}`}
         style={{ height: '100dvh', WebkitOverflowScrolling: 'touch' }}
       >
         
         {/* Header */}
-        <div className={`relative py-4 border-b border-gray-200 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+        <div className={`relative ${isCollapsed ? 'px-2' : 'px-0'}`}>
           {/* Collapse Toggle Button - Only show when NOT collapsed and on desktop */}
           {!isMobile && !isCollapsed && (
             <button
               onClick={toggleCollapse}
-              className="absolute top-4 right-4 hidden lg:block p-1.5 rounded-md text-white hover:bg-gray-700 transition-colors duration-200 z-10"
-              aria-label="Collapse sidebar"
-            >
+              className="absolute top-4 right-3 hidden rounded-xl p-2 text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white lg:block z-10"
+              aria-label="Collapse sidebar">
               <PanelLeftClose className="w-4 h-4" />
             </button>
           )}
@@ -1429,32 +1414,40 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
             <div className="flex justify-center mb-2">
               <button
                 onClick={toggleCollapse}
-                className="p-1.5 rounded-md text-white hover:bg-gray-700 transition-colors duration-200"
-                aria-label="Expand sidebar"
-              >
+                className="rounded-xl p-2 text-white/70 transition-colors duration-200 hover:bg-white/10 hover:text-white"
+                aria-label="Expand sidebar">
                 <PanelLeftOpen className="w-4 h-4" />
               </button>
             </div>
           )}
-          
+          <div className={`relative flex h-[80px] items-center border-b border-white/10 ${
+            isCollapsed ? "justify-center px-0" : "px-3"}`}>
           {/* Logo */}
-          <div className="flex justify-center">
-            {!isCollapsed ? (
-              <Link href="/" className="no-underline text-white">
-                <img src={logo.src} className="cursor-pointer duration-500" alt="Logo" />
-              </Link>
-            ) : (
-              !isMobile && (
-                <div className="w-10 h-10 bg-white rounded flex items-center justify-center">
-                  <span className="text-main font-bold text-xs">ACPH</span>
-                </div>
-              )
-            )}
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ${
+              isCollapsed ? "mx-auto" : ""
+              }`}>
+              <img
+                src="/images/LOGO V3.png"
+                alt="Lending Management"
+                className="h-12 w-12 object-contain"/>
+            </div>
+          {/* Brand Name */}
+          {!isCollapsed && (
+          <div className="ml-3 min-w-0">
+            <div className="truncate text-sm font-bold leading-tight text-white">
+                AMBERCASH PH
+            </div>
+
+            <div className="mt-0.5 text-xs font-medium text-white/80">
+                MICRO LENDING CORP
+            </div>
+          </div>
+          )}
           </div>
         </div>
         
         {/* Navigation */}
-        <nav className="flex-grow py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
             {filteredMenuItems.map((item, index) => (
               !item.hidden && (
@@ -1467,10 +1460,8 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
                   isMobile={isMobile} 
                   onMenuClick={handleMenuClick}
                   state={state}
-                  dispatch={localDispatch}
-                />
-              )
-            ))}
+                  dispatch={localDispatch}/>
+              )))}
           </ul>
         </nav>
       </div>

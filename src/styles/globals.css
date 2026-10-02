@@ -88,3 +88,42 @@ input[type='text']:focus { box-shadow: none; }
     animation: pulse-highlight 2s ease-in-out;
     background-color: rgba(250, 204, 21, 0.2) !important;
 }
+
+:root {
+    --background: #f5f7fa;
+    --foreground: #172033;
+
+    --surface: #ffffff;
+    --surface-secondary: #f8fafc;
+
+    --border: #e2e8f0;
+    --border-light: #edf2f7;
+
+    --muted: #64748b;
+    --muted-light: #94a3b8;
+
+    --primary: #1597d4;
+    --primary-hover: #1086bf;
+
+    --sidebar: #1597d4;
+    --sidebar-hover: rgba(255, 255, 255, 0.1);
+
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+}

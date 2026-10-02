@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
@@ -97,6 +98,7 @@ const HeaderComponent = () => {
   const pageTitle = useSelector(state => state.global.title);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const profileButtonRef = useRef(null);
   const router = useRouter();
   const userState = useSelector(state => state.user.data);
   const { signedUrl: profileUrl } = useSignedUrl(userState?.profile);
@@ -136,72 +138,66 @@ const HeaderComponent = () => {
   }, []);
 
   return (
-    <div className="flex justify-between items-center bg-white px-6 py-3 border-b border-gray-200">
-      <div className="page-title text-xl font-medium">
-        {pageTitle}
+  <div className="sticky top-0 z-[100]">
+    {/* MAIN HEADER — ALWAYS 72px */}
+    <header className="relative z-30 flex h-[72px] items-center justify-between border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+
+      {/* LEFT */}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm text-[var(--muted)]">
+          Lending Management System
+        </div>
+
+        <div className="truncate text-base font-semibold text-[var(--foreground)]">
+          {pageTitle}
+        </div>
       </div>
-      
-      <div className="flex items-center gap-4">
-        {/* Branch Lock Status - for Branch Manager, Cashier, Loan Officer */}
+
+      {/* RIGHT */}
+      <div className="flex items-center gap-2 sm:gap-3">
+
+        {/* Branch Lock Status */}
         {(userState?.role?.rep === 3 || userState?.role?.rep === 4) && (
           <BranchLockBadge user={userState} />
         )}
 
-        {/* Notification Bell - NEW */}
-        <NotificationBell />
+        {/* Notification */}
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-[var(--surface-secondary)]">
+          <NotificationBell />
+        </div>
 
-        {/* User Profile Dropdown */}
+        {/* Profile */}
         <div className="relative" ref={dropdownRef}>
-          <div 
-            className="flex items-center cursor-pointer"
-            onClick={toggleDropdown}
-          >
-            <div className="flex flex-col items-end mr-3">
-              <p className="text-xs text-gray-500">{userState?.email}</p>
+          <div ref={profileButtonRef} className="flex cursor-pointer items-center rounded-xl px-2 py-1.5 transition hover:bg-[var(--surface-secondary)] sm:px-3" onClick={toggleDropdown}>
+            <div className="mr-2 hidden text-right sm:block">
+              <p className="text-sm font-medium text-gray-900">{fullName}</p>
+
               <div className="flex items-center">
-                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
-                  {userState?.role?.label || 'User'}
-                </span>
+                <span className="text-xs text-gray-500">{userState?.role?.label || 'User'}</span></div>
               </div>
-            </div>
-            
-            <Avatar 
-              name={fullName}
-              src={profileUrl} 
-            />
-            <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
+            <Avatar name={fullName} src={profileUrl}/>
+            <ChevronDownIcon className={`ml-1 h-4 w-4 text-gray-500 transition-transform ${ isDropdownOpen ? 'rotate-180' : ''}`}/>
           </div>
-          
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-50">
-              {/* User info for mobile view */}
-              <div className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200 md:hidden">
-                <p className="font-medium text-gray-900">{fullName}</p>
-              </div>
-              
-              {(userState?.role?.rep === 1 || userState?.root) && (
-                <button 
-                  onClick={navigateToSettings}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <Cog6ToothIcon className="w-4 h-4 mr-2" />
-                  System Settings
-                </button>
-              )}
-              
-              <button 
-                onClick={handleLogout}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          )}
         </div>
       </div>
-    </div>
-  );
+    </header>
+    {isDropdownOpen && (
+      <div className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="border-b border-gray-100 px-4 py-3">
+        <p className="truncate text-sm font-semibold text-gray-900">{fullName}</p>
+      </div>
+    {(userState?.role?.rep === 1 || userState?.root) && (
+      <button onClick={navigateToSettings} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100">
+        <Cog6ToothIcon className="h-4 w-4 text-gray-500" />System Settings
+      </button>
+    )}
+      <button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+        <ArrowRightOnRectangleIcon className="h-4 w-4 text-gray-500" />Logout
+      </button>
+      </div>
+    )}
+  </div>
+);
 };
 
 export default HeaderComponent;
