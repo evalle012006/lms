@@ -144,6 +144,7 @@ const TransactionsSettingsPage = (props) => {
         // Transaction Rules
         allowWeekendTransaction: transactionState.allowWeekendTransaction || false, 
         startTransactionTime: transactionState.startTransactionTime || '',
+        staleDataRefreshIdleSeconds: transactionState.staleDataRefreshIdleSeconds ?? 10, // ADDED
         
         // Fee Settings
         admissionFee: transactionState.admissionFee || '',
@@ -153,9 +154,7 @@ const TransactionsSettingsPage = (props) => {
         addHospitalization: transactionState.addHospitalization || '',
 
         // ── Compliance & Risk Settings ───────────────────────────────────
-        // Number of delinquent transactions before an alert fires (1 = every delinquent)
         delinquentAlertThreshold: transactionState.delinquentAlertThreshold ?? 1,
-        // Maximum client age allowed for loan application
         clientAgeThreshold: transactionState.clientAgeThreshold ?? 65,
 
         minDailyMcbuWithdrawal:   transactionState.minDailyMcbuWithdrawal   ?? 1000,
@@ -169,7 +168,7 @@ const TransactionsSettingsPage = (props) => {
         loanApprovalCutoffTime:        transactionState.loanApprovalCutoffTime        || '17:00',
     }
 
-    const validationSchema = yup.object().shape({
+const validationSchema = yup.object().shape({
         // Loan Limits
         loanDailyLimit: yup.number().positive('Must be a positive number').required('Daily limit is required'),
         loanWeeklyLimit: yup.number().positive('Must be a positive number').required('Weekly limit is required'),
@@ -190,6 +189,11 @@ const TransactionsSettingsPage = (props) => {
         
         // Transaction Rules
         startTransactionTime: yup.string().required('Start transaction time is required'),
+        staleDataRefreshIdleSeconds: yup.number() // ADDED
+            .integer('Must be a whole number')
+            .min(3, 'Minimum is 3 seconds')
+            .max(120, 'Maximum is 120 seconds')
+            .required('Required'),
         
         // Fee Settings
         admissionFee: yup.number().min(0, 'Cannot be negative').required('Admission fee is required'),
@@ -219,7 +223,7 @@ const TransactionsSettingsPage = (props) => {
         loanApprovalCutoffTime: yup.string().matches(/^\d{2}:\d{2}$/, 'Invalid time format').required('Required'),
     });
 
-    const handleUpdate = async (values, action) => {
+const handleUpdate = async (values, action) => {
         setLoading(true);
         try {
             let updatedValues = {...transactionState};
@@ -338,7 +342,6 @@ const TransactionsSettingsPage = (props) => {
                                             />
                                         </div>
                                     </div>
-
                                     {/* Rate Settings Card */}
                                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
@@ -434,10 +437,29 @@ const TransactionsSettingsPage = (props) => {
                                                     setFieldValue={setFieldValue}
                                                 />
                                             </div>
+                                            {/* ADDED */}
+                                            <ModernInput
+                                                name="staleDataRefreshIdleSeconds"
+                                                value={values.staleDataRefreshIdleSeconds}
+                                                label="Auto-Refresh Idle Delay (seconds)"
+                                                placeholder="e.g., 10"
+                                                icon={ClockIcon}
+                                                type="number"
+                                                min={3}
+                                                max={120}
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.staleDataRefreshIdleSeconds && errors.staleDataRefreshIdleSeconds}
+                                                required
+                                            />
+                                            <p className="text-xs text-gray-500 pl-1">
+                                                When new collection data arrives in the background (e.g. a client's QR submission), the page waits this many seconds of no activity before refreshing automatically.
+                                            </p>
+                                            {/* END ADDED */}
                                         </div>
                                     </div>
-
-                                    {/* ── Compliance & Risk Card ── NEW ── */}
+{/* ── Compliance & Risk Card ── NEW ── */}
                                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                         <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
                                             <div className="flex items-center">
@@ -468,7 +490,6 @@ const TransactionsSettingsPage = (props) => {
                                                     Number of delinquent transactions before a BM alert is triggered.
                                                     Set to <span className="font-semibold text-gray-700">1</span> to alert on every delinquent transaction.
                                                 </p>
-                                                {/* Visual hint showing current behaviour */}
                                                 <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
                                                     <ShieldExclamationIcon className="h-4 w-4 text-red-500 shrink-0" />
                                                     <p className="text-xs text-red-700">
@@ -482,7 +503,6 @@ const TransactionsSettingsPage = (props) => {
                                                     </p>
                                                 </div>
                                             </div>
-
                                             {/* Client Age Threshold */}
                                             <div>
                                                 <ModernInput
@@ -504,7 +524,6 @@ const TransactionsSettingsPage = (props) => {
                                                     Maximum age (in years) allowed for a client to be eligible for a loan.
                                                     Clients at or above this age will be flagged or blocked during onboarding.
                                                 </p>
-                                                {/* Visual hint */}
                                                 <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-lg">
                                                     <UserGroupIcon className="h-4 w-4 text-orange-500 shrink-0" />
                                                     <p className="text-xs text-orange-700">
@@ -517,7 +536,6 @@ const TransactionsSettingsPage = (props) => {
                                     </div>
 
                                 </div>
-
                                 {/* MCBU/CSF Settings Card - Full Width */}
                                 <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                     <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
@@ -567,7 +585,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minWeeklyMcbuCollectionAccelerated && errors.minWeeklyMcbuCollectionAccelerated}
                                                 required
                                             />
-                                            {/* MCBU Withdrawal Retain - Regular Clients */}
                                             <ModernInput
                                                 name="minDailyMcbuWithdrawal"
                                                 value={values.minDailyMcbuWithdrawal}
@@ -594,7 +611,6 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minWeeklyMcbuWithdrawal && errors.minWeeklyMcbuWithdrawal}
                                                 required
                                             />
-                                            {/* MCBU Withdrawal Retain - Group Leaders */}
                                             <ModernInput
                                                 name="minDailyMcbuWithdrawalGL"
                                                 value={values.minDailyMcbuWithdrawalGL}
@@ -663,7 +679,6 @@ const TransactionsSettingsPage = (props) => {
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* Approval Restrictions Card */}
                                 <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                     <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
@@ -675,7 +690,6 @@ const TransactionsSettingsPage = (props) => {
                                     <div className="p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                            {/* LDF Approval */}
                                             <div className="p-4 border border-gray-200 rounded-xl space-y-4">
                                                 <h3 className="font-semibold text-gray-700">LDF Approval</h3>
                                                 <div className="p-4 bg-gray-50 rounded-xl">
@@ -702,8 +716,6 @@ const TransactionsSettingsPage = (props) => {
                                                     />
                                                 )}
                                             </div>
-
-                                            {/* Loan Approval */}
                                             <div className="p-4 border border-gray-200 rounded-xl space-y-4">
                                                 <h3 className="font-semibold text-gray-700">Loan Approval</h3>
                                                 <div className="p-4 bg-gray-50 rounded-xl">

@@ -293,10 +293,16 @@ export const SETTINGS_FIELDS = `
   requireGovernmentId
   requireSelfieWithId
   smsEnabled
+  smsSenderName
+  smsNotificationsEnabled
+  smsNotificationsSenderName
+  smsOtpEnabled
+  smsOtpSenderName
   ciQuestions
   requireStaffBiometric
   qrAllowedStartTime
   qrAllowedEndTime
+  passwordLoginEnabled
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -330,6 +336,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   ldfApprovalCutoffTime
   enableLoanApprovalRestriction
   loanApprovalCutoffTime
+  staleDataRefreshIdleSeconds
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

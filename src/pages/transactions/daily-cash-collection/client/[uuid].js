@@ -46,6 +46,7 @@ import EditAmountReleaseModal from '@/components/transactions/EditAmountReleaseM
 import EditMcbuCsfWithdrawalModal from '@/components/transactions/EditMcbuCsfWithdrawalModal';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
+import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -3820,6 +3821,13 @@ const CashCollectionDetailsPage = () => {
         }
     }, [branchList.length, router]);
 
+    const { isStale, refreshNow } = useStaleDataRefresh(
+        uuid,
+        currentDate,
+        transactionSettings?.staleDataRefreshIdleSeconds ?? 10,
+        getCashCollections
+    );
+
     useEffect(() => {
         let mounted = true;
 
@@ -3971,6 +3979,15 @@ const CashCollectionDetailsPage = () => {
                             Refresh Now
                         </button>
                     </div>
+                </div>
+            )}
+
+            {isStale && (
+                <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-sm text-blue-700">
+                    <span>New collection data was received in the background. Refreshing shortly…</span>
+                    <button type="button" onClick={refreshNow} className="font-medium underline">
+                        Refresh now
+                    </button>
                 </div>
             )}
             {loading ? (

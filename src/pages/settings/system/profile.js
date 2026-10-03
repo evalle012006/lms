@@ -424,79 +424,6 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                     </div>
                 </div>
             </div>
-
-            {/* SMS Notifications Toggle */}
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-green-600">
-                                <path strokeLinecap="round" strokeLinejoin="round"
-                                    d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                            </svg>
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-base font-semibold text-gray-900">
-                                SMS Notifications
-                            </label>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Send SMS to clients on LAF submission, CI approval/decline,
-                                and loan release. Requires <code className="text-xs bg-gray-200 px-1 rounded">SEMAPHORE_API_KEY</code> in environment variables.
-                            </p>
-                            {values.smsEnabled && (
-                                <div className="mt-2 grid grid-cols-1 gap-1">
-                                    {[
-                                        'LAF submitted — reference code sent to applicant',
-                                        'CI approved — client notified to wait for LO',
-                                        'CI declined — client notified with reason',
-                                        'Loan released — disbursement confirmed via SMS',
-                                    ].map(item => (
-                                        <div key={item} className="flex items-center text-sm text-gray-600">
-                                            <svg className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                            {item}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {!values.smsEnabled && (
-                                <div className="mt-2 flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-lg text-xs">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                        strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 flex-shrink-0 mt-0.5">
-                                        <path strokeLinecap="round" strokeLinejoin="round"
-                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                                    </svg>
-                                    <span>SMS is disabled. Clients will not receive text notifications.</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    {currentUser?.root ? (
-                        <button
-                            type="button"
-                            onClick={() => setFieldValue('smsEnabled', !values.smsEnabled)}
-                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
-                                rounded-full border-2 border-transparent transition-colors duration-200
-                                ease-in-out focus:outline-none focus:ring-2 focus:ring-green-600
-                                focus:ring-offset-2 ${values.smsEnabled ? 'bg-green-600' : 'bg-gray-200'}`}
-                        >
-                            <span className={`pointer-events-none inline-block h-6 w-6 transform
-                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
-                                ${values.smsEnabled ? 'translate-x-7' : 'translate-x-0'}`} />
-                        </button>
-                    ) : (
-                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
-                            values.smsEnabled
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-500'
-                        }`}>
-                            {values.smsEnabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                    )}
-                </div>
-            </div>
             
             {/* Placeholder for future features */}
             <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 opacity-60">
@@ -544,7 +471,6 @@ const ProfileSettingsPage = (props) => {
         allowLoCI: state.allowLoCI ?? false,
         requireClientBiometric:  state.requireClientBiometric  ?? true,
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
-        smsEnabled:              state.smsEnabled              ?? false,
         qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
         qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }
