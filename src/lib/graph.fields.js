@@ -336,6 +336,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   ldfApprovalCutoffTime
   enableLoanApprovalRestriction
   loanApprovalCutoffTime
+  staleDataRefreshIdleSeconds
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

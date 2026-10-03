@@ -1,5 +1,7 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl } from '@/lib/graph/graph.util';
+import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
+import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
 import { generateUUID } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
@@ -187,6 +189,8 @@ async function preSaveForLoanOfficer(loId, currentDate) {
 
     console.log(`Pre-saving ${loansToPreSave.length} collections for loId: ${loId} on date: ${currentDate} (${existingClientIds.size} already exist)`);
 
+    const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
+
     // Create cash collections from loans (only for new clients)
     const cashCollections = loansToPreSave.map(loan => ({
         _id: generateUUID(),
@@ -201,15 +205,17 @@ async function preSaveForLoanOfficer(loId, currentDate) {
         mispayment: false,
         excess: 0,
         total: 0,
-        noOfPayments: 0,
+        noOfPayments: loan.noOfPayments,
         activeLoan: loan.activeLoan,
         targetCollection: loan.activeLoan, 
         amountRelease: loan.amountRelease,
         loanBalance: loan.loanBalance,
+        loanTerms: loan.loanTerms,
+        noMispayment: loan.mispayment,
         paymentCollection: 0,
         occurence: loan.group.occurence,
         currentReleaseAmount: 0,
-        mcbuTarget: 50,
+        mcbuTarget: resolveWeeklyMcbuMinimum(mcbuTargetConfig, loan.group.weeklyScheduleType),
         groupDay: loan.group.day,
         fullPayment: 0,
         mcbu: loan.mcbu,
