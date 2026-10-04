@@ -54,10 +54,15 @@ export default function BranchClosingDocumentsModal({
     // acknowledged. Starts true so loading/non-v2 branches never block.
     const [loanVerificationReady, setLoanVerificationReady] = useState(true);
 
+    // ADDED: LOs that still haven't closed (from branch-check). Informational
+    // only; the server gate in update-group-transaction-status is authoritative.
+    const [unclosed, setUnclosed] = useState({ summary: [], emptyGroups: [] });
+
     useEffect(() => {
         if (isOpen) {
             setInitialLoading(true);
             loadExisting();
+            loadUnclosed();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, branchId, dateFor]);
@@ -87,6 +92,18 @@ export default function BranchClosingDocumentsModal({
             toast.error(response.message || 'Failed to load existing documents.');
         }
         setInitialLoading(false);
+    };
+
+    const loadUnclosed = async () => {
+        const url = `${getApiBaseUrl()}transactions/closing-documents/branch-check?` +
+            new URLSearchParams({ branchId, dateFor });
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            setUnclosed({
+                summary: response.unclosedLoSummary || [],
+                emptyGroups: response.unclosedEmptyGroups || [],
+            });
+        }
     };
 
     const handleCohAmountChange = (value) => {
@@ -371,6 +388,30 @@ export default function BranchClosingDocumentsModal({
                 </div>
 
                 <div className="p-4 space-y-4 overflow-y-auto flex-1">
+
+                    {(unclosed.summary.length > 0 || unclosed.emptyGroups.length > 0) && (
+                        <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
+                            <p className="font-medium mb-1">
+                                This branch can't be closed yet — some Loan Officer transactions are still open.
+                            </p>
+                            {unclosed.summary.length > 0 && (
+                                <ul className="list-disc ml-4 space-y-0.5">
+                                    {unclosed.summary.map(lo => (
+                                        <li key={lo.loId}>
+                                            <span className="font-medium">{lo.loName || 'Unknown LO'}</span>
+                                            {' — '}{lo.groups.map(g => g.groupName).join(', ')}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {unclosed.emptyGroups.length > 0 && (
+                                <p className="mt-1.5 text-amber-700">
+                                    Also open with no active clients (an admin needs to close these):{' '}
+                                    {[...new Set(unclosed.emptyGroups.map(g => g.groupName))].join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <div className="flex items-center gap-2 mb-3">

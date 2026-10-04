@@ -14,6 +14,7 @@ import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
 import CashCollectionsExcelExport from '@/components/transactions/CashCollectionsExcelExport';
 import BranchClosingDocumentsModal from '@/components/transactions/BranchClosingDocumentsModal';
+import { formatUnclosedLoMessage } from '@/lib/closing-documents.constants';
 
 // Row background colors - Tailwind safelist (do not remove):
 // bg-yellow-100 bg-blue-100 bg-orange-100
@@ -626,7 +627,10 @@ const ModernBranchCashCollections = () => {
           return;
         }
         if (!checkResponse.readyToUpload) {
-          toast.error('Some Loan Officers still have open or pending transactions. All LO transactions must be closed first.');
+          toast.error(
+            formatUnclosedLoMessage(checkResponse.unclosedLoSummary, checkResponse.unclosedEmptyGroups)
+              || 'Some Loan Officers still have open or pending transactions. All LO transactions must be closed first.'
+          );
           return;
         }
       }
