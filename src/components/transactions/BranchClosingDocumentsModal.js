@@ -25,6 +25,10 @@ export default function BranchClosingDocumentsModal({
     cohBreakdown,
     onCohAmountChange,
     onCohSave,
+    // ADDED: server-resolved COH edit permission (see resolveCohEditPermission).
+    // canEditCoh === undefined falls back to the old behavior (canUpload).
+    canEditCoh,
+    cohLockedReason,
 }) {
     const [existingDocs, setExistingDocs] = useState({});
     const [initialLoading, setInitialLoading] = useState(true);
@@ -97,11 +101,15 @@ export default function BranchClosingDocumentsModal({
         setCohDirty(true);
     };
 
+    // CHANGED: onCohSave now returns true/false. The old version cleared
+    // cohDirty unconditionally, so a save rejected by the server (e.g. wrong
+    // date window, branch closed) would still show "Saved" and let the user
+    // proceed to final close with COH that was never persisted.
     const handleSaveCoh = async () => {
         setCohSaving(true);
-        await onCohSave(cohAmount, breakdownDraft);
+        const saved = await onCohSave(cohAmount, breakdownDraft);
         setCohSaving(false);
-        setCohDirty(false);
+        if (saved) setCohDirty(false);
     };
 
     const handleFileSelect = (docType, fileList) => {
@@ -227,6 +235,12 @@ export default function BranchClosingDocumentsModal({
     const UPLOAD_ALLOWED_SHORTCODES = ['admin', 'branch_manager'];
     const canUpload = UPLOAD_ALLOWED_SHORTCODES.includes(currentUser?.role?.shortCode);
 
+    // ADDED: COH editing is decided by the server (role + branch scope + date
+    // window + reopen status), not by canUpload. Document upload permissions
+    // (canUpload) are unchanged. Falls back to canUpload only if the parent
+    // didn't pass the prop at all.
+    const cohEditable = canEditCoh ?? canUpload;
+
     const allAcknowledged = CLOSING_DOC_TYPES.every(d =>
         (existingDocs[d.key] || []).every(doc => doc.acknowledged)
     );
@@ -324,16 +338,8 @@ export default function BranchClosingDocumentsModal({
         }
     };
 
-    // ADDED: live sum of breakdown lines, purely informational — does not
-    // gate or validate anything, matches the confirmed "supporting detail
-    // only" design. Lets BM sanity-check their own entries at a glance
-    // without needing to add it up externally.
-    // FIXED: this was referenced by the finalize button below but never
-    // actually declared — a straight ReferenceError that would have
-    // thrown on every render once the button's disabled expression was
-    // evaluated. Same mistake as the approvalRecord bug in branch-check.js
-    // a few messages back: the instruction to add this was given, only
-    // the usage made it into the file, not the declaration itself.
+    // Live sum of breakdown lines, purely informational — does not gate or
+    // validate anything, matches the confirmed "supporting detail only" design.
     const cohValid = (() => {
         if (cohAmount === null || cohAmount === undefined || cohAmount === '') return false;
         const numeric = Number(String(cohAmount).replace(/,/g, ''));
@@ -364,6 +370,11 @@ export default function BranchClosingDocumentsModal({
                             <h3 className="text-sm font-semibold text-gray-900">Cash on Hand</h3>
                         </div>
 
+                        {/* ADDED: tells the user WHY COH is read-only (server-provided reason) */}
+                        {canEditCoh === false && cohLockedReason && (
+                            <p className="text-xs text-amber-600 mb-2">{cohLockedReason}</p>
+                        )}
+
                         <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-4">
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="text-xs text-gray-500 shrink-0">Total COH:</span>
@@ -371,7 +382,7 @@ export default function BranchClosingDocumentsModal({
                                     type="number"
                                     value={cohAmount}
                                     onChange={e => handleCohAmountChange(e.target.value)}
-                                    disabled={!canUpload}
+                                    disabled={!cohEditable}
                                     className="w-32 px-2 py-1 text-sm border rounded bg-white focus:ring-1 focus:ring-blue-400"
                                     placeholder="0.00"
                                 />
@@ -383,7 +394,7 @@ export default function BranchClosingDocumentsModal({
                             </p>
 
                             {breakdownDraft.length === 0 ? (
-                                canUpload ? (
+                                cohEditable ? (
                                     <div className="border border-dashed border-blue-200 rounded-md py-4 text-center">
                                         <p className="text-xs text-gray-400 mb-1.5">No breakdown items yet</p>
                                         <button
@@ -405,7 +416,7 @@ export default function BranchClosingDocumentsModal({
                                         <span className="w-4 shrink-0" />
                                         <span className="flex-1 text-[10px] font-medium text-gray-400 uppercase tracking-wide">Description</span>
                                         <span className="w-24 shrink-0 text-[10px] font-medium text-gray-400 uppercase tracking-wide text-right">Amount</span>
-                                        {canUpload && <span className="w-6 shrink-0" />}
+                                        {cohEditable && <span className="w-6 shrink-0" />}
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -417,7 +428,7 @@ export default function BranchClosingDocumentsModal({
                                                     placeholder="Description"
                                                     value={line.label}
                                                     onChange={e => updateBreakdownLine(i, 'label', e.target.value)}
-                                                    disabled={!canUpload}
+                                                    disabled={!cohEditable}
                                                     className="flex-1 px-2 py-1 text-xs border rounded bg-white"
                                                 />
                                                 <input
@@ -425,10 +436,10 @@ export default function BranchClosingDocumentsModal({
                                                     placeholder="0.00"
                                                     value={line.amount}
                                                     onChange={e => updateBreakdownLine(i, 'amount', e.target.value)}
-                                                    disabled={!canUpload}
+                                                    disabled={!cohEditable}
                                                     className="w-24 px-2 py-1 text-xs border rounded bg-white text-right tabular-nums"
                                                 />
-                                                {canUpload && (
+                                                {cohEditable && (
                                                     <button
                                                         type="button"
                                                         onClick={() => removeBreakdownLine(i)}
@@ -446,7 +457,7 @@ export default function BranchClosingDocumentsModal({
                                         it happens to match the typed total, never a hard
                                         validation or block. */}
                                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-100/70 px-1">
-                                        {canUpload && (
+                                        {cohEditable && (
                                             <button
                                                 type="button"
                                                 onClick={addBreakdownLine}
@@ -465,7 +476,7 @@ export default function BranchClosingDocumentsModal({
                                 </>
                             )}
 
-                            {canUpload && (
+                            {cohEditable && (
                                 <div className="mt-3 pt-3 border-t border-blue-100 flex items-center justify-between">
                                     <span className={`text-xs ${cohDirty ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
                                         {cohDirty ? 'Unsaved changes' : 'Saved'}
@@ -550,7 +561,7 @@ export default function BranchClosingDocumentsModal({
                                             ))}
 
                                             {existingList.map(doc => {
-                                                // ADDED: extract the actual stored filename from fileKey
+                                                // Extract the actual stored filename from fileKey
                                                 // (e.g. ".../v2/receipt_scan.pdf" → "receipt_scan.pdf").
                                                 // Note this is the SANITIZED name upload.js stored it
                                                 // under (lowercased, special characters stripped) —
@@ -560,11 +571,8 @@ export default function BranchClosingDocumentsModal({
                                                 const displayName = doc.fileKey.split('/').pop();
                                                 const isReplacing = replaceInProgressId === doc.id;
 
-                                                // ADDED: while this doc's replacement is uploading, show a
-                                                // clear in-progress row instead of the normal controls —
-                                                // this is the visible feedback that was missing entirely
-                                                // before (the old flow gave no indication anything was
-                                                // happening between confirm and the eventual toast).
+                                                // While this doc's replacement is uploading, show a
+                                                // clear in-progress row instead of the normal controls.
                                                 if (isReplacing) {
                                                     return (
                                                         <div key={doc.id} className="border-t border-gray-50 pt-2 first:border-t-0 first:pt-0">
@@ -752,18 +760,14 @@ export default function BranchClosingDocumentsModal({
                                 onClick={async () => {
                                     const { type, doc } = pendingAction;
                                     if (type === 'remove') {
-                                        // CHANGED: modal stays open with a
-                                        // spinner until the request actually
-                                        // resolves — was closing immediately
-                                        // on click, so the deletion happened
-                                        // silently with no visible feedback
-                                        // for however long the request took.
+                                        // Modal stays open with a spinner until the
+                                        // request actually resolves.
                                         await executeRemove(doc);
                                         setPendingAction(null);
                                     } else {
-                                        // Replace makes no API call here at
-                                        // all — just closes this dialog and
-                                        // opens the file picker.
+                                        // Replace makes no API call here at all —
+                                        // just closes this dialog and opens the
+                                        // file picker.
                                         setPendingAction(null);
                                         startReplace(doc);
                                     }

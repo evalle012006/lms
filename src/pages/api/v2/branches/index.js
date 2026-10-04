@@ -1,6 +1,8 @@
 import { BRANCH_COH_FIELDS, BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { findUserById } from '@/lib/graph.functions'; // CONFIRM this import path for findUserById
+import { resolveCohEditPermission } from '@/lib/coh-permissions';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
@@ -70,8 +72,21 @@ async function getBranch(req, res) {
         },
       }))
 
+    // ADDED: opt-in so the many other callers of this endpoint pay nothing.
+    // Tells the UI whether the current user may edit COH for this branch/date.
+    // This is a UX hint only — save-update-coh re-checks on every write.
+    let cohPermission;
+    if (req.query.includeCohPermission === '1' && _id && date) {
+        try {
+            const user = req.auth?.sub ? await findUserById(req.auth.sub) : null;
+            cohPermission = await resolveCohEditPermission(user, _id, date);
+        } catch (err) {
+            console.error('COH permission check failed:', err);
+            cohPermission = { canEdit: false, reason: 'Unable to verify permission right now.' }; // fail closed
+        }
+    }
 
-    response = { success: true, branch };
+    response = { success: true, branch, cohPermission };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

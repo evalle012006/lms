@@ -60,6 +60,7 @@ const ModernBranchCashCollections = () => {
 
   const [cohData, setCohData] = useState();
   const [cohAmount, setCohAmount] = useState(0);
+  const [cohPermission, setCohPermission] = useState({ canEdit: false }); // ADDED
 
   const [branchFilterList, setBranchFilterList] = useState([]);
   const [loFilterList, setLoFilterList] = useState([]);
@@ -446,35 +447,37 @@ const ModernBranchCashCollections = () => {
   })();
 
   const handleCOHDataChange = async (value, breakdown = cohData?.breakdown ?? null) => {
-    if (value && isNaN(parseFloat(value))) { toast.error('Please enter a valid number'); return; }
+    if (value && isNaN(parseFloat(value))) { toast.error('Please enter a valid number'); return false; }
     const amount = value ? parseFloat(value) : 0;
-    if (amount < 0) { toast.error('COH amount cannot be negative'); setCohAmount(0); return; }
+    if (amount < 0) { toast.error('COH amount cannot be negative'); setCohAmount(0); return false; }
 
-    let updatedCohData = {...cohData};
-    if (cohData && cohData.hasOwnProperty("_id")) {
-        updatedCohData.amount = amount;
-        updatedCohData.breakdown = breakdown;
-        updatedCohData.modifiedBy = currentUser._id;
-    } else {
-        updatedCohData.branchId = currentUser.designatedBranchId;
-        updatedCohData.amount = amount;
-        updatedCohData.breakdown = breakdown;
-        updatedCohData.insertedBy = currentUser._id;
-        updatedCohData.dateAdded = currentDate;
-    }
+    const cohBranchId = closingDocsBranch?._id;
+    const cohDate = dateFilter !== currentDate ? dateFilter : currentDate;
+    if (!cohBranchId) { toast.error('No branch selected.'); return false; }
+
+    const updatedCohData = {
+        ...cohData,
+        amount,
+        breakdown,
+        branchId: cohBranchId,
+        dateAdded: cohDate,
+    };
 
     try {
         const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
         const response = await fetchWrapper.post(apiUrl, updatedCohData);
         if (response.success) {
             toast.success('Cash on Hand data successfully saved.');
-            setCohData(updatedCohData);
-        } else {
-            toast.error('Error saving Cash on Hand data.');
+            // merge the server row back so later saves carry its _id
+            setCohData({ ...updatedCohData, ...response.data });
+            return true;
         }
+        toast.error(response.message || 'Error saving Cash on Hand data.');
+        return false;
     } catch (error) {
         console.error('Error saving COH data:', error);
         toast.error('Error saving Cash on Hand data.');
+        return false;
     }
   };
 
@@ -1326,13 +1329,17 @@ const ModernBranchCashCollections = () => {
   // BM reviewing their own branch and AM reviewing any branch row they click.
   useEffect(() => {
       const fetchCohForModal = async () => {
+          setCohPermission({ canEdit: false }); // never show a previous branch's permission
+
           const apiUrl = `${getApiBaseUrl()}branches?`;
           const params = {
               _id: closingDocsBranch._id,
               date: dateFilter !== currentDate ? dateFilter : currentDate,
+              includeCohPermission: '1',
           };
           const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
           if (response.success) {
+              setCohPermission(response.cohPermission || { canEdit: false });
               if (response.branch?.cashOnHand?.length > 0) {
                   setCohData(response.branch.cashOnHand[0]);
                   setCohAmount(response.branch.cashOnHand[0].amount || 0);
@@ -3018,6 +3025,8 @@ const ModernBranchCashCollections = () => {
                 cohBreakdown={cohBreakdownStable}
                 onCohAmountChange={setCohAmount}
                 onCohSave={handleCOHDataChange}
+                canEditCoh={cohPermission.canEdit}
+                cohLockedReason={cohPermission.reason}
                 onClosed={() => {
                   fetchCashCollectionsData(dateFilter);
                   setReadinessVersion(v => v + 1);
