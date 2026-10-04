@@ -1,8 +1,10 @@
 // src/components/transactions/BranchClosingDocumentsModal.js
-// BM-facing modal, two clearly separated sections:
+// BM-facing modal, three sections:
 //   1. Cash on Hand — total + optional breakdown, explicit Save button
 //   2. Closing Documents — multiple files allowed per category, each
 //      independently viewed/reviewed/removable/replaceable
+//   3. Loan Verification — v2 branches only; renders nothing on non-v2
+//      branches (see LoanVerificationSection's `applicable` flag)
 // Enable the trigger button only when branch-check.readyToUpload === true.
 
 import { useEffect, useState } from 'react';
@@ -12,6 +14,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { CLOSING_DOC_TYPES, getClosingDocMaxBytes } from '@/lib/closing-documents.constants';
 import DocumentViewerModal from './DocumentViewerModal';
+import LoanVerificationSection from './LoanVerificationSection';
 
 export default function BranchClosingDocumentsModal({
     isOpen,
@@ -46,10 +49,20 @@ export default function BranchClosingDocumentsModal({
     const [cohSaving, setCohSaving] = useState(false);
     const [cohDirty, setCohDirty] = useState(false);
 
+    // ADDED: reported by LoanVerificationSection — true when the branch
+    // isn't v2 (section doesn't apply) or every approved loan today is
+    // acknowledged. Starts true so loading/non-v2 branches never block.
+    const [loanVerificationReady, setLoanVerificationReady] = useState(true);
+
+    // ADDED: LOs that still haven't closed (from branch-check). Informational
+    // only; the server gate in update-group-transaction-status is authoritative.
+    const [unclosed, setUnclosed] = useState({ summary: [], emptyGroups: [] });
+
     useEffect(() => {
         if (isOpen) {
             setInitialLoading(true);
             loadExisting();
+            loadUnclosed();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, branchId, dateFor]);
@@ -79,6 +92,18 @@ export default function BranchClosingDocumentsModal({
             toast.error(response.message || 'Failed to load existing documents.');
         }
         setInitialLoading(false);
+    };
+
+    const loadUnclosed = async () => {
+        const url = `${getApiBaseUrl()}transactions/closing-documents/branch-check?` +
+            new URLSearchParams({ branchId, dateFor });
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            setUnclosed({
+                summary: response.unclosedLoSummary || [],
+                emptyGroups: response.unclosedEmptyGroups || [],
+            });
+        }
     };
 
     const handleCohAmountChange = (value) => {
@@ -363,6 +388,30 @@ export default function BranchClosingDocumentsModal({
                 </div>
 
                 <div className="p-4 space-y-4 overflow-y-auto flex-1">
+
+                    {(unclosed.summary.length > 0 || unclosed.emptyGroups.length > 0) && (
+                        <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
+                            <p className="font-medium mb-1">
+                                This branch can't be closed yet — some Loan Officer transactions are still open.
+                            </p>
+                            {unclosed.summary.length > 0 && (
+                                <ul className="list-disc ml-4 space-y-0.5">
+                                    {unclosed.summary.map(lo => (
+                                        <li key={lo.loId}>
+                                            <span className="font-medium">{lo.loName || 'Unknown LO'}</span>
+                                            {' — '}{lo.groups.map(g => g.groupName).join(', ')}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {unclosed.emptyGroups.length > 0 && (
+                                <p className="mt-1.5 text-amber-700">
+                                    Also open with no active clients (an admin needs to close these):{' '}
+                                    {[...new Set(unclosed.emptyGroups.map(g => g.groupName))].join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <div className="flex items-center gap-2 mb-3">
@@ -683,6 +732,19 @@ export default function BranchClosingDocumentsModal({
                             })}
                         </div>
                     </div>
+
+                    {/* ADDED: section 3 — renders nothing on non-v2 branches
+                        (LoanVerificationSection returns null once it knows
+                        applicable === false). canFinalize / branchClosed
+                        control the acknowledge checkbox the same way they
+                        control section 2's. */}
+                    <LoanVerificationSection
+                        branchId={branchId}
+                        dateFor={dateFor}
+                        canFinalize={canFinalize}
+                        branchClosed={branchClosed}
+                        onReadinessChange={setLoanVerificationReady}
+                    />
                 </div>
 
                 <div className="p-4 border-t flex justify-between gap-2 shrink-0">
@@ -697,12 +759,13 @@ export default function BranchClosingDocumentsModal({
                     )}
                     <button
                         onClick={handleFinalClose}
-                        disabled={!allUploaded || closing || !canFinalize || !allAcknowledged || cohDirty || !cohValid}
+                        disabled={!allUploaded || closing || !canFinalize || !allAcknowledged || cohDirty || !cohValid || !loanVerificationReady}
                         title={
                             !canFinalize && allUploaded ? 'Only an Area Manager or above can finalize this closing'
                             : !cohValid ? 'Enter a valid Cash on Hand amount before finalizing'
                             : cohDirty ? 'Save Cash on Hand before finalizing'
                             : canFinalize && allUploaded && !allAcknowledged ? 'Review and check off every uploaded file before finalizing'
+                            : canFinalize && !loanVerificationReady ? 'Review and check off every approved loan before finalizing'
                             : undefined
                         }
                         className="px-4 py-2 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
@@ -717,7 +780,9 @@ export default function BranchClosingDocumentsModal({
                                         ? 'Save Cash on Hand to continue'
                                         : (canFinalize && allUploaded && !allAcknowledged)
                                             ? 'Review all documents to continue'
-                                            : 'Confirm final closing'}
+                                            : (canFinalize && !loanVerificationReady)
+                                                ? 'Review all loans to continue'
+                                                : 'Confirm final closing'}
                     </button>
                 </div>
             </div>

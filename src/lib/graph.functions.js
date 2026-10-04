@@ -127,3 +127,34 @@ export async function findTemporaryLoanApplications(filter, fields = TEMP_LOAN_A
   return (await graph.query(queryQl(createGraphType('temporaryLoanApplications', fields)(), { where: filter })))
     .data?.temporaryLoanApplications ?? [];
 }
+
+/**
+ * Shared by clients/flow-status.js and the loan-verification listing —
+ * do not duplicate this lookup a third time. Returns { [clientId]: bool }:
+ * true = client has a promoted temporaryLoanApplications record (went
+ * through the new LAF/CI flow), false = treat as legacy.
+ */
+export async function resolveClientFlowStatus(clientIds = []) {
+  const ids = [...new Set((clientIds || []).filter(Boolean))];
+  const statusMap = {};
+  ids.forEach(id => { statusMap[id] = false; });
+  if (ids.length === 0) return statusMap;
+
+  const apps = await findTemporaryLoanApplications(
+    {
+      status: { _eq: 'promoted' },
+      _or: [
+        { promotedClientId: { _in: ids } },
+        { existingClientId: { _in: ids } },
+      ],
+    },
+    `_id promotedClientId existingClientId`
+  );
+
+  apps.forEach(app => {
+    const matchedId = app.promotedClientId || app.existingClientId;
+    if (matchedId && ids.includes(matchedId)) statusMap[matchedId] = true;
+  });
+
+  return statusMap;
+}

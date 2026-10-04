@@ -300,6 +300,7 @@ export const SETTINGS_FIELDS = `
   smsOtpSenderName
   ciQuestions
   requireStaffBiometric
+  requireLoanVerificationAtClosing
   qrAllowedStartTime
   qrAllowedEndTime
   passwordLoginEnabled
@@ -1031,4 +1032,18 @@ export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
     mergedIntoCashCollectionId
     insertedDateTime
     updatedDateTime
+`;
+
+export const LOAN_CLOSING_REVIEW_FIELDS = `
+  _id
+  branch_id
+  date_for
+  loan_id
+  reviewed_by
+  reviewed_by_name
+  first_viewed_at
+  last_viewed_at
+  view_count
+  acknowledged
+  acknowledged_at
 `;

@@ -4,6 +4,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 import { CLOSING_DOC_KEYS } from '@/lib/closing-documents.constants';
+import { findUsers } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 
@@ -25,7 +26,7 @@ async function branchCheck(req, res) {
         // distinct_on.
         const unclosed = await graph.query(
             queryQl(
-                createGraphType('cashCollections', `loId groupId`)('cashCollections'),
+                createGraphType('cashCollections', `loId groupId groupName`)('cashCollections'),
                 {
                     where: {
                         branchId: { _eq: branchId },
@@ -40,6 +41,46 @@ async function branchCheck(req, res) {
 
         const unclosedLos = unclosed?.data?.cashCollections || [];
         const allLosClosed = unclosedLos.length === 0;
+
+        // ADDED: LO-by-LO breakdown for the UI message. A group goes in the
+        // main list only when groups.noOfClients > 0. Open groups that fail
+        // that test are NOT dropped: they still block (allLosClosed and the
+        // server gate are unchanged), so they're returned separately in
+        // unclosedEmptyGroups. groups.noOfClients is an incrementally
+        // maintained counter and can drift, so it must never be the only
+        // place a blocker is reported.
+        let unclosedLoSummary = [];
+        const unclosedEmptyGroups = [];
+        if (unclosedLos.length > 0) {
+            const groupIds = [...new Set(unclosedLos.map(r => r.groupId).filter(Boolean))];
+            const loIds = [...new Set(unclosedLos.map(r => r.loId).filter(Boolean))];
+
+            const [groupRes, loUsers] = await Promise.all([
+                graph.query(
+                    queryQl(createGraphType('groups', `_id name noOfClients`)('groups'), {
+                        where: { _id: { _in: groupIds } },
+                    }),
+                ),
+                findUsers({ _id: { _in: loIds } }, `_id firstName lastName`),
+            ]);
+            const groupMap = Object.fromEntries((groupRes?.data?.groups || []).map(g => [g._id, g]));
+            const loNameMap = Object.fromEntries(loUsers.map(u => [u._id, `${u.firstName} ${u.lastName}`]));
+
+            const byLo = new Map();
+            for (const row of unclosedLos) {
+                const group = groupMap[row.groupId];
+                const groupName = group?.name || row.groupName || row.groupId;
+                const loName = loNameMap[row.loId] || null;
+
+                if ((group?.noOfClients ?? 0) > 0) {
+                    if (!byLo.has(row.loId)) byLo.set(row.loId, { loId: row.loId, loName, groups: [] });
+                    byLo.get(row.loId).groups.push({ groupId: row.groupId, groupName, noOfClients: group.noOfClients });
+                } else {
+                    unclosedEmptyGroups.push({ loId: row.loId, loName, groupId: row.groupId, groupName });
+                }
+            }
+            unclosedLoSummary = [...byLo.values()];
+        }
 
         // Also selects uploaded_at — needed below to compute whether any
         // currently-active document still predates the last reopen.
@@ -100,6 +141,8 @@ async function branchCheck(req, res) {
             success: true,
             allLosClosed,
             unclosedLos,
+            unclosedLoSummary,
+            unclosedEmptyGroups,
             missingDocTypes,
             readyToUpload: allLosClosed,
             readyToClose: allLosClosed && missingDocTypes.length === 0,
