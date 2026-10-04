@@ -337,6 +337,29 @@ async function collectBranchBlockingIssues(branchId, dateFor, userId) {
         }
     }
 
+    // 6. ADDED: v2 branches must have every loan approved today (status:
+    // 'active', dateOfRelease: today) reviewed and acknowledged by the
+    // person finalizing. Non-v2 branches skip this entirely, and so does
+    // every branch when settings.requireLoanVerificationAtClosing is off —
+    // a deliberate separate switch from clientFlowVersion, since that flag
+    // also governs CI enforcement, guarantor docs, etc. for the branch and
+    // shouldn't have to be touched just to disable this one step.
+    const branchForVerification = await step('find-branch-for-verification', () => findBranches({ _id: { _eq: branchId } }));
+    const loanVerificationEnabled = await step('check-loan-verification-enabled', () => isLoanVerificationEnabled());
+    if (branchForVerification?.[0]?.clientFlowVersion === 'v2' && loanVerificationEnabled) {
+        const unreviewedLoanIds = await step('check-unreviewed-loans', () =>
+            checkUnreviewedLoans(branchId, dateFor, userId)
+        );
+        if (unreviewedLoanIds.length > 0) {
+            issues.push(makeIssue(
+                'UNREVIEWED_LOANS',
+                'Cannot approve branch. Some approved loans still need loan verification review.',
+                [`${unreviewedLoanIds.length} loan(s)`],
+                { loanIds: unreviewedLoanIds }
+            ));
+        }
+    }
+
     return issues;
 }
 
@@ -383,6 +406,31 @@ async function resetClosingDocumentAcknowledgments(branchId, dateFor) {
     return graph.mutation(
         updateQl(
             createGraphType('closing_document_reviews', `_id`)('reviews'),
+            {
+                set: {
+                    acknowledged: false,
+                    acknowledged_at: null,
+                },
+                where: {
+                    branch_id: { _eq: branchId },
+                    date_for: { _eq: dateFor },
+                    acknowledged: { _eq: true },
+                },
+            },
+        ),
+    );
+}
+
+/**
+ * ADDED: same reset as resetClosingDocumentAcknowledgments, for the loan
+ * verification step. Called from the same two places — an LO reopen or a
+ * direct branch-level reopen invalidates a prior AM sign-off on the day's
+ * approved loans just as much as it invalidates document sign-offs.
+ */
+async function resetLoanClosingReviewAcknowledgments(branchId, dateFor) {
+    return graph.mutation(
+        updateQl(
+            createGraphType('loan_closing_reviews', `_id`)('reviews'),
             {
                 set: {
                     acknowledged: false,
@@ -509,6 +557,8 @@ async function handleBranchApproval(branchId, dateFor, mode, userId, userName) {
             // after a full branch reopen would silently reuse stale sign-offs.
             if (wasClosed) {
                 await resetClosingDocumentAcknowledgments(branchId, dateFor);
+                // ADDED: same reset for loan verification reviews.
+                await resetLoanClosingReviewAcknowledgments(branchId, dateFor);
             }
             return { success: true };
         }
@@ -880,6 +930,47 @@ async function checkUnacknowledgedClosingDocuments(branchId, dateFor, userId) {
 }
 
 /**
+ * ADDED: v2-branch loan verification gate. Returns loan _ids for loans
+ * approved today (status: 'active', dateOfRelease: dateFor) that this
+ * user has not yet acknowledged in loan_closing_reviews. Empty array =
+ * complete. Mirrors checkUnacknowledgedClosingDocuments in shape.
+ */
+async function checkUnreviewedLoans(branchId, dateFor, userId) {
+    const approvedLoans = await graph.query(
+        queryQl(
+            createGraphType('loans', `_id`)('loans'),
+            {
+                where: {
+                    branchId: { _eq: branchId },
+                    dateOfRelease: { _eq: dateFor },
+                    status: { _eq: 'active' },
+                },
+            },
+        ),
+    );
+    const loanIds = (approvedLoans?.data?.loans || []).map(l => l._id);
+    if (loanIds.length === 0) return [];
+
+    const reviews = await graph.query(
+        queryQl(
+            createGraphType('loan_closing_reviews', `loan_id`)('reviews'),
+            {
+                where: {
+                    branch_id: { _eq: branchId },
+                    date_for: { _eq: dateFor },
+                    reviewed_by: { _eq: userId },
+                    acknowledged: { _eq: true },
+                    loan_id: { _in: loanIds },
+                },
+            },
+        ),
+    );
+    const acknowledgedLoanIds = new Set((reviews?.data?.reviews || []).map(r => r.loan_id));
+
+    return loanIds.filter(id => !acknowledgedLoanIds.has(id));
+}
+
+/**
  * Returns true if a branchCOH row exists for this branch/date.
  * Existence alone is the gate here — amount validity (>=0) is enforced
  * at save time in save-update-coh.js, not re-validated here.
@@ -957,6 +1048,10 @@ async function flagBranchDocumentsStale(branchId, currentDate, loId, reopenedByN
         // that went stale is "AM's confirmation these numbers were correct,"
         // not the files themselves, so acknowledgment is what must reset.
         await resetClosingDocumentAcknowledgments(branchId, currentDate);
+        // ADDED: same reset for loan verification reviews — an LO reopen
+        // means the day's numbers may change, so AM's prior per-loan
+        // sign-offs can no longer be trusted either.
+        await resetLoanClosingReviewAcknowledgments(branchId, currentDate);
     } catch (error) {
         // Don't fail the LO reopen just because the stale-flag write failed —
         // log and move on, but this is worth alerting on if it happens often.
@@ -1017,4 +1112,17 @@ async function getLOSummary(req, res) {
     res.status(200)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify({ success: true, data: groups }));
+}
+
+/**
+ * ADDED: global kill switch for the loan verification closing step,
+ * independent of clientFlowVersion (settings.requireLoanVerificationAtClosing).
+ * Defaults to true (enabled) when unset — same default posture as
+ * requireClientBiometric.
+ */
+async function isLoanVerificationEnabled() {
+    const result = await graph.query(
+        queryQl(createGraphType('settings', 'requireLoanVerificationAtClosing')('settings'), { limit: 1 })
+    );
+    return result?.data?.settings?.[0]?.requireLoanVerificationAtClosing ?? true;
 }

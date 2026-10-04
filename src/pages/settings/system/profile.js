@@ -391,6 +391,70 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                 </div>
             </div>
 
+            {/* Require Loan Verification At Closing Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-emerald-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-emerald-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Require Loan Verification at Branch Closing
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, an Area Manager must review and acknowledge every
+                                loan approved that day — client, documents, and face verification
+                                result — before a v2-flow branch can be closed. Applies only to
+                                branches with the new client flow enabled; this switch does not
+                                affect the client flow version itself.
+                            </p>
+                            {!values.requireLoanVerificationAtClosing && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        The Loan Verification step will be hidden from the branch
+                                        closing modal for all branches and will not block closing.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('requireLoanVerificationAtClosing', !values.requireLoanVerificationAtClosing)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-600
+                                focus:ring-offset-2 ${values.requireLoanVerificationAtClosing ? 'bg-emerald-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.requireLoanVerificationAtClosing ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.requireLoanVerificationAtClosing
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.requireLoanVerificationAtClosing ? 'Required' : 'Optional'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* QR Application Time Restriction */}
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <p className="text-base font-semibold text-gray-900 mb-1">
@@ -471,6 +535,7 @@ const ProfileSettingsPage = (props) => {
         allowLoCI: state.allowLoCI ?? false,
         requireClientBiometric:  state.requireClientBiometric  ?? true,
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
+        requireLoanVerificationAtClosing: state.requireLoanVerificationAtClosing ?? true,
         qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
         qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }
