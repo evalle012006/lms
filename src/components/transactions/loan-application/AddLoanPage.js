@@ -361,6 +361,8 @@ const AddLoanPage = ({
                 const l = res.loan;
                 setLoanData(l);
 
+                setGroupLeader(!!(l.client?.groupLeader ?? l.groupLeader));
+
                 // Fallback CI lookup — only matters when l.ciApprovedDate is
                 // missing (pre-migration record, or persistence gap). When
                 // it IS present, resolvedCiApprovedDate uses it directly and
@@ -1133,7 +1135,9 @@ const AddLoanPage = ({
         values.clientId      = clientId;
         values.dateOfRelease = values.dateOfRelease || initialDateRelease;
         values.loanFor       = values.dateOfRelease === currentDate ? 'today' : 'tomorrow';
-        values.groupLeader   = groupLeader;
+        values.groupLeader   = isEdit && loanData
+            ? !!(loanData.groupLeader || groupLeader)   // never silently demote on edit
+            : groupLeader;
         values.groupId       = selectedGroup;
 
         const group       = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
