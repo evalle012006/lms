@@ -1964,10 +1964,6 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
 
-                    if (safeNumber(temp.paymentCollection) <= 0 || temp.status == "closed") {
-                        temp.csfIn = 0;
-                    }
-
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
                     temp.draft = temp.loanBalance <= 0 ? false : draft;
@@ -1978,6 +1974,10 @@ const CashCollectionDetailsPage = () => {
 
                     if (!temp.dateAdded) {
                         temp.dateAdded = currentDate;
+                    }
+
+                    if (safeNumber(temp.paymentCollection) <= 0 || temp.status == "closed") {
+                        temp = removeCsfIn(temp);
                     }
                 
                     return temp;   
@@ -3108,6 +3108,9 @@ const CashCollectionDetailsPage = () => {
                                         }
         
                                         temp.csfCollection = 0;
+                                        if (temp.csfIn > 0) {
+                                            temp = removeCsfIn(temp);
+                                        }
                                     // } else {
                                     //     temp.error = true;
                                     //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
@@ -3137,6 +3140,10 @@ const CashCollectionDetailsPage = () => {
                                     }
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
+
+                                    if (temp.csfIn > 0) {
+                                        temp = removeCsfIn(temp);
+                                    }
                                 } else {
                                     temp.error = true;
                                     toast.error('Invalid remarks. Loan not declared as Matured Past Due.');
