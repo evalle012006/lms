@@ -8,6 +8,8 @@ import { gql } from 'node_modules/apollo-boost/lib/index';
 
 const graph = new GraphProvider();
 
+const toText = v => (v == null ? null : String(v));
+
 export default apiHandler({
     post: save
 });
@@ -210,7 +212,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
         targetCollection: loan.activeLoan, 
         amountRelease: loan.amountRelease,
         loanBalance: loan.loanBalance,
-        loanTerms: loan.loanTerms,
+        loanTerms: toText(loan.loanTerms),
         noMispayment: loan.mispayment,
         paymentCollection: 0,
         occurence: loan.group.occurence,
