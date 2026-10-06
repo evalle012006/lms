@@ -1,13 +1,18 @@
 // src/pages/api/public/laf/check-duplicate.js
 // GET ?firstName=xxx&lastName=xxx&birthdate=xxx[&middleName=xxx][&contactNumber=xxx]
 //
-// Checks for duplicate clients using three parallel strategies:
+// Checks for duplicate clients using parallel strategies:
 //
 //   Query A (always):        firstName + lastName exact match in `clients`       → score 0.8
 //   Query B (middleName):    firstName + lastName + middleName match in `clients` → score 1.0
 //   Query C (contactNumber): firstName + lastName + contactNumber in `clients`    → score 1.0
 //   Query D (always):        firstName + lastName in `temporaryLoanApplications`
 //                            with active status — "Pending Application" duplicates
+//                            CHANGED: filtered so a clearly different person
+//                            (middle name AND birthdate both differ) is not reported
+//   Query E (birthdate):     CHANGED — firstName + birthdate in `clients` and
+//                            `temporaryLoanApplications`, ignoring last/middle name.
+//                            Catches name changes (e.g. marriage) that A–D miss.
 //
 // Results merged by _id. Highest score wins per record.
 // LAF duplicates returned separately so UI can show different messaging.
@@ -18,6 +23,12 @@
 import { publicApiHandler }          from '@/services/public-api-handler';
 import { GraphProvider }             from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl }  from '@/lib/graph/graph.util';
+// CHANGED: shared with submit.js so the form warning and server enforcement agree
+import {
+    compareMiddle,
+    compareBirthdate,
+    isClearlyDifferentPerson,
+} from '@/lib/laf/name-match';
 
 const graph = new GraphProvider();
 
@@ -28,8 +39,9 @@ const CLIENT_TYPE = createGraphType('client', `
 // Minimal LAF type — enough to show a "Pending Application" warning
 // FIX: check-duplicate was only checking clients table for prospects.
 // Added this check so the UI can warn about same name already in pipeline.
+// CHANGED: added `birthdate` — used ONLY server-side for matching, never returned.
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', `
-    _id firstName lastName middleName status branchId ciReferenceCode
+    _id firstName lastName middleName birthdate status branchId ciReferenceCode
 `)('temporaryLoanApplications');
 
 // Statuses that mean a LAF is still active in the pipeline
@@ -96,6 +108,7 @@ async function checkDuplicate(req, res) {
 
         // Query D: same name already in active LAF pipeline (prospect-specific)
         // Returns these separately — UI shows "Pending Application" not "Existing Client"
+        // CHANGED: limit 5 -> 10 so filtering below can't hide a real match behind noise.
         const queryD = graph.query(
             queryQl(TEMP_TYPE, {
                 where: {
@@ -103,12 +116,51 @@ async function checkDuplicate(req, res) {
                     lastName:  { _eq: lastUpper  },
                     status:    { _in: ACTIVE_LAF_STATUSES },
                 },
-                limit: 5,
+                limit: 10,
             })
         ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-        const [nameMatches, fullNameMatches, nameContactMatches, lafMatches] =
-            await Promise.all([queryA, queryB, queryC, queryD]);
+        // Query E (CHANGED): name-change detection — firstName + birthdate, ignoring
+        // last/middle name. Only runs when birthdate is provided.
+        const queryEClients = birthdate
+            ? graph.query(
+                queryQl(CLIENT_TYPE, {
+                    where: {
+                        firstName: { _eq: firstUpper },
+                        birthdate: { _eq: birthdate  },
+                        status:    { _neq: 'archived' },
+                    },
+                    limit: 5,
+                })
+            ).then(r => r.data?.clients ?? [])
+            : Promise.resolve([]);
+
+        const queryELAFs = birthdate
+            ? graph.query(
+                queryQl(TEMP_TYPE, {
+                    where: {
+                        firstName: { _eq: firstUpper },
+                        birthdate: { _eq: birthdate  },
+                        status:    { _in: ACTIVE_LAF_STATUSES },
+                    },
+                    limit: 5,
+                })
+            ).then(r => r.data?.temporaryLoanApplications ?? [])
+            : Promise.resolve([]);
+
+        const [
+            nameMatches, fullNameMatches, nameContactMatches, rawLafMatches,
+            nameChangeClients, nameChangeLAFs,
+        ] = await Promise.all([queryA, queryB, queryC, queryD, queryEClients, queryELAFs]);
+
+        // ── CHANGED: drop pending LAFs that are clearly a different person ─
+        // (middle name AND birthdate both contradict). Same rule as submit.js.
+        const lafMatches = rawLafMatches.filter(l =>
+            !isClearlyDifferentPerson(
+                compareMiddle(middleName, l.middleName),
+                compareBirthdate(birthdate, l.birthdate),
+            )
+        );
 
         // ── Merge client results by _id — highest score wins ─────────────
         const scoreMap = new Map();
@@ -173,6 +225,46 @@ async function checkDuplicate(req, res) {
                 source:          'application', // still in LAF pipeline
             })),
         ];
+
+        // ── CHANGED: name-change matches (first name + birthdate) ─────────
+        // These have a DIFFERENT last name, so returning it would let anyone with the
+        // API key probe birthdates to learn people's names. Redacted on purpose: only
+        // the first name (which the caller already typed) is echoed back.
+        const seenIds = new Set(duplicates.map(d => d._id));
+
+        for (const c of nameChangeClients) {
+            if (seenIds.has(c._id)) continue;
+            seenIds.add(c._id);
+            duplicates.push({
+                _id:             c._id,
+                firstName:       c.firstName,
+                lastName:        null,
+                middleName:      null,
+                birthdate:       null,
+                branchName:      null,
+                status:          c.status,
+                similarityScore: 0.85,
+                matchSource:     'nameChange',
+                source:          'client',
+            });
+        }
+
+        for (const l of nameChangeLAFs) {
+            if (seenIds.has(l._id)) continue;
+            seenIds.add(l._id);
+            duplicates.push({
+                _id:             l._id,
+                firstName:       l.firstName,
+                lastName:        null,
+                middleName:      null,
+                birthdate:       null,
+                branchName:      null,
+                status:          l.status,
+                similarityScore: 0.85,
+                matchSource:     'nameChange',
+                source:          'application',
+            });
+        }
 
         return res.status(200).json({
             success:    true,

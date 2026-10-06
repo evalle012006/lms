@@ -7,6 +7,8 @@ import { sendLAFSubmittedSMS }  from '@/lib/sms-service';
 import { generateUUID } from '@/lib/utils';
 import moment from 'moment';
 import crypto from 'crypto';
+// CHANGED: shared with check-duplicate.js so the two endpoints can't drift apart
+import { compareMiddle, compareBirthdate } from '@/lib/laf/name-match';
 
 const graph = new GraphProvider();
 
@@ -34,8 +36,10 @@ const CLIENT_NAME_TYPE = createGraphType('client', `
     _id firstName lastName middleName birthdate status
 `)('clients');
 
+// CHANGED: added `birthdate` and `branchId` so the pending-LAF check can tell
+// two different people with the same first/last name apart.
 const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
-    _id firstName lastName middleName status ciReferenceCode
+    _id firstName lastName middleName birthdate branchId status ciReferenceCode
 `)('temporaryLoanApplications');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
@@ -242,9 +246,14 @@ async function submitLAF(req, res) {
     //   → duplicateCandidateIds contains the matching client IDs
     //
     // CASE 2 — Same name found in `temporaryLoanApplications` (pending LAF):
-    //   → Hard block — return success: false immediately
-    //   → Prevents spamming of applications for the same name
-    //   → CI reference code NOT exposed — public endpoint must not leak PII
+    //   CHANGED: no longer a blanket hard block on first+last name alone
+    //   (that falsely blocked different people who share a common name, e.g.
+    //   DELIA PANONG GONZALES vs DELIA ALONZO GONZALES in another branch).
+    //   Now classified in three tiers:
+    //     • Different person  → middle name AND birthdate both differ → ignored
+    //     • Hard block        → same branch + same birthdate + middle name not contradicting
+    //     • Soft flag         → any other plausible match → pending_validation
+    //   CI reference code NOT exposed — public endpoint must not leak PII
     if (clientType === 'prospect') {
         const firstUpper   = firstName?.trim().toUpperCase();
         const lastUpper    = lastName?.trim().toUpperCase();
@@ -264,7 +273,8 @@ async function submitLAF(req, res) {
                     })
                 ).then(r => r.data?.clients ?? []),
 
-                // CASE 2: check pending LAFs — hard block re-submission of same name
+                // CASE 2: check pending LAFs — fetch ALL name matches (was limit: 1)
+                // so they can be classified below instead of blocking on the first hit.
                 graph.query(
                     queryQl(TEMP_NAME_TYPE, {
                         where: {
@@ -272,20 +282,44 @@ async function submitLAF(req, res) {
                             lastName:  { _eq: lastUpper  },
                             status:    { _in: ['pending', 'pending_validation', 'ci_approved'] },
                         },
-                        limit: 1,
+                        limit: 10,
                     })
                 ).then(r => r.data?.temporaryLoanApplications ?? []),
             ]);
 
-            // CASE 2: pending LAF with same name → hard block
-            // FIX: do NOT expose CI reference code — public endpoint must not leak PII
-            if (nameMatchLAFs.length > 0) {
+            // CASE 2: classify pending-LAF name matches
+            const lafMatches = nameMatchLAFs
+                .map(a => ({
+                    a,
+                    mid: compareMiddle(middleName, a.middleName),
+                    bd:  compareBirthdate(birthdate, a.birthdate),
+                }))
+                // Clearly a different person: middle name AND birthdate both differ.
+                // (Middle name alone is NOT enough — it's trivially changed to evade the check.)
+                .filter(m => !(m.mid === 'conflict' && m.bd === 'diff'));
+
+            // Hard block: same branch + same birthdate + middle name not contradicting
+            const hardBlock = lafMatches.find(m =>
+                m.a.branchId === branchId && m.bd === 'same' && m.mid !== 'conflict'
+            );
+            if (hardBlock) {
+                // Log the blocking record server-side so support can trace it
+                // (the CI code is deliberately not returned to the public client).
+                console.warn('[LAF submit] blocked by pending LAF', hardBlock.a._id);
                 return res.status(200).json({
                     success: false,
                     message: 'A loan application for this name is already pending processing. ' +
                         'The previous application must be completed or declined before submitting a new one. ' +
                         'If this is a different person, please inform your Loan Officer.',
                 });
+            }
+
+            // Soft flag: plausible match elsewhere (other branch, unknown birthdate,
+            // or same birthdate with a different middle name).
+            // NOTE: LAF IDs are intentionally NOT pushed into duplicateCandidateIds —
+            // that column holds client IDs for the CASE 1 admin review flow.
+            if (lafMatches.length > 0) {
+                isDuplicateFlagged = true;
             }
 
             // CASE 1: promoted client with same name → flag for admin validation
@@ -303,6 +337,51 @@ async function submitLAF(req, res) {
                         c.birthdate === birthdate
                     )
                     : false;
+            }
+
+            // CHANGED — CASE 3: name-change detection (e.g. marriage).
+            // A married woman's maiden surname usually becomes her middle name and her
+            // husband's surname her last name, so the first+last lookups above miss her
+            // earlier record. First name + birthdate survives that change.
+            // SOFT FLAG ONLY — two people can share a first name and birthday, so this
+            // routes to admin review (pending_validation) and never hard-blocks.
+            // Must run AFTER CASE 1 so its assignment to duplicateCandidateIds
+            // does not overwrite what we add here.
+            if (birthdate) {
+                const [nameChangeClients, nameChangeLAFs] = await Promise.all([
+                    graph.query(
+                        queryQl(CLIENT_NAME_TYPE, {
+                            where: {
+                                firstName: { _eq: firstUpper },
+                                birthdate: { _eq: birthdate },
+                                status:    { _nin: ['archived', 'merged'] },
+                            },
+                            limit: 5,
+                        })
+                    ).then(r => r.data?.clients ?? []),
+
+                    graph.query(
+                        queryQl(TEMP_NAME_TYPE, {
+                            where: {
+                                firstName: { _eq: firstUpper },
+                                birthdate: { _eq: birthdate },
+                                status:    { _in: ACTIVE_LAF_STATUSES },
+                            },
+                            limit: 5,
+                        })
+                    ).then(r => r.data?.temporaryLoanApplications ?? []),
+                ]);
+
+                if (nameChangeLAFs.length > 0) {
+                    isDuplicateFlagged = true;
+                }
+                if (nameChangeClients.length > 0) {
+                    isDuplicateFlagged    = true;
+                    duplicateCandidateIds = [...new Set([
+                        ...duplicateCandidateIds,
+                        ...nameChangeClients.map(c => c._id),
+                    ])];
+                }
             }
         }
     }
