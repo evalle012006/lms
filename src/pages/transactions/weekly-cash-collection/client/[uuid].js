@@ -1120,11 +1120,13 @@ const CashCollectionDetailsPage = () => {
             //  - the previous loan is already closed (and merged by branch 3)
             // Advance loans (applied while old loan was live) keep their existing branch-1 behavior.
             const canShowPendingLoan = (loan) => {
-                if (loan.status !== 'pending') return true;      // approved loans follow existing branches
-                if (loan.advanceTransaction) return true;        // advance/active-mode applications
-                if (loan.loanCycle === 1) return true;
-                const prev = loan.prevLoans?.[loan.prevLoans.length - 1];
-                return prev?.status === 'closed';
+                if (loan.status !== 'pending') return true;
+                if (loan.advanceTransaction) return true;
+                if (Number(loan.loanCycle) <= 1) return true;
+                const predecessor = (loan.prevLoans || []).find(
+                    l => l && Number(l.loanCycle) === Number(loan.loanCycle) - 1
+                );
+                return predecessor?.status === 'closed';
             };
 
             response.data.tomorrowPending.map(loan => {
