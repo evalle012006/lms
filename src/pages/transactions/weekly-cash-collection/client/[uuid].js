@@ -1315,7 +1315,9 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].csfIn = loan.current[0].csfIn;
                             cashCollection[index].csfInStr = loan.current[0].csfIn > 0 ? formatPricePhp(loan.current[0].csfIn) : '-';
                         }
-                    } else if (currentLoan.status === 'closed' && (currentLoan?.advance && loan.advanceTransaction && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease)))) {
+                    } else if (currentLoan.status === 'closed' && currentLoan?.advance
+                        && (loan.advanceTransaction || currentLoan.loanId === loan._id)
+                        && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease))) {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
