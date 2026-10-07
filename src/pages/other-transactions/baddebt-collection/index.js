@@ -56,13 +56,40 @@ export default function BadDebtCollectionPage() {
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState('add');
     const [showAddDrawer, setShowAddDrawer] = useState(false);
+    const [selectedBadDebt, setSelectedBadDebt] = useState(null);
     const [selectedTab, setSelectedTab] = useTabs(['list', 'collection']);
+
+    /*
+    * Admin Branch Summary
+    *
+    * null = show all branches
+    * object = show existing Bad Debts screen
+    *          for the selected branch
+    */
+    const [selectedBranch, setSelectedBranch] = useState(null);
+    const [branchSearch, setBranchSearch] = useState('');
     
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.badDebtCollection.list);
     const collectionList = useSelector(state => state.badDebtCollection.collectionList);
     const originalList = useSelector(state => state.badDebtCollection.originalList);
     const originalCollectionList = useSelector(state => state.badDebtCollection.originalCollectionList);
+
+    /*
+    * Branch accounts have rep === 3.
+    * Loan Officer accounts have rep === 4.
+    *
+    * Other management/admin accounts receive the
+    * unrestricted/role-scoped list from the backend.
+    *
+    * For now, the Branch Summary is shown only to
+    * accounts that are not Branch or LO accounts.
+    */
+    const showBranchSummary =
+        currentUser &&
+        currentUser.role?.rep !== 3 &&
+        currentUser.role?.rep !== 4 &&
+        !selectedBranch;
 
     // Stats calculation
     const stats = {
@@ -142,7 +169,33 @@ export default function BadDebtCollectionPage() {
             Header: "Remarks",
             accessor: 'remarks',
             Cell: ({ value }) => (
-                <div className="text-gray-600 text-sm">{value || '-'}</div>
+                <div className="text-gray-600 text-sm">
+                    {value || '-'}
+                </div>
+            )
+        },
+        {
+            Header: "Action",
+            accessor: "action",
+            Cell: ({ row }) => (
+                <button
+                    type="button"
+                    onClick={() => handleShowAddDrawer(row.original)}
+                    className="
+                        px-3
+                        py-1.5
+                        text-xs
+                        font-semibold
+                        text-white
+                        bg-blue-600
+                        hover:bg-blue-700
+                        rounded-md
+                        transition-colors
+                        whitespace-nowrap
+                    "
+                >
+                    Add Collection
+                </button>
             )
         }
     ];
@@ -205,8 +258,9 @@ export default function BadDebtCollectionPage() {
         }
     ];
 
-    const handleShowAddDrawer = () => {
+    const handleShowAddDrawer = (badDebt = null) => {
         setMode('add');
+        setSelectedBadDebt(badDebt);
         setShowAddDrawer(true);
     };
 
@@ -217,28 +271,75 @@ export default function BadDebtCollectionPage() {
     };
 
     const handleFilterChange = (filters, tabName) => {
-        const sourceList = tabName === 'list' ? originalList : originalCollectionList;
-        const setListAction = tabName === 'list' ? setBadDebtList : setBadDebtCollectionList;
 
-        let filteredData = sourceList;
+        const originalSource =
+            tabName === 'list'
+                ? originalList
+                : originalCollectionList;
 
-        if (filters.branchId) {
-            filteredData = filteredData.filter(item => item.branchId === filters.branchId);
+        const setListAction =
+            tabName === 'list'
+                ? setBadDebtList
+                : setBadDebtCollectionList;
+
+        /*
+        * If Admin entered a branch from the summary,
+        * the selected branch becomes the maximum scope.
+        */
+        let filteredData = selectedBranch
+            ? originalSource.filter(
+                item =>
+                    item.branchId ===
+                    selectedBranch.branchId
+            )
+            : originalSource;
+
+        /*
+        * Do not allow the Branch dropdown to move Admin
+        * outside the selected branch.
+        */
+        if (
+            filters.branchId &&
+            !selectedBranch
+        ) {
+            filteredData =
+                filteredData.filter(
+                    item =>
+                        item.branchId ===
+                        filters.branchId
+                );
         }
 
         if (filters.loId) {
-            filteredData = filteredData.filter(item => item.loId === filters.loId);
+            filteredData =
+                filteredData.filter(
+                    item =>
+                        item.loId ===
+                        filters.loId
+                );
         }
 
         if (filters.groupId) {
-            filteredData = filteredData.filter(item => item.groupId === filters.groupId);
+            filteredData =
+                filteredData.filter(
+                    item =>
+                        item.groupId ===
+                        filters.groupId
+                );
         }
 
         if (filters.clientId) {
-            filteredData = filteredData.filter(item => item.clientId === filters.clientId);
+            filteredData =
+                filteredData.filter(
+                    item =>
+                        item.clientId ===
+                        filters.clientId
+                );
         }
 
-        dispatch(setListAction(filteredData));
+        dispatch(
+            setListAction(filteredData)
+        );
     };
 
     // Fetch data on component mount
@@ -281,17 +382,58 @@ export default function BadDebtCollectionPage() {
                         
                         return {
                             ...item,
+
+                            clientId: client?._id || item.clientId || '',
+                            branchId: branch?._id || item.branchId || '',
+                            loId: lo?._id || item.loId || '',
+                            groupId: group?._id || item.groupId || '',
+
                             fullName: client?.name || 'N/A',
-                            branchName: branch?.name || 'N/A',
-                            loName: lo ? `${lo.firstName} ${lo.lastName}` : 'N/A',
+
+                            branchCode:
+                                branch?.code || '',
+
+                            branchName:
+                                branch?.name || 'N/A',
+
+                            loName: lo
+                                ? `${lo.firstName} ${lo.lastName}`
+                                : 'N/A',
                             groupName: group?.name || 'N/A',
-                            amountReleaseStr: formatPricePhp(item.amountRelease || 0),
-                            loanBalanceStr: formatPricePhp(pastDue),
-                            mcbuReturnAmtStr: formatPricePhp(mcbuReturnAmt),
-                            netBalance: netBalance,
-                            netBalanceStr: formatPricePhp(netBalance),
-                            fullPaymentDate: item.fullPaymentDate || '',
-                            remarks: item.remarks || ''
+
+                            /*
+                            * Keep raw values because the Admin Branch
+                            * Summary needs to total these fields.
+                            */
+                            amountRelease:
+                                parseFloat(item.amountRelease) || 0,
+
+                            loanBalance:
+                                parseFloat(pastDue) || 0,
+
+                            mcbuReturnAmt:
+                                parseFloat(mcbuReturnAmt) || 0,
+
+                            netBalance:
+                                parseFloat(netBalance) || 0,
+
+                            amountReleaseStr:
+                                formatPricePhp(item.amountRelease || 0),
+
+                            loanBalanceStr:
+                                formatPricePhp(pastDue),
+
+                            mcbuReturnAmtStr:
+                                formatPricePhp(mcbuReturnAmt),
+
+                            netBalanceStr:
+                                formatPricePhp(netBalance),
+
+                            fullPaymentDate:
+                                item.fullPaymentDate || '',
+
+                            remarks:
+                                item.remarks || ''
                         };
                     });
                     
@@ -304,17 +446,107 @@ export default function BadDebtCollectionPage() {
                 const collectionResponse = await fetchWrapper.get(collectionUrl);
                 
                 if (isMounted && collectionResponse.success) {
-                    const formattedCollections = collectionResponse.data.map(item => ({
-                        ...item,
-                        fullName: item.client?.length > 0 ? item.client[0].name : 'N/A',
-                        branchName: item.branch?.length > 0 ? item.branch[0].name : 'N/A',
-                        loName: item.lo?.length > 0 ? `${item.lo[0].firstName} ${item.lo[0].lastName}` : 'N/A',
-                        groupName: item.group?.length > 0 ? item.group[0].name : 'N/A',
-                        paymentCollectionStr: formatPricePhp(item.paymentCollection || 0),
-                        loanReleaseStr: formatPricePhp(item.loanRelease || 0),
-                        maturedPastDueStr: formatPricePhp(item.maturedPastDue || 0),
-                        mcbuStr: formatPricePhp(item.mcbu || 0)
-                    }));
+                    const formattedCollections =
+                        collectionResponse.data.map(item => {
+
+                            const client =
+                                item.client?.length > 0
+                                    ? item.client[0]
+                                    : null;
+
+                            const branch =
+                                item.branch?.length > 0
+                                    ? item.branch[0]
+                                    : null;
+
+                            const lo =
+                                item.lo?.length > 0
+                                    ? item.lo[0]
+                                    : null;
+
+                            const group =
+                                item.group?.length > 0
+                                    ? item.group[0]
+                                    : null;
+
+                            return {
+                                ...item,
+
+                                clientId:
+                                    client?._id ||
+                                    item.clientId ||
+                                    '',
+
+                                branchId:
+                                    branch?._id ||
+                                    item.branchId ||
+                                    '',
+
+                                loId:
+                                    lo?._id ||
+                                    item.loId ||
+                                    '',
+
+                                groupId:
+                                    group?._id ||
+                                    item.groupId ||
+                                    '',
+
+                                fullName:
+                                    client?.name || 'N/A',
+
+                                branchName:
+                                    branch?.name || 'N/A',
+
+                                loName:
+                                    lo
+                                        ? `${lo.firstName} ${lo.lastName}`
+                                        : 'N/A',
+
+                                groupName:
+                                    group?.name || 'N/A',
+
+                                paymentCollection:
+                                    parseFloat(
+                                        item.paymentCollection
+                                    ) || 0,
+
+                                loanRelease:
+                                    parseFloat(
+                                        item.loanRelease
+                                    ) || 0,
+
+                                maturedPastDue:
+                                    parseFloat(
+                                        item.maturedPastDue
+                                    ) || 0,
+
+                                mcbu:
+                                    parseFloat(
+                                        item.mcbu
+                                    ) || 0,
+
+                                paymentCollectionStr:
+                                    formatPricePhp(
+                                        item.paymentCollection || 0
+                                    ),
+
+                                loanReleaseStr:
+                                    formatPricePhp(
+                                        item.loanRelease || 0
+                                    ),
+
+                                maturedPastDueStr:
+                                    formatPricePhp(
+                                        item.maturedPastDue || 0
+                                    ),
+
+                                mcbuStr:
+                                    formatPricePhp(
+                                        item.mcbu || 0
+                                    )
+                            };
+                        });
                     
                     dispatch(setBadDebtCollectionList(formattedCollections));
                     dispatch(setOriginalBadDebtCollectionList(formattedCollections));
@@ -340,55 +572,660 @@ export default function BadDebtCollectionPage() {
         };
     }, [currentUser]);
 
+    /*
+    * =========================================================
+    * ADMIN BRANCH SUMMARY
+    * =========================================================
+    *
+    * We use originalList because `list` can be changed by
+    * BadDebtFilters.
+    */
+    const branchSummaryMap = {};
+
+    /*
+    * Build branch totals from current outstanding
+    * Bad Debt records.
+    */
+    originalList
+        .filter(item => !item.totalData)
+        .forEach(item => {
+
+            const branchId =
+                item.branchId || 'unknown';
+
+            const branchName =
+                item.branchName || 'N/A';
+
+            const branchCode =
+                item.branchCode || '';
+
+            if (!branchSummaryMap[branchId]) {
+                branchSummaryMap[branchId] = {
+                    branchId,
+                    branchCode,
+                    branchName,
+
+                    totalClient: 0,
+                    totalMcbu: 0,
+                    totalLoanRelease: 0,
+                    netBalance: 0,
+                    collection: 0,
+                    currentBalance: 0
+                };
+            }
+
+            const branch =
+                branchSummaryMap[branchId];
+
+            branch.totalClient += 1;
+
+            branch.totalMcbu +=
+                parseFloat(
+                    item.mcbuReturnAmt
+                ) || 0;
+
+            branch.totalLoanRelease +=
+                parseFloat(
+                    item.amountRelease
+                ) || 0;
+
+            branch.netBalance +=
+                parseFloat(
+                    item.netBalance
+                ) || 0;
+        });
+
+
+    /*
+    * Add recorded collections per branch.
+    *
+    * Collection History contains the payments that
+    * have already been recorded.
+    */
+    originalCollectionList
+        .filter(item => !item.totalData)
+        .forEach(item => {
+
+            const branchId =
+                item.branchId || 'unknown';
+
+            const branchName =
+                item.branchName || 'N/A';
+
+            /*
+            * A branch could theoretically have collection
+            * history but no remaining active Bad Debt,
+            * because fully paid loans disappear from the
+            * active Bad Debt list.
+            */
+            if (!branchSummaryMap[branchId]) {
+                branchSummaryMap[branchId] = {
+                    branchId,
+                    branchName,
+
+                    totalClient: 0,
+                    totalMcbu: 0,
+                    totalLoanRelease: 0,
+                    netBalance: 0,
+                    collection: 0,
+                    currentBalance: 0
+                };
+            }
+
+            branchSummaryMap[branchId].collection +=
+                parseFloat(
+                    item.paymentCollection
+                ) || 0;
+        });
+
+
+    const branchSummary = Object.values(
+        branchSummaryMap
+    )
+        .map(branch => ({
+            ...branch,
+
+            /*
+            * IMPORTANT:
+            *
+            * The existing Bad Debt loan balance is already
+            * reduced by save.js whenever a collection is
+            * recorded.
+            *
+            * Therefore Current Balance uses the current
+            * outstanding Net Balance directly.
+            *
+            * We DO NOT subtract Collection again.
+            */
+            currentBalance:
+                branch.netBalance
+        }))
+        .sort((a, b) =>
+            String(a.branchName).localeCompare(
+                String(b.branchName)
+            )
+        );
+    
+    const filteredBranchSummary = branchSummary.filter((branch) => {
+        const search = branchSearch
+            .trim()
+            .toLowerCase();
+
+        if (!search) return true;
+
+        const branchCode =
+            String(branch.branchCode || '')
+                .toLowerCase();
+
+        const branchName =
+            String(branch.branchName || '')
+                .toLowerCase();
+
+        const fullBranch =
+            `${branchCode} - ${branchName}`;
+
+        return (
+            branchCode.includes(search) ||
+            branchName.includes(search) ||
+            fullBranch.includes(search)
+        );
+    });
+    
+    /*
+    * =========================================================
+    * OVERALL ADMIN BAD DEBT TOTALS
+    * =========================================================
+    */
+    const branchSummaryTotals = branchSummary.reduce(
+        (totals, branch) => {
+            totals.totalClient +=
+                Number(branch.totalClient || 0);
+
+            totals.totalMcbu +=
+                Number(branch.totalMcbu || 0);
+
+            totals.totalNetBalance +=
+                Number(branch.netBalance || 0);
+
+            totals.totalCurrentBalance +=
+                Number(branch.currentBalance || 0);
+
+            return totals;
+        },
+        {
+            totalClient: 0,
+            totalMcbu: 0,
+            totalNetBalance: 0,
+            totalCurrentBalance: 0
+        }
+    );
+
+
+    const branchSummaryColumns = [
+        {
+            Header: "Branch",
+            accessor: "branchName",
+            Cell: ({ row }) => {
+                const branch = row.original;
+
+                const displayName =
+                    branch.branchCode
+                        ? `${branch.branchCode} - ${branch.branchName}`
+                        : branch.branchName;
+
+                return (
+                    <div className="font-semibold text-gray-900">
+                        {displayName}
+                    </div>
+                );
+            }
+        },
+        {
+            Header: "Total Client",
+            accessor: "totalClient",
+            Cell: ({ value }) => (
+                <div className="text-center font-semibold">
+                    {value}
+                </div>
+            )
+        },
+        {
+            Header: "Total MCBU",
+            accessor: "totalMcbu",
+            Cell: ({ value }) => (
+                <div className="text-right">
+                    {formatPricePhp(value || 0)}
+                </div>
+            )
+        },
+        {
+            Header: "Total Loan Release",
+            accessor: "totalLoanRelease",
+            Cell: ({ value }) => (
+                <div className="text-right">
+                    {formatPricePhp(value || 0)}
+                </div>
+            )
+        },
+        {
+            Header: "Net Balance",
+            accessor: "netBalance",
+            Cell: ({ value }) => (
+                <div className="text-right font-semibold text-red-600">
+                    {formatPricePhp(value || 0)}
+                </div>
+            )
+        },
+        {
+            Header: "Collection",
+            accessor: "collection",
+            Cell: ({ value }) => (
+                <div className="text-right font-semibold text-green-600">
+                    {formatPricePhp(value || 0)}
+                </div>
+            )
+        },
+        {
+            Header: "Current Balance",
+            accessor: "currentBalance",
+            Cell: ({ value }) => (
+                <div className="text-right font-bold text-orange-600">
+                    {formatPricePhp(value || 0)}
+                </div>
+            )
+        },
+        {
+            Header: "Action",
+            accessor: "action",
+            Cell: ({ row }) => (
+                <button
+                    type="button"
+                    onClick={() => {
+                        const branch =
+                            row.original;
+
+                        setSelectedBranch(branch);
+
+                        setSelectedTab("list");
+
+                        dispatch(
+                            setBadDebtList(
+                                originalList.filter(
+                                    item =>
+                                        item.branchId ===
+                                        branch.branchId
+                                )
+                            )
+                        );
+
+                        dispatch(
+                            setBadDebtCollectionList(
+                                originalCollectionList.filter(
+                                    item =>
+                                        item.branchId ===
+                                        branch.branchId
+                                )
+                            )
+                        );
+                    }}
+                    className="
+                        px-4
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-white
+                        bg-blue-600
+                        hover:bg-blue-700
+                        rounded-md
+                        transition-colors
+                    "
+                >
+                    View
+                </button>
+            )
+        }
+    ];
+
+
+    /*
+    * Data shown inside the existing screen after
+    * Admin clicks a branch.
+    */
+    const detailList = selectedBranch
+        ? originalList.filter(
+            item =>
+                item.branchId ===
+                selectedBranch.branchId
+        )
+        : list;
+
+
+    const detailCollectionList = selectedBranch
+        ? originalCollectionList.filter(
+            item =>
+                item.branchId ===
+                selectedBranch.branchId
+        )
+        : collectionList;
+
+
+    /*
+    * Detail-screen statistics.
+    */
+    const detailStats = {
+        totalBadDebts:
+            detailList.filter(
+                item => !item.totalData
+            ).length,
+
+        totalCollections:
+            detailCollectionList.filter(
+                item => !item.totalData
+            ).length,
+
+        totalOutstanding:
+            detailList.reduce(
+                (sum, item) => {
+                    if (!item.totalData) {
+                        return (
+                            sum +
+                            (
+                                parseFloat(
+                                    item.netBalance
+                                ) || 0
+                            )
+                        );
+                    }
+
+                    return sum;
+                },
+                0
+            ),
+
+        totalCollected:
+            detailCollectionList.reduce(
+                (sum, item) => {
+                    if (!item.totalData) {
+                        return (
+                            sum +
+                            (
+                                parseFloat(
+                                    item.paymentCollection
+                                ) || 0
+                            )
+                        );
+                    }
+
+                    return sum;
+                },
+                0
+            )
+    };
+
     return (
-        <Layout 
-            title="Bad Debt Collection Management"
+        <Layout
+            title={
+                selectedBranch
+                    ? `Bad Debts - ${selectedBranch.branchName}`
+                    : "Bad Debt Collection Management"
+            }
             showBackButton={false}
-            actionButtons={[
-                <ButtonSolid 
-                    key="add-button" 
-                    label="Record Collection" 
-                    type="button" 
-                    className="shadow-sm" 
-                    onClick={handleShowAddDrawer} 
-                    icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
-                />
-            ]}
+            actionButtons={[]}
         >
             <div className="pb-6">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <Spinner />
                     </div>
+                ) : showBranchSummary ? (
+
+                    /*
+                    * =============================================
+                    * ADMIN - BRANCH SUMMARY
+                    * =============================================
+                    */
+                    <div>
+
+                        {/* ============================================
+                            ADMIN BAD DEBT TOTAL CARDS
+                        ============================================ */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+                            <StatsCard
+                                icon={UsersIcon}
+                                label="Total Client"
+                                value={branchSummaryTotals.totalClient}
+                                iconBgColor="bg-red-100"
+                                iconColor="text-red-600"
+                            />
+
+                            <StatsCard
+                                icon={BanknotesIcon}
+                                label="Total MCBU"
+                                value={formatPricePhp(
+                                    branchSummaryTotals.totalMcbu
+                                )}
+                                iconBgColor="bg-green-100"
+                                iconColor="text-green-600"
+                            />
+
+                            <StatsCard
+                                icon={CurrencyDollarIcon}
+                                label="Total Net Balance"
+                                value={formatPricePhp(
+                                    branchSummaryTotals.totalNetBalance
+                                )}
+                                iconBgColor="bg-orange-100"
+                                iconColor="text-orange-600"
+                            />
+
+                            <StatsCard
+                                icon={CurrencyDollarIcon}
+                                label="Total Current Balance"
+                                value={formatPricePhp(
+                                    branchSummaryTotals.totalCurrentBalance
+                                )}
+                                iconBgColor="bg-blue-100"
+                                iconColor="text-blue-600"
+                            />
+
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                                        Search Branch
+                                    </label>
+
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={branchSearch}
+                                            onChange={(e) =>
+                                                setBranchSearch(e.target.value)
+                                            }
+                                            placeholder="Search branch code or branch name..."
+                                            className="
+                                                w-full
+                                                border
+                                                border-gray-300
+                                                rounded-lg
+                                                px-4
+                                                py-2.5
+                                                pr-10
+                                                text-sm
+                                                text-gray-900
+                                                bg-white
+                                                focus:outline-none
+                                                focus:ring-2
+                                                focus:ring-blue-500
+                                                focus:border-blue-500
+                                            "
+                                        />
+
+                                        {branchSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBranchSearch('')
+                                                }
+                                                className="
+                                                    absolute
+                                                    right-3
+                                                    top-1/2
+                                                    -translate-y-1/2
+                                                    text-gray-400
+                                                    hover:text-gray-700
+                                                    text-lg
+                                                "
+                                                title="Clear search"
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/* ============================================
+                            BRANCH SUMMARY TABLE
+                        ============================================ */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+
+                            <div className="px-6 py-5 border-b border-gray-200">
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    Bad Debts by Branch
+                                </h2>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Select a branch to view its bad debt clients
+                                    and collection history.
+                                </p>
+                            </div>
+
+                            <div className="p-6">
+
+                                {branchSummary.length === 0 ? (
+                                    <EmptyState
+                                        message="No bad debts found."
+                                    />
+                                ) : (
+                                    <TableComponent
+                                        columns={branchSummaryColumns}
+                                        data={filteredBranchSummary}
+                                        hasActionButtons={false}
+                                        showFilters={false}
+                                        pageSize={20}
+                                    />
+                                )}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 ) : (
                     <React.Fragment>
+                        {selectedBranch && (
+                            <div className="mb-5 flex items-center justify-between">
+
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedBranch(null);
+                                            setSelectedTab("list");
+
+                                            /*
+                                            * Restore the complete Admin lists.
+                                            */
+                                            dispatch(
+                                                setBadDebtList(
+                                                    originalList
+                                                )
+                                            );
+
+                                            dispatch(
+                                                setBadDebtCollectionList(
+                                                    originalCollectionList
+                                                )
+                                            );
+                                        }}
+                                        className="
+                                            inline-flex
+                                            items-center
+                                            px-4
+                                            py-2
+                                            bg-gray-100
+                                            hover:bg-gray-200
+                                            text-gray-700
+                                            text-sm
+                                            font-semibold
+                                            rounded-md
+                                            transition-colors
+                                        "
+                                    >
+                                        ← Back to Branches
+                                    </button>
+                                </div>
+
+                                <div className="text-right">
+                                    <div className="text-sm text-gray-500">
+                                        Selected Branch
+                                    </div>
+
+                                    <div className="text-lg font-bold text-gray-900">
+                                        {selectedBranch.branchName}
+                                    </div>
+                                </div>
+
+                            </div>
+                        )}
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             <StatsCard
                                 icon={UsersIcon}
                                 label="Total Bad Debts"
-                                value={stats.totalBadDebts}
+                                value={selectedBranch
+                                    ? detailStats.totalBadDebts
+                                    : stats.totalBadDebts
+                                }
                                 iconBgColor="bg-red-100"
                                 iconColor="text-red-600"
                             />
                             <StatsCard
                                 icon={BanknotesIcon}
                                 label="Total Collections"
-                                value={stats.totalCollections}
+                                value={selectedBranch
+                                    ? detailStats.totalCollections
+                                    : stats.totalCollections
+                                }
                                 iconBgColor="bg-green-100"
                                 iconColor="text-green-600"
                             />
                             <StatsCard
                                 icon={CurrencyDollarIcon}
                                 label="Outstanding Amount"
-                                value={formatPricePhp(stats.totalOutstanding)}
+                                value={formatPricePhp(
+                                    selectedBranch
+                                        ? detailStats.totalOutstanding
+                                        : stats.totalOutstanding
+                                )}
                                 iconBgColor="bg-orange-100"
                                 iconColor="text-orange-600"
                             />
                             <StatsCard
                                 icon={CurrencyDollarIcon}
                                 label="Total Collected"
-                                value={formatPricePhp(stats.totalCollected)}
+                                value={formatPricePhp(
+                                    selectedBranch
+                                        ? detailStats.totalCollected
+                                        : stats.totalCollected
+                                )}
                                 iconBgColor="bg-blue-100"
                                 iconColor="text-blue-600"
                             />
@@ -406,7 +1243,10 @@ export default function BadDebtCollectionPage() {
                                         <UsersIcon className="h-5 w-5" />
                                         <span>List of Bad Debts</span>
                                         <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-                                            {stats.totalBadDebts}
+                                            {selectedBranch
+                                                ? detailStats.totalBadDebts
+                                                : stats.totalBadDebts
+                                            }
                                         </span>
                                     </div>
                                 </TabSelector>
@@ -419,7 +1259,10 @@ export default function BadDebtCollectionPage() {
                                         <BanknotesIcon className="h-5 w-5" />
                                         <span>Collection History</span>
                                         <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
-                                            {stats.totalCollections}
+                                            {selectedBranch
+                                                ? detailStats.totalCollections
+                                                : stats.totalCollections
+                                            }
                                         </span>
                                     </div>
                                 </TabSelector>
@@ -438,10 +1281,10 @@ export default function BadDebtCollectionPage() {
                                             message="No bad debts found. This is good news!"
                                         />
                                     ) : (
-                                        <TableComponent 
-                                            columns={listColumns} 
-                                            data={list} 
-                                            hasActionButtons={false} 
+                                        <TableComponent
+                                            columns={listColumns}
+                                            data={list}
+                                            hasActionButtons={false}
                                             showFilters={false}
                                             pageSize={20}
                                         />
@@ -457,13 +1300,6 @@ export default function BadDebtCollectionPage() {
                                     {collectionList.length === 0 ? (
                                         <EmptyState 
                                             message="No collections recorded yet."
-                                            actionButton={
-                                                <ButtonSolid
-                                                    label="Record First Collection"
-                                                    onClick={handleShowAddDrawer}
-                                                    icon={[<PlusIcon className="w-4 h-4" />, 'left']}
-                                                />
-                                            }
                                         />
                                     ) : (
                                         <TableComponent 
@@ -484,7 +1320,7 @@ export default function BadDebtCollectionPage() {
             {/* Add/Update Drawer */}
             <AddUpdateBadDebtCollection
                 mode={mode}
-                data={{}}
+                data={selectedBadDebt || {}}
                 showSidebar={showAddDrawer}
                 setShowSidebar={setShowAddDrawer}
                 onClose={handleCloseAddDrawer}
