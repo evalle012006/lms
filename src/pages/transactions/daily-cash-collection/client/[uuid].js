@@ -999,7 +999,7 @@ const CashCollectionDetailsPage = () => {
                             collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
                         }
         
-                        if (cc.loanBalance <= 0 && cc.status !== 'completed') {
+                        if (cc.loanBalance <= 0 && cc.status !== 'completed' && !cc.qrPrevData) {
                             if (cc.fullPaymentDate === currentDate) {
                                 collection.paymentCollection = cc.history ? cc.history.collection : 0;
                                 collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
@@ -3220,19 +3220,19 @@ const CashCollectionDetailsPage = () => {
                                         }
                                     }
 
-                                    // Add mcbuCol to total MCBU (only if mcbuCol > 0)
-                                    if (temp.mcbuCol > 0) {
-                                        const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
-                                        temp.mcbu = currentMcbu + temp.mcbuCol;
-                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    }
-
                                     // Update prevData to include the new mcbuCol
                                     if (temp.prevData) {
                                         temp.prevData = {
                                             ...temp.prevData,
                                             mcbuCol: temp.mcbuCol
                                         };
+                                    }
+
+                                    // Add mcbuCol to total MCBU (only if mcbuCol > 0)
+                                    if (temp.mcbuCol > 0) {
+                                        const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
+                                        temp.mcbu = currentMcbu + temp.mcbuCol;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
                                     }
                                 }
 

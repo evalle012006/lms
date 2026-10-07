@@ -1010,7 +1010,7 @@ const CashCollectionDetailsPage = () => {
                             collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
                         }
         
-                        if (cc.loanBalance <= 0  && cc.status !== 'completed') {
+                        if (cc.loanBalance <= 0  && cc.status !== 'completed' && !cc.qrPrevData) {
                             if (cc.fullPaymentDate === currentDate) {
                                 collection.paymentCollection = cc.history ? cc.history?.collection : 0;
                                 collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
