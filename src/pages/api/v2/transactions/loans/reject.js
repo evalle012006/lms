@@ -21,6 +21,7 @@ import {
 } from "@/lib/graph.functions";
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
+import { guardReject } from "@/lib/api/loanWriteGuard";
 
 const groupType = createGraphType("groups", GROUP_FIELDS);
 const loanType = createGraphType("loans", LOAN_FIELDS);
@@ -40,7 +41,11 @@ async function updateLoan(req, res) {
 
     let response;
 
-    let loan = req.body;
+    const guard = await guardReject(req);
+    if (guard.deny) {
+        return res.send(guard.response);
+    }
+    let loan = guard.loan;
     const loanId = loan._id;
     const currentDate = loan.currentDate;
 
