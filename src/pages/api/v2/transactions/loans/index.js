@@ -21,11 +21,15 @@ const fields = `
 `;
 
 const loanType = createGraphType("loans", fields)();
-const loanMinType = createGraphType("loans", "groupId slotNo status")();
+// CHANGED: also fetch loanFor + dateOfRelease so we can detect a release change
+const loanMinType = createGraphType("loans", "groupId slotNo status loanFor dateOfRelease")();
 const cashCollectionsType = createGraphType("cashCollections", "_id")();
 const cashCollectionsTypeFull = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
 const groupType = createGraphType("groups", GROUP_FIELDS)();
 const graph = new GraphProvider();
+
+// NEW: normalise any date-ish value to YYYY-MM-DD (null-safe)
+const normDate = (d) => (d ? moment(d).format('YYYY-MM-DD') : null);
 
 export default apiHandler({
   get: getLoan,
@@ -68,6 +72,18 @@ async function updateLoan(req, res) {
 
   const groupChanged = existingLoan
     && (oldGroupId !== newGroupId || oldSlotNo !== newSlotNo);
+
+  // NEW: did this edit change the release date / release day?
+  // Compare against the effective new values so a partial payload is not
+  // mistaken for a change.
+  const newDateOfRelease = normDate(loan.dateOfRelease ?? existingLoan?.dateOfRelease);
+  // trigger on the DATE only; a stale loanFor from the client must not count as a change
+  const releaseChanged = !!existingLoan
+    && newDateOfRelease !== normDate(existingLoan.dateOfRelease);
+  // only trust the client's loanFor when the date actually changed
+  const newLoanFor = releaseChanged
+    ? (loan.loanFor ?? existingLoan?.loanFor)
+    : existingLoan?.loanFor;
 
   // ── Pre-fetch and validate group capacity BEFORE mutating the loan ────────
   // If the destination group is full, we bail out here — no loan or group
@@ -125,12 +141,26 @@ async function updateLoan(req, res) {
   const groupStatus = groupCashCollections.length === 0 || groupCashCollections.some(cc => cc.groupStatus === 'pending') ? 'pending' : 'closed';
   const hasExistingCC = groupCashCollections.some(cc => cc.clientId === loan.clientId && cc.status === 'completed');
 
+  // NEW: only run release-day processing when the loan releases today.
+  // A future release is processed by the LOR save on its release date.
+  const releasesToday = newDateOfRelease === currentDate;
+
+  // CHANGED: group-closed check moved BEFORE any mutation, with a return.
+  // Previously the loan was already saved when this error was sent, and the
+  // handler then fell through to a second res.send.
+  if (hasExistingCC && releasesToday && groupStatus === 'closed') {
+    res.send({ error: true, message: 'This client has a completed loan but the group transaction was already closed!' });
+    return;
+  }
+
   // the mixed type from mongo during migration
   let updatedLoan = { ...loan };
   updatedLoan.coMaker = loan.coMaker?.toString() || null;
   updatedLoan.coMakerId = loan.coMakerId || null;
   updatedLoan.modifiedBy = user_id;
   updatedLoan.modifiedDateTime = new Date().toISOString();
+  // never let a stale client payload flip loanFor when the release date didn't change
+  if (newLoanFor) updatedLoan.loanFor = newLoanFor;
 
   const loanResp = await graph.mutation(
     updateQl(loanType, {
@@ -139,13 +169,32 @@ async function updateLoan(req, res) {
     })
   );
 
+  // CHANGED: keep the open cash-collection rows in sync with the loan.
+  // Always refresh the release amount; when the release day/date changed,
+  // carry loanFor + dateOfRelease through as well.
+  const ccSet = { currentReleaseAmount: loan.amountRelease };
+
+  if (releaseChanged) {
+    ccSet.loanFor = newLoanFor;
+    ccSet.dateOfRelease = newDateOfRelease;
+
+    // audit trail — editHistory is empty and this API doesn't write loans_history
+    logger.info({
+      page: `Loan release changed: ${loan.clientId}`,
+      user_id,
+      loanId,
+      from: { loanFor: existingLoan.loanFor, dateOfRelease: existingLoan.dateOfRelease },
+      to:   { loanFor: newLoanFor, dateOfRelease: newDateOfRelease },
+    });
+  }
+
   await graph.mutation(
     updateQl(cashCollectionsType, {
       where: {
         loanId: { _eq: loanId },
         status: { _in: ["tomorrow", "pending"] },
       },
-      set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { currentReleaseAmount: loan.amountRelease }),
+      set: filterGraphFields(CASH_COLLECTIONS_FIELDS, ccSet),
     })
   );
 
@@ -202,12 +251,9 @@ async function updateLoan(req, res) {
     }
   }
 
-  if (hasExistingCC) {
-    if (groupStatus == 'closed') {
-      res.send({ error: true, message: 'This client has a completed loan but the group transaction was already closed!' })
-    } else {
-      await savePendingLoans(user_id, [updatedLoan], loanId);
-    }
+  // CHANGED: gated on releasesToday; the group-closed case already returned above
+  if (hasExistingCC && releasesToday) {
+    await savePendingLoans(user_id, [updatedLoan], loanId);
   }
 
   res.send({ success: true, loan: loanResp });

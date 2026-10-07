@@ -19,7 +19,30 @@ async function save(req, res) {
   const loan = await findMaturedLoan(formData.loanId);
 
   if (loan) {
-    const maturedPD = formData.maturedPastDue - formData.paymentCollection;
+    const currentMaturedPastDue =
+        Number(loan.maturedPastDue || 0);
+
+    const paymentCollection =
+        Number(formData.paymentCollection || 0);
+
+    if (paymentCollection <= 0) {
+        return res.send({
+            error: true,
+            message: "Collection amount must be greater than zero.",
+        });
+    }
+
+    if (paymentCollection > currentMaturedPastDue) {
+        return res.send({
+            error: true,
+            message:
+                `Collection cannot exceed the matured past due balance of ${currentMaturedPastDue}.`,
+        });
+    }
+
+    const maturedPD =
+        currentMaturedPastDue - paymentCollection;
+
     loan.maturedPastDue = maturedPD;
     
     if (loan.noBadDebtPayment) {

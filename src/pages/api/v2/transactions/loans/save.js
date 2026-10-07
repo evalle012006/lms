@@ -17,6 +17,18 @@ const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_
 const groupType =createGraphType("groups", GROUP_FIELDS)
 const branchType = createGraphType("branches", BRANCH_FIELDS)
 
+// CHANGED: previous-loan status each linked mode expects (mirrors the old AddUpdateLoanDrawer):
+//   advance → client's previous loan is still 'active'
+//   active  → client's previous loan is 'completed'
+//   reloan  → LOR "Reloan" action: previous loan is 'completed'
+const EXPECTED_PREV_STATUS = { advance: 'active', active: 'completed', reloan: 'completed' };
+// CHANGED: a status mismatch is log-only until it has been watched in production.
+// Set ENFORCE_PREV_LOAN_STATUS=true to reject instead.
+const ENFORCE_PREV_LOAN_STATUS = process.env.ENFORCE_PREV_LOAN_STATUS === 'true';
+// CHANGED: cycle > 1 saved with no mode/oldLoanId (an unlinked reloan) is log-only too.
+// Set ENFORCE_PREV_LOAN_LINK=true to reject instead.
+const ENFORCE_PREV_LOAN_LINK = process.env.ENFORCE_PREV_LOAN_LINK === 'true';
+
 export default apiHandler({
     post: save
 });
@@ -26,6 +38,7 @@ async function save(req, res) {
     const mutationList = [];
     const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
     let response = {};
+    let processingFailed = false;
 
     const loanData = req.body;
     const group = loanData.group;
@@ -52,6 +65,60 @@ async function save(req, res) {
     }
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
+
+    // ── CHANGED: previous-loan link validation ────────────────────────────────
+    // A linked mode must carry an oldLoanId that belongs to this client.
+    // A loan with cycle > 1 and no link is an unlinked reloan (prevLoanId null, old loan never
+    // handled by update-pending-loans on release day) — the bug this block exists to catch.
+    const expectedPrevStatus = EXPECTED_PREV_STATUS[mode];
+    if (expectedPrevStatus) {
+        if (!oldLoanId) {
+            res.send({
+                error: true,
+                message: 'Previous loan link is missing. Please reload the page and try again.'
+            });
+            return;
+        }
+
+        const prevLoan = (await graph.query(queryQl(loansType(), {
+            where: { _id: { _eq: oldLoanId } }
+        }))).data?.loans?.[0];
+
+        if (!prevLoan || prevLoan.clientId !== loanData.clientId) {
+            logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Previous loan not found for this client', mode, oldLoanId});
+            res.send({
+                error: true,
+                message: 'Previous loan not found for this client. Please refresh the page and try again.'
+            });
+            return;
+        }
+
+        if (prevLoan.status !== expectedPrevStatus) {
+            logger.warn({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Previous loan status mismatch', mode, oldLoanId, expected: expectedPrevStatus, found: prevLoan.status});
+            if (ENFORCE_PREV_LOAN_STATUS) {
+                res.send({
+                    error: true,
+                    message: `Previous loan is ${prevLoan.status}, expected ${expectedPrevStatus} for this loan type. Please refresh the page and try again.`
+                });
+                return;
+            }
+        }
+
+        if (Number(prevLoan.slotNo) !== Number(loanData.slotNo) || prevLoan.groupId !== loanData.groupId) {
+            logger.warn({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Slot/group differs from previous loan', mode, oldLoanId,
+                prev: { slotNo: prevLoan.slotNo, groupId: prevLoan.groupId },
+                next: { slotNo: loanData.slotNo, groupId: loanData.groupId } });
+        }
+    } else if (Number(loanData.loanCycle) > 1) {
+        logger.warn({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Loan cycle > 1 saved without mode/oldLoanId', loanCycle: loanData.loanCycle});
+        if (ENFORCE_PREV_LOAN_LINK) {
+            res.send({
+                error: true,
+                message: 'Previous loan link is missing. Please reload the page and try again.'
+            });
+            return;
+        }
+    }
 
     // ── Idempotency guard: block duplicate advance/reloan submissions ──────────
     // Prevents a double-click, retry, or accidental resubmit from creating a
@@ -241,13 +308,28 @@ async function save(req, res) {
                 await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, mcbuTargetConfig, addToMutationList);
             }
 
-            await graph.mutation(
+            const mutationResult = await graph.mutation(
                 ... mutationList
             );
+            if (mutationResult?.errors?.length) {
+                logger.error({ user_id, page: `Saving Loan: ${loanData.clientId}`, errors: mutationResult.errors });
+                res.send({ error: true, message: 'Failed to save the loan. Please try again.' });
+                return;
+            }
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
-            if (hasExistingCC) {
-                await savePendingLoans(user_id, [finalData], loanId);
+            const releasesToday = moment(finalData.dateOfRelease).format('YYYY-MM-DD')
+                === moment(currentDate).format('YYYY-MM-DD');
+            logger.info({ user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Creation-time processing check',
+                hasExistingCC, releasesToday, groupStatus, mode, loanId });
+            if (hasExistingCC && releasesToday) {
+                try {
+                    await savePendingLoans(user_id, [finalData], loanId);
+                } catch (err) {
+                    processingFailed = true;
+                    logger.error({ user_id, loanId, page: `Saving Loan: ${loanData.clientId}`,
+                        message: 'savePendingLoans failed after the loan was saved', error: err.message });
+                }
             }
 
             // ── Co-maker duplicate check — post-insert ────────────────────────
@@ -292,6 +374,7 @@ async function save(req, res) {
         }
     }
 
+    if (processingFailed && response.success) response.processingFailed = true;
     res.send(response);
 }
 
@@ -335,8 +418,12 @@ async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMut
         delete loan.groupCashCollections;
 
         if (mode === 'advance' || mode === 'active') {
-            loan.advance = true;
-            loan.advanceDate = currentDate;
+            // only flag the old loan; don't rewrite the whole row from a stale read
+            addToMutationList(alias => updateQl(loansType(alias), {
+                set: { advance: true, advanceDate: currentDate },
+                where: { _id: { _eq: loanId } },
+            }));
+            return;
         } else {
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';

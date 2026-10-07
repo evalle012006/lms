@@ -73,7 +73,7 @@ export const useExcelExport = () => {
 
     // Calculate amount release (20% markup as per business logic)
     const loanPrincipal = getLoanPrincipal();
-    const amountRelease = loanPrincipal * 1.20;
+    const amountRelease = Number(safeGet(loan, 'amountRelease')) || loanPrincipal * 1.20;
 
     // Extract dates with proper formatting
     const getDate = (dateField) => {

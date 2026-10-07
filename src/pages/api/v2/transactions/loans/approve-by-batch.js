@@ -28,6 +28,7 @@ import { sendLoanReleasedSMS } from '@/lib/sms-service';
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 import { notifyMobileAppEligibility } from "@/services/mobile-eligibility-notifier";
+import { guardApproval } from "@/lib/api/loanWriteGuard";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
@@ -97,7 +98,14 @@ async function processData(req, res) {
   const errorMsg = [];
 
   let { loanData, origin, skippedClientIds = [] } = req.body;
-  const skippedDetails = []; // { loanId, clientId, clientName } — returned to frontend
+
+  const guard = await guardApproval(req, { loanData, origin, skippedClientIds });
+  if (guard.deny) {
+    return res.send(guard.response);
+  }
+  ({ loanData, skippedClientIds } = guard);
+
+  const skippedDetails = [];
 
   if (origin === "ldf") {
     const promise = await new Promise(async (resolve) => {

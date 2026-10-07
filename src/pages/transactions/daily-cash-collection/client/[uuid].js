@@ -925,7 +925,8 @@ const CashCollectionDetailsPage = () => {
                         delete cc._id;
 
                         if (cc.current.length > 0) {
-                            const current = cc.current.find(cur => !cur.transferId);
+                            const current = cc.current.find(cur =>
+                                !cur.transferId && !(cur.status === 'pending' && cur.loanId !== collection.loanId));
                             if (current) {
                                 // setEditMode(false);
                                 collection.targetCollection = current.targetCollection;
@@ -1032,6 +1033,10 @@ const CashCollectionDetailsPage = () => {
                                 csfCollection: collection.csfCollection
                             };
                         }
+
+                        if (cc.qrPrevData) {
+                            collection.prevData = { ...cc.qrPrevData };
+                        }
                     } else {
                         return;
                     }
@@ -1124,6 +1129,15 @@ const CashCollectionDetailsPage = () => {
 
                     if ((currentLoan.fullPaymentDate === currentDate && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) { // fullpayment with pending/tomorrow
                         const mcbuWithdrawal = loan.mcbuWithdrawal > 0 ? loan.mcbuWithdrawal : currentLoan.mcbuWithdrawal;
+
+                        // The payoff figures live on today's cash-collection row. loan.history is a
+                        // snapshot that some write paths (QR merge / pre-save) never refresh, so
+                        // prefer the row and fall back to history only when no row exists.
+                        const payoffRow = (currentLoan.current || []).find(cur => cur && cur.transfer !== true) || null;
+                        const payoffExcess = payoffRow ? safeNumber(payoffRow.excess) : safeNumber(currentLoan.history?.excess);
+                        const payoffCollection = payoffRow ? safeNumber(payoffRow.paymentCollection) : safeNumber(currentLoan.history?.collection);
+                        const hasPayoffSource = !!(payoffRow || currentLoan.history);
+
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
@@ -1163,10 +1177,10 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : 0,
                             noOfPayments: '-',
                             noOfPaymentStr: (currentLoan.noOfPayments !== '-' && currentLoan.status !== 'totals') ? currentLoan.noOfPayments + ' / ' + currentLoan?.loanTerms : '-',
-                            excess: currentLoan.history ? currentLoan.history.excess : 0,
-                            excessStr: currentLoan.history ? formatPricePhp(currentLoan.history.excess) : '-',
-                            paymentCollection: currentLoan.history ? currentLoan.history.collection : 0,
-                            paymentCollectionStr: currentLoan.history ? formatPricePhp(currentLoan.history.collection) : '-',
+                            excess: payoffExcess,
+                            excessStr: hasPayoffSource ? formatPricePhp(payoffExcess) : '-',
+                            paymentCollection: payoffCollection,
+                            paymentCollectionStr: hasPayoffSource ? formatPricePhp(payoffCollection) : '-',
                             remarks: currentLoan.history ? currentLoan.history.remarks : '-',
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
@@ -3244,7 +3258,13 @@ const CashCollectionDetailsPage = () => {
                                 if (temp.history != null) {
                                     temp.history = {
                                         ...temp.history,
-                                        remarks: remarks
+                                        remarks: remarks,
+                                        // QR-sourced rows arrive with a prior-day history snapshot; keep the
+                                        // payoff figures in sync with the row so nothing reads yesterday's numbers
+                                        ...(temp.qrSourced ? {
+                                            collection: safeNumber(temp.paymentCollection),
+                                            excess: safeNumber(temp.excess)
+                                        } : {})
                                     }
                                 } else {
                                     temp = setHistory(temp);

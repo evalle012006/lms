@@ -111,6 +111,8 @@ const AddLoanPage = ({
     const [minDate, setMinDate]                   = useState(null);
     const [maxDate, setMaxDate]                   = useState(null);
     const [selectedLoanId, setSelectedLoanId]     = useState(null);
+    const [selectedLoanStatus, setSelectedLoanStatus] = useState(null);
+    const [loanHistoryLoaded, setLoanHistoryLoaded] = useState(false);
     // Initialize from URL params when coming from CI flow
     // This avoids async loan-history fetch race conditions entirely
     const [slotReadOnly, setSlotReadOnly] = useState(
@@ -583,13 +585,17 @@ const AddLoanPage = ({
             fetchWrapper.get(
                 getApiBaseUrl() + `clients/loan-history?clientId=${initialClientId}`
             ).then(res => {
-                if (!res.success) return;
+                if (!res.success) {
+                    toast.error('Could not load the previous loan. Please reload the page before saving.');
+                    return; // loanHistoryLoaded stays false, so saving stays blocked
+                }
                 const loans = res.loans || [];
                 // Block if a pending loan already exists for this client
                 const hasPendingLoan = loans.some(l => l.status === 'pending');
                 if (hasPendingLoan) {
                     setSelectedClientObj(null);
                     setClientId(null);
+                    resetClient(formikRef.current);
                     toast.error(
                         'This client already has a pending loan application. ' +
                         'Please check the Loan Applications list.',
@@ -599,11 +605,18 @@ const AddLoanPage = ({
                 }
                 // Set selectedLoanId from the most recent non-pending loan
                 // so handleSaveUpdate can send oldLoanId for reloan mode
-                const latestLoan = loans.find(l => l.status !== 'pending');
+                const latestLoan = loans
+                    .filter(l => l.status === 'active' || l.status === 'completed')
+                    .sort((a, b) => (Number(b.loanCycle) || 0) - (Number(a.loanCycle) || 0))[0];
                 if (latestLoan?._id) {
                     setSelectedLoanId(latestLoan._id);
+                    setSelectedLoanStatus(latestLoan.status);
                 }
-            }).catch(() => {});
+                setLoanHistoryLoaded(true);
+            }).catch((er) => {
+                console.error('Error fetching loan history:', er);
+                toast.error('Could not load the previous loan. Please reload the page before saving.');
+            });
         }
 
         setHasPreFilled(true);
@@ -794,6 +807,8 @@ const AddLoanPage = ({
     const resetClient = (form) => {
         setClientId(null);
         setSelectedClientObj(null);
+        setSelectedLoanId(null);
+        setSelectedLoanStatus(null);
         setSlotNo(null);
         setSlotReadOnly(false);
         setCoMakerReadOnly(false);
@@ -1134,7 +1149,12 @@ const AddLoanPage = ({
         values.currentDate   = currentDate;
         values.clientId      = clientId;
         values.dateOfRelease = values.dateOfRelease || initialDateRelease;
-        values.loanFor       = values.dateOfRelease === currentDate ? 'today' : 'tomorrow';
+        // Edit: keep the stored loanFor unless the release date was actually changed.
+        const releaseDateChanged = isEdit && loanData &&
+            moment(values.dateOfRelease).format('YYYY-MM-DD') !== moment(loanData.dateOfRelease).format('YYYY-MM-DD');
+        values.loanFor = (isEdit && loanData?.loanFor && !releaseDateChanged)
+            ? loanData.loanFor
+            : (values.dateOfRelease === currentDate ? 'today' : 'tomorrow');
         values.groupLeader   = isEdit && loanData
             ? !!(loanData.groupLeader || groupLeader)   // never silently demote on edit
             : groupLeader;
@@ -1188,15 +1208,32 @@ const AddLoanPage = ({
         values.branchId   = branch?._id   || currentUser.designatedBranchId || null;
         values.branchName = branch?.name  || currentUser.designatedBranch   || '';
 
-        if (clientType === 'advance' || clientType === 'active') {
-            values.mode               = clientType;
-            values.oldLoanId          = selectedLoanId;
-            values.advanceTransaction = true;
-        } else if (clientType === 'pending' && selectedLoanId) {
-            // Pending Member (completed loan) re-applying via CI flow
-            // Treat as reloan so save.js closes old loan and updates MCBU correctly
-            values.mode      = 'reloan';
+        // 'pending' in the LAF vocabulary = completed-loan member; the page's own 'pending' = prospect.
+        // So don't enumerate LAF types: anything that isn't a brand-new or returning client is existing.
+        const isExistingClientCI = fromCI && !!initialClientType
+            && initialClientType !== 'prospect' && initialClientType !== 'balik';
+
+        if (!isEdit && isExistingClientCI) {
+            if (!loanHistoryLoaded) {
+                setLoading(false);
+                toast.error('Previous loan is still loading. Please wait a moment and try again.');
+                return;
+            }
+            if (selectedLoanId) {
+                // Same meaning as the old drawer: advance = previous loan still active, active = completed.
+                values.mode               = selectedLoanStatus === 'active' ? 'advance' : 'active';
+                values.oldLoanId          = selectedLoanId;
+                values.advanceTransaction = true;
+            } else if (Number(values.loanCycle) > 1) {
+                setLoading(false);
+                toast.error('No previous active or completed loan found for this client, so a cycle ' +
+                    values.loanCycle + ' loan cannot be created. Please contact support.');
+                return;
+            }
+        } else if (!isEdit && (clientType === 'advance' || clientType === 'active')) {
+            values.mode = clientType;
             values.oldLoanId = selectedLoanId;
+            values.advanceTransaction = true;
         }
 
         values.slotNo      = slotNo;
@@ -1558,6 +1595,12 @@ const AddLoanPage = ({
                         toast.warning(
                             `Loan saved but co-maker is already assigned to: ${dupeNames}. Admin review may be required.`,
                             { autoClose: 8000 }
+                        );
+                    }
+                    if (!isEdit && response.processingFailed) {
+                        toast.warning(
+                            'Loan saved, but release-day processing did not complete. Please contact support before approving.',
+                            { autoClose: 10000 }
                         );
                     }
                     toast.success(isEdit ? 'Loan successfully updated.' : 'Loan application successfully added.');

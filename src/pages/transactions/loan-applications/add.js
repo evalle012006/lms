@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
 import Layout from '@/components/Layout';
 import AddLoanPage from '@/components/transactions/loan-application/AddLoanPage';
+import { loanApplicationHomePath } from '@/lib/loan-application-v2-gate';
 
 const AddLoanApplicationPage = () => {
     const router      = useRouter();
@@ -22,8 +23,8 @@ const AddLoanApplicationPage = () => {
         <Layout header={false} noPad={true}>
             <AddLoanPage
                 key={router.asPath}
-                onBack={() => router.push('/transactions/loan-applications')}
-                onSuccess={() => router.push('/transactions/loan-applications')}
+                onBack={() => router.push(loanApplicationHomePath(currentUser))}
+                onSuccess={() => router.push(loanApplicationHomePath(currentUser))}
                 // NEW: "Save & Add More" — pushes to the bare add route with no
                 // query params. Combined with key={router.asPath} above, this
                 // forces a full remount of AddLoanPage, which is what actually
