@@ -3218,6 +3218,13 @@ const CashCollectionDetailsPage = () => {
                                             temp.mcbuCol = 0;
                                             temp.mcbuColStr = '-';
                                         }
+
+                                        // Add mcbuCol to total MCBU (only if mcbuCol > 0)
+                                        if (temp.mcbuCol > 0) {
+                                            const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
+                                            temp.mcbu = currentMcbu + temp.mcbuCol;
+                                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        }
                                     }
 
                                     // Update prevData to include the new mcbuCol
@@ -3226,13 +3233,6 @@ const CashCollectionDetailsPage = () => {
                                             ...temp.prevData,
                                             mcbuCol: temp.mcbuCol
                                         };
-                                    }
-
-                                    // Add mcbuCol to total MCBU (only if mcbuCol > 0)
-                                    if (temp.mcbuCol > 0) {
-                                        const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
-                                        temp.mcbu = currentMcbu + temp.mcbuCol;
-                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
                                     }
                                 }
 
