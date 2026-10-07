@@ -76,12 +76,14 @@ async function updateLoan(req, res) {
   // NEW: did this edit change the release date / release day?
   // Compare against the effective new values so a partial payload is not
   // mistaken for a change.
-  const newLoanFor = loan.loanFor ?? existingLoan?.loanFor;
   const newDateOfRelease = normDate(loan.dateOfRelease ?? existingLoan?.dateOfRelease);
-  const releaseChanged = !!existingLoan && (
-    newLoanFor !== existingLoan.loanFor
-    || newDateOfRelease !== normDate(existingLoan.dateOfRelease)
-  );
+  // trigger on the DATE only; a stale loanFor from the client must not count as a change
+  const releaseChanged = !!existingLoan
+    && newDateOfRelease !== normDate(existingLoan.dateOfRelease);
+  // only trust the client's loanFor when the date actually changed
+  const newLoanFor = releaseChanged
+    ? (loan.loanFor ?? existingLoan?.loanFor)
+    : existingLoan?.loanFor;
 
   // ── Pre-fetch and validate group capacity BEFORE mutating the loan ────────
   // If the destination group is full, we bail out here — no loan or group
@@ -141,8 +143,7 @@ async function updateLoan(req, res) {
 
   // NEW: only run release-day processing when the loan releases today.
   // A future release is processed by the LOR save on its release date.
-  const releasesToday = newLoanFor === 'today'
-    || (newLoanFor === 'tomorrow' && newDateOfRelease === currentDate);
+  const releasesToday = newDateOfRelease === currentDate;
 
   // CHANGED: group-closed check moved BEFORE any mutation, with a return.
   // Previously the loan was already saved when this error was sent, and the
@@ -158,6 +159,8 @@ async function updateLoan(req, res) {
   updatedLoan.coMakerId = loan.coMakerId || null;
   updatedLoan.modifiedBy = user_id;
   updatedLoan.modifiedDateTime = new Date().toISOString();
+  // never let a stale client payload flip loanFor when the release date didn't change
+  if (newLoanFor) updatedLoan.loanFor = newLoanFor;
 
   const loanResp = await graph.mutation(
     updateQl(loanType, {
