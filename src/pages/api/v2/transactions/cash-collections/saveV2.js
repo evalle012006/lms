@@ -336,6 +336,9 @@ async function executeSave(req, user_id, transactionId, user) {
 
                 let collection = JSON.parse(JSON.stringify(cc));
                 delete collection.reverted;
+                // cashCollections.mispayment is a boolean; loans.mispayment is a counter.
+                // Never let a counter (or '-') from the client reach the boolean column or the counter increment.
+                collection.mispayment = collection.mispayment === true;
 
                 // get loan snapshot 
                 let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);

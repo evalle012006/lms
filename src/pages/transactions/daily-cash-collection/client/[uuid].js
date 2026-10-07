@@ -837,7 +837,7 @@ const CashCollectionDetailsPage = () => {
                             slotNo: cc.slotNo,
                             fullName: cc.client.lastName + ', ' + cc.client.firstName,
                             loanCycle: cc.loanCycle,
-                            mispayment: cc.mispayment ? cc.mispayment : false,
+                            mispayment: false,
                             mispaymentStr: mispaymentStr,
                             noMispayment: noMispayment,
                             noMispaymentStr: numMispayment,
