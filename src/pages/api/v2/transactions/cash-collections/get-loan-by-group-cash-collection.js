@@ -103,6 +103,24 @@ async function getLoanWithCashCollection(req, res) {
                 );
 
                 if (qrEntry.status === 'pending' && isJustPlaceholder && hasNoAmountsYet) {
+                    // True pre-day state, captured BEFORE the overlay below mutates `row`.
+                    // The page must use this as prevData, otherwise its handlers re-apply the QR payment.
+                    row.qrPrevData = {
+                        amountRelease: row.amountRelease,
+                        paymentCollection: 0,
+                        excess: 0,
+                        loanBalance: row.loanBalance,
+                        activeLoan: row.activeLoan,
+                        noOfPayments: row.noOfPayments,
+                        total: 0,
+                        pastDue: row.pastDue || 0,
+                        mcbu: row.mcbu ?? 0,
+                        advanceDays: row.advanceDays || 0,
+                        mcbuCol: 0,
+                        csf: row.csf || 0,
+                        csfCollection: 0,
+                    };
+
                     const mcbuCol = qrEntry.payload.mcbuCol || 0;
                     const csfCollection = qrEntry.payload.csfCollection || 0;
                     const paymentCollection = qrEntry.payload.paymentCollection || 0;

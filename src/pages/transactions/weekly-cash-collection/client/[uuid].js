@@ -1044,6 +1044,10 @@ const CashCollectionDetailsPage = () => {
                                 csfCollection: collection.csfCollection
                             };
                         }
+
+                        if (cc.qrPrevData) {
+                            collection.prevData = { ...cc.qrPrevData };
+                        }
                     } else {
                         return;
                     }
@@ -1146,6 +1150,14 @@ const CashCollectionDetailsPage = () => {
                 if (currentLoan && currentLoan.status !== 'pending' && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                     const index = cashCollection.indexOf(currentLoan);
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
+                        // The payoff figures live on today's cash-collection row. loan.history is a
+                        // snapshot that some write paths (QR merge / pre-save) never refresh, so
+                        // prefer the row and fall back to history only when no row exists.
+                        const payoffRow = (currentLoan.current || []).find(cur => cur && cur.transfer !== true) || null;
+                        const payoffExcess = payoffRow ? safeNumber(payoffRow.excess) : safeNumber(currentLoan.history?.excess);
+                        const payoffCollection = payoffRow ? safeNumber(payoffRow.paymentCollection) : safeNumber(currentLoan.history?.collection);
+                        const hasPayoffSource = !!(payoffRow || currentLoan.history);
+
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
@@ -1183,10 +1195,10 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            excess: currentLoan.history?.excess ? currentLoan.history.excess : 0,
-                            excessStr: currentLoan.history?.excess ? formatPricePhp(currentLoan.history.excess) : '-',
-                            paymentCollection: currentLoan.history?.collection ? currentLoan.history.collection : 0,
-                            paymentCollectionStr: currentLoan.history?.collection ? formatPricePhp(currentLoan.history.collection) : '-',
+                            excess: payoffExcess,
+                            excessStr: payoffExcess > 0 ? formatPricePhp(payoffExcess) : '-',
+                            paymentCollection: payoffCollection,
+                            paymentCollectionStr: payoffCollection > 0 ? formatPricePhp(payoffCollection) : '-',
                             remarks: currentLoan.history?.remarks,
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
@@ -3294,7 +3306,13 @@ const CashCollectionDetailsPage = () => {
                                 if (temp.history != null) {
                                     temp.history = {
                                         ...temp.history,
-                                        remarks: remarks
+                                        remarks: remarks,
+                                        // QR-sourced rows arrive with a prior-day history snapshot; keep the
+                                        // payoff figures in sync with the row so nothing reads yesterday's numbers
+                                        ...(temp.qrSourced ? {
+                                            collection: safeNumber(temp.paymentCollection),
+                                            excess: safeNumber(temp.excess)
+                                        } : {})
                                     }
                                 } else {
                                     temp = setHistory(temp);
