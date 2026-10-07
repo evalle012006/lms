@@ -26,18 +26,70 @@ async function list(req, res) {
   } else if (branchId) {
     filter.branchId = { _eq: branchId };
   } else if (currentUserId) {
-    const user = await findUserById(currentUserId);
+
+    const user =
+      await findUserById(currentUserId);
+
     if (user) {
-      if (user.areaId && user.role.shortCode === "area_admin") {
-        filter.branch = { areaId: { _eq: user.areaId } };
-      } else if (user.regionId && user.role.shortCode === "regional_manager") {
-        filter.branch = { regionId: { _eq: user.regionId } };
-      } else if (user.divisionId && user.role.shortCode === "deputy_director") {
-        filter.branch = { divisionId: { _eq: user.divisionId } };
+      const roleShortCode =
+        user.role?.shortCode;
+
+      if (
+        user.areaId &&
+        roleShortCode === "area_admin"
+      ) {
+        filter.branch = {
+          areaId: {
+            _eq: user.areaId
+          }
+        };
+      } else if (
+        user.regionId &&
+        roleShortCode ===
+          "regional_manager"
+      ) {
+        filter.branch = {
+          regionId: {
+            _eq: user.regionId
+          }
+        };
+      } else if (
+        user.divisionId &&
+        roleShortCode ===
+          "deputy_director"
+      ) {
+        filter.branch = {
+          divisionId: {
+            _eq: user.divisionId
+          }
+        };
+      } else {
+        /*
+        * Admin / unrestricted role:
+        * allow all branches.
+        */
+        filter.branch = {
+          _id: {
+            _is_null: false
+          }
+        };
       }
+    } else {
+      filter.branch = {
+        _id: {
+          _is_null: false
+        }
+      };
     }
+
   } else {
-    filter.branch = { _id: { _is_null: false } };
+
+    filter.branch = {
+      _id: {
+        _is_null: false
+      }
+    };
+
   }
 
   // CRITICAL FIX: Date filtering - default to current date unless showAll is true

@@ -1,7 +1,7 @@
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, queryQl } from "@/lib/graph/graph.util";
-import { LOAN_FIELDS } from "@/lib/graph.fields";
+import { LOAN_FIELDS, BRANCH_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { toDto } from "@/pages/api/v2/other-transactions/badDebtCollection/common";
 
@@ -12,7 +12,9 @@ const loanType = createGraphType(
   ${LOAN_FIELDS}
   client { _id, name:fullName }
   loanOfficer { _id, firstName, lastName }
-  branch { _id, name }
+  branch {
+    ${BRANCH_FIELDS}
+  }
   group { _id, name }
   `
 )();
@@ -22,33 +24,112 @@ export default apiHandler({
 });
 
 async function list(req, res) {
-  let filter;
-  const { loId, branchId, currentUserId } = req.query;
+  let filter = {};
+
+  const {
+    loId,
+    branchId,
+    currentUserId
+  } = req.query;
+
+  /*
+   * Priority:
+   * 1. Loan Officer
+   * 2. Branch
+   * 3. Area / Region / Division
+   * 4. Admin / unrestricted users = all branches
+   */
 
   if (loId) {
-    filter = { loId: { _eq: loId } };
-  } else {
-    if (branchId) {
-      filter = { branchId: { _eq: branchId } };
+    filter = {
+      loId: { _eq: loId }
+    };
+  } else if (branchId) {
+    filter = {
+      branchId: { _eq: branchId }
+    };
+  } else if (currentUserId) {
+    const user =
+      await findUserById(currentUserId);
+
+    if (user) {
+      const roleShortCode =
+        user.role?.shortCode;
+
+      if (
+        user.areaId &&
+        roleShortCode === "area_admin"
+      ) {
+        filter = {
+          branch: {
+            areaId: {
+              _eq: user.areaId
+            }
+          }
+        };
+      } else if (
+        user.regionId &&
+        roleShortCode ===
+          "regional_manager"
+      ) {
+        filter = {
+          branch: {
+            regionId: {
+              _eq: user.regionId
+            }
+          }
+        };
+      } else if (
+        user.divisionId &&
+        roleShortCode ===
+          "deputy_director"
+      ) {
+        filter = {
+          branch: {
+            divisionId: {
+              _eq: user.divisionId
+            }
+          }
+        };
+      } else {
+        /*
+         * Admin / unrestricted role:
+         * show Bad Debts from all branches.
+         */
+        filter = {
+          branch: {
+            _id: {
+              _is_null: false
+            }
+          }
+        };
+      }
     } else {
-      if (currentUserId) {
-        const user = await findUserById(currentUserId);
-        if (user) {
-          if (user.areaId && user.role.shortCode === "area_admin") {
-            filter = { branch: { areaId: { _eq: user.areaId } } };
-          } else if (user.regionId && user.role.shortCode === "regional_manager") {
-            filter = { branch: { regionId: { _eq: user.regionId } } };
-          } else if (user.divisionId && user.role.shortCode === "deputy_director") {
-            filter = { branch: { divisionId: { _eq: user.divisionId } } };
+      /*
+       * User wasn't resolved.
+       * Keep query valid instead of
+       * leaving filter undefined.
+       */
+      filter = {
+        branch: {
+          _id: {
+            _is_null: false
           }
         }
-      } else {
-        filter = { branch: { _id: { _is_null: false } } };
-      }
+      };
     }
+  } else {
+    filter = {
+      branch: {
+        _id: {
+          _is_null: false
+        }
+      }
+    };
   }
 
   let graphRes;
+
   if (filter) {
     graphRes = await graph.query(
       queryQl(loanType, {

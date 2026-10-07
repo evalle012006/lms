@@ -118,12 +118,24 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
     const formikRef = useRef();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
-    const [selectedClientId, setSelectedClientId] = useState();
-    const [selectedLoanId, setSelectedLoanId] = useState();
-    const [selectedGroupId, setSelectedGroupId] = useState();
-    const [selectedLoId, setSelectedLoId] = useState();
-    const [selectedLoType, setSelectedLoType] = useState();
-    const [selectedClientData, setSelectedClientData] = useState(null);
+    const [selectedClientId, setSelectedClientId] = useState(data.clientId || null);
+    const [selectedLoanId, setSelectedLoanId] = useState(data._id || data.loanId || null);
+    const [selectedGroupId, setSelectedGroupId] = useState(data.groupId || null);
+    const [selectedLoId, setSelectedLoId] = useState(data.loId || null);
+    const [selectedLoType, setSelectedLoType] = useState(null);
+
+    const [selectedClientData, setSelectedClientData] = useState(
+        data.clientId
+            ? {
+                _id: data.clientId,
+                fullName: data.fullName,
+                loanId: data._id || data.loanId,
+                loanRelease: data.amountRelease || 0,
+                maturedPastDue: data.loanBalance || 0,
+                mcbu: data.mcbuReturnAmt || 0
+            }
+            : null
+    );
 
     // ORIGINAL initialValues - unchanged
     const initialValues = {
@@ -134,6 +146,24 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
         paymentCollection: data.paymentCollection
     };
 
+    useEffect(() => {
+        if (!showSidebar || !data?.clientId) return;
+
+        setSelectedClientId(data.clientId);
+        setSelectedLoanId(data._id || data.loanId || null);
+        setSelectedGroupId(data.groupId || null);
+        setSelectedLoId(data.loId || null);
+
+        setSelectedClientData({
+            _id: data.clientId,
+            fullName: data.fullName,
+            loanId: data._id || data.loanId,
+            loanRelease: data.amountRelease || 0,
+            maturedPastDue: data.loanBalance || 0,
+            mcbu: data.mcbuReturnAmt || 0
+        });
+    }, [showSidebar, data]);
+
     // ORIGINAL validationSchema - unchanged (empty)
     const validationSchema = yup.object().shape({
         // Original had no validation here - keeping it the same
@@ -141,29 +171,60 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
 
     // ORIGINAL handleSaveUpdate - EXACT same logic, no changes
     const handleSaveUpdate = (values, action) => {
-        setLoading(true);
         if (selectedGroupId == null) {
-            toast.error('Please selct a group');
-        } else if (selectedClientId == null) {
+            toast.error('Please select a group');
+            return;
+        }
+
+        if (selectedClientId == null) {
             toast.error('Please select a client');
-        } else if (currentUser.role.rep == 3 && selectedLoId == null) {
+            return;
+        }
+
+        if (
+            currentUser.role.rep == 3 &&
+            selectedLoId == null
+        ) {
             toast.error('Please select a loan officer.');
-        } else if (values.paymentCollection == null || values.paymentCollection <= 0) {
+            return;
+        }
+
+        if (
+            values.paymentCollection == null ||
+            Number(values.paymentCollection) <= 0
+        ) {
             toast.error('Please enter amount collected.');
-        } else {
+            return;
+        }
+
+        setLoading(true);
+
+        {
             if (mode === 'add') {
                 values.groupId = selectedGroupId;
                 values.loId = selectedLoId;
                 values.clientId = selectedClientId;
                 values.loanId = selectedLoanId;
-                values.branchId = currentUser.designatedBranchId;  // FIXED: Use designatedBranchId (always available)
+                values.branchId =
+                    data.branchId ||
+                    currentUser.designatedBranchId;
                 values.insertedBy = currentUser._id;
                 values.insertedDate = new Date();
-                const clientData = clientList.find(client => client._id == selectedClientId);
+                const clientData =
+                    selectedClientData ||
+                    clientList.find(
+                        client => client._id == selectedClientId
+                    );
+
                 if (clientData) {
-                    values.loanRelease = clientData.loanRelease;
-                    values.maturedPastDue = clientData.maturedPastDue;
-                    values.mcbu = clientData.mcbu;
+                    values.loanRelease =
+                        clientData.loanRelease || 0;
+
+                    values.maturedPastDue =
+                        clientData.maturedPastDue || 0;
+
+                    values.mcbu =
+                        clientData.mcbu || 0;
                 }
 
                 const apiUrl = getApiBaseUrl() + 'other-transactions/badDebtCollection/save/';  // ORIGINAL endpoint
@@ -387,56 +448,108 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                                     {/* UI Enhancement: Section Header */}
                                     <SectionHeader 
                                         icon={UserGroupIcon}
-                                        title="Client Selection" 
-                                        subtitle="Select the loan officer, group, and client"
+                                        title="Bad Debt Client"
+                                        subtitle={
+                                            data?.clientId
+                                                ? "Review the selected client and enter the collection amount"
+                                                : "Select the loan officer, group, and client"
+                                        }
                                     />
 
-                                    {/* ORIGINAL: Loan Officer dropdown (if branch manager) */}
-                                    {currentUser.role.rep == 3 && (
-                                        <div className="mb-6">
-                                            <SelectDropdown
-                                                name="loId"
-                                                field="loId"
-                                                value={selectedLoId}
-                                                label="Loan Officer"
-                                                options={userList}
-                                                onChange={(field, value) => handleLoIdChange(field, value)}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Loan Officer"
-                                                errors={touched.loId && errors.loId ? errors.loId : undefined}
-                                            />
-                                        </div>
-                                    )}
+                                    {/* Selected Bad Debt Client */}
+                                        {data?.clientId ? (
+                                            <div className="mb-6 grid grid-cols-1 gap-4">
 
-                                    {/* ORIGINAL: Group dropdown */}
-                                    <div className="mb-6">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={selectedGroupId}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={(field, value) => handleGroupIdChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div>
+                                                <InfoCard
+                                                    label="Client"
+                                                    value={data.fullName || 'N/A'}
+                                                />
 
-                                    {/* ORIGINAL: Client dropdown */}
-                                    <div className="mb-6">
-                                        <SelectDropdown
-                                            name="clientId"
-                                            field="clientId"
-                                            value={selectedClientId}
-                                            label="Client"
-                                            options={clientList}
-                                            onChange={(field, value) => handleClientIdChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Client"
-                                            errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
-                                        />
-                                    </div>
+                                                <InfoCard
+                                                    label="Group"
+                                                    value={data.groupName || 'N/A'}
+                                                />
+
+                                                <InfoCard
+                                                    label="Loan Officer"
+                                                    value={data.loName || 'N/A'}
+                                                />
+
+                                                <InfoCard
+                                                    label="Branch"
+                                                    value={
+                                                        data.branchCode
+                                                            ? `${data.branchCode} - ${data.branchName}`
+                                                            : data.branchName || 'N/A'
+                                                    }
+                                                />
+
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {currentUser.role.rep == 3 && (
+                                                    <div className="mb-6">
+                                                        <SelectDropdown
+                                                            name="loId"
+                                                            field="loId"
+                                                            value={selectedLoId}
+                                                            label="Loan Officer"
+                                                            options={userList}
+                                                            onChange={(field, value) =>
+                                                                handleLoIdChange(field, value)
+                                                            }
+                                                            onBlur={setFieldTouched}
+                                                            placeholder="Select Loan Officer"
+                                                            errors={
+                                                                touched.loId && errors.loId
+                                                                    ? errors.loId
+                                                                    : undefined
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="mb-6">
+                                                    <SelectDropdown
+                                                        name="groupId"
+                                                        field="groupId"
+                                                        value={selectedGroupId}
+                                                        label="Group"
+                                                        options={groupList}
+                                                        onChange={(field, value) =>
+                                                            handleGroupIdChange(field, value)
+                                                        }
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Group"
+                                                        errors={
+                                                            touched.groupId && errors.groupId
+                                                                ? errors.groupId
+                                                                : undefined
+                                                        }
+                                                    />
+                                                </div>
+
+                                                <div className="mb-6">
+                                                    <SelectDropdown
+                                                        name="clientId"
+                                                        field="clientId"
+                                                        value={selectedClientId}
+                                                        label="Client"
+                                                        options={clientList}
+                                                        onChange={(field, value) =>
+                                                            handleClientIdChange(field, value)
+                                                        }
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Client"
+                                                        errors={
+                                                            touched.clientId && errors.clientId
+                                                                ? errors.clientId
+                                                                : undefined
+                                                        }
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
 
                                     {/* UI Enhancement: Show loan summary when client selected */}
                                     {selectedClientData && (
