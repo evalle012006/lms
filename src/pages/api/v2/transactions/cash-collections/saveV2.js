@@ -722,7 +722,12 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
 
         if (collection.hasOwnProperty('maturedPastDue')) {
             loan.maturedPastDue = collection.maturedPastDue;
-            loan.mispayment = 0;
+            // Only matured-PD remarks clear the counter. The page sends maturedPastDue: 0 on
+            // every remark, so Delinquent / Excused / Past Due must not hit this reset.
+            const maturedRemarks = ['matured-past due', 'matured_past_due_collection', 'offset-matured-pd'];
+            if (maturedRemarks.includes(collection.remarks?.value)) {
+                loan.mispayment = 0;
+            }
         }
 
         loan.history = collection.history;
