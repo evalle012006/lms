@@ -3248,26 +3248,33 @@ const CashCollectionDetailsPage = () => {
                             if (!temp.error) {
                                 temp.remarks = remarks;
                                 temp._dirty = true;
-                                
+
                                 // update the mcbuHistory
                                 temp.mcbuHistory = {
                                     mcbu: temp.mcbu,
                                     mcbuCol: temp.mcbuCol
                                 }
-        
+
                                 if (temp.history != null) {
                                     temp.history = {
                                         ...temp.history,
                                         remarks: remarks,
-                                        // QR-sourced rows arrive with a prior-day history snapshot; keep the
-                                        // payoff figures in sync with the row so nothing reads yesterday's numbers
+                                        // QR rows can arrive with a prior-day history snapshot. Refresh the payoff
+                                        // figures from the row; loanBalance/amountRelease from prevData (pre-payment).
                                         ...(temp.qrSourced ? {
                                             collection: safeNumber(temp.paymentCollection),
-                                            excess: safeNumber(temp.excess)
+                                            excess: safeNumber(temp.excess),
+                                            loanBalance: temp.prevData?.loanBalance ?? temp.history.loanBalance,
+                                            amountRelease: temp.prevData?.amountRelease ?? temp.history.amountRelease
                                         } : {})
                                     }
                                 } else {
-                                    temp = setHistory(temp);
+                                    // setHistory records the CURRENT loanBalance/amountRelease, which for a QR row are
+                                    // already post-payment (the API overlay applied it). Use the pre-day values instead.
+                                    temp = setHistory(temp, temp.qrSourced ? temp.prevData?.loanBalance : undefined);
+                                    if (temp.qrSourced && temp.prevData?.amountRelease != null) {
+                                        temp.history.amountRelease = temp.prevData.amountRelease;
+                                    }
                                 }
                             }
                         }   
