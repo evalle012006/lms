@@ -21,13 +21,8 @@ import DatePicker from "@/lib/ui/DatePicker";
 import moment from 'moment';
 import Spinner from "../Spinner";
 import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/date-utils';
-import ColorDot            from './ColorDot';
-import CollapsiblePanel    from './CollapsiblePanel';
-import CustomSelect        from './CustomSelect';
-import CardItem, { formatNumber } from './CardItem';
-import CompanyActivitiesSlider, { ACTIVITY_SLIDES } from './CompanyActivitiesSlider';
+import CustomSelect from './CustomSelect';
 import DelinquentAlertsModal from './DelinquentAlertsModal';
-import { compressImage } from '@/lib/image-compress';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -74,24 +69,66 @@ const DashboardPage = () => {
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
-    const regions      = useMemo(() => regionList.filter(r => divisionFilter === 'all' || r._id === 'all' || r.divisionId === divisionFilter), [regionList, divisionFilter]);
-    const areas        = useMemo(() => areaList.filter(a => regionFilter === 'all' || a._id === 'all' || a.regionId === regionFilter), [regionFilter, areaList]);
-    const branches     = useMemo(() => branchList.filter(b => areaFilter === 'all' || b._id === 'all' || b.areaId === areaFilter), [areaFilter, branchList]);
-    const loanOfficers = useMemo(() => loanOfficerList.filter(l => branchFilter === 'all' || l._id === 'all' || l.designatedBranchId === branchFilter), [branchFilter, loanOfficerList]);
+    const [performanceView, setPerformanceView] = useState('branches');
+    const [performanceData, setPerformanceData] = useState([]);
+    const [performanceLoading, setPerformanceLoading] = useState(false);
+
+    const performanceViews = [
+        { value: 'branches', label: 'Branches' },
+        { value: 'daily', label: 'Daily' },
+        { value: 'weekly_accelerated', label: 'Weekly Accelerated' },
+        { value: 'consolidated', label: 'Consolidated' },
+        { value: 'area', label: 'Area' },
+        { value: 'region', label: 'Region' },
+        { value: 'division', label: 'Division' },
+    ];
+
+    const regions = useMemo(() => 
+        regionList.filter(
+            r => divisionFilter === 'all' || 
+            r._id === 'all' || 
+            r.divisionId === divisionFilter), 
+            [regionList, divisionFilter]
+        );
+
+    const areas = useMemo(() => 
+        areaList.filter(
+            a => regionFilter === 'all' || 
+            a._id === 'all' || 
+            a.regionId === regionFilter), 
+            [regionFilter, areaList]
+        );
+
+    const branches = useMemo(() => 
+        branchList.filter(
+            b => areaFilter === 'all' || 
+            b._id === 'all' || 
+            b.areaId === areaFilter), 
+            [areaFilter, branchList]
+        );
+
+    const loanOfficers = useMemo(() => 
+        loanOfficerList.filter(
+            l => branchFilter === 'all' || 
+            l._id === 'all' || 
+            l.designatedBranchId === branchFilter), 
+            [branchFilter, loanOfficerList]
+        );
 
     const [isMobile, setIsMobile] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const [dateFilter, setDateFilter] = useState(null);
-    const [activitySlides, setActivitySlides]       = useState([]);
-    const [uploadingActivity, setUploadingActivity] = useState(false);
-    const [deletingActivity,  setDeletingActivity]  = useState(false);
-    const activityFileInputRef = useRef(null);
 
     const [statusData, setStatusData] = useState({
-        closedBranches: 0, totalBranches: 0, activeUsers: 0,
-        cashOnHand: 0, bankBalance: 0, managementExpenses: 0,
-        staleBranchesCount: 0, staleBranches: [],
+        closedBranches: 0,
+        totalBranches: 0,
+        activeUsers: 0,
+        cashOnHand: 0,
+        bankBalance: 0,
+        managementExpenses: 0,
+        staleBranchesCount: 0,
+        staleBranches: [],
     });
 
     // ── DELINQUENT ALERTS STATE ───────────────────────────────────────────────
@@ -138,68 +175,89 @@ const DashboardPage = () => {
     };
     // ─────────────────────────────────────────────────────────────────────────
 
-    const fetchActivityImages = useCallback(async () => {
-        try {
-            const resp = await fetchWrapper.get(getApiBaseUrl() + '/dashboard/activity-images');
-            if (resp.success && resp.images?.length > 0) {
-                setActivitySlides(resp.images.map(img => ({ src: img.url, caption: '', key: img.key })));
-            } else { setActivitySlides([]); }
-        } catch (e) { console.error('fetchActivityImages', e); }
-    }, []);
-
-    const handleActivityUpload = async (e) => {
-        const files = Array.from(e.target.files || []);
-        if (!files.length) return;
-        setUploadingActivity(true);
-        try {
-            for (let i = 0; i < files.length; i++) {
-                const compressed = await compressImage(files[i]);
-                const formData = new FormData();
-                formData.append('file', compressed);
-                formData.append('origin', 'dashboard-activities');
-                formData.append('uuid', `${Date.now()}-${i}`);
-                const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!uploadRes.ok) throw new Error(`Upload failed for file ${i + 1}`);
-            }
-            await fetchActivityImages();
-            toast.success(`${files.length} image${files.length > 1 ? 's' : ''} uploaded successfully.`);
-        } catch (err) {
-            console.error('Activity upload error:', err);
-            toast.error('Upload failed. Please try again.');
-        } finally {
-            setUploadingActivity(false);
-            if (activityFileInputRef.current) activityFileInputRef.current.value = '';
-        }
-    };
-
-    const handleActivityDelete = async (key) => {
-        if (!key) return;
-        setDeletingActivity(true);
-        try {
-            const resp = await fetchWrapper.post(getApiBaseUrl() + '/dashboard/activity-images', { key });
-            if (resp.success) { await fetchActivityImages(); toast.success('Image deleted successfully.');
-            } else { toast.error(resp.message || 'Failed to delete image.'); }
-        } catch (err) { console.error('Activity delete error:', err); toast.error('Failed to delete image. Please try again.');
-        } finally { setDeletingActivity(false); }
-    };
-
     const [clientsCollectionData, setClientsCollectionData] = useState({
-        labels: ['Good Clients', 'Late Clients', 'Mis Payment Clients', 'Past Due Clients'],
-        datasets: [{ data: [0,0,0,0], backgroundColor: ['#BBF7D0','#FEF08A','#FECDD3','#E9D5FF'], borderWidth: 0, cutout: '70%' }]
+        labels: [
+            'Good Clients', 
+            'Late Clients', 
+            'Mis Payment Clients', 
+            'Past Due Clients'
+        ],        
+        datasets: [
+            { data: [0,0,0,0], 
+                backgroundColor: [
+                    '#BBF7D0',
+                    '#FEF08A',
+                    '#FECDD3',
+                    '#E9D5FF'
+                ], 
+                
+                borderWidth: 0, 
+                cutout: '70%' 
+            }
+        ]
     });
 
     const [keyMetricsChartData, setKeyMetricsChartData] = useState({
-        labels: ['MCBU', 'CSF', 'Total Loan Release', 'Total Loan Balance'],
-        datasets: [{ label: 'Current', data: [0,0,0,0], backgroundColor: ['#BFDBFE','#DDD6FE','#FED7AA','#FEF08A'], borderRadius: 8, borderWidth: 0 }]
+        labels: [
+            'MCBU', 
+            'CSF', 
+            'Total Loan Release', 
+            'Total Loan Balance'
+        ],
+        datasets: [
+            { label: 
+                'Current', 
+                    data: [0,0,0,0], 
+                    backgroundColor: [
+                        '#BFDBFE',
+                        '#DDD6FE',
+                        '#FED7AA',
+                        '#FEF08A'
+                    ], 
+                    borderRadius: 8, 
+                    borderWidth: 0 
+            }
+        ]
     });
 
-    useEffect(() => { fetchSummaries(); }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter, currentDate]);
+    useEffect(() => { 
+        fetchSummaries(); 
+    }, [
+        divisionFilter, 
+        regionFilter, 
+        areaFilter, 
+        branchFilter, 
+        loanOfficerFilter, 
+        timeFilter, 
+        timeFilterList, 
+        dateFilter, 
+        selectedFilter, 
+        currentDate
+    ]);
 
     useEffect(() => {
         switch(timeFilter) {
-            case 'weekly':    { const weeks    = getWeeks(selectedYear).map(o => ({ ...o, field: 'week' }));     setTimeFilterList(weeks);    setSelectedFilter(weeks[0]?.value); break; }
-            case 'monthly':   { const months   = getMonths(selectedYear).map(o => ({ ...o, field: 'month' }));  setTimeFilterList(months);   setSelectedFilter(months[0]);        break; }
-            case 'quarterly': { const quarters = getQuarters().map(o => ({ ...o, field: 'quarter' }));          setSelectedFilter(quarters[0]); setTimeFilterList(quarters);      break; }
+            case 'weekly': { 
+                const weeks = getWeeks(selectedYear).map(o => ({ ...o, field: 'week' }));
+                    setTimeFilterList(weeks);
+                    setSelectedFilter(weeks[0]); 
+                break; 
+            }
+
+            case 'monthly': {
+                const months = getMonths(selectedYear).map(o => ({ ...o, field: 'month' }));
+                    setTimeFilterList(months);
+                    setSelectedFilter(months[0]);
+                break;
+            }
+
+            case 'quarterly': {
+                const quarters = getQuarters().map(o => ({ ...o, field: 'quarter' }));
+                    setSelectedFilter(quarters[0]);
+                    setTimeFilterList(quarters);
+                break; 
+            }
+
             default: break;
         }
     }, [timeFilter, selectedYear]);
@@ -282,6 +340,153 @@ const DashboardPage = () => {
         }, 400);
     };
 
+    const fetchPerformanceData = async () => {
+        if (!currentDate || !dateFilter) return;
+
+        try {
+            setPerformanceLoading(true);
+
+            let selectedDate;
+
+            switch (timeFilter) {
+                case 'weekly':
+                    selectedDate = moment(
+                        selectedFilter?.value ?? currentDate
+                    ).format('YYYY-MM-DD');
+                    break;
+
+                case 'monthly':
+                    selectedDate = moment(
+                        selectedYear +
+                        '-' +
+                        (selectedFilter?.value ?? '01') +
+                        '-01'
+                    )
+                        .endOf('month')
+                        .format('YYYY-MM-DD');
+                    break;
+
+                case 'quarterly':
+                    selectedDate = moment(
+                        selectedYear + '-01-01'
+                    )
+                        .quarter(selectedFilter?.value ?? 1)
+                        .format('YYYY-MM-DD');
+                    break;
+
+                case 'yearly':
+                    selectedDate = moment(
+                        selectedYear + '-12-01'
+                    )
+                        .endOf('month')
+                        .format('YYYY-MM-DD');
+                    break;
+
+                default:
+                    selectedDate = moment(dateFilter)
+                        .format('YYYY-MM-DD');
+                    break;
+            }
+
+            const queries = [
+                {
+                    field: 'type',
+                    value: 'performance'
+                },
+                {
+                    field: 'view',
+                    value: performanceView
+                },
+                {
+                    field: 'date_added',
+                    value: selectedDate
+                },
+                {
+                    field: 'currentDate',
+                    value: moment(currentDate).format('YYYY-MM-DD')
+                },
+                {
+                    field: 'filter',
+                    value: timeFilter
+                },
+                {
+                    field: 'divisionId',
+                    value: divisionFilter
+                },
+                {
+                    field: 'regionId',
+                    value: regionFilter
+                },
+                {
+                    field: 'areaId',
+                    value: areaFilter
+                },
+                {
+                    field: 'branchId',
+                    value: branchFilter
+                },
+                {
+                    field: 'loId',
+                    value: loanOfficerFilter
+                },
+                {
+                    field: 'year',
+                    value: selectedYear
+                }
+            ]
+                .filter(
+                    q =>
+                        q.value !== 'all' &&
+                        q.value !== undefined &&
+                        q.value !== null &&
+                        q.value !== ''
+                )
+                .map(
+                    q =>
+                        `${q.field}=${encodeURIComponent(q.value)}`
+                )
+                .join('&');
+
+            const resp = await fetchWrapper.get(
+                getApiBaseUrl() +
+                '/dashboard?' +
+                queries
+            );
+
+            setPerformanceData(
+                Array.isArray(resp?.data)
+                    ? resp.data
+                    : []
+            );
+
+        } catch (error) {
+            console.error(
+                'fetchPerformanceData:',
+                error
+            );
+
+            setPerformanceData([]);
+        } finally {
+            setPerformanceLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPerformanceData();
+    }, [
+        performanceView,
+        divisionFilter,
+        regionFilter,
+        areaFilter,
+        branchFilter,
+        loanOfficerFilter,
+        timeFilter,
+        dateFilter,
+        selectedFilter,
+        selectedYear,
+        currentDate
+    ]);
+
     const fetchBranches     = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/branches').then(r => setBranches([{_id:'all',name:'All',code:''},...r.data])).catch(console.log);
     const fetchRegions      = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/regions').then(r => setRegions([{_id:'all',name:'All'},...r.data])).catch(console.log);
     const fetchAreas        = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/areas').then(r => setAreas([{_id:'all',name:'All'},...r.data])).catch(console.log);
@@ -289,7 +494,14 @@ const DashboardPage = () => {
     const fetchLoanOfficers = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/loan-officers').then(r => setLoanOfficers([{_id:'all',firstName:'All',lastName:''},...r.data])).catch(console.log);
     const handleDateFilter  = (selected) => setDateFilter(selected.target.value);
 
-    useEffect(() => { fetchBranches(); fetchRegions(); fetchAreas(); fetchDivisions(); fetchLoanOfficers(); fetchSummaries(); fetchActivityImages(); }, []);
+    useEffect(() => {
+        fetchBranches();
+        fetchRegions();
+        fetchAreas();
+        fetchDivisions();
+        fetchLoanOfficers();
+        fetchSummaries();
+    }, []);
 
     const timeFilterOptions     = [{value:'daily',label:'Daily'},{value:'weekly',label:'Weekly'},{value:'monthly',label:'Monthly'},{value:'quarterly',label:'Quarterly'},{value:'yearly',label:'Yearly'}];
     const branchOptions         = branches.map(b => ({value:b._id, label:`${b.code} ${b.name}`.trim()}));
@@ -304,17 +516,131 @@ const DashboardPage = () => {
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>{ const v=ctx.parsed,t=ctx.dataset.data.reduce((a,b)=>a+b,0); return `${ctx.label}: ${v.toLocaleString()} (${((v/t)*100).toFixed(1)}%)`; }}}, datalabels:{display:false} }
     };
-    const miniBarOptions = {
-        responsive:true, maintainAspectRatio:false, indexAxis:'y',
-        plugins:{ legend:{display:false}, datalabels:{display:false} },
-        scales:{ x:{display:false}, y:{display:true, ticks:{font:{size:9}, color:'#64748b'}} }
-    };
+        const miniBarOptions = {
+            responsive:true,
+            maintainAspectRatio:false,
+            indexAxis:'y',
+            plugins:{
+                legend:{display:false},
+                datalabels:{display:false}
+            },
+            scales:{
+                x:{display:false},
+                y:{
+                    display:true,
+                    ticks:{font:{size:9}, color:'#64748b'}
+                }
+            }
+        };
+
+        const dashboardDonutOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        padding: 14,
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                datalabels: {
+                    display: false
+                }
+            }
+        };
+
+        // Payment Collection
+        const paymentCollectionChartData = {
+            labels: [
+                'Loan Collection',
+                'MCBU',
+                'CSF'
+            ],
+            datasets: [
+                {
+                    data: [
+                        Number(summaryData.loanCollectionDaily || 0),
+                        Number(summaryData.mcbuCollection || 0),
+                        Number(summaryData.csfCollection || 0)
+                    ],
+                    backgroundColor: [
+                        '#22C55E',
+                        '#3B82F6',
+                        '#8B5CF6'
+                    ],
+                    borderWidth: 0,
+                    borderRadius: 6
+                }
+            ]
+        };
+
+        // Loan Portfolio Status
+        const loanPortfolioChartData = {
+            labels: [
+                'Performing',
+                'Past Due',
+                'Excused'
+            ],
+            datasets: [
+                {
+                    data: [
+                        Math.max(
+                            0,
+                            Number(summaryData.totalLoanBalance || 0) -
+                            Number(summaryData.pastDueAmount || 0) -
+                            Number(summaryData.excusedLoanBalance || 0)
+                        ),
+                        Number(summaryData.pastDueAmount || 0),
+                        Number(summaryData.excusedLoanBalance || 0)
+                    ],
+                    backgroundColor: [
+                        '#22C55E',
+                        '#EF4444',
+                        '#F59E0B'
+                    ],
+                    borderWidth: 0
+                }
+            ]
+        };
+
+        // Risk Indicator
+        const riskIndicatorChartData = {
+            labels: [
+                'Good',
+                'Mis Payment',
+                'Past Due'
+            ],
+            datasets: [
+                {
+                    data: [
+                        Math.max(
+                            0,
+                            Number(summaryData.activeClients || 0) -
+                            Number(summaryData.mispaymentPerson || 0) -
+                            Number(summaryData.pastDuePerson || 0)
+                        ),
+                        Number(summaryData.mispaymentPerson || 0),
+                        Number(summaryData.pastDuePerson || 0)
+                    ],
+                    backgroundColor: [
+                        '#22C55E',
+                        '#F59E0B',
+                        '#EF4444'
+                    ],
+                    borderWidth: 0
+                }
+            ]
+        };
 
     // ── derived values ─────────────────────────────────
     const totalReleasePerson     = (summaryData.currentReleasePerson_New||0) + (summaryData.currentReleasePerson_Rel||0);
-    const prevTotalReleasePerson = (summaryData.prev_currentReleasePerson_New||0) + (summaryData.prev_currentReleasePerson_Rel||0);
-    const newMemberAmount        = summaryData.newMemberAmount ?? ((summaryData.currentReleaseAmount||0) - (summaryData.renewalsAmount||0));
-    const prevNewMemberAmount    = summaryData.prev_newMemberAmount ?? ((summaryData.prev_currentReleaseAmount||0) - (summaryData.prev_renewalsAmount||0));
     const filterLabel            = timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1);
 
     // ── Reusable row for top cards (no trend indicator needed) ────────
@@ -402,277 +728,389 @@ const DashboardPage = () => {
                 ) : (
                     <div className="flex flex-col gap-4 min-w-[1400px]">
 
-                        {/* ── TOP ROW ── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        {/* ── TOP SUMMARY CARDS ── */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                            {/* ━━━ 1 — Pending Loan for Approval (Principal) ━━━ */}
-                            <div className="lg:col-span-2">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 mb-3">
-                                        Pending Loan for Approval
-                                        <span className="text-gray-400 font-normal text-xs block">(Principal)</span>
-                                    </h3>
-                                    <InfoRow label="Persons"          value={(summaryData.currentReleasePerson_New||0)+(summaryData.currentReleasePerson_Rel||0)} />
-                                    <InfoRow label="Amount"           value={summaryData.currentReleaseAmount} />
-                                    <InfoRow label="Reloaner Persons" value={summaryData.currentReleasePerson_Rel} />
-                                    <InfoRow label="Amount"           value={summaryData.currentReleaseAmount} />
-                                    <InfoRow label="New Member"       value={summaryData.currentReleasePerson_New} />
-                                    <InfoRow label="Amount"           value={(summaryData.currentReleaseAmount||0)-(summaryData.renewalsAmount||0)} />
-                                    <div className="mt-3 pt-3 border-t-2 border-gray-200">
-                                        <p className="text-xs font-bold text-gray-700 mb-2">Weekly Transaction</p>
-                                        <InfoRow label="Reloaner Person" value={summaryData.currentReleasePerson_Rel_Weekly} />
-                                        <InfoRow label="Amount"          value={summaryData.currentReleaseAmount_Rel_Weekly} />
-                                        <InfoRow label="New Member"      value={summaryData.currentReleasePerson_New_Weekly} />
-                                        <InfoRow label="Amount"          value={summaryData.currentReleaseAmount_New_Weekly} />
-                                    </div>
-                                </div>
-                            </div>
+                                {/* 1 — Total Prospect Client */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total Prospect Client
+                                            </p>
 
-                            {/* ━━━ 2 — Loan Approved (With Service Charge) ━━━ */}
-                            <div className="lg:col-span-2">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 mb-3">
-                                        Loan Approved
-                                        <span className="text-gray-400 font-normal text-xs block">(With Service Charge)</span>
-                                    </h3>
-                                    <InfoRow label="New Member Persons" value={summaryData.currentReleasePerson_New} />
-                                    <InfoRow label="Amount"             value={summaryData.newMemberAmount} />
-                                    <InfoRow label="Reloaner Persons"   value={summaryData.currentReleasePerson_Rel} />
-                                    <InfoRow label="Amount"             value={summaryData.renewalsAmountWithSC} />
-                                    <InfoRow label="New Member"         value={summaryData.newMember} />
-                                    <InfoRow label="Amount"             value={summaryData.amount} />
-                                    <div className="mt-3 pt-3 border-t-2 border-gray-200">
-                                        <p className="text-xs font-bold text-gray-700 mb-2">Weekly Transaction (Approved)</p>
-                                        <InfoRow label="Reloaner Person" value={summaryData.currentReleasePerson_Rel_Weekly} />
-                                        <InfoRow label="Amount"          value={summaryData.currentReleaseAmount_Rel_Weekly} />
-                                        <InfoRow label="New Member"      value={summaryData.currentReleasePerson_New_Weekly} />
-                                        <InfoRow label="Amount"          value={summaryData.currentReleaseAmount_New_Weekly} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 3 — MIS Payment Category */}
-                            <div className="lg:col-span-2">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 mb-3 text-center">MIS PAYMENT CATEGORY</h3>
-                                    {(() => {
-                                        const delinquent=summaryData.delinquent||0, delinquentMcbu=summaryData.delinquentMcbu||0, delinquentLoan=summaryData.delinquentLoan||0;
-                                        const calamity=summaryData.excusedPerson||0, hosp=summaryData.hospitalization||0, death=summaryData.death||0, maturedPD=summaryData.pastDuePerson||0;
-                                        const total=delinquent+delinquentMcbu+delinquentLoan+calamity+hosp+death+maturedPD;
-                                        return (
-                                            <div className="space-y-1.5">
-                                                {[
-                                                    {color:'blue',   label:'Delinquent',                                   value:delinquent},
-                                                    {color:'blue',   label:'Delinquent for MCBU',                           value:delinquentMcbu},
-                                                    {color:'blue',   label:'Delinquent Loan Collection',                    value:delinquentLoan},
-                                                    {color:'orange', label:'Excused Due to Calamity',                       value:calamity},
-                                                    {color:'dark',   label:'Excused Due to Hospitalization',                value:hosp},
-                                                    {color:'sky',    label:'Excused Due to Death Clients / Family Members', value:death},
-                                                    {color:'red',    label:'Matured Past Due',                              value:maturedPD},
-                                                    {color:'green',  label:'Total',                                         value:total},
-                                                ].map((item,i)=>(
-                                                    <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                                        <div className="flex items-center space-x-2"><ColorDot color={item.color}/><span className="text-xs text-gray-700 leading-tight">{item.label}</span></div>
-                                                        <span className="text-xs font-bold text-gray-800 shrink-0 ml-2">{formatNumber(item.value)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-
-                            {/* 4 — Client Categories */}
-                            <div className="lg:col-span-2">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 mb-3">Client Categories</h3>
-                                    <div className="space-y-1.5">
-                                        {[
-                                            {color:'orange',label:'Active Clients'},{color:'blue',label:'Active Borrowers'},
-                                            {color:'green',label:'Good Clients'},{color:'red',label:'All Delinquent Clients'},
-                                            {color:'pink',label:'Mis Payment Clients'},{color:'violet',label:'Past Due Clients'},
-                                            {color:'lime',label:'ACP Agents'},{color:'yellow',label:'Terminated Agents'},
-                                        ].map((item,i)=>(
-                                            <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                                                <ColorDot color={item.color}/><span className="text-xs text-gray-700">{item.label}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 5 — Branch Status + Performance */}
-                            <div className="lg:col-span-4">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    {currentUser?.role?.rep <= 2 ? (
-                                        <div className="flex flex-col gap-3">
-                                            <h3 className="text-sm font-bold text-gray-800">Status</h3>
-                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                                <p className="text-xs font-bold text-gray-700 mb-1">Branch Status Closing</p>
-                                                <p className="text-base font-bold text-gray-800">{statusData.closedBranches} / {statusData.totalBranches}</p>
-                                                {statusData.staleBranchesCount > 0 && (
-                                                    <p className="text-xs font-semibold text-amber-600 mt-1">
-                                                        {statusData.staleBranchesCount} closed branch{statusData.staleBranchesCount > 1 ? 'es' : ''} need{statusData.staleBranchesCount === 1 ? 's' : ''} re-check
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                                <p className="text-xs font-bold text-gray-700 mb-1">Available Fund</p>
-                                                <div className="flex justify-between items-center"><span className="text-xs text-gray-500">Cash On Hand:</span><span className="text-xs font-bold text-gray-800">{formatNumber(statusData.cashOnHand)}</span></div>
-                                                <div className="flex justify-between items-center mt-1"><span className="text-xs text-gray-500">Bank Balance:</span><span className="text-xs font-bold text-gray-800">{formatNumber(statusData.bankBalance)}</span></div>
-                                            </div>
-                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100"><p className="text-xs font-bold text-gray-700 mb-1">Active Users</p><div className="flex justify-between items-center"><span className="text-xs text-gray-500">Active:</span><span className="text-xs font-bold text-gray-800">{formatNumber(statusData.activeUsers)}</span></div></div>
-                                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100"><p className="text-xs font-bold text-gray-700 mb-1">Management Expenses:</p><p className="text-base font-bold text-gray-800">{formatNumber(statusData.managementExpenses)}</p></div>
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(summaryData.activeClients || 0)}
+                                            </p>
                                         </div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 gap-4 h-full">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <h3 className="text-sm font-bold text-gray-800 text-center">BRANCH STATUS:</h3>
-                                                {summaryData.branchApprovalStatus === 'closed' ? (
-                                                    summaryData.documentsStale ? (
-                                                        <><div className="w-20 h-20 rounded-full bg-amber-500 flex items-center justify-center"><AlertTriangle className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Closed — Needs Re-check</p></>
-                                                    ) : (
-                                                        <><div className="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center"><CheckCircle2 className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Already Closed</p></>
-                                                    )
-                                                    ) : (
-                                                        <><div className="w-20 h-20 rounded-full bg-yellow-400 flex items-center justify-center"><XOctagon className="w-12 h-12 text-white"/></div><p className="text-sm font-bold text-gray-800 text-center">Branch Not Closed</p></>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="text-center mb-2"><h2 className="text-sm font-bold text-gray-800">PERFORMANCE</h2><p className="text-xs text-gray-600 capitalize">{timeFilter}</p></div>
-                                                <div className="w-full" style={{height:'150px',position:'relative'}}>
-                                                    <Doughnut data={clientsCollectionData} options={donutChartOptions}/>
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                        <div className="text-center">
-                                                            <div className="text-xs font-medium text-gray-600 leading-tight">Collection</div>
-                                                            <div className="text-xs font-medium text-gray-600 leading-tight">Rate</div>
-                                                            <div className="text-sm font-bold text-gray-800 mt-1">
-                                                                {summaryData.activeClients ? (((summaryData.activeClients-(summaryData.pendingClients||0)-(summaryData.mispaymentPerson||0)-(summaryData.pastDuePerson||0))/summaryData.activeClients)*100).toFixed(1) : '0.0'}%
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-2 space-y-1">
-                                                    {[
-                                                        {label:'Good Clients',color:'#BBF7D0',value:summaryData.activeClients?summaryData.activeClients-(summaryData.pendingClients||0)-(summaryData.mispaymentPerson||0)-(summaryData.pastDuePerson||0):0},
-                                                        {label:'Late Clients',color:'#FEF08A',value:summaryData.pendingClients||0},
-                                                        {label:'Mis Payment',color:'#FECDD3',value:summaryData.mispaymentPerson||0},
-                                                        {label:'Past Due',color:'#E9D5FF',value:summaryData.pastDuePerson||0},
-                                                    ].map((item,i)=>(
-                                                        <div key={i} className="flex items-center justify-between">
-                                                            <div className="flex items-center space-x-2"><div className="w-3 h-3 rounded-sm border border-gray-200" style={{backgroundColor:item.color}}/><span className="text-xs text-gray-700">{item.label}</span></div>
-                                                            <span className="text-xs font-bold text-gray-800">{formatNumber(item.value)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                                            <Users className="w-6 h-6 text-blue-500" />
                                         </div>
-                                    )}
+                                    </div>
+                                </div>
+
+                                {/* 2 — Total Cash on Hand */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total Cash on Hand
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(statusData.cashOnHand || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
+                                            <Wallet className="w-6 h-6 text-green-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3 — Bank Balance */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Bank Balance
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(statusData.bankBalance || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center">
+                                            <Banknote className="w-6 h-6 text-purple-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 4 — Total User / Staff */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total User / Staff
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(statusData.activeUsers || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
+                                            <UserPlus className="w-6 h-6 text-orange-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── SECOND SUMMARY ROW ── */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                                {/* 1 — Target Release */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Target Release
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center">
+                                            <TrendingUp className="w-6 h-6 text-indigo-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2 — Total Collection Today */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total Collection (Today)
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(summaryData.loanCollectionDaily || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                            <Banknote className="w-6 h-6 text-emerald-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3 — Total Release Person */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total Release (Person)
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(totalReleasePerson || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-cyan-50 flex items-center justify-center">
+                                            <Users className="w-6 h-6 text-cyan-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 4 — Total Release Amount */}
+                                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">
+                                                Total Release (Amount)
+                                            </p>
+
+                                            <p className="text-2xl font-bold text-gray-900">
+                                                {formatNumber(summaryData.currentReleaseAmount || 0)}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
+                                            <DollarSign className="w-6 h-6 text-orange-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        {/* ── DASHBOARD ANALYTICS ── */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                            {/* 1 — PAYMENT COLLECTION CHART */}
+                            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Banknote className="w-5 h-5 text-green-500" />
+                                    <div>
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            Payment Collection Chart
+                                        </h2>
+                                        <p className="text-xs text-gray-400">
+                                            Today&apos;s collection
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-[250px]">
+                                    <Bar
+                                        data={paymentCollectionChartData}
+                                        options={miniBarOptions}
+                                    />
+                                </div>
+                            </div>
+
+
+                            {/* 2 — LOAN PORTFOLIO STATUS */}
+                            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Scale className="w-5 h-5 text-blue-500" />
+                                    <div>
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            Loan Portfolio Status
+                                        </h2>
+                                        <p className="text-xs text-gray-400">
+                                            Current loan balance distribution
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-[250px]">
+                                    <Doughnut
+                                        data={loanPortfolioChartData}
+                                        options={dashboardDonutOptions}
+                                    />
+                                </div>
+                            </div>
+
+
+                            {/* 3 — RISK INDICATOR */}
+                            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <AlertTriangle className="w-5 h-5 text-orange-500" />
+                                    <div>
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            Risk Indicator
+                                        </h2>
+                                        <p className="text-xs text-gray-400">
+                                            Client risk distribution
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-[250px]">
+                                    <Doughnut
+                                        data={riskIndicatorChartData}
+                                        options={dashboardDonutOptions}
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* ── COMPANY ACTIVITIES + CHART ── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                            <div className="lg:col-span-8">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                                    <div className="flex items-center gap-2 mb-3"><Activity size={15} className="text-blue-500"/><h3 className="text-sm font-bold text-gray-800">Company Activities:</h3></div>
-                                    <input ref={activityFileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleActivityUpload}/>
-                                    <CompanyActivitiesSlider slides={activitySlides.length>0?activitySlides:ACTIVITY_SLIDES} isAdmin={currentUser?.role?.rep===1} onUploadClick={()=>activityFileInputRef.current?.click()} uploading={uploadingActivity} onDeleteCurrent={handleActivityDelete} deleting={deletingActivity}/>
+                        {/* ── PERFORMANCE SUMMARY TABLE ── */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+
+                            {/* HEADER */}
+                            <div className="px-5 py-4 border-b border-gray-200">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            Performance Summary
+                                        </h2>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Branch and organizational performance monitoring
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* VIEW TABS */}
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                    {performanceViews.map((item) => (
+                                        <button
+                                            key={item.value}
+                                            type="button"
+                                            onClick={() => setPerformanceView(item.value)}
+                                            className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                                                performanceView === item.value
+                                                    ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="lg:col-span-4">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
-                                    <div className="flex items-center gap-2 mb-3"><BarChart2 size={15} className="text-indigo-500"/><h2 className="text-sm font-bold text-gray-800">Chart Dashboard</h2></div>
-                                    <div style={{height:'300px'}}><Bar data={keyMetricsChartData} options={miniBarOptions}/></div>
-                                </div>
+
+                            {/* TABLE */}
+                            <div className="overflow-auto max-h-[500px]">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
+                                                #
+                                            </th>
+
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
+                                                {performanceView === 'area'
+                                                    ? 'Area'
+                                                    : performanceView === 'region'
+                                                    ? 'Region'
+                                                    : performanceView === 'division'
+                                                    ? 'Division'
+                                                    : 'Branch'}
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Active Clients
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Collection
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Release Person
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Release Amount
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Loan Balance
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                Past Due
+                                            </th>
+
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
+                                                PAR %
+                                            </th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody className="divide-y divide-gray-100">
+                                        {performanceLoading ? (
+                                            <tr>
+                                                <td
+                                                    colSpan="9"
+                                                    className="px-4 py-10 text-center text-gray-400"
+                                                >
+                                                    Loading performance data...
+                                                </td>
+                                            </tr>
+                                        ) : performanceData.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    colSpan="9"
+                                                    className="px-4 py-10 text-center text-gray-400"
+                                                >
+                                                    No performance data available.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            performanceData.map((row, index) => (
+                                                <tr
+                                                    key={row._id || row.id || index}
+                                                    className="hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <td className="px-4 py-3 text-gray-400">
+                                                        {index + 1}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 font-semibold text-gray-800">
+                                                        {row.name || row.branchName || '-'}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.activeClients || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.collection || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.releasePerson || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.releaseAmount || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.loanBalance || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right">
+                                                        {formatNumber(row.pastDueAmount || 0)}
+                                                    </td>
+
+                                                    <td className="px-4 py-3 text-right font-semibold">
+                                                        {Number(row.par || 0).toFixed(2)}%
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-
-                        {/* ═══ BOTTOM ROW ═══ */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-                            {/* CONSOLIDATED SUMMARY */}
-                            <div className="lg:col-span-3">
-                                <div className="sticky top-4">
-                                    <CollapsiblePanel title="Consolidated Summary" subtitle={filterLabel}>
-                                        <div>
-                                            <CardItem title="Active Clients"     value={summaryData.activeClients}    prevValue={summaryData.prev_activeClients}    Icon={Users}         bgColor="bg-blue-50"/>
-                                            <CardItem title="MCBU"              value={summaryData.mcbu}             prevValue={summaryData.prev_mcbu}             Icon={Wallet}        bgColor="bg-green-50"/>
-                                            <CardItem title="CSF"               value={summaryData.csf}              prevValue={summaryData.prev_csf}              Icon={Banknote}      bgColor="bg-purple-50"/>
-                                            <CardItem title="Active Loan"       value={summaryData.totalLoanRelease} prevValue={summaryData.prev_totalLoanRelease} Icon={Banknote}      bgColor="bg-indigo-50"/>
-                                            <CardItem title="Active Borrowers"  value={summaryData.activeBorrowers}  prevValue={summaryData.prev_activeBorrowers}  Icon={Users}         bgColor="bg-cyan-50"/>
-                                            <CardItem title="Loan Balance"      value={summaryData.totalLoanBalance} prevValue={summaryData.prev_totalLoanBalance} Icon={Scale}         bgColor="bg-yellow-50"/>
-                                            <CardItem title="Past Due Person"   value={summaryData.pastDuePerson}   prevValue={summaryData.prev_pastDuePerson}   Icon={AlertCircle}   bgColor="bg-red-50"/>
-                                            <CardItem title="Past Due Amount"   value={summaryData.pastDueAmount}   prevValue={summaryData.prev_pastDueAmount}   Icon={AlertCircle}   bgColor="bg-red-50"/>
-                                            <CardItem title="Net Risk"          value={summaryData.pdNetRisk}       prevValue={summaryData.prev_pdNetRisk}       Icon={AlertTriangle} bgColor="bg-orange-50"/>
-                                            <CardItem title="Mis Payment Person" value={summaryData.mispaymentPerson} prevValue={summaryData.prev_mispaymentPerson} Icon={XCircle}    bgColor="bg-pink-50"/>
-                                            <CardItem title="Net Loan Balance"  value={summaryData.excusedLoanBalance} prevValue={summaryData.prev_excusedLoanBalance} Icon={DollarSign} bgColor="bg-gray-50"/>
-                                        </div>
-                                    </CollapsiblePanel>
-                                </div>
-                            </div>
-
-                            {/* PROGRESS */}
-                            <div className="lg:col-span-5">
-                                <div className="sticky top-4">
-                                    <CollapsiblePanel title="PROGRESS" subtitle={filterLabel}>
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1 pb-1 mb-1 border-b border-gray-100">Daily</p>
-
-                                            <CardItem title="Total Loan Release Person" value={totalReleasePerson}                   prevValue={prevTotalReleasePerson}                    Icon={Users}         bgColor="bg-blue-50"/>
-                                            <CardItem title="Amount"                   value={summaryData.currentReleaseAmount}       prevValue={summaryData.prev_currentReleaseAmount}      Icon={DollarSign}    bgColor="bg-blue-50"/>
-                                            <CardItem title="New Member Person"        value={summaryData.currentReleasePerson_New}  prevValue={summaryData.prev_currentReleasePerson_New}  Icon={UserPlus}      bgColor="bg-green-50"/>
-                                            <CardItem title="New Member Amount"        value={newMemberAmount}                       prevValue={prevNewMemberAmount}                       Icon={DollarSign}    bgColor="bg-green-50"/>
-                                            <CardItem title="Renewal Person"           value={summaryData.currentReleasePerson_Rel}  prevValue={summaryData.prev_currentReleasePerson_Rel}  Icon={RotateCcw}     bgColor="bg-yellow-50"/>
-                                            <CardItem title="Renewal Amount"           value={summaryData.currentReleaseAmount}       prevValue={summaryData.prev_currentReleaseAmount}      Icon={DollarSign}    bgColor="bg-yellow-50"/>
-                                            <CardItem title="Offset Person"            value={summaryData.offsetPerson}              prevValue={summaryData.prev_offsetPerson}              Icon={MinusCircle}   bgColor="bg-orange-50"/>
-                                            <CardItem title="Full Payment Person"      value={summaryData.fullPayment}               prevValue={summaryData.prev_fullPayment}              Icon={CheckCircle2}  bgColor="bg-emerald-50"/>
-                                            <CardItem title="Full Payment Amount"      value={summaryData.fullPaymentAmount}         prevValue={summaryData.prev_fullPaymentAmount}        Icon={DollarSign}    bgColor="bg-emerald-50"/>
-                                            <CardItem title="Transfer of Clients"      value={summaryData.transferClients}           prevValue={summaryData.prev_transferClients}          Icon={ArrowLeftRight} bgColor="bg-purple-50"/>
-
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1 pb-1 mt-3 mb-1 border-b border-gray-100">Weekly</p>
-
-                                            <CardItem title="Loan Collection Weekly"  value={summaryData.loanCollectionWeekly}      prevValue={summaryData.prev_loanCollectionWeekly}     Icon={Banknote}      bgColor="bg-blue-50"/>
-                                            <CardItem title="Pending Clients"         value={summaryData.pendingClients}            prevValue={summaryData.prev_pendingClients}           Icon={Clock}         bgColor="bg-gray-50"/>
-                                            <CardItem title="Mispayment Person"       value={summaryData.mispaymentPerson}          prevValue={summaryData.prev_mispaymentPerson}         Icon={XCircle}       bgColor="bg-pink-50"/>
-                                            <CardItem title="Past Due Person"         value={summaryData.pastDuePerson}             prevValue={summaryData.prev_pastDuePerson}            Icon={AlertCircle}   bgColor="bg-red-50"/>
-                                            <CardItem title="Past Due Amount"         value={summaryData.pastDueAmount}             prevValue={summaryData.prev_pastDueAmount}            Icon={AlertCircle}   bgColor="bg-red-50"/>
-                                        </div>
-                                    </CollapsiblePanel>
-                                </div>
-                            </div>
-
-                            {/* COLLECTION DETAILS */}
-                            <div className="lg:col-span-4">
-                                <div className="sticky top-4">
-                                    <CollapsiblePanel title="Collection Details" subtitle={filterLabel}>
-                                        <div>
-                                            <CardItem title="MCBU"                    value={summaryData.mcbuCollection}           Icon={Wallet}         bgColor="bg-orange-50"/>
-                                            <CardItem title="CSF"                     value={summaryData.csfCollection}            Icon={Banknote}       bgColor="bg-blue-50"/>
-                                            <CardItem title="Loan Collection Daily"   value={summaryData.loanCollectionDaily}      Icon={Banknote}       bgColor="bg-green-50"/>
-                                            <CardItem title="Loan Collection Weekly"  value={summaryData.loanCollectionWeekly}     Icon={Banknote}       bgColor="bg-red-50"/>
-                                            <CardItem title="MCBU Withdrawals"        value={summaryData.mcbuWithdrawal}           Icon={Wallet}         bgColor="bg-pink-50"/>
-                                            <CardItem title="CSF Withdrawals"         value={summaryData.csfWithdrawal}            Icon={Banknote}       bgColor="bg-violet-50"/>
-                                            <CardItem title="MCBU/CSF Refund"         value={summaryData.mcbuReturn??summaryData.clientMcbuReturn} Icon={RotateCcw} bgColor="bg-lime-50"/>
-                                            <CardItem title="LRF Collection"          value={summaryData.lrfCollection}            Icon={Banknote}       bgColor="bg-yellow-50"/>
-                                            <CardItem title="CBHB Collection"         value={summaryData.cbhbCollection}           Icon={Banknote}       bgColor="bg-sky-50"/>
-                                            <CardItem title="Admin Fees"              value={summaryData.admissionCollection}      Icon={DollarSign}     bgColor="bg-orange-50"/>
-                                            <CardItem title="Staff CBU Collection"    value={summaryData.staffCbuCollection}       Icon={Users}          bgColor="bg-blue-50"/>
-                                            <CardItem title="Staff Loan Collection"   value={summaryData.staffLoanCollection}      Icon={Banknote}       bgColor="bg-green-50"/>
-                                            <CardItem title="Add. Hospitalization"    value={summaryData.addHospitalization}       Icon={Heart}          bgColor="bg-pink-50"/>
-                                            <CardItem title="Other Income (Passbook)" value={summaryData.otherPassbookCollection}  Icon={DollarSign}     bgColor="bg-red-50"/>
-                                            <CardItem title="Other Income"            value={summaryData.otherCollection}          Icon={DollarSign}     bgColor="bg-violet-50"/>
-                                            <CardItem title="Other Receipts"          value={summaryData.otherReceipts}            Icon={DollarSign}     bgColor="bg-lime-50"/>
-                                            <CardItem title="Fund Transfer (In)"      value={summaryData.fundTransferReceipts}     Icon={ArrowLeftRight} bgColor="bg-purple-50"/>
-                                            <CardItem title="Bank Withdrawal"         value={summaryData.bankWithdrawal}           Icon={Banknote}       bgColor="bg-sky-50"/>
-                                            <CardItem title="Total Receipts"          value={summaryData.totalReceipts}            Icon={DollarSign}     bgColor="bg-green-100"/>
-                                        </div>
-                                    </CollapsiblePanel>
-                                </div>
-                            </div>
-
-                        </div>{/* end bottom row */}
                     </div>
                 )}
             </div>
