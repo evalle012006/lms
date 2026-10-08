@@ -336,6 +336,9 @@ async function executeSave(req, user_id, transactionId, user) {
 
                 let collection = JSON.parse(JSON.stringify(cc));
                 delete collection.reverted;
+                // cashCollections.mispayment is a boolean; loans.mispayment is a counter.
+                // Never let a counter (or '-') from the client reach the boolean column or the counter increment.
+                collection.mispayment = collection.mispayment === true;
 
                 // get loan snapshot 
                 let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
@@ -719,7 +722,12 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
 
         if (collection.hasOwnProperty('maturedPastDue')) {
             loan.maturedPastDue = collection.maturedPastDue;
-            loan.mispayment = 0;
+            // Only matured-PD remarks clear the counter. The page sends maturedPastDue: 0 on
+            // every remark, so Delinquent / Excused / Past Due must not hit this reset.
+            const maturedRemarks = ['matured-past due', 'matured_past_due_collection', 'offset-matured-pd'];
+            if (maturedRemarks.includes(collection.remarks?.value)) {
+                loan.mispayment = 0;
+            }
         }
 
         loan.history = collection.history;

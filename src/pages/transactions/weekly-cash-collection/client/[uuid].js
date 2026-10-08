@@ -1010,7 +1010,7 @@ const CashCollectionDetailsPage = () => {
                             collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
                         }
         
-                        if (cc.loanBalance <= 0  && cc.status !== 'completed') {
+                        if (cc.loanBalance <= 0  && cc.status !== 'completed' && !cc.qrPrevData) {
                             if (cc.fullPaymentDate === currentDate) {
                                 collection.paymentCollection = cc.history ? cc.history?.collection : 0;
                                 collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
@@ -3296,26 +3296,33 @@ const CashCollectionDetailsPage = () => {
                             if (!temp.error) {
                                 temp.remarks = remarks;
                                 temp._dirty = true;
-                                
+
                                 // update the mcbuHistory
                                 temp.mcbuHistory = {
                                     mcbu: temp.mcbu,
                                     mcbuCol: temp.mcbuCol
                                 }
-        
+
                                 if (temp.history != null) {
                                     temp.history = {
                                         ...temp.history,
                                         remarks: remarks,
-                                        // QR-sourced rows arrive with a prior-day history snapshot; keep the
-                                        // payoff figures in sync with the row so nothing reads yesterday's numbers
+                                        // QR rows can arrive with a prior-day history snapshot. Refresh the payoff
+                                        // figures from the row; loanBalance/amountRelease from prevData (pre-payment).
                                         ...(temp.qrSourced ? {
                                             collection: safeNumber(temp.paymentCollection),
-                                            excess: safeNumber(temp.excess)
+                                            excess: safeNumber(temp.excess),
+                                            loanBalance: temp.prevData?.loanBalance ?? temp.history.loanBalance,
+                                            amountRelease: temp.prevData?.amountRelease ?? temp.history.amountRelease
                                         } : {})
                                     }
                                 } else {
-                                    temp = setHistory(temp);
+                                    // setHistory records the CURRENT loanBalance/amountRelease, which for a QR row are
+                                    // already post-payment (the API overlay applied it). Use the pre-day values instead.
+                                    temp = setHistory(temp, temp.qrSourced ? temp.prevData?.loanBalance : undefined);
+                                    if (temp.qrSourced && temp.prevData?.amountRelease != null) {
+                                        temp.history.amountRelease = temp.prevData.amountRelease;
+                                    }
                                 }
                             }
                         }
@@ -3744,8 +3751,34 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    // Row total derived from its own components, same formula getCashCollections uses at load.
+    const computeRowTotal = (cc) => (
+        safeNumber(cc.mcbuCol) +
+        safeNumber(cc.csfCollection) +
+        safeNumber(cc.paymentCollection) +
+        safeNumber(cc.admissionCollection) +
+        safeNumber(cc.lrfCollection) +
+        safeNumber(cc.cbhbCollection) +
+        safeNumber(cc.addHospitalization) +
+        safeNumber(cc.otherIncome) +
+        safeNumber(cc.csfIn)
+    ) - (
+        safeNumber(cc.mcbuWithdrawal) +
+        safeNumber(cc.csfWithdrawal) +
+        safeNumber(cc.mcbuReturnAmt)
+    );
+
     const addBlankAndTotal = (isFiltering, dataArr) => {
         let cashCollection = JSON.parse(JSON.stringify(dataArr));
+
+        // totalCollection is only calculated once, at load. Typing a payment, MCBU or remark
+        // never refreshed it, so edited rows (and the totals row summing them) stayed stale.
+        cashCollection = cashCollection.map(cc => (
+            cc.clientId && cc.status !== 'totals' && cc.status !== 'open'
+                ? { ...cc, totalCollection: computeRowTotal(cc) }
+                : cc
+        ));
+
         const groupCapacity = currentGroup && currentGroup.capacity;
         const totalIdx = cashCollection.findIndex(cc => cc.status === 'totals');
 
