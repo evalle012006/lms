@@ -3181,6 +3181,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
 
+                                    temp.allowMcbuCollection = true;
+
                                     if (temp.csfIn > 0) {
                                         temp = removeCsfIn(temp);
                                     }
