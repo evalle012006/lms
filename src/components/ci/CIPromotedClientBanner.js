@@ -32,22 +32,38 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     // loanHistory = array of loan objects for existingClientId, or null for new prospects
     const { existingSlotNo, existingLoanCycle, hasPendingLoan, groupNotAvailable } = useMemo(() => {
         if (!loanHistory) {
-            return { existingSlotNo: null, existingLoanCycle: null, hasPendingLoan: false };
+            return {
+                existingSlotNo: null, existingLoanCycle: null,
+                hasPendingLoan: false, groupNotAvailable: false,
+            };
         }
 
         const pending    = loanHistory.some(l => l.status === 'pending');
         const latestLoan = getLatestNonPendingLoan(loanHistory);
 
+        // A client keeps their slot only if they continue the cycle (not balik)
+        // AND their last loan was in THIS group with a slot assigned.
+        const keepsSlotInGroup =
+            application?.clientType !== 'balik' &&
+            application?.clientType !== 'prospect' &&
+            !!latestLoan?.slotNo &&
+            latestLoan?.groupId === application?.groupId;   // verify this field exists on loan-history
+
+        const status = application?.groupStatus;
+        // 'full' only blocks people who need a NEW slot.
+        const blocked = status === 'available'
+            ? false
+            : status === 'full'
+                ? !keepsSlotInGroup
+                : true;
+
         return {
             existingSlotNo:    latestLoan?.slotNo ? String(latestLoan.slotNo) : null,
-            // Balik clients were reset by closing/offsetting all prior loans —
-            // they always restart at cycle 1, regardless of their old cycle
-            // number. Reloan / Pending Member continue it. See src/lib/loan-cycle.js.
             existingLoanCycle: String(resolveLoanCycle(loanHistory)),
             hasPendingLoan:    pending,
-            groupNotAvailable: application?.groupStatus !== 'available',
+            groupNotAvailable: blocked,
         };
-    }, [loanHistory, application.groupStatus]);
+    }, [loanHistory, application?.groupStatus, application?.groupId, application?.clientType]);
 
     // For new prospects: loanHistory null means still loading (parent hasn't fetched yet)
     // For existing clients: loanHistory is always fetched by loadApplication in parent
