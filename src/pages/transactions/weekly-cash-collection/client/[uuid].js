@@ -3751,8 +3751,34 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    // Row total derived from its own components, same formula getCashCollections uses at load.
+    const computeRowTotal = (cc) => (
+        safeNumber(cc.mcbuCol) +
+        safeNumber(cc.csfCollection) +
+        safeNumber(cc.paymentCollection) +
+        safeNumber(cc.admissionCollection) +
+        safeNumber(cc.lrfCollection) +
+        safeNumber(cc.cbhbCollection) +
+        safeNumber(cc.addHospitalization) +
+        safeNumber(cc.otherIncome) +
+        safeNumber(cc.csfIn)
+    ) - (
+        safeNumber(cc.mcbuWithdrawal) +
+        safeNumber(cc.csfWithdrawal) +
+        safeNumber(cc.mcbuReturnAmt)
+    );
+
     const addBlankAndTotal = (isFiltering, dataArr) => {
         let cashCollection = JSON.parse(JSON.stringify(dataArr));
+
+        // totalCollection is only calculated once, at load. Typing a payment, MCBU or remark
+        // never refreshed it, so edited rows (and the totals row summing them) stayed stale.
+        cashCollection = cashCollection.map(cc => (
+            cc.clientId && cc.status !== 'totals' && cc.status !== 'open'
+                ? { ...cc, totalCollection: computeRowTotal(cc) }
+                : cc
+        ));
+
         const groupCapacity = currentGroup && currentGroup.capacity;
         const totalIdx = cashCollection.findIndex(cc => cc.status === 'totals');
 
