@@ -2636,6 +2636,8 @@ const CashCollectionDetailsPage = () => {
             const remarks = e;
             let list = data.map((cc, idx) => {
                 let temp = JSON.parse(JSON.stringify(cc));
+                const wasMaturedPD = !!(temp.maturedPD || temp.maturedPDPrevTransaction);
+                const prevMaturedPastDue = temp.maturedPastDue;
                 
                 if (idx === index) {
                     if (temp.status === 'completed' && prevDraft) {
@@ -2675,7 +2677,7 @@ const CashCollectionDetailsPage = () => {
                             toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
                         } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
                             toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
-                        } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
+                        } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
                         } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
@@ -2738,7 +2740,7 @@ const CashCollectionDetailsPage = () => {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
-                                    if (temp?.maturedPD && remarks.value !== 'offset-matured-pd') {
+                                    if (wasMaturedPD && remarks.value !== 'offset-matured-pd') {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
@@ -3203,7 +3205,9 @@ const CashCollectionDetailsPage = () => {
                                     toast.error('Invalid remarks. No past due balance.');
                                 }
                             } else if (remarks.value === 'matured_past_due_collection') {
-                                if (temp?.maturedPD) {
+                                if (wasMaturedPD) {
+                                    temp.maturedPD = true; 
+                                    temp.maturedPastDue = prevMaturedPastDue;
                                     temp.mpdc = true;
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
