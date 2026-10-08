@@ -17,12 +17,18 @@ const Modal = ({
 }) => {
 
   // Size configurations
+  // FIX: every size below used a flat pixel width with no viewport cap —
+  // on any screen narrower than that (any phone, for most of these), the
+  // modal overflowed horizontally instead of shrinking. CSS min() caps each
+  // at the viewport width (minus room for the outer p-4 padding) while still
+  // preferring the original px value on wider screens — same visual result
+  // as before on desktop, actually responsive on mobile.
   const sizeConfigs = {
-    sm: { width: "400px", maxWidth: "400px", height: "auto", maxHeight: "500px" },
-    md: { width: "600px", maxWidth: "600px", height: "auto", maxHeight: "600px" },
-    lg: { width: "800px", maxWidth: "800px", height: "auto", maxHeight: "700px" },
-    xl: { width: "1000px", maxWidth: "1000px", height: "auto", maxHeight: "800px" },
-    "2xl": { width: "1200px", maxWidth: "1200px", height: "auto", maxHeight: "900px" },
+    sm: { width: "min(400px, calc(100vw - 2rem))", maxWidth: "min(400px, calc(100vw - 2rem))", height: "auto", maxHeight: "min(500px, calc(100vh - 2rem))" },
+    md: { width: "min(600px, calc(100vw - 2rem))", maxWidth: "min(600px, calc(100vw - 2rem))", height: "auto", maxHeight: "min(600px, calc(100vh - 2rem))" },
+    lg: { width: "min(800px, calc(100vw - 2rem))", maxWidth: "min(800px, calc(100vw - 2rem))", height: "auto", maxHeight: "min(700px, calc(100vh - 2rem))" },
+    xl: { width: "min(1000px, calc(100vw - 2rem))", maxWidth: "min(1000px, calc(100vw - 2rem))", height: "auto", maxHeight: "min(800px, calc(100vh - 2rem))" },
+    "2xl": { width: "min(1200px, calc(100vw - 2rem))", maxWidth: "min(1200px, calc(100vw - 2rem))", height: "auto", maxHeight: "min(900px, calc(100vh - 2rem))" },
     full: { width: "95vw", maxWidth: "95vw", height: "95vh", maxHeight: "95vh" },
     default: { width, maxWidth, height, maxHeight }
   };

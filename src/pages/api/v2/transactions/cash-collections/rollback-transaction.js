@@ -1,5 +1,5 @@
-import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
-import { findClients, findGroups, findLoans, findUserById } from '@/lib/graph.functions'; // ← added findUserById
+import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
+import { findClients, findGroups, findLoans, findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import logger from '@/logger';
@@ -8,8 +8,7 @@ import { apiHandler } from '@/services/api-handler';
 const graph = new GraphProvider();
 const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `${CASH_COLLECTIONS_FIELDS}`)
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
-const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
-const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
+const QR_ENTRY_TYPE = createGraphType('qr_cash_collection_entries', `${QR_CASH_COLLECTION_ENTRY_FIELDS}`)
 
 export default apiHandler({
     post: revert,
@@ -109,6 +108,13 @@ async function revert(req, res) {
                     deleteQl(
                         CASH_COLLECTION_TYPE(`cash_collection_${mutationQL.length}`),
                         { _id: { _eq: cashCollection._id } }
+                    )
+                );
+
+                mutationQL.push(
+                    deleteQl(
+                        QR_ENTRY_TYPE(`qr_delete_${mutationQL.length}`),
+                        { mergedIntoCashCollectionId: { _eq: cashCollection._id } }
                     )
                 );
 

@@ -46,6 +46,7 @@ dateModified
 designatedBranch
 designatedBranchId
 transactionType
+weeklyScheduleType
 areaId
 regionId
 divisionId

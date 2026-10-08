@@ -40,8 +40,10 @@ import LDFApprovalDetailsModal from "@/components/transactions/loan-application/
 import { approvalBlockedMessage, isApprovalBlocked } from "@/lib/approval-restriction-utils";
 import { ClockIcon } from "lucide-react";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
+import { useLoanApplicationView } from '@/hooks/useLoanApplicationView';
+import LoanApplicationV2Page from '@/components/transactions/loan-application-v2/LoanApplicationV2Page';
 
-const LoanApplicationPage = () => {
+const LoanApplicationPage = ({ onSwitchView }) => {
     const router = useRouter();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
@@ -1970,8 +1972,12 @@ const LoanApplicationPage = () => {
         return () => clearInterval(interval);
     }, []); // empty deps — self-contained, runs once on mount
 
+    const switchViewButton = onSwitchView ? (
+        <ButtonOutline key="switch-view" label="Try the new version" type="button" className="p-2 mr-3" onClick={onSwitchView} />
+    ) : null;
+
     return (
-        <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
+        <Layout actionButtons={[...((selectedTab !== 'history' && actionButtons) || []), switchViewButton].filter(Boolean)}>
             <div className="pb-4">
                 { (loading || isLoanFetching || isBranchFetching) ?
                     (
@@ -2571,4 +2577,17 @@ const LoanApplicationPage = () => {
     );
 }
 
-export default LoanApplicationPage;
+const LoanApplicationEntry = () => {
+    const currentUser = useSelector(state => state.user.data);
+    const { view, setView, ready, canSwitch } = useLoanApplicationView(currentUser);
+
+    if (!ready) {
+        return <Layout><Spinner /></Layout>;
+    }
+    if (view === 'v2') {
+        return <LoanApplicationV2Page onSwitchView={() => setView('classic')} />;
+    }
+    return <LoanApplicationPage onSwitchView={canSwitch ? () => setView('v2') : undefined} />;
+};
+
+export default LoanApplicationEntry;

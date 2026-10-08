@@ -14,23 +14,13 @@ import 'react-calendar/dist/Calendar.css';
 import moment from 'moment';
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
-import { checkFileSize } from "@/lib/utils";
+import { checkFileSize, UppercaseFirstLetter } from "@/lib/utils";
 import { calculateAge } from "@/lib/date-utils";
 import { useRouter } from "next/router";
 import ClientSearchTool from "../dashboard/ClientSearchTool";
 import { getApiBaseUrl } from "@/lib/constants";
-// ✅ Private file display — handles signed URLs automatically
 import PrivateImage from "@/components/common/PrivateImage";
 
-// ─────────────────────────────────────────────────────────────
-// NOTE: Native <select> replacement for the react-select based
-// SelectDropdown component. SelectDropdown was silently failing
-// to open its portaled menu (missing zIndex on styles.menuPortal)
-// and this whole client flow is slated for deprecation, so we're
-// not investing further in the react-select version here.
-// Scoped to this file only — SelectDropdown itself is untouched
-// and still used elsewhere in the codebase.
-// ─────────────────────────────────────────────────────────────
 const NativeSelectDropdown = ({
     name,
     value = '',
@@ -60,6 +50,7 @@ const NativeSelectDropdown = ({
                 flex flex-col border rounded-md px-4 py-2 bg-white
                 ${value ? 'border-main' : 'border-slate-400'}
                 ${errors ? 'border-red-400' : ''}
+                ${disabled ? 'opacity-60' : ''}
             `}>
                 <label
                     htmlFor={name}
@@ -93,7 +84,6 @@ const NativeSelectDropdown = ({
     );
 };
 
-// Section Header Component
 const SectionHeader = ({ title, subtitle, className = "" }) => (
     <div className={`pb-4 border-b border-gray-200 mb-4 ${className}`}>
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -101,7 +91,6 @@ const SectionHeader = ({ title, subtitle, className = "" }) => (
     </div>
 );
 
-// Important Notice Component
 const ImportantNotice = ({ children, type = "warning" }) => {
     const typeStyles = {
         warning: "border-orange-200 bg-orange-50 text-orange-800",
@@ -125,18 +114,23 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const router = useRouter();
-    
+
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const groupList = useSelector(state => state.group.list);
+    // NOTE: Redux `state.group.list` deliberately NOT used anywhere in this component.
+    // It's a shared slice populated by whichever page mounted this drawer, with no
+    // guarantee it's scoped to the right LO/branch — see filteredGroupList below,
+    // which this component fetches and owns itself instead.
     const userList = useSelector(state => state.user.list);
     const transactionSettings = useSelector(state => state.transactionsSettings.data);
-    
+
     const [loading, setLoading] = useState(false);
+    // Separate from `loading` on purpose: `loading` gates the entire Formik mount
+    // (see the render below). Reusing it for the groups fetch was what unmounted
+    // and remounted the form mid-selection, wiping out the just-picked LO.
+    const [loadingGroups, setLoadingGroups] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
-    // ✅ photo: stores key (e.g. "lms/clients/uuid/file.jpg") or blob URL for instant preview
-    //    PrivateImage + useSignedUrl handle both automatically
     const [photo, setPhoto] = useState(client.profile || '');
     const [image, setImage] = useState('');
     const [selectedGroup, setSelectedGroup] = useState(client.group?.[0] || null);
@@ -146,7 +140,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const { status } = router.query;
 
-    const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
+    const [loUsers, setLoUsers] = useState([]);
     const [filteredGroupList, setFilteredGroupList] = useState([]);
 
     const openCalendar = () => {
@@ -184,6 +178,66 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         ciName: yup.string().required('Please enter C.I. name'),
     });
 
+    // LO dropdown source — rep < 4 only (BM/AM/root). rep === 4 IS the LO,
+    // so there's nothing to fetch here for them; the groups effect below
+    // handles that path directly.
+    useEffect(() => {
+        if (!showSidebar || currentUser.role.rep >= 4) return;
+
+        const fetchLOs = async () => {
+            const branchCode = currentUser.root ? undefined : currentUser.designatedBranch;
+            const url = getApiBaseUrl() + 'users/list?' + new URLSearchParams(
+                branchCode ? { branchCode, loOnly: true } : { loOnly: true }
+            );
+            const res = await fetchWrapper.get(url);
+            if (res.success) {
+                setLoUsers(res.users.map(u => ({ ...u, value: u._id, label: `${u.firstName} ${u.lastName}` })));
+            }
+        };
+        fetchLOs();
+    }, [showSidebar, currentUser]);
+
+    // rep === 4 path: fetch this LO's own groups directly, scoped to their own
+    // _id and transactionType. Deliberately NOT reading Redux `group.list` —
+    // this component owns its own fetch so it's correct regardless of which
+    // page mounted it.
+    useEffect(() => {
+        if (!showSidebar || currentUser.role.rep !== 4) return;
+
+        if (!currentUser.transactionType) {
+            toast.error('Your account has no transaction type set. Please contact your admin.');
+            return;
+        }
+
+        let mounted = true;
+        const fetchOwnGroups = async () => {
+            setLoadingGroups(true);
+            try {
+                const url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({
+                    loId: currentUser._id,
+                    occurence: currentUser.transactionType,
+                    mode: 'filter',
+                });
+                const response = await fetchWrapper.get(url);
+                if (mounted && response.success) {
+                    const groups = (response.groups || [])
+                        .map(g => ({ ...g, value: g._id, label: UppercaseFirstLetter(g.name) }))
+                        .sort((a, b) => a.groupNo - b.groupNo);
+                    setFilteredGroupList(groups);
+                } else if (mounted) {
+                    toast.error(response.message || 'Error retrieving group list.');
+                }
+            } catch (error) {
+                console.error('Error fetching groups for current LO:', error);
+                if (mounted) toast.error('Failed to fetch groups. Please try again.');
+            } finally {
+                if (mounted) setLoadingGroups(false);
+            }
+        };
+        fetchOwnGroups();
+        return () => { mounted = false; };
+    }, [showSidebar, currentUser.role.rep, currentUser._id, currentUser.transactionType]);
+
     const hasDuplicates = useCallback(async (field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value?.toUpperCase());
@@ -212,6 +266,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         setPhoto(client.profile || '');
         setImage('');
         setSelectedGroup(client.group?.[0] || null);
+        setFilteredGroupList([]);
         setDuplicate(false);
         if (hiddenInput.current) {
             hiddenInput.current.value = '';
@@ -255,7 +310,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             if (mode === 'add') {
                 processedValues.status = 'pending';
                 processedValues.delinquent = false;
-                const selectedGroupAdd = groupList.find(g => g._id === values.groupId);
+                // FIX: was `groupList.find(...)` against the untrusted Redux slice —
+                // now resolves against filteredGroupList, the same scoped list the
+                // dropdown itself is populated from, so the name always matches
+                // what the user actually saw and picked.
+                const selectedGroupAdd = filteredGroupList.find(g => g._id === values.groupId);
                 processedValues.groupName = selectedGroupAdd ? selectedGroupAdd.name : '';
                 const response = await fetchWrapper.post(getApiBaseUrl() + 'clients/save/', processedValues);
                 if (response.success) {
@@ -266,7 +325,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             } else if (mode === 'edit') {
                 processedValues._id = client._id;
                 processedValues.file = image;
-                console.log(selectedGroup)
                 processedValues.groupName = selectedGroup ? selectedGroup.name : '';
                 processedValues.groupId = selectedGroup ? selectedGroup._id : '';
                 processedValues.loId = selectedGroup ? selectedGroup.loanOfficerId : '';
@@ -283,11 +341,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         } finally {
             setLoading(false);
             setShowSidebar(false);
+            setFilteredGroupList([]);
             actions.setSubmitting(false);
             actions.resetForm();
             onClose();
         }
-    }, [currentUser, selectedGroup, mode, client, image, branchList, duplicate, onClose, setShowSidebar]);
+    }, [currentUser, selectedGroup, mode, client, image, branchList, duplicate, filteredGroupList, onClose, setShowSidebar]);
 
     const handleUpdateClient = async (clientData) => {
         return await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
@@ -301,8 +360,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             return;
         }
 
-        // ✅ Show blob URL immediately for instant preview
-        //    useSignedUrl inside PrivateImage will return blob URLs as-is (no API call)
         setPhoto(URL.createObjectURL(fileUploaded));
         setImage(fileUploaded);
 
@@ -323,13 +380,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             }
 
             const responseData = await response.json();
-            // ✅ Save fileKey (storage path) to DB — not a public URL
             const updatedData = { ...client, profile: responseData.fileKey };
             const result = await handleUpdateClient(updatedData);
             if (result.success) {
                 toast.success('File uploaded successfully.');
-                // ✅ Switch from blob URL to the storage key
-                //    PrivateImage will fetch the signed URL automatically
                 setPhoto(responseData.fileKey);
             }
         } catch (error) {
@@ -349,16 +403,55 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         }
     }, []);
 
-    const handleChangeLO = (field, value) => {
-        setLoading(true);
+    const handleChangeLO = async (field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        const selectedLO = loUsers.find(u => u._id === value);
-        const loGroups = groupList.filter(g => g.loanOfficerId === value && g.occurence == selectedLO?.transactionType );
-        setFilteredGroupList(loGroups);
 
-        setLoading(false);
-    }
+        // Clear immediately — the previously selected group/pending-list almost
+        // certainly doesn't belong to the newly selected LO.
+        form.setFieldValue('groupId', '');
+        setFilteredGroupList([]);
+        setSelectedGroup(null);
+
+        const selectedLO = loUsers.find(u => u._id === value);
+        if (!selectedLO?.transactionType) {
+            toast.error('Selected loan officer has no transaction type set.');
+            return;
+        }
+
+        setLoadingGroups(true);
+        try {
+            // weeklyScheduleType/acceleratedCategory are resolved server-side from
+            // loId (see groups/list-by-group-occurence.js) — don't pass them here.
+            const url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({
+                loId: value,
+                occurence: selectedLO.transactionType,
+                mode: 'filter',
+            });
+
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const groups = (response.groups || [])
+                    .map(g => ({ ...g, value: g._id, label: UppercaseFirstLetter(g.name) }))
+                    .sort((a, b) => a.groupNo - b.groupNo);
+                setFilteredGroupList(groups);
+            } else {
+                toast.error(response.message || 'Error retrieving group list.');
+            }
+        } catch (error) {
+            console.error('Error fetching groups for LO:', error);
+            toast.error('Failed to fetch groups. Please try again.');
+        } finally {
+            setLoadingGroups(false);
+        }
+    };
+
+    const handleChangeGroup = (field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        const group = filteredGroupList.find(g => g._id === value) || null;
+        setSelectedGroup(group);
+    };
 
     useEffect(() => {
         if (mode === "edit" && client.group && client.group.length > 0) {
@@ -367,10 +460,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     }, [mode, client]);
 
     return (
-        <SideBar 
-            title={mode === 'add' ? 'Add New Client' : 'Edit Client Information'} 
-            showSidebar={showSidebar} 
-            setShowSidebar={setShowSidebar} 
+        <SideBar
+            title={mode === 'add' ? 'Add New Client' : 'Edit Client Information'}
+            showSidebar={showSidebar}
+            setShowSidebar={setShowSidebar}
             hasCloseButton={false}
             width="600px"
         >
@@ -380,17 +473,16 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 </div>
             ) : (
                 <div className="px-2 space-y-6">
-                    {/* Search Tool for Add Mode */}
                     {mode === "add" && (
                         <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <SectionHeader 
-                                title="Client Search" 
+                            <SectionHeader
+                                title="Client Search"
                                 subtitle="Search for existing clients to avoid duplicates"
                             />
-                            <ClientSearchTool 
-                                origin="client_list" 
-                                callback={setSearchedClients} 
-                                setSelected={setSelectedClient} 
+                            <ClientSearchTool
+                                origin="client_list"
+                                callback={setSearchedClients}
+                                setSelected={setSelectedClient}
                             />
                         </div>
                     )}
@@ -404,19 +496,16 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                     >
                         {({ values, touched, errors, handleChange, handleSubmit, setFieldValue, isSubmitting, isValidating, setFieldTouched }) => (
                             <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
-                                
-                                {/* Profile Photo Section - Edit Mode Only */}
+
                                 {mode === 'edit' && (
                                     <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                        <SectionHeader 
-                                            title="Profile Photo" 
+                                        <SectionHeader
+                                            title="Profile Photo"
                                             subtitle="Upload a clear photo of the client"
                                         />
                                         <div className="flex space-x-6">
                                             <div className="w-48 h-48 relative flex justify-center bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden hover:border-blue-400 transition-colors">
-                                                {/* ✅ PrivateImage handles both blob URLs (instant preview)
-                                                    and storage keys (fetches signed URL automatically) */}
-                                                <PrivateImage 
+                                                <PrivateImage
                                                     src={photo || null}
                                                     alt="Profile"
                                                     layout="fill"
@@ -424,12 +513,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     className="rounded-xl"
                                                     fallback={placeholder}
                                                 />
-                                                <input 
-                                                    type="file" 
-                                                    name="file" 
-                                                    ref={hiddenInput} 
-                                                    onChange={handleFileChange} 
-                                                    className="hidden" 
+                                                <input
+                                                    type="file"
+                                                    name="file"
+                                                    ref={hiddenInput}
+                                                    onChange={handleFileChange}
+                                                    className="hidden"
                                                     accept="image/*"
                                                 />
                                             </div>
@@ -440,14 +529,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     <p>Maximum file size: 5MB</p>
                                                 </div>
                                                 <div className="space-y-3">
-                                                    <ButtonSolid 
-                                                        label={uploading ? "Uploading..." : "Upload Photo"} 
-                                                        onClick={() => hiddenInput.current.click()} 
+                                                    <ButtonSolid
+                                                        label={uploading ? "Uploading..." : "Upload Photo"}
+                                                        onClick={() => hiddenInput.current.click()}
                                                         disabled={uploading}
                                                     />
-                                                    <ButtonOutline 
-                                                        label="Remove Photo" 
-                                                        onClick={handleRemoveImage} 
+                                                    <ButtonOutline
+                                                        label="Remove Photo"
+                                                        onClick={handleRemoveImage}
                                                         disabled={uploading}
                                                     />
                                                 </div>
@@ -456,13 +545,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 )}
 
-                                {/* Group Assignment Section */}
                                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                    <SectionHeader 
-                                        title="Group Assignment" 
+                                    <SectionHeader
+                                        title="Group Assignment"
                                         subtitle="Assign client to a loan officer and group"
                                     />
-                                    
+
                                     {(mode === 'edit' && selectedGroup) ? (
                                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                             <div className="flex items-center space-x-3">
@@ -486,7 +574,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     value={values.loId}
                                                     label="Loan Officer (Required)"
                                                     options={loUsers}
-                                                    onChange={(field, value) => handleChangeLO(field, value)}
+                                                    onChange={handleChangeLO}
                                                     onBlur={setFieldTouched}
                                                     placeholder="Select Loan Officer"
                                                     errors={touched.loId && errors.loId ? errors.loId : undefined}
@@ -499,10 +587,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     field="groupId"
                                                     value={values.groupId}
                                                     label="Group (Required)"
-                                                    options={currentUser.role.rep == 4 ? groupList : filteredGroupList}
-                                                    onChange={setFieldValue}
+                                                    options={filteredGroupList}
+                                                    disabled={loadingGroups}
+                                                    onChange={handleChangeGroup}
                                                     onBlur={setFieldTouched}
-                                                    placeholder="Select Group"
+                                                    placeholder={loadingGroups ? "Loading groups..." : "Select Group"}
                                                     errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                                 />
                                             )}
@@ -510,13 +599,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     )}
                                 </div>
 
-                                {/* Personal Information Section */}
                                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                    <SectionHeader 
-                                        title="Personal Information" 
+                                    <SectionHeader
+                                        title="Personal Information"
                                         subtitle="Client's basic personal details"
                                     />
-                                    
+
                                     {duplicate && (
                                         <ImportantNotice type="warning">
                                             <strong>Potential Duplicate Found:</strong> A client with similar name already exists. Please verify this is not a duplicate before proceeding.
@@ -534,7 +622,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.lastName && errors.lastName ? errors.lastName : undefined}
                                         />
-                                        
+
                                         <InputText
                                             name="firstName"
                                             value={values.firstName}
@@ -545,7 +633,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.firstName && errors.firstName ? errors.firstName : undefined}
                                         />
-                                        
+
                                         <InputText
                                             name="middleName"
                                             value={values.middleName}
@@ -555,7 +643,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.middleName && errors.middleName ? errors.middleName : undefined}
                                         />
-                                        
+
                                         <div onClick={openCalendar}>
                                             <InputText
                                                 name="birthdate"
@@ -569,13 +657,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 </div>
 
-                                {/* Address Information Section */}
                                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                    <SectionHeader 
-                                        title="Address Information" 
+                                    <SectionHeader
+                                        title="Address Information"
                                         subtitle="Complete residential address"
                                     />
-                                    
+
                                     <div className="space-y-4">
                                         <InputText
                                             name="addressStreetNo"
@@ -586,7 +673,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.addressStreetNo && errors.addressStreetNo ? errors.addressStreetNo : undefined}
                                         />
-                                        
+
                                         <InputText
                                             name="addressBarangayDistrict"
                                             value={values.addressBarangayDistrict}
@@ -596,7 +683,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.addressBarangayDistrict && errors.addressBarangayDistrict ? errors.addressBarangayDistrict : undefined}
                                         />
-                                        
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <InputText
                                                 name="addressMunicipalityCity"
@@ -607,7 +694,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.addressMunicipalityCity && errors.addressMunicipalityCity ? errors.addressMunicipalityCity : undefined}
                                             />
-                                            
+
                                             <InputText
                                                 name="addressProvince"
                                                 value={values.addressProvince}
@@ -618,7 +705,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                 errors={touched.addressProvince && errors.addressProvince ? errors.addressProvince : undefined}
                                             />
                                         </div>
-                                        
+
                                         <InputText
                                             name="addressZipCode"
                                             value={values.addressZipCode}
@@ -631,13 +718,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 </div>
 
-                                {/* Contact & Other Information Section */}
                                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                    <SectionHeader 
-                                        title="Contact & Additional Information" 
+                                    <SectionHeader
+                                        title="Contact & Additional Information"
                                         subtitle="Contact details and other required information"
                                     />
-                                    
+
                                     <div className="space-y-4">
                                         <InputText
                                             name="contactNumber"
@@ -648,7 +734,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.contactNumber && errors.contactNumber ? errors.contactNumber : undefined}
                                         />
-                                        
+
                                         <InputText
                                             name="ciName"
                                             value={values.ciName}
@@ -659,7 +745,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             errors={touched.ciName && errors.ciName ? errors.ciName : undefined}
                                         />
 
-                                        {/* Status Dropdown for Edit Mode */}
                                         {mode === 'edit' && currentUser.role.rep < 3 && (
                                             <NativeSelectDropdown
                                                 name="status"
@@ -680,10 +765,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 </div>
 
-                                {/* IMPORTANT CLIENT SETTINGS */}
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-                                    
+
                                     <div className="flex items-center space-x-3 mb-6">
                                         <div className="p-3 bg-blue-500 rounded-lg">
                                             <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -695,9 +779,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             <p className="text-sm text-blue-700">Please review these important client attributes carefully before saving</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="space-y-4">
-                                        {/* Group Leader Toggle */}
                                         <div className="p-4 border-2 rounded-lg transition-all duration-200 border-gray-300 bg-white shadow-sm hover:shadow-md">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex-1">
@@ -732,8 +815,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                 </div>
                                             </div>
                                         </div>
-                                        
-                                        {/* Delinquent Toggle */}
+
                                         {mode === 'edit' && values.status !== 'pending' && (
                                             <div className="p-4 border-2 rounded-lg transition-all duration-200 border-gray-300 bg-white shadow-sm hover:shadow-md">
                                                 <div className="flex items-center justify-between">
@@ -768,13 +850,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="mt-4 text-xs text-blue-600 bg-blue-100 rounded-lg p-3">
                                         <strong>💡 Reminder:</strong> These setting will mark the client as a ACKP Client. Double-check before saving.
                                     </div>
                                 </div>
 
-                                {/* Action Buttons */}
                                 <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-6 mt-8 -mx-2 px-2">
                                     <div className="flex space-x-4">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="flex-1" />

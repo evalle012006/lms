@@ -4,6 +4,13 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
+import {
+    captureBestFrame,
+    isTooDark,
+    canvasToDebugThumbnail,
+} from '@/lib/face-capture-utils';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
@@ -126,7 +133,7 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
 // onRetry — optional callback to parent when user clicks Try Again
 // Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
 // clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
-const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = false }) => {
+const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false, clientId, loanId, branchId, ciReferenceCode, }) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
@@ -147,6 +154,42 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
 
     const currentChallenge = CHALLENGES[challengeIdx];
     const noTemplate = !faceTemplate || !Array.isArray(faceTemplate) || faceTemplate.length !== 128;
+
+    async function uploadDebugThumbnail(blob, clientId) {
+        if (!blob) return null;
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'face-verify-debug.jpg');
+            formData.append('origin', 'face-verify-debug');
+            formData.append('uuid', `faceverify-${clientId || 'unknown'}-${Date.now()}`);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) return null;
+            const data = await res.json();
+            return data.fileKey || null;
+        } catch {
+            return null;
+        }
+    }
+
+    async function logFaceVerifyAttempt({ clientId, loanId, branchId, ciReferenceCode, distance, confidence, matched, photoKey }) {
+        try {
+            await fetchWrapper.post(getApiBaseUrl() + 'face-verify-attempts/log', {
+                client_id: clientId,
+                loan_id: loanId ?? null,
+                branch_id: branchId ?? null,
+                ci_reference_code: ciReferenceCode ?? null,
+                distance,
+                confidence,
+                matched,
+                match_threshold: MATCH_THRESHOLD,
+                photo_key: photoKey,
+                user_agent: navigator.userAgent,
+            });
+        } catch {
+            // best-effort — never let logging failure affect the verify flow
+        }
+    }
 
     const loadModels = useCallback(async () => {
         if (modelsLoaded || modelsLoading) return;
@@ -170,7 +213,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
         setCameraError(null);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -225,8 +268,20 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
         const video   = videoRef.current;
         if (!faceapi || !video) { setCapturing(false); return; }
         try {
+            // Sample several frames, keep the sharpest, and run detection +
+            // thumbnail off that ONE frozen canvas — not the live video —
+            // so the two can never drift apart the way they did before.
+            const bestCanvas = await captureBestFrame(video);
+
+            if (isTooDark(bestCanvas)) {
+                toast.error('Lighting is too dark for an accurate scan. Please move somewhere brighter and try again.');
+                setCapturing(false);
+                startDetectionLoop(0);
+                return;
+            }
+
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
+                .detectSingleFace(bestCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
             if (!detection) {
@@ -236,12 +291,32 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
                 startDetectionLoop(0);
                 return;
             }
+            const thumbnailBlob = await canvasToDebugThumbnail(bestCanvas);
             stopCamera();
             const capturedDescriptor = Array.from(detection.descriptor);
-            const distance           = euclideanDistance(capturedDescriptor, faceTemplate);
-            const confidence         = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
-            const matched            = distance < MATCH_THRESHOLD;
+
+            // ── Enrollment path — no template exists, this capture BECOMES it ──
+            if (noTemplate) {
+                setResult({ enrolled: true, template: capturedDescriptor });
+                uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
+                    logFaceVerifyAttempt({
+                        clientId, loanId, branchId, ciReferenceCode, distance: null, confidence: null,
+                        matched: null, photoKey,
+                    });
+                });
+                return;
+            }
+
+            // ── Existing verification path — unchanged ──
+            const distance   = euclideanDistance(capturedDescriptor, faceTemplate);
+            const confidence = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
+            const matched    = distance < MATCH_THRESHOLD;
             setResult({ matched, score: confidence / 100, distance });
+
+            uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
+                logFaceVerifyAttempt({ clientId, loanId, branchId, ciReferenceCode, distance, confidence, matched, photoKey });
+            });
+
             if (matched) {
                 onVerified({ matched: true, score: confidence / 100, faceMatchScore: distance });
             }
@@ -250,7 +325,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
             toast.error('Face verification failed. Please try again.');
             setCapturing(false);
         }
-    }, [faceTemplate, stopCamera, onVerified]);
+    }, [faceTemplate, stopCamera, onVerified, noTemplate, clientId, loanId, branchId, ciReferenceCode]);
 
     const startDetectionLoop = useCallback((challengeIndex) => {
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -325,24 +400,46 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onSkip, onRetry, canSkip = f
         handleStart();
     }, [handleStart, onRetry]);
 
-    if (noTemplate) {
+    if (noTemplate && !cameraOpen && !result) {
         return (
             <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
                 <p className="text-sm font-semibold text-amber-800">⚠ No Face Template on Record</p>
                 <p className="text-xs text-amber-700">
-                    This client did not complete face verification during their loan application.
+                    This client's face was never captured — likely submitted while offline.
+                    You can enroll it now using the camera, or an admin can override.
                 </p>
-                {canSkip ? (
+                <button type="button" onClick={handleStart}
+                    className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold
+                        rounded-xl hover:bg-blue-700 transition-colors">
+                    Capture Face & Enroll
+                </button>
+                {canSkip && (
                     <button type="button" onClick={onSkip}
                         className="w-full py-2.5 border border-amber-400 text-amber-700
                             text-sm font-medium rounded-xl hover:bg-amber-100 transition-colors">
                         Proceed Without Face Verification (Admin override)
                     </button>
-                ) : (
-                    <p className="text-xs text-red-600 font-medium">
-                        Contact a supervisor to authorise disbursement without face verification.
-                    </p>
                 )}
+            </div>
+        );
+    }
+
+    if (result?.enrolled) {
+        return (
+            <div className="space-y-4">
+                <div className="p-5 rounded-2xl border-2 border-green-300 bg-green-50 text-center">
+                    <p className="text-4xl mb-2">✅</p>
+                    <p className="text-base font-bold text-green-800">Face Captured</p>
+                    <p className="text-xs text-green-600 mt-1">
+                        This will be enrolled as the client's face record and disbursement can proceed.
+                    </p>
+                </div>
+                <button type="button"
+                    onClick={() => onEnroll?.({ faceTemplate: result.template, faceEnrolledAt: new Date().toISOString() })}
+                    className="w-full py-3 bg-green-600 text-white text-sm font-semibold
+                        rounded-xl hover:bg-green-700 transition-colors">
+                    Confirm & Enroll
+                </button>
             </div>
         );
     }

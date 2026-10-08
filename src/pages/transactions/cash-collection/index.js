@@ -14,6 +14,7 @@ import InputNumber from "@/lib/ui/InputNumber";
 import { setBranch } from "@/redux/actions/branchActions";
 import CashCollectionsExcelExport from '@/components/transactions/CashCollectionsExcelExport';
 import BranchClosingDocumentsModal from '@/components/transactions/BranchClosingDocumentsModal';
+import { formatUnclosedLoMessage } from '@/lib/closing-documents.constants';
 
 // Row background colors - Tailwind safelist (do not remove):
 // bg-yellow-100 bg-blue-100 bg-orange-100
@@ -60,6 +61,7 @@ const ModernBranchCashCollections = () => {
 
   const [cohData, setCohData] = useState();
   const [cohAmount, setCohAmount] = useState(0);
+  const [cohPermission, setCohPermission] = useState({ canEdit: false }); // ADDED
 
   const [branchFilterList, setBranchFilterList] = useState([]);
   const [loFilterList, setLoFilterList] = useState([]);
@@ -446,35 +448,37 @@ const ModernBranchCashCollections = () => {
   })();
 
   const handleCOHDataChange = async (value, breakdown = cohData?.breakdown ?? null) => {
-    if (value && isNaN(parseFloat(value))) { toast.error('Please enter a valid number'); return; }
+    if (value && isNaN(parseFloat(value))) { toast.error('Please enter a valid number'); return false; }
     const amount = value ? parseFloat(value) : 0;
-    if (amount < 0) { toast.error('COH amount cannot be negative'); setCohAmount(0); return; }
+    if (amount < 0) { toast.error('COH amount cannot be negative'); setCohAmount(0); return false; }
 
-    let updatedCohData = {...cohData};
-    if (cohData && cohData.hasOwnProperty("_id")) {
-        updatedCohData.amount = amount;
-        updatedCohData.breakdown = breakdown;
-        updatedCohData.modifiedBy = currentUser._id;
-    } else {
-        updatedCohData.branchId = currentUser.designatedBranchId;
-        updatedCohData.amount = amount;
-        updatedCohData.breakdown = breakdown;
-        updatedCohData.insertedBy = currentUser._id;
-        updatedCohData.dateAdded = currentDate;
-    }
+    const cohBranchId = closingDocsBranch?._id;
+    const cohDate = dateFilter !== currentDate ? dateFilter : currentDate;
+    if (!cohBranchId) { toast.error('No branch selected.'); return false; }
+
+    const updatedCohData = {
+        ...cohData,
+        amount,
+        breakdown,
+        branchId: cohBranchId,
+        dateAdded: cohDate,
+    };
 
     try {
         const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
         const response = await fetchWrapper.post(apiUrl, updatedCohData);
         if (response.success) {
             toast.success('Cash on Hand data successfully saved.');
-            setCohData(updatedCohData);
-        } else {
-            toast.error('Error saving Cash on Hand data.');
+            // merge the server row back so later saves carry its _id
+            setCohData({ ...updatedCohData, ...response.data });
+            return true;
         }
+        toast.error(response.message || 'Error saving Cash on Hand data.');
+        return false;
     } catch (error) {
         console.error('Error saving COH data:', error);
         toast.error('Error saving Cash on Hand data.');
+        return false;
     }
   };
 
@@ -623,7 +627,10 @@ const ModernBranchCashCollections = () => {
           return;
         }
         if (!checkResponse.readyToUpload) {
-          toast.error('Some Loan Officers still have open or pending transactions. All LO transactions must be closed first.');
+          toast.error(
+            formatUnclosedLoMessage(checkResponse.unclosedLoSummary, checkResponse.unclosedEmptyGroups)
+              || 'Some Loan Officers still have open or pending transactions. All LO transactions must be closed first.'
+          );
           return;
         }
       }
@@ -1139,9 +1146,11 @@ const ModernBranchCashCollections = () => {
         // console.log(dailyTotal, weeklyTotal);
 
         const processedData = [... response.data, weeklyTotal, dailyTotal].filter(c => !!c.name).map(item => {
-          const formattedName = filter === 'branch' && item.code ? 
-            `${item.code} - ${item.name}` : 
-            item.name;
+          const formattedName = filter === 'branch' && item.code
+              ? `${item.code} - ${item.name}`
+              : filter === 'group' && item.occurence === 'weekly' && item.groupDay
+                ? `${item.name} (${item.groupDay.charAt(0).toUpperCase() + item.groupDay.slice(1)})`
+                : item.name;
 
           // Get current day name for weekly group filtering
           const currentDayName = moment(currentDate).format('dddd').toLowerCase();
@@ -1163,12 +1172,13 @@ const ModernBranchCashCollections = () => {
             _id: item._id,
             name: formattedName,
             code: item.code,
-            loNo: item.loNo || null, // ADDED: Include loNo for sorting
-            transactionType: item.transactionType || '-', // ADDED: Include transactionType for Occurrence column
-            occurence: item.occurence || '-', // ADDED: Include occurrence
-            groupDay: item.groupDay || null, // ADDED: Include groupDay
-            groupStatus: item.groupStatus || null, // ADDED: Include groupStatus for row background colors
-            isDraft: item.isDraft || false, // ADDED: Include isDraft for draft row background colors
+            loNo: item.loNo || null, 
+            transactionType: item.transactionType || '-',
+            occurence: item.occurence || '-',
+            groupDay: item.groupDay || null,
+            groupStatus: item.groupStatus || null,
+            isDraft: item.isDraft || false,
+            hasAcceleratedWeeklyLo: !!item.hasAcceleratedWeeklyLo,
             
             loanTargetStr: shouldShowTarget() && item.targetLoanCollection ? 
             `₱${Number(item.targetLoanCollection).toLocaleString()}` : '-',
@@ -1281,7 +1291,6 @@ const ModernBranchCashCollections = () => {
               item.documentsStale = approval.documentsStale || false;
               item.staleReason = approval.staleReason || null;
             }
-            // CHANGED: all required doc types must be present, not just one
             item.hasClosingDocs = (closingDocsCounts[item._id] || 0) >= requiredClosingDocsCount;
           });
         }
@@ -1324,13 +1333,17 @@ const ModernBranchCashCollections = () => {
   // BM reviewing their own branch and AM reviewing any branch row they click.
   useEffect(() => {
       const fetchCohForModal = async () => {
+          setCohPermission({ canEdit: false }); // never show a previous branch's permission
+
           const apiUrl = `${getApiBaseUrl()}branches?`;
           const params = {
               _id: closingDocsBranch._id,
               date: dateFilter !== currentDate ? dateFilter : currentDate,
+              includeCohPermission: '1',
           };
           const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
           if (response.success) {
+              setCohPermission(response.cohPermission || { canEdit: false });
               if (response.branch?.cashOnHand?.length > 0) {
                   setCohData(response.branch.cashOnHand[0]);
                   setCohAmount(response.branch.cashOnHand[0].amount || 0);
@@ -2095,6 +2108,8 @@ const ModernBranchCashCollections = () => {
     return dataSource.find(item => item.totalData === true);
   }, [branchCollectionData, data, currentFilter]);
 
+  const DAY_ORDER = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7 };
+
   const sortedData = useMemo(() => {
     let dataToSort = filteredData;
     
@@ -2105,6 +2120,26 @@ const ModernBranchCashCollections = () => {
         const loNoB = parseInt(b.loNo) || 0;
         return loNoA - loNoB;
       });
+    }
+
+    // NEW: For group view, sort weekly groups Mon -> Fri by groupDay.
+    // Non-weekly groups are left untouched, in their original position.
+    if (currentFilter === 'group') {
+      const weekly = filteredData.filter(item => item.occurence === 'weekly');
+      const nonWeekly = filteredData.filter(item => item.occurence !== 'weekly');
+
+      const weeklySorted = [...weekly].sort((a, b) => {
+        const dayA = DAY_ORDER[a.groupDay?.toLowerCase()] || 99;
+        const dayB = DAY_ORDER[b.groupDay?.toLowerCase()] || 99;
+        if (dayA !== dayB) return dayA - dayB;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      // Reassemble: weekly (day-sorted) first, then non-weekly in original order.
+      // If you'd rather interleave and preserve absolute original positions
+      // instead of grouping weekly-first, let me know — that's a different,
+      // slightly more involved reassembly.
+      dataToSort = [...weeklySorted, ...nonWeekly];
     }
     
     // Apply additional sorting if configured
@@ -2484,6 +2519,36 @@ const ModernBranchCashCollections = () => {
               </div>
             </div>
 
+            {currentFilter === 'branch' && (
+              <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-white border-b border-gray-200 text-xs text-gray-600">
+                <span className="font-medium text-gray-700">Legend:</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-red-100 border border-red-200" />
+                  Missing closing documents
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-orange-100 border border-orange-200" />
+                  Draft transaction
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-purple-100 border border-purple-200" />
+                  Documents need re-check (reopened after closing)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-200" />
+                  Has active clients, not yet closed
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-200" />
+                  Closed, pending approval
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-semibold text-fuchsia-700">Branch Name</span>
+                  Has an accelerated-weekly loan officer
+                </span>
+              </div>
+            )}
+
             {showColumnSelector && (
                 <div className="absolute right-4 mt-16 bg-white shadow-lg border border-gray-200 rounded-md z-10 p-4 max-h-96 overflow-y-auto">
                   <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
@@ -2611,7 +2676,9 @@ const ModernBranchCashCollections = () => {
                                       } : {}}
                                     >
                                       {column.key === 'name' ? (
-                                        <div className="font-medium text-gray-900 break-words leading-tight flex items-center">
+                                        <div className={`font-medium break-words leading-tight flex items-center ${
+                                          currentFilter === 'branch' && row.hasAcceleratedWeeklyLo ? 'text-fuchsia-700' : 'text-gray-900'
+                                        }`}>
                                           {row[column.key]}
                                         </div>
                                       ) : column.key === 'actions' ? (
@@ -2962,6 +3029,8 @@ const ModernBranchCashCollections = () => {
                 cohBreakdown={cohBreakdownStable}
                 onCohAmountChange={setCohAmount}
                 onCohSave={handleCOHDataChange}
+                canEditCoh={cohPermission.canEdit}
+                cohLockedReason={cohPermission.reason}
                 onClosed={() => {
                   fetchCashCollectionsData(dateFilter);
                   setReadinessVersion(v => v + 1);

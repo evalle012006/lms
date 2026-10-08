@@ -100,6 +100,7 @@ export const CLIENT_FIELDS = `
   distanceFromBranch
   faceTemplate
   faceEnrolledAt
+  faceEnrollPhotoKey
   mergedIntoClientId
   mergedAt
   mergedBy
@@ -108,6 +109,9 @@ export const CLIENT_FIELDS = `
   business
   dailyIncome
   livenessScore
+  qrToken
+  qrGeneratedAt
+  qrGeneratedBy
   `;
 
 export const LOAN_FIELDS = `
@@ -137,6 +141,7 @@ export const LOAN_FIELDS = `
   guarantorMiddleName
   history
   insertedBy
+  insertedByName
   insertedDateTime
   lastUpdated
   ldfApproved
@@ -161,6 +166,7 @@ export const LOAN_FIELDS = `
   mcbuWithdrawal
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   noBadDebtPayment
   noOfPayments
@@ -287,10 +293,17 @@ export const SETTINGS_FIELDS = `
   requireGovernmentId
   requireSelfieWithId
   smsEnabled
+  smsSenderName
+  smsNotificationsEnabled
+  smsNotificationsSenderName
+  smsOtpEnabled
+  smsOtpSenderName
   ciQuestions
   requireStaffBiometric
+  requireLoanVerificationAtClosing
   qrAllowedStartTime
   qrAllowedEndTime
+  passwordLoginEnabled
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -324,6 +337,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   ldfApprovalCutoffTime
   enableLoanApprovalRestriction
   loanApprovalCutoffTime
+  staleDataRefreshIdleSeconds
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
@@ -371,6 +385,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   groupStatus
   history
   insertedBy
+  insertedByName
   insertedDateTime
   latePayment
   loanBalance
@@ -391,6 +406,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   mcbuWithdrawFlag
   mispayment
   modifiedBy
+  modifiedByName
   modifiedDateTime
   mpdc
   noMispayment
@@ -518,6 +534,7 @@ export const TRANSFER_CLIENT_FIELDS = `
   status
   targetBranchId
   targetGroupId
+  targetLoanTerms
   selectedClientId
   sourceGroupId
   targetUserId
@@ -571,6 +588,8 @@ export const TRANSFER_CLIENT_FIELDS = `
   account
   description
   status
+  transferType
+  outpostRemarks
   giverApproval
   giverApproveRejectDate
   receiverApproval
@@ -852,6 +871,7 @@ export const TEMP_LOAN_APP_FIELDS = `
   faceTemplate
   faceEnrolledAt
   livenessScore
+  faceEnrollPhotoKey
   promotedAt
   civilStatus
   yearsOfStay
@@ -860,6 +880,8 @@ export const TEMP_LOAN_APP_FIELDS = `
   loanRelease
   amountRelease
   guarantorAddress
+  isExactDuplicateMatch
+  groupLeader
 `;
 
 export const CI_INVESTIGATION_FIELDS = `
@@ -966,6 +988,57 @@ export const CLOSING_DOCUMENT_REVIEWS_FIELDS = `
   date_for
   doc_type
   version
+  reviewed_by
+  reviewed_by_name
+  first_viewed_at
+  last_viewed_at
+  view_count
+  acknowledged
+  acknowledged_at
+`;
+
+export const FACE_VERIFY_ATTEMPT_FIELDS = `
+    _id
+    client_id
+    loan_id
+    branch_id
+    ci_reference_code
+    distance
+    confidence
+    matched
+    match_threshold
+    photo_key
+    user_agent
+    inserted_by
+    captured_at
+`;
+
+export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
+    _id
+    clientId
+    groupId
+    branchId
+    loanId
+    collectionDate
+    payload
+    referenceCode
+    status
+    scannedBy
+    scannedByName
+    lastEditBy
+    lastEditedByName
+    scannedAt
+    qrTokenUsed
+    mergedIntoCashCollectionId
+    insertedDateTime
+    updatedDateTime
+`;
+
+export const LOAN_CLOSING_REVIEW_FIELDS = `
+  _id
+  branch_id
+  date_for
+  loan_id
   reviewed_by
   reviewed_by_name
   first_viewed_at

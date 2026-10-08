@@ -101,15 +101,6 @@ const Layout = ({
                 }
             });
             dispatch(setHoliday(holidayToday));
-
-            const dayName = moment(currentDate).format('dddd');
-            dispatch(setWeekend(dayName === 'Saturday' || dayName === 'Sunday'));
-            
-            // these likely already exist in the current code
-            const lastDay = getLastWeekdayOfTheMonth(currentDate);
-            const last5Days = getLastFiveWeekdaysOfMonth(currentDate);
-            dispatch(setLastDayOfTheMonth(lastDay));
-            dispatch(setLast5DaysOfTheMonth(last5Days));
         } else if (response.error) {
             toast.error(response.message);
         }

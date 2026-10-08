@@ -1,8 +1,10 @@
 // src/components/transactions/BranchClosingDocumentsModal.js
-// BM-facing modal, two clearly separated sections:
+// BM-facing modal, three sections:
 //   1. Cash on Hand — total + optional breakdown, explicit Save button
 //   2. Closing Documents — multiple files allowed per category, each
 //      independently viewed/reviewed/removable/replaceable
+//   3. Loan Verification — v2 branches only; renders nothing on non-v2
+//      branches (see LoanVerificationSection's `applicable` flag)
 // Enable the trigger button only when branch-check.readyToUpload === true.
 
 import { useEffect, useState } from 'react';
@@ -12,6 +14,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { CLOSING_DOC_TYPES, getClosingDocMaxBytes } from '@/lib/closing-documents.constants';
 import DocumentViewerModal from './DocumentViewerModal';
+import LoanVerificationSection from './LoanVerificationSection';
 
 export default function BranchClosingDocumentsModal({
     isOpen,
@@ -25,6 +28,10 @@ export default function BranchClosingDocumentsModal({
     cohBreakdown,
     onCohAmountChange,
     onCohSave,
+    // ADDED: server-resolved COH edit permission (see resolveCohEditPermission).
+    // canEditCoh === undefined falls back to the old behavior (canUpload).
+    canEditCoh,
+    cohLockedReason,
 }) {
     const [existingDocs, setExistingDocs] = useState({});
     const [initialLoading, setInitialLoading] = useState(true);
@@ -42,10 +49,20 @@ export default function BranchClosingDocumentsModal({
     const [cohSaving, setCohSaving] = useState(false);
     const [cohDirty, setCohDirty] = useState(false);
 
+    // ADDED: reported by LoanVerificationSection — true when the branch
+    // isn't v2 (section doesn't apply) or every approved loan today is
+    // acknowledged. Starts true so loading/non-v2 branches never block.
+    const [loanVerificationReady, setLoanVerificationReady] = useState(true);
+
+    // ADDED: LOs that still haven't closed (from branch-check). Informational
+    // only; the server gate in update-group-transaction-status is authoritative.
+    const [unclosed, setUnclosed] = useState({ summary: [], emptyGroups: [] });
+
     useEffect(() => {
         if (isOpen) {
             setInitialLoading(true);
             loadExisting();
+            loadUnclosed();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, branchId, dateFor]);
@@ -77,6 +94,18 @@ export default function BranchClosingDocumentsModal({
         setInitialLoading(false);
     };
 
+    const loadUnclosed = async () => {
+        const url = `${getApiBaseUrl()}transactions/closing-documents/branch-check?` +
+            new URLSearchParams({ branchId, dateFor });
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            setUnclosed({
+                summary: response.unclosedLoSummary || [],
+                emptyGroups: response.unclosedEmptyGroups || [],
+            });
+        }
+    };
+
     const handleCohAmountChange = (value) => {
         onCohAmountChange(value);
         setCohDirty(true);
@@ -97,11 +126,15 @@ export default function BranchClosingDocumentsModal({
         setCohDirty(true);
     };
 
+    // CHANGED: onCohSave now returns true/false. The old version cleared
+    // cohDirty unconditionally, so a save rejected by the server (e.g. wrong
+    // date window, branch closed) would still show "Saved" and let the user
+    // proceed to final close with COH that was never persisted.
     const handleSaveCoh = async () => {
         setCohSaving(true);
-        await onCohSave(cohAmount, breakdownDraft);
+        const saved = await onCohSave(cohAmount, breakdownDraft);
         setCohSaving(false);
-        setCohDirty(false);
+        if (saved) setCohDirty(false);
     };
 
     const handleFileSelect = (docType, fileList) => {
@@ -227,6 +260,12 @@ export default function BranchClosingDocumentsModal({
     const UPLOAD_ALLOWED_SHORTCODES = ['admin', 'branch_manager'];
     const canUpload = UPLOAD_ALLOWED_SHORTCODES.includes(currentUser?.role?.shortCode);
 
+    // ADDED: COH editing is decided by the server (role + branch scope + date
+    // window + reopen status), not by canUpload. Document upload permissions
+    // (canUpload) are unchanged. Falls back to canUpload only if the parent
+    // didn't pass the prop at all.
+    const cohEditable = canEditCoh ?? canUpload;
+
     const allAcknowledged = CLOSING_DOC_TYPES.every(d =>
         (existingDocs[d.key] || []).every(doc => doc.acknowledged)
     );
@@ -324,16 +363,8 @@ export default function BranchClosingDocumentsModal({
         }
     };
 
-    // ADDED: live sum of breakdown lines, purely informational — does not
-    // gate or validate anything, matches the confirmed "supporting detail
-    // only" design. Lets BM sanity-check their own entries at a glance
-    // without needing to add it up externally.
-    // FIXED: this was referenced by the finalize button below but never
-    // actually declared — a straight ReferenceError that would have
-    // thrown on every render once the button's disabled expression was
-    // evaluated. Same mistake as the approvalRecord bug in branch-check.js
-    // a few messages back: the instruction to add this was given, only
-    // the usage made it into the file, not the declaration itself.
+    // Live sum of breakdown lines, purely informational — does not gate or
+    // validate anything, matches the confirmed "supporting detail only" design.
     const cohValid = (() => {
         if (cohAmount === null || cohAmount === undefined || cohAmount === '') return false;
         const numeric = Number(String(cohAmount).replace(/,/g, ''));
@@ -358,11 +389,40 @@ export default function BranchClosingDocumentsModal({
 
                 <div className="p-4 space-y-4 overflow-y-auto flex-1">
 
+                    {(unclosed.summary.length > 0 || unclosed.emptyGroups.length > 0) && (
+                        <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
+                            <p className="font-medium mb-1">
+                                This branch can't be closed yet — some Loan Officer transactions are still open.
+                            </p>
+                            {unclosed.summary.length > 0 && (
+                                <ul className="list-disc ml-4 space-y-0.5">
+                                    {unclosed.summary.map(lo => (
+                                        <li key={lo.loId}>
+                                            <span className="font-medium">{lo.loName || 'Unknown LO'}</span>
+                                            {' — '}{lo.groups.map(g => g.groupName).join(', ')}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {unclosed.emptyGroups.length > 0 && (
+                                <p className="mt-1.5 text-amber-700">
+                                    Also open with no active clients (an admin needs to close these):{' '}
+                                    {[...new Set(unclosed.emptyGroups.map(g => g.groupName))].join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">1</span>
                             <h3 className="text-sm font-semibold text-gray-900">Cash on Hand</h3>
                         </div>
+
+                        {/* ADDED: tells the user WHY COH is read-only (server-provided reason) */}
+                        {canEditCoh === false && cohLockedReason && (
+                            <p className="text-xs text-amber-600 mb-2">{cohLockedReason}</p>
+                        )}
 
                         <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-4">
                             <div className="flex items-center gap-2 mb-3">
@@ -371,7 +431,7 @@ export default function BranchClosingDocumentsModal({
                                     type="number"
                                     value={cohAmount}
                                     onChange={e => handleCohAmountChange(e.target.value)}
-                                    disabled={!canUpload}
+                                    disabled={!cohEditable}
                                     className="w-32 px-2 py-1 text-sm border rounded bg-white focus:ring-1 focus:ring-blue-400"
                                     placeholder="0.00"
                                 />
@@ -383,7 +443,7 @@ export default function BranchClosingDocumentsModal({
                             </p>
 
                             {breakdownDraft.length === 0 ? (
-                                canUpload ? (
+                                cohEditable ? (
                                     <div className="border border-dashed border-blue-200 rounded-md py-4 text-center">
                                         <p className="text-xs text-gray-400 mb-1.5">No breakdown items yet</p>
                                         <button
@@ -405,7 +465,7 @@ export default function BranchClosingDocumentsModal({
                                         <span className="w-4 shrink-0" />
                                         <span className="flex-1 text-[10px] font-medium text-gray-400 uppercase tracking-wide">Description</span>
                                         <span className="w-24 shrink-0 text-[10px] font-medium text-gray-400 uppercase tracking-wide text-right">Amount</span>
-                                        {canUpload && <span className="w-6 shrink-0" />}
+                                        {cohEditable && <span className="w-6 shrink-0" />}
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -417,7 +477,7 @@ export default function BranchClosingDocumentsModal({
                                                     placeholder="Description"
                                                     value={line.label}
                                                     onChange={e => updateBreakdownLine(i, 'label', e.target.value)}
-                                                    disabled={!canUpload}
+                                                    disabled={!cohEditable}
                                                     className="flex-1 px-2 py-1 text-xs border rounded bg-white"
                                                 />
                                                 <input
@@ -425,10 +485,10 @@ export default function BranchClosingDocumentsModal({
                                                     placeholder="0.00"
                                                     value={line.amount}
                                                     onChange={e => updateBreakdownLine(i, 'amount', e.target.value)}
-                                                    disabled={!canUpload}
+                                                    disabled={!cohEditable}
                                                     className="w-24 px-2 py-1 text-xs border rounded bg-white text-right tabular-nums"
                                                 />
-                                                {canUpload && (
+                                                {cohEditable && (
                                                     <button
                                                         type="button"
                                                         onClick={() => removeBreakdownLine(i)}
@@ -446,7 +506,7 @@ export default function BranchClosingDocumentsModal({
                                         it happens to match the typed total, never a hard
                                         validation or block. */}
                                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-100/70 px-1">
-                                        {canUpload && (
+                                        {cohEditable && (
                                             <button
                                                 type="button"
                                                 onClick={addBreakdownLine}
@@ -465,7 +525,7 @@ export default function BranchClosingDocumentsModal({
                                 </>
                             )}
 
-                            {canUpload && (
+                            {cohEditable && (
                                 <div className="mt-3 pt-3 border-t border-blue-100 flex items-center justify-between">
                                     <span className={`text-xs ${cohDirty ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
                                         {cohDirty ? 'Unsaved changes' : 'Saved'}
@@ -550,7 +610,7 @@ export default function BranchClosingDocumentsModal({
                                             ))}
 
                                             {existingList.map(doc => {
-                                                // ADDED: extract the actual stored filename from fileKey
+                                                // Extract the actual stored filename from fileKey
                                                 // (e.g. ".../v2/receipt_scan.pdf" → "receipt_scan.pdf").
                                                 // Note this is the SANITIZED name upload.js stored it
                                                 // under (lowercased, special characters stripped) —
@@ -560,11 +620,8 @@ export default function BranchClosingDocumentsModal({
                                                 const displayName = doc.fileKey.split('/').pop();
                                                 const isReplacing = replaceInProgressId === doc.id;
 
-                                                // ADDED: while this doc's replacement is uploading, show a
-                                                // clear in-progress row instead of the normal controls —
-                                                // this is the visible feedback that was missing entirely
-                                                // before (the old flow gave no indication anything was
-                                                // happening between confirm and the eventual toast).
+                                                // While this doc's replacement is uploading, show a
+                                                // clear in-progress row instead of the normal controls.
                                                 if (isReplacing) {
                                                     return (
                                                         <div key={doc.id} className="border-t border-gray-50 pt-2 first:border-t-0 first:pt-0">
@@ -675,6 +732,19 @@ export default function BranchClosingDocumentsModal({
                             })}
                         </div>
                     </div>
+
+                    {/* ADDED: section 3 — renders nothing on non-v2 branches
+                        (LoanVerificationSection returns null once it knows
+                        applicable === false). canFinalize / branchClosed
+                        control the acknowledge checkbox the same way they
+                        control section 2's. */}
+                    <LoanVerificationSection
+                        branchId={branchId}
+                        dateFor={dateFor}
+                        canFinalize={canFinalize}
+                        branchClosed={branchClosed}
+                        onReadinessChange={setLoanVerificationReady}
+                    />
                 </div>
 
                 <div className="p-4 border-t flex justify-between gap-2 shrink-0">
@@ -689,12 +759,13 @@ export default function BranchClosingDocumentsModal({
                     )}
                     <button
                         onClick={handleFinalClose}
-                        disabled={!allUploaded || closing || !canFinalize || !allAcknowledged || cohDirty || !cohValid}
+                        disabled={!allUploaded || closing || !canFinalize || !allAcknowledged || cohDirty || !cohValid || !loanVerificationReady}
                         title={
                             !canFinalize && allUploaded ? 'Only an Area Manager or above can finalize this closing'
                             : !cohValid ? 'Enter a valid Cash on Hand amount before finalizing'
                             : cohDirty ? 'Save Cash on Hand before finalizing'
                             : canFinalize && allUploaded && !allAcknowledged ? 'Review and check off every uploaded file before finalizing'
+                            : canFinalize && !loanVerificationReady ? 'Review and check off every approved loan before finalizing'
                             : undefined
                         }
                         className="px-4 py-2 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
@@ -709,7 +780,9 @@ export default function BranchClosingDocumentsModal({
                                         ? 'Save Cash on Hand to continue'
                                         : (canFinalize && allUploaded && !allAcknowledged)
                                             ? 'Review all documents to continue'
-                                            : 'Confirm final closing'}
+                                            : (canFinalize && !loanVerificationReady)
+                                                ? 'Review all loans to continue'
+                                                : 'Confirm final closing'}
                     </button>
                 </div>
             </div>
@@ -752,18 +825,14 @@ export default function BranchClosingDocumentsModal({
                                 onClick={async () => {
                                     const { type, doc } = pendingAction;
                                     if (type === 'remove') {
-                                        // CHANGED: modal stays open with a
-                                        // spinner until the request actually
-                                        // resolves — was closing immediately
-                                        // on click, so the deletion happened
-                                        // silently with no visible feedback
-                                        // for however long the request took.
+                                        // Modal stays open with a spinner until the
+                                        // request actually resolves.
                                         await executeRemove(doc);
                                         setPendingAction(null);
                                     } else {
-                                        // Replace makes no API call here at
-                                        // all — just closes this dialog and
-                                        // opens the file picker.
+                                        // Replace makes no API call here at all —
+                                        // just closes this dialog and opens the
+                                        // file picker.
                                         setPendingAction(null);
                                         startReplace(doc);
                                     }

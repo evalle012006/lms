@@ -1,15 +1,13 @@
 // src/pages/api/v2/laf/sync.js
-// POST — authenticated (LO must be logged in)
 // Syncs a single offline LAF entry: uploads photos, inserts to DB.
 // Called in a loop from the client-side sync panel for each pending entry.
 
-import { apiHandler }                         from '@/services/api-handler';
+import { publicApiHandler } from '@/services/public-api-handler';
 import { GraphProvider }                      from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { generateUUID }                       from '@/lib/utils';
 import { logAudit }                           from '@/lib/audit';
-import { findUserById }                       from '@/lib/graph.functions';
 import { S3Client, PutObjectCommand }          from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({
@@ -50,12 +48,9 @@ const GROUP_TYPE = createGraphType('groups', `
     branch { _id name code }
 `)('groups');
 
-export default apiHandler({ post: syncEntry });
+export default publicApiHandler({ post: syncEntry });
 
 async function syncEntry(req, res) {
-    const currentUser = await findUserById(req.auth.sub);
-    if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
-
     const {
         qrToken, offlineId, groupId, loId, branchId,
         clientType, existingClientId, existingLoanId,
@@ -143,7 +138,7 @@ async function syncEntry(req, res) {
     await logAudit(req, {
         action: 'LAF_OFFLINE_SYNCED', category: 'LAF', severity: 'INFO',
         entityType: 'temporaryLoanApplication', entityId: insertId,
-        description: `Offline LAF synced for ${firstName} ${lastName} by ${currentUser.firstName} ${currentUser.lastName}`,
+        description: `Offline LAF synced for ${firstName} ${lastName} (public offline queue, loId: ${loId || 'unknown'})`,
         branchId: group.branchId, branchName: group.branch?.name,
         metadata: { offlineId, groupId: group._id, groupName: group.name, ciReferenceCode, clientType },
     });

@@ -9,6 +9,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import {
+    captureBestFrame,
+    isTooDark,
+    canvasToDebugThumbnail,
+} from '@/lib/face-capture-utils';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
@@ -146,7 +151,7 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         setCameraError(null);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -255,14 +260,40 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
         }, LANDMARK_INTERVAL);
     }, []);
 
+    async function uploadEnrollmentThumbnail(blob) {
+        if (!blob) return null;
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'face-enroll-thumbnail.jpg');
+            formData.append('origin', 'face-enroll-thumbnail');
+            formData.append('uuid', `faceenroll-${Date.now()}`);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) return null;
+            const data = await res.json();
+            return data.fileKey || null;
+        } catch {
+            return null;
+        }
+    }
+
     const extractDescriptor = useCallback(async () => {
         setCapturing(true);
         const faceapi = faceApiRef.current;
         const video   = videoRef.current;
         if (!faceapi || !video) { setCapturing(false); return; }
         try {
+            const bestCanvas = await captureBestFrame(video);
+
+            if (isTooDark(bestCanvas)) {
+                toast.error('Lighting is too dark for an accurate scan. Please move somewhere brighter and try again.');
+                setCapturing(false);
+                startDetectionLoop(0);
+                return;
+            }
+
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
+                .detectSingleFace(bestCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: SCORE_THRESHOLD }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
             if (!detection) {
@@ -272,11 +303,14 @@ const FaceLivenessStep = ({ onVerified, verified }) => {
                 startDetectionLoop(0);
                 return;
             }
+            const thumbnailBlob = await canvasToDebugThumbnail(bestCanvas);
             stopCamera();
+            const faceEnrollPhotoKey = await uploadEnrollmentThumbnail(thumbnailBlob);
             onVerified({
-                faceTemplate:   Array.from(detection.descriptor),
-                faceEnrolledAt: new Date().toISOString(),
-                livenessScore:  detection.detection.score,
+                faceTemplate:      Array.from(detection.descriptor),
+                faceEnrolledAt:    new Date().toISOString(),
+                livenessScore:     detection.detection.score,
+                faceEnrollPhotoKey,
             });
         } catch (err) {
             console.error('[FaceLiveness] descriptor extraction failed:', err);

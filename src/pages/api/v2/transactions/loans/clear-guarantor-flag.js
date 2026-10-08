@@ -1,3 +1,4 @@
+import { guardGuarantorFlag } from '@/lib/api/loanWriteGuard';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -28,6 +29,12 @@ async function handleGuarantorFlag(req, res) {
     }
 
     let set;
+
+    const guard = await guardGuarantorFlag(req, { loanId, action });
+    if (guard.deny) {
+        return res.status(200).json(guard.response);
+    }
+
     if (action === 'flag') {
         set = { guarantorDuplicate: true, modifiedBy: user_id };
     } else if (action === 'clear') {

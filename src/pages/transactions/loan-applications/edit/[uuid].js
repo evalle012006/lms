@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
+import { loanApplicationHomePath } from '@/lib/loan-application-v2-gate';
 import Layout from '@/components/Layout';
 import AddLoanPage from '@/components/transactions/loan-application/AddLoanPage';
 
@@ -20,8 +21,8 @@ const EditLoanApplicationPage = () => {
                 key={uuid}
                 mode="edit"
                 loanId={uuid}
-                onBack={() => router.replace('/transactions/loan-applications')}
-                onSuccess={() => router.replace('/transactions/loan-applications')}
+                onBack={() => router.replace(loanApplicationHomePath(currentUser))}
+                onSuccess={() => router.replace(loanApplicationHomePath(currentUser))}
             />
         </Layout>
     );

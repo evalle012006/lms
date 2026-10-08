@@ -15,6 +15,7 @@ import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions'; // ← ADD THIS
 import moment from 'moment';
 import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
+import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
 
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
@@ -35,6 +36,7 @@ async function saveInvestigation(req, res) {
         ciReferenceCode, tempApplicationId,
         findings, businessVerified, addressVerified,
         decision, declineReason, selfieKey, ciAnswers,
+        groupLeader,
     } = req.body;
 
     if (decision === 'approved' && !selfieKey) {
@@ -78,9 +80,9 @@ async function saveInvestigation(req, res) {
                 selfieKey:     decision === 'approved' ? selfieKey : null,
                 picUserId:     decision === 'approved' ? userId : null,
                 picUserName:   decision === 'approved' ? picUserName : null, // ← real name
-                investigatedAt: new Date().toISOString(),
+                investigatedAt: getSystemDate().toISOString(),
                 ciAnswers: Array.isArray(req.body.ciAnswers) ? req.body.ciAnswers : [],
-                dateAdded:      moment().format('YYYY-MM-DD'),
+                dateAdded:      getCurrentDateV2(),
                 insertedBy:     userId,
             }],
             on_conflict: {
@@ -97,7 +99,10 @@ async function saveInvestigation(req, res) {
 
     await graph.mutation(
         updateQl(TEMP_TYPE, {
-            set: { status: decision === 'approved' ? 'ci_approved' : 'ci_declined' },
+            set: {
+                status: decision === 'approved' ? 'ci_approved' : 'ci_declined',
+                groupLeader: !!groupLeader,
+            },
             where: { ciReferenceCode: { _eq: ciReferenceCode } },
         })
     );

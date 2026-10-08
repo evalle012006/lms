@@ -122,6 +122,7 @@ async function approveReject(req, res) {
                                 updatedLoan.loId = transfer.targetUserId;
                                 updatedLoan.groupId = transfer.targetGroupId;
                                 updatedLoan.groupName = targetGroup.name;
+                                updatedLoan.groupDay = targetGroup.day;
                                 updatedLoan.occurence = targetGroup.occurence;
                                 updatedLoan.slotNo = selectedSlotNo;
                                 updatedLoan.mcbuCollection = loan.mcbu;
@@ -195,7 +196,6 @@ async function approveReject(req, res) {
                                 }
 
                                 const newLoanId = generateUUID();
-                                // Remove the .then() chain and just add to mutation list
                                 addToMutationList(alias => insertQl(loansType(alias), { 
                                     objects: [{ ...updatedLoan, _id: newLoanId }]
                                 }));
@@ -307,7 +307,6 @@ async function approveReject(req, res) {
 }
 
 async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
-    // add new cash collection entry with updated data
     const cashCollection = await findCashCollections({
       clientId: { _eq: transfer.selectedClientId },
       groupId: { _eq: transfer.targetGroupId },

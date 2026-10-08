@@ -49,16 +49,12 @@ async function listApplications(req, res) {
     let where = { ...branchWhere };
 
     if (status === 'pending') {
-        // Include pending_validation — flagged duplicate prospects awaiting admin review
-        where = {
-            ...branchWhere,
-            status: { _in: ['pending', 'pending_validation'] },
-        };
-    } else if (status) {
-        where = {
-            ...branchWhere,
-            status: { _eq: status },
-        };
+        // Pending CI queue — excludes pending_validation, which lives in its
+        // own "Flagged as Duplicate" tab so it isn't confused with a normal
+        // pending-CI application.
+        where = { ...branchWhere, status: { _eq: 'pending' } };
+    } else if (status && status !== 'all') {
+        where = { ...branchWhere, status: { _eq: status } };
     }
 
     if (req.query.existingClientId) {

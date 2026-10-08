@@ -650,7 +650,7 @@ const LoginPage = () => {
                     <div className="flex justify-center space-x-3 sm:space-x-4">
                         {/* Facebook */}
                         <a
-                            href="https://www.facebook.com/ambercash.ph.2025"
+                            href="https://www.facebook.com/ambercashphofficial"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110 hover:shadow-lg"
