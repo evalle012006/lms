@@ -28,6 +28,9 @@ import { PlusIcon }                    from '@heroicons/react/24/solid';
 import { setBranch } from '@/redux/actions/branchActions';
 import { canManageGroups } from '@/lib/group-permissions';
 
+// Stable reference so the drawer's effect doesn't re-run on every render
+const NO_DEFAULTS = {};
+
 const ScheduleTypeBadge = ({ scheduleType }) => {
     if (!scheduleType) return null;
     const isAccelerated = scheduleType === 'accelerated';
@@ -298,6 +301,13 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
     const canEdit  = canManageGroups(currentUser);
     const canDelete = currentUser?.role?.rep === 1;
 
+    // On a loan officer's page, "Add Group" opens pre-filled with that officer and their branch.
+    const addDefaults = useMemo(() => (
+        origin === 'lo-groups' && selectedLO?._id && selectedLO?.designatedBranchId
+            ? { branchId: selectedLO.designatedBranchId, loanOfficerId: selectedLO._id }
+            : NO_DEFAULTS
+    ), [origin, selectedLO]);
+
     const getCurrentBranch = async (branchId) => {
         const apiUrl = `${getApiBaseUrl()}branches?`;
         const params = { _id: branchId, date: currentDate };
@@ -542,6 +552,16 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
     const content = (
         <div className="pb-6 space-y-4">
 
+            {/* This origin renders without <Layout>, so its actionButtons never show: render Add Group inline */}
+            {origin === 'lo-groups' && canEdit && (
+                <div className="flex justify-end">
+                    <ButtonSolid label="Add Group" type="button"
+                        className="p-2"
+                        onClick={() => { setMode('add'); setGroup({}); setShowDrawer(true); }}
+                        icon={[<PlusIcon key="icon" className="w-5 h-5" />, 'left']} />
+                </div>
+            )}
+
             {/* Stats strip */}
             <div className="flex gap-4 flex-wrap">
                 {[
@@ -664,7 +684,7 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
             {/* Add/Edit drawer (admin only) */}
             {canEdit && (
                 <AddUpdateGroup
-                    mode={mode} group={group}
+                    mode={mode} group={group} defaults={addDefaults}
                     showSidebar={showDrawer} setShowSidebar={setShowDrawer}
                     onClose={() => { setMode('add'); setGroup({}); fetchGroups(); }}
                     onCsfChanged={fetchGroups}

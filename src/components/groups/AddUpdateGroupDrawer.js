@@ -32,7 +32,12 @@ const GROUP_NUMBER_OPTIONS = Array.from({ length: 15 }, (_, i) => ({ label: i + 
 
 const toBranchOption = (b) => ({ ...b, value: b._id, label: b.name });
 
-const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose, onCsfChanged }) => {
+// Stable defaults: a fresh {} on every render would re-trigger the [group] effect and reset the form's branch.
+const NO_GROUP = {};
+const NO_DEFAULTS = {};
+
+// `defaults` ({ branchId, loanOfficerId }) pre-fills the form in add mode, e.g. when opened from a loan officer's page.
+const AddUpdateGroup = ({ mode = 'add', group = NO_GROUP, defaults = NO_DEFAULTS, showSidebar, setShowSidebar, onClose, onCsfChanged }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const formikRef = useRef();
@@ -58,14 +63,14 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
     const initialValues = {
         name: group.name,
-        branchId: group.branchId,
+        branchId: group.branchId ?? defaults.branchId,
         day: group.day,
         dayNo: group.dayNo,
         time: group.time,
         capacity: group.capacity,
         groupNo: group.groupNo,
         occurence: group.occurence,
-        loanOfficerId: group.loanOfficerId,
+        loanOfficerId: group.loanOfficerId ?? defaults.loanOfficerId,
         loanOfficerName: group.loanOfficerName,
         availableSlots: group.availableSlots
     };
@@ -345,11 +350,13 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             setBranchId(group.branchId);
             setCsfEnabled(group.csfEnabled !== false);
         } else {
-            setBranchId(undefined);
+            setBranchId(defaults.branchId);
             setCsfEnabled(true);
         }
         setLoading(false);
-    }, [group]);
+    // Re-applied on every open, so a previous session's choices never carry over
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [group, defaults.branchId, showSidebar]);
 
     // Safety net: the drawer does nothing for non-admins even if a stray button opens it.
     if (!isAdmin) return null;
