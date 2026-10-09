@@ -555,10 +555,13 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
             {/* This origin renders without <Layout>, so its actionButtons never show: render Add Group inline */}
             {origin === 'lo-groups' && canEdit && (
                 <div className="flex justify-end">
-                    <ButtonSolid label="Add Group" type="button"
-                        className="p-2"
-                        onClick={() => { setMode('add'); setGroup({}); setShowDrawer(true); }}
-                        icon={[<PlusIcon key="icon" className="w-5 h-5" />, 'left']} />
+                    {/* ButtonSolid fills its container's width, so give it a fixed-width wrapper */}
+                    <div className="w-44">
+                        <ButtonSolid label="Add Group" type="button"
+                            className="p-2"
+                            onClick={() => { setMode('add'); setGroup({}); setShowDrawer(true); }}
+                            icon={[<PlusIcon key="icon" className="w-5 h-5" />, 'left']} />
+                    </div>
                 </div>
             )}
 
