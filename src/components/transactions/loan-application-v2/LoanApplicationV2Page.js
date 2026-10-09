@@ -6,7 +6,7 @@
 // classic. See useLoanApplicationView and the gate file.
 //
 // Approvals (see approvalMode in the gate file):
-//   branch managers  own branch: LDF approve (tab "LDF pending"), Approve loans
+//   branch managers  own branch: LDF approve and LDF unapprove (tab "LDF pending"), Approve loans
 //                    (tab "LDF approved", with the disbursement photo step on v2
 //                    branches), Reject, View approval details.
 //   supervisors      admin / deputy_director / regional_manager / area_admin, across
@@ -489,6 +489,7 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
                         onSelectAll={approval.selectAllMatching}
                         onClear={approval.clearSelection}
                         onPrimary={filters.tab === 'ldf' ? approval.ldfApprove : approval.approveLoans}
+                        onSecondary={filters.tab === 'ldf' ? approval.ldfUnapprove : undefined}
                     />
                 )}
 
