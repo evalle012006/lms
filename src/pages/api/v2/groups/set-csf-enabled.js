@@ -3,18 +3,13 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { logAudit } from '@/lib/audit';
+import { canManageGroups } from '@/lib/group-permissions';
 
 const graph = new GraphProvider();
 const CSF_GROUP_TYPE = createGraphType('groups', '_id name branchId branchName csfEnabled')('csfGroup');
 
-// root / admin / area managers: any group. Branch managers: only groups in their own branch.
-// (Area managers are not scoped to their area here, same as the existing group routes.)
-const canToggleGroupCsf = (user, group) => {
-    if (!user) return false;
-    if (user.root || user.role?.rep <= 2) return true;
-    if (user.role?.rep === 3) return !!user.designatedBranchId && group.branchId === user.designatedBranchId;
-    return false;
-};
+// Same rule as editing a group: only admin (rep 1) / root.
+const canToggleGroupCsf = (user) => canManageGroups(user);
 
 export default apiHandler({ post: setGroupCsfEnabled });
 

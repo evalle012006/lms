@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import InputText from "@/lib/ui/InputText";
 import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
@@ -14,7 +14,7 @@ import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
 import CheckBox from "@/lib/ui/checkbox";
 import { getApiBaseUrl } from "@/lib/constants";
-import { setUserList } from "@/redux/actions/userActions";
+import { canManageGroups } from "@/lib/group-permissions";
 
 const DAYS = [
     { label: 'All Week', value: 'all', dayNo: 0 },
@@ -30,32 +30,31 @@ const WEEKLY_DAYS = DAYS.filter(d => d.value !== 'all');
 
 const GROUP_NUMBER_OPTIONS = Array.from({ length: 15 }, (_, i) => ({ label: i + 1, value: i + 1 }));
 
+const toBranchOption = (b) => ({ ...b, value: b._id, label: b.name });
+
 const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose, onCsfChanged }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const userList = useSelector(state => state.user.list);
     const formikRef = useRef();
-    const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
     // Daily is the default, so day defaults to "All Week" (dayNo 0)
     const [day, setDay] = useState('all');
     const [dayNo, setDayNo] = useState(0);
     const [occurence, setOccurence] = useState('daily');
     const [branchId, setBranchId] = useState();
+    const [branches, setBranches] = useState([]);
+    const [officers, setOfficers] = useState([]);
+    const [officersLoading, setOfficersLoading] = useState(false);
     const [csfEnabled, setCsfEnabled] = useState(true);
     const [csfSaving, setCsfSaving] = useState(false);
 
-    // Only shown when editing, and only to roles that may use the endpoint (server re-checks).
-    const canToggleCsf = mode === 'edit' && currentUser.role.rep <= 3;
-    const branchCsfOff = branchList.find(b => b._id === group.branchId)?.csfEnabled === false;
+    // Admin (rep 1) / root only. The page hides the buttons for everyone else and the API re-checks.
+    const isAdmin = canManageGroups(currentUser);
 
-    // Derived, not stored: always reflects the current userList + selected branch.
-    // NOTE: assumes users carry `designatedBranchId`. Verify against your users/list payload.
-    const branchOfficers = useMemo(() => {
-        if (!currentUser.root) return userList;   // non-root: list is already branch-scoped
-        if (!branchId) return [];                 // root: must pick a branch first
-        return userList.filter(u => u.designatedBranchId === branchId);
-    }, [userList, branchId, currentUser.root]);
+    // A group that already has clients cannot move to another branch (also enforced by the API).
+    const branchLocked = mode === 'edit' && (group.noOfClients ?? 0) > 0;
+    const canToggleCsf = mode === 'edit' && isAdmin;
+    const branchCsfOff = branches.find(b => b._id === branchId)?.csfEnabled === false;
 
     const initialValues = {
         name: group.name,
@@ -72,6 +71,12 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
     };
 
     const validationSchema = yup.object().shape({
+        branchId: yup
+            .string()
+            .required('Please select a branch'),
+        loanOfficerId: yup
+            .string()
+            .required('Please select a loan officer'),
         name: yup
             .string()
             .required('Please enter name'),
@@ -94,49 +99,62 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             .required('Please enter capacity'),
     });
 
-    // Fetch the LO list once on mount if the store is empty.
-    // Root: fetch all LOs (filtered client-side by branch). BM: scoped to own branch.
+    // Branch options: use the redux list when present, otherwise fetch it (admin sees all branches).
     useEffect(() => {
-        if (userList.length > 0) return;
+        if (!isAdmin) return;
+        if (branchList?.length > 0) {
+            setBranches(branchList.map(toBranchOption));
+            return;
+        }
         let cancelled = false;
-
-        const load = async () => {
-            const params = { loOnly: true };
-            if (currentUser.role.rep === 3) {
-                params.branchId = currentUser.designatedBranchId;
-            }
-
-            try {
-                const response = await fetchWrapper.get(getApiBaseUrl() + 'users/list?' + new URLSearchParams(params));
+        fetchWrapper.get(getApiBaseUrl() + 'branches/list')
+            .then(response => {
                 if (cancelled) return;
+                if (response.success) {
+                    setBranches((response.branches || []).map(toBranchOption));
+                } else {
+                    toast.error('Error retrieving branch list.');
+                }
+            })
+            .catch(() => { if (!cancelled) toast.error('Error retrieving branch list.'); });
+        return () => { cancelled = true; };
+    }, [isAdmin, branchList]);
 
+    // Load the loan officers (rep 4) of the selected branch whenever the branch changes.
+    useEffect(() => {
+        if (!isAdmin || !branchId) {
+            setOfficers([]);
+            return;
+        }
+        let cancelled = false;
+        setOfficersLoading(true);
+
+        fetchWrapper.get(getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchId }))
+            .then(response => {
+                if (cancelled) return;
                 if (response.success) {
                     const list = (response.users || [])
+                        .filter(u => u.role?.rep === 4 && u.designatedBranchId === branchId)
                         .map(u => {
                             const name = `${u.firstName} ${u.lastName}`;
                             return { ...u, name, label: name, value: u._id };
                         })
                         .sort((a, b) => a.loNo - b.loNo);
-                    dispatch(setUserList(list));
+                    setOfficers(list);
                 } else {
-                    toast.error('Error retrieving user list.');
+                    toast.error('Error retrieving loan officers.');
                 }
-            } catch (error) {
-                if (!cancelled) {
-                    console.error(error);
-                    toast.error('Error retrieving user list.');
-                }
-            }
-        };
+            })
+            .catch(() => { if (!cancelled) toast.error('Error retrieving loan officers.'); })
+            .finally(() => { if (!cancelled) setOfficersLoading(false); });
 
-        load();
         return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isAdmin, branchId]);
 
-    const handleBranchChange = (selected) => {
-        setBranchId(selected);
-        // Clear the LO so a stale officer from the previous branch can't be submitted
+    const handleBranchChange = (selectedBranchId) => {
+        setBranchId(selectedBranchId);
+        formikRef.current?.setFieldValue('branchId', selectedBranchId);
+        // The previous branch's officers are no longer valid options
         formikRef.current?.setFieldValue('loanOfficerId', '');
     };
 
@@ -144,6 +162,8 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         setDay('all');
         setDayNo(0);
         setOccurence('daily');
+        setBranchId(undefined);
+        setOfficers([]);
     };
 
     // Switching occurrence resets the day so a weekly pick can't leak into a daily group
@@ -180,47 +200,25 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         values.occurence = occurence;
         values.noOfClients = group.noOfClients;
 
-        if (!currentUser.root) {
-            // Non-root users can only act on their own branch.
-            values.branchId = currentUser.designatedBranchId;
-            values.branchName = currentUser.designatedBranch;
+        const branch = branches.find(b => b._id === branchId);
+        if (!branch) {
+            toast.error('Please select a branch.');
+            action.setSubmitting(false);
+            return;
+        }
+        values.branchId = branch._id;
+        values.branchName = branch.name;
 
-            if (currentUser.role.rep === 4) {
-                // LO: locked into being their own loan officer
-                values.loanOfficerId = currentUser._id;
-                values.loanOfficerName = `${currentUser.firstName} ${currentUser.lastName}`;
-            } else if (mode === 'edit') {
-                // BM editing: LO dropdown is disabled, preserve what the group already has
-                values.loanOfficerId = group.loanOfficerId;
-                values.loanOfficerName = group.loanOfficerName;
-            } else {
-                // BM adding: must use the LO they picked in the dropdown
-                const officer = branchOfficers.find(u => u._id === values.loanOfficerId);
-                if (!officer) {
-                    toast.error('Please select a loan officer.');
-                    action.setSubmitting(false);
-                    return;
-                }
-                values.loanOfficerName = officer.label;
-            }
-        } else {
-            // Root: branch/LO dropdowns drive branchId / branchOfficers
-            const branch = branchList.find(b => b._id === branchId);
-            if (!branch) {
-                toast.error('Selected branch could not be found. Please reselect the branch and try again.');
-                action.setSubmitting(false);
-                return;
-            }
-            values.branchId = branch._id;
-            values.branchName = branch.name;
-
-            const officer = branchOfficers.find(u => u._id === values.loanOfficerId);
-            if (!officer) {
-                toast.error('Selected loan officer could not be found. Please reselect and try again.');
-                action.setSubmitting(false);
-                return;
-            }
+        const officer = officers.find(u => u._id === values.loanOfficerId);
+        if (officer) {
             values.loanOfficerName = officer.label;
+        } else if (mode === 'edit' && values.loanOfficerId && values.loanOfficerId === group.loanOfficerId && branchId === group.branchId) {
+            // Officer not in the loaded list (e.g. still loading): keep the group's current one unchanged
+            values.loanOfficerName = group.loanOfficerName;
+        } else {
+            toast.error('Please select a loan officer for the selected branch.');
+            action.setSubmitting(false);
+            return;
         }
 
         setLoading(true);
@@ -272,7 +270,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
-                    if (response.error) {
+                    if (response.error || response.success === false) {
                         setLoading(false);
                         toast.error(response.message || 'Failed to update group.');
                         return;
@@ -346,9 +344,15 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             setOccurence(group.occurence || 'daily');
             setBranchId(group.branchId);
             setCsfEnabled(group.csfEnabled !== false);
+        } else {
+            setBranchId(undefined);
+            setCsfEnabled(true);
         }
         setLoading(false);
     }, [group]);
+
+    // Safety net: the drawer does nothing for non-admins even if a stray button opens it.
+    if (!isAdmin) return null;
 
     return (
         <React.Fragment>
@@ -373,6 +377,39 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="branchId"
+                                            field="branchId"
+                                            value={branchId}
+                                            label="Branch"
+                                            options={branches}
+                                            onChange={(field, value) => handleBranchChange(value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Branch"
+                                            disabled={branchLocked}
+                                            errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
+                                        />
+                                        {branchLocked && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                A group that already has clients cannot be moved to another branch.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="loanOfficerId"
+                                            field="loanOfficerId"
+                                            value={values.loanOfficerId}
+                                            label="Loan Officer"
+                                            options={officers}
+                                            onChange={setFieldValue}
+                                            onBlur={setFieldTouched}
+                                            disabled={!branchId || officersLoading}
+                                            placeholder={!branchId ? 'Select a branch first' : officersLoading ? 'Loading loan officers...' : 'Select Loan Officer'}
+                                            errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
+                                        />
+                                    </div>
                                     <div className="mt-4">
                                         <InputText
                                             name="name"
@@ -453,38 +490,6 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                             errors={touched.capacity && errors.capacity ? errors.capacity : undefined}
                                         />
                                     </div>
-                                    {currentUser.root && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="branchId"
-                                                field="branchId"
-                                                value={branchId}
-                                                label="Branch"
-                                                options={branchList}
-                                                onChange={(e, selected) => handleBranchChange(selected)}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Branch"
-                                                disabled={mode === 'edit'}
-                                                errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
-                                            />
-                                        </div>
-                                    )}
-                                    {currentUser.role.rep <= 3 && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="loanOfficerId"
-                                                field="loanOfficerId"
-                                                value={values.loanOfficerId}
-                                                label="Loan Officer"
-                                                options={branchOfficers}
-                                                onChange={setFieldValue}
-                                                onBlur={setFieldTouched}
-                                                disabled={mode === 'edit'}
-                                                placeholder="Select Loan Officer"
-                                                errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
-                                            />
-                                        </div>
-                                    )}
                                     {canToggleCsf && (
                                         <div className="mt-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
                                             <CheckBox
