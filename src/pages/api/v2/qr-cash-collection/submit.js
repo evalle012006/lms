@@ -11,6 +11,8 @@ import { holidayType }                         from '@/pages/api/v2/settings/hol
 import moment                                  from 'moment-timezone';
 import crypto                                  from 'crypto';
 import { resolveWeeklyMcbuMinimum }             from '@/lib/mcbu-target-utils';
+import { resolveCsfMcbuAddOn }                  from '@/lib/csf-utils';
+import { loadCsfEnabled }                       from '@/lib/csf-config-server';
 
 const graph = new GraphProvider();
 
@@ -99,6 +101,16 @@ async function submitQrCollection(req, res) {
     const group     = client.group;
     const occurence = group?.occurence;
 
+    const csfEnabled = await loadCsfEnabled(client.groupId);
+
+    if (!csfEnabled && (parseFloat(csfCollection) || 0) > 0) {
+        return res.status(200).json({
+            success: false,
+            code: 'CSF_DISABLED',
+            message: 'CSF collection is turned off for this group.',
+        });
+    }
+
     // ── Minimum-amount validation ────────────────────────────────────────
     // Mirrors the EXACT logic in [uuid].js's handlePaymentValidation for both
     // daily and weekly pages — this is not a simplified server-side version,
@@ -159,11 +171,14 @@ async function submitQrCollection(req, res) {
     let effectiveMcbuVal = mcbuVal;
 
     if (occurence === 'daily') {
-        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * Math.round(noPaymentsToday));
+        const installments = Math.round(noPaymentsToday);
+        effectiveMcbuVal = Math.round((settings?.minDailyMcbuCollection ?? 0) * installments)
+            + resolveCsfMcbuAddOn({ csfEnabled, settings, noPayments: installments });
         // mcbuVal (whatever the client sent) is intentionally discarded below —
         // effectiveMcbuVal is what actually gets saved into the payload.
     } else if (mcbuVal > 0) {
-        const minMcbuCol = resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday;
+        const minMcbuCol = resolveWeeklyMcbuMinimum(settings, group?.weeklyScheduleType) * noPaymentsToday
+            + resolveCsfMcbuAddOn({ csfEnabled, settings, noPayments: noPaymentsToday });
 
         if (mcbuVal < minMcbuCol && Number.isInteger(minMcbuCol)) {
             return res.status(200).json({

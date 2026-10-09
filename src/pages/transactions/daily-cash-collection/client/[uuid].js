@@ -47,6 +47,7 @@ import EditMcbuCsfWithdrawalModal from '@/components/transactions/EditMcbuCsfWit
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
 import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
+import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -107,6 +108,22 @@ const CashCollectionDetailsPage = () => {
 
     const [showMcbuWithdrawalDrawer, setShowMcbuWithdrawalDrawer] = useState(false);
     const [hasGroupLeader, setHasGroupLeader] = useState(false);
+    const [csfEnabled, setCsfEnabled] = useState(true);
+
+    // CSF In column: unchanged when CSF is on; when off, only shown if stored rows still carry a CSF In
+    const showCsfInColumn = csfEnabled
+        ? !hasGroupLeader
+        : data.some(cc => cc.status !== 'totals' && safeNumber(cc.csfIn) > 0);
+
+    // MCBU minimum for N installments. When CSF is off, minCsfCollection is added on top
+    // (skipped for LOR no-CSF-In remarks).
+    const getDailyMinMcbu = (noPayments = 1, remarks = null) =>
+        (transactionSettings.minDailyMcbuCollection * noPayments) + resolveCsfMcbuAddOn({
+            csfEnabled,
+            settings: transactionSettings,
+            noPayments,
+            exempt: !!(remarks?.value && LOR_NO_CSF_IN_REMARKS.includes(remarks.value)),
+        });
 
     const [mcbuInterestLoading, setMcbuInterestLoading] = useState(false);
     const [showMcbuBreakdownModal, setShowMcbuBreakdownModal] = useState(false);
@@ -317,7 +334,14 @@ const CashCollectionDetailsPage = () => {
         let url = getApiBaseUrl() + 'transactions/cash-collections/get-loan-by-group-cash-collection?'
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', groupId: uuid, type: type });
 
-        const response = await fetchWrapper.get(url);
+        // CSF config is resolved server-side (branch AND group). Fails open to enabled = today's behavior.
+        const [response, csfConfig] = await Promise.all([
+            fetchWrapper.get(url),
+            fetchWrapper.get(getApiBaseUrl() + 'transactions/cash-collections/csf-config?' + new URLSearchParams({ groupId: uuid })).catch(() => null),
+        ]);
+        const csfEnabledNow = csfConfig?.success ? csfConfig.csfEnabled !== false : true;
+        setCsfEnabled(csfEnabledNow);
+
         if (response.success) {
             let cashCollection = [];
 
@@ -1513,7 +1537,7 @@ const CashCollectionDetailsPage = () => {
                 let updateOtherIncome = safeNumber(cc.otherIncome);
                 let csfIn = cc.csfIn;
 
-                if (!hasGroupLeader && cc.status === 'active' && (!cc.remarks || (cc.remarks && !LOR_NO_CSF_IN_REMARKS.includes(cc.remarks.value)))) {
+                if (csfEnabledNow && !hasGroupLeader && cc.status === 'active' && (!cc.remarks || (cc.remarks && !LOR_NO_CSF_IN_REMARKS.includes(cc.remarks.value)))) {
                     csfIn = cc.csfIn > 0 ? cc.csfIn : transactionSettings.minCsfCollection;
                 }
 
@@ -1772,7 +1796,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please double check the MCBU Collection/Withdrawal column.');
                 }
 
-                if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < transactionSettings.minDailyMcbuCollection) {
+                if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < getDailyMinMcbu(1, cc.remarks)) {
                     if (!cc.remarks || (cc.remarks 
                         && (cc.remarks.value !== 'past due' && cc.remarks.value?.startsWith('excused-')
                         && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
@@ -1796,7 +1820,7 @@ const CashCollectionDetailsPage = () => {
 
                 if ((cc.remarks == '' && cc.paymentCollection > 0) && (cc.remarks && ['reloaner-cont', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                     const noPaymentsToday = cc.paymentCollection / cc.activeLoan;
-                    const expectedMcbu = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                    const expectedMcbu = getDailyMinMcbu(noPaymentsToday, cc.remarks);
                     if (!cc.mcbuCol) {
                         errorMsg.add(`Error occured. No MCBU Collection detected.`);
                     } else if (cc.mcbuCol < expectedMcbu) {
@@ -1804,7 +1828,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
-                if (cc.csfError || (cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
+                if ((csfEnabled && cc.csfError) || (csfEnabled && cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
                     && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
@@ -1815,7 +1839,7 @@ const CashCollectionDetailsPage = () => {
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner-cont', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
                 const noPaymentsToday = cc.paymentCollection / activeLoan;
-                const expectedMcbu = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                const expectedMcbu = getDailyMinMcbu(noPaymentsToday, cc.remarks);
 
                 if (!cc.mcbuCol) {
                     errorMsg.add(`Error occured. No MCBU Collection detected.`);
@@ -2150,6 +2174,8 @@ const CashCollectionDetailsPage = () => {
                             if (error.code === ERROR_CODES.DATE_MISMATCH) {
                                 setPageStale(true);
                                 saveProgress.setError('The date has changed. Please refresh the page and try again.');
+                            } else if (error.code === ERROR_CODES.CSF_CONFIG_MISMATCH) {
+                                saveProgress.setError('CSF settings for this group changed. Please refresh the page and try again.');
                             } else if (error.code === ERROR_CODES.NETWORK_ERROR) {
                                 saveProgress.setError('Network error. Please check your connection and try again.');
                             } else {
@@ -2284,7 +2310,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispaymentStr = "No";
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
                                     temp.noOfPayments = temp.noOfPayments + noPayments;
-                                    const finalMcbu = noPayments * transactionSettings.minDailyMcbuCollection;
+                                    const finalMcbu = getDailyMinMcbu(noPayments);
                                     temp.mcbuCol = finalMcbu;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
@@ -2298,7 +2324,7 @@ const CashCollectionDetailsPage = () => {
                                 } else {
                                     temp.mcbu = safeNumber(temp.prevData.mcbu);
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.mcbuCol = transactionSettings.minDailyMcbuCollection;
+                                    temp.mcbuCol = getDailyMinMcbu(1);
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -2321,7 +2347,7 @@ const CashCollectionDetailsPage = () => {
                                 }
 
                                 const noPaymentsToday = value / temp.activeLoan;
-                                const minMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                                const minMcbuCol = getDailyMinMcbu(noPaymentsToday);
                                 if (!temp.mcbuCol || temp.mcbuCol < minMcbuCol) {
                                     // toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
                                     temp.mcbuError = true;
@@ -2403,7 +2429,7 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else {
                             const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
-                            const minMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                            const minMcbuCol = getDailyMinMcbu(noPaymentsToday, temp.remarks);
                             if (mcbuCol > 0 && mcbuCol < minMcbuCol) {
                                 temp.mcbuError = true;
                                 temp.mcbuCol = mcbuCol;
@@ -2610,7 +2636,7 @@ const CashCollectionDetailsPage = () => {
                         if ((temp.status == 'active' || (temp.status == 'completed' && temp.paymentCollection > 0)) && (remarks.value && ['reloaner-cont', 'double payment', 'advance payment'].includes(remarks.value))) {
                             const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : temp.history?.activeLoan;
                             const noPaymentsToday = temp.paymentCollection / activeLoan;
-                            const expectedMcbu = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                            const expectedMcbu = getDailyMinMcbu(noPaymentsToday, remarks);
                             
                             if (!temp.mcbuCol) {
                                 temp.mcbuError = true;
@@ -3056,7 +3082,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.excessStr = formatPricePhp(temp.excess);
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
                                             const excessMcbu = temp.excess / temp.activeLoan;
-                                            const finalMcbu = (excessMcbu * transactionSettings.minDailyMcbuCollection) + transactionSettings.minDailyMcbuCollection;
+                                            const finalMcbu = getDailyMinMcbu(excessMcbu + 1, remarks);
                                             temp.mcbuCol = finalMcbu;
                                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
@@ -3069,7 +3095,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.noOfPayments = parseInt(temp.noOfPayments);
                                         } else {
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + 1;
-                                            temp.mcbuCol = transactionSettings.minDailyMcbuCollection;
+                                            temp.mcbuCol = getDailyMinMcbu(1, remarks);
                                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                             temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -3213,7 +3239,7 @@ const CashCollectionDetailsPage = () => {
                                         const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
                                         if (temp.paymentCollection > 0 && activeLoan > 0) {
                                             const noPaymentsToday = temp.paymentCollection / activeLoan;
-                                            let calculatedMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                                            let calculatedMcbuCol = getDailyMinMcbu(noPaymentsToday, remarks);
                                             temp.mcbuCol = calculatedMcbuCol;
                                             temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                         }
@@ -3316,7 +3342,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const calculateCsfIn = (selected, noOfPayments) => {
-        return !hasGroupLeader ? transactionSettings.minCsfCollection * noOfPayments : 0;
+        return (csfEnabled && !hasGroupLeader) ? transactionSettings.minCsfCollection * noOfPayments : 0;
     }
 
     const removeCsfIn = (selected) => {
@@ -3336,7 +3362,7 @@ const CashCollectionDetailsPage = () => {
         switch (col) {
             case 'mcbuCol':
                 const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
-                const minMcbuCol = transactionSettings.minDailyMcbuCollection * noPaymentsToday;
+                const minMcbuCol = getDailyMinMcbu(noPaymentsToday, temp.remarks);
                 if (!value || (value < minMcbuCol && Number.isInteger(minMcbuCol))) {
                     toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
                     temp.mcbuError = true;
@@ -4145,7 +4171,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">C.B.H.B Collection</th>
                                         <th className="p-2 text-center">Add. Hosp.</th>
                                         {/** is group leader */}
-                                        {!hasGroupLeader && <th className="p-2 text-center">CSF In</th> }
+                                        {showCsfInColumn && <th className="p-2 text-center">CSF In</th> }
                                         <th className="p-2 text-center">Other Income Passbook/Picture</th>
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         <th className="p-2 text-center">CSF Withdrawal</th>
@@ -4195,7 +4221,7 @@ const CashCollectionDetailsPage = () => {
                                         const isHighlighted = highlightedSlotNo === cc.slotNo;
                                         const highlightClass = isHighlighted ? 'highlighted-comaker' : '';
 
-                                        const allowCSFCollection = cc.groupLeader && 
+                                        const allowCSFCollection = csfEnabled && cc.groupLeader && 
                                             ((cc.mcbu >= transactionSettings.minDailyMcbuWithdrawalGL && cc.loanCycle == 1) 
                                                 || (cc.mcbu >= 2000 && cc.loanCycle > 1));
 
@@ -4367,7 +4393,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.addHospitalization > 0 ? formatPricePhp(cc.addHospitalization) : '-' }</td>
-                                                { !hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
+                                                { showCsfInColumn && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
                                                     <div className="flex items-center justify-center gap-1">

@@ -47,6 +47,7 @@ export const BRANCH_FIELDS = `
   divisionId
   lockTransaction
   clientFlowVersion
+  csfEnabled
   `;
 
 export const CLIENT_FIELDS = `
@@ -266,6 +267,7 @@ export const GROUP_FIELDS = `
   qrGeneratedAt
   qrExpiresAt
   qrGeneratedBy
+  csfEnabled
   `;
 
 export const HOLIDAY_FIELDS = `

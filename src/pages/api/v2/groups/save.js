@@ -38,11 +38,14 @@ async function save(req, res) {
             message: `Group with the name "${groupData.name}" already exists in branch "${group.branch.name}"`
         };
     } else {
+        // csfEnabled is never set at creation (DB default = true); it changes only via groups/set-csf-enabled.
+        const { csfEnabled: _ignoredCsfEnabled, ...newGroupData } = groupData;
+
         const group = await graph.mutation(
             insertQl(GROUP_TYPE, {
                 objects: [
                     {
-                        ... groupData,
+                        ... newGroupData,
                         _id: generateUUID(),
                         dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                     }

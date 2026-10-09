@@ -130,6 +130,12 @@ const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDe
                     {group.occurence === 'weekly' && (
                         <ScheduleTypeBadge scheduleType={group.weeklyScheduleType} />
                     )}
+                    {group.csfEnabled === false && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
+                            bg-orange-100 text-orange-700 border border-orange-200">
+                            CSF off
+                        </span>
+                    )}
                 </div>
                 <p className="text-xs text-gray-400">
                     {group.occurence} · {group.day} · {group.time || '—'}
@@ -657,6 +663,7 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
                 mode={mode} group={group}
                 showSidebar={showDrawer} setShowSidebar={setShowDrawer}
                 onClose={() => { setMode('add'); setGroup({}); fetchGroups(); }}
+                onCsfChanged={fetchGroups}
             />
 
             {/* Delete dialog */}

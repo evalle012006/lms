@@ -21,6 +21,8 @@ import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloaner, isNotificationEnabled } from '@/lib/notification-service';
 import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
+import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
+import { loadCsfEnabled } from '@/lib/csf-config-server';
 
 // ============================================
 // CONFIGURATION
@@ -180,6 +182,34 @@ async function saveWithProtection(req, res) {
             });
         }
 
+        // Step 1b: CSF config guard (before the retry loop: deterministic, never worth retrying)
+        const csfRows = data.collection.filter(cc => cc.status !== 'totals');
+        if (csfRows.length > 0) {
+            const csfEnabled = await loadCsfEnabled(csfRows[0].groupId);
+            const violations = findCsfViolations(csfRows, csfEnabled);
+
+            if (violations.length > 0) {
+                logger.warn({
+                    user_id,
+                    transactionId,
+                    page: 'Cash Collection SaveV2',
+                    message: 'CSF values submitted for a CSF-disabled branch/group',
+                    enforced: ENFORCE_CSF_CONFIG,
+                    clientIds: violations.map(v => v.clientId)
+                });
+
+                if (ENFORCE_CSF_CONFIG) {
+                    return res.status(200).json({
+                        success: false,
+                        error: true,
+                        errorCode: 'CSF_CONFIG_MISMATCH',
+                        message: 'CSF settings for this group changed. Please refresh the page and try again.',
+                        transactionId
+                    });
+                }
+            }
+        }
+
         // Step 2: Execute save with retry
         let lastError = null;
         let attempt = 0;
@@ -197,6 +227,7 @@ async function saveWithProtection(req, res) {
 
                 // Call the actual save logic - returns offsetCollections
                 offsetCollections = await executeSave(req, user_id, transactionId, user);
+                lastError = null; // success: an earlier failed attempt must not trigger the throw below
 
                 // Success!
                 logger.info({

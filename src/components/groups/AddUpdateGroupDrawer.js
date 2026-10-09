@@ -12,6 +12,7 @@ import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
+import CheckBox from "@/lib/ui/checkbox";
 import { getApiBaseUrl } from "@/lib/constants";
 import { setUserList } from "@/redux/actions/userActions";
 
@@ -29,7 +30,7 @@ const WEEKLY_DAYS = DAYS.filter(d => d.value !== 'all');
 
 const GROUP_NUMBER_OPTIONS = Array.from({ length: 15 }, (_, i) => ({ label: i + 1, value: i + 1 }));
 
-const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose, onCsfChanged }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
@@ -41,6 +42,12 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
     const [dayNo, setDayNo] = useState(0);
     const [occurence, setOccurence] = useState('daily');
     const [branchId, setBranchId] = useState();
+    const [csfEnabled, setCsfEnabled] = useState(true);
+    const [csfSaving, setCsfSaving] = useState(false);
+
+    // Only shown when editing, and only to roles that may use the endpoint (server re-checks).
+    const canToggleCsf = mode === 'edit' && currentUser.role.rep <= 3;
+    const branchCsfOff = branchList.find(b => b._id === group.branchId)?.csfEnabled === false;
 
     // Derived, not stored: always reflects the current userList + selected branch.
     // NOTE: assumes users carry `designatedBranchId`. Verify against your users/list payload.
@@ -287,6 +294,36 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         }
     };
 
+    // Saves immediately via its own endpoint; it is not part of the Formik submit.
+    const handleToggleCsf = async (_name, checked) => {
+        if (csfSaving) return;
+        const next = !!checked;
+        const message = next
+            ? `Turn CSF ON for ${group.name}? CSF collection / CSF In will resume for this group (if its branch is also enabled).`
+            : `Turn CSF OFF for ${group.name}?\n\nNo CSF collection or CSF In will be recorded for this group. The minimum CSF amount is added to the MCBU minimum instead.`;
+        if (!window.confirm(message)) return;
+
+        setCsfSaving(true);
+        try {
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'groups/set-csf-enabled', {
+                groupId: group._id,
+                csfEnabled: next,
+            });
+            if (response.success) {
+                setCsfEnabled(next);
+                toast.success(`CSF ${next ? 'enabled' : 'disabled'} for ${group.name}.`);
+                onCsfChanged?.();
+            } else {
+                toast.error(response.message || 'Failed to update CSF setting.');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update CSF setting.');
+        } finally {
+            setCsfSaving(false);
+        }
+    };
+
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current?.resetForm();
@@ -308,6 +345,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             setDayNo(group.dayNo ?? 0);
             setOccurence(group.occurence || 'daily');
             setBranchId(group.branchId);
+            setCsfEnabled(group.csfEnabled !== false);
         }
         setLoading(false);
     }, [group]);
@@ -445,6 +483,26 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                 placeholder="Select Loan Officer"
                                                 errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
                                             />
+                                        </div>
+                                    )}
+                                    {canToggleCsf && (
+                                        <div className="mt-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                                            <CheckBox
+                                                size={"md"}
+                                                name="csfEnabled"
+                                                value={csfEnabled}
+                                                label="CSF collection / CSF In enabled"
+                                                onChange={handleToggleCsf}
+                                            />
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                Saves immediately, no need to press Submit. When off, no CSF collection or CSF In is
+                                                recorded for this group and the minimum CSF amount is added to the MCBU minimum instead.
+                                            </p>
+                                            {branchCsfOff && (
+                                                <p className="text-xs text-amber-600 mt-1">
+                                                    This branch has CSF turned off, so this setting has no effect until the branch is enabled.
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                     <div className="flex flex-row mt-5">

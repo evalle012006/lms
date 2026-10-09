@@ -50,6 +50,7 @@ export class TransactionError extends Error {
 
 export const ERROR_CODES = {
     DATE_MISMATCH: 'DATE_MISMATCH',
+    CSF_CONFIG_MISMATCH: 'CSF_CONFIG_MISMATCH',
     NETWORK_ERROR: 'NETWORK_ERROR',
     TIMEOUT: 'TIMEOUT',
     SERVER_ERROR: 'SERVER_ERROR',
@@ -250,6 +251,7 @@ export async function saveCashCollectionWithRetry(data, options = {}) {
                 // Don't retry date mismatch or validation errors
                 if (error.code === ERROR_CODES.DATE_MISMATCH) return false;
                 if (error.code === ERROR_CODES.VALIDATION_ERROR) return false;
+                if (error.code === ERROR_CODES.CSF_CONFIG_MISMATCH) return false;
                 return true;
             }
         }
