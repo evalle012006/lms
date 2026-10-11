@@ -9,6 +9,7 @@
 //                     for supervisors by the server), Details. No Reject.
 //
 //   LDF approve   tab 'ldf'          -> approve-by-batch, origin 'ldf'
+//   LDF unapprove tab 'ldf'          -> ldf-unapprove (ID-only; takes LDF approval back)
 //   Approve loans tab 'application'  -> approve-by-batch, origin 'application'
 //   Reject        any pending tab    -> loans/reject, status 'reject' + reason
 //   Details       any pending tab    -> LDFApprovalDetailsModal
@@ -247,6 +248,39 @@ export function useLoanApproval({
         }
     }, [busy, selectedIds, loadFreshRows, currentDate, currentUser, finishWrite]);
 
+    // ── LDF unapprove ────────────────────────────────────────────────────
+    // Classic's button never worked (approve-by-batch forces ldfApproved=true). This
+    // goes to its own endpoint, which sends only ids and checks everything itself.
+    const ldfUnapprove = useCallback(async () => {
+        if (busy) return;
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast.error('No loan selected!'); return; }
+        setBusy('ldf-unapprove');
+        try {
+            const res = await fetchWrapper.post(api('ldf-unapprove'), { loanIds: ids });
+            if (!res.success) {
+                toast.error(res.message || 'Unable to remove LDF approval.');
+                return;
+            }
+            if (res.updated > 0) {
+                toast.success(`LDF approval removed from ${res.updated} loan${res.updated === 1 ? '' : 's'}.`);
+            }
+            if (res.notApproved?.length > 0) {
+                toast.info(`${res.notApproved.length} selected loan${res.notApproved.length === 1 ? ' was' : 's were'} not LDF approved, so nothing changed for ${res.notApproved.length === 1 ? 'it' : 'them'}.`);
+            }
+            if (res.missing?.length > 0) {
+                toast.warning(`${res.missing.length} selected loan${res.missing.length === 1 ? ' is' : 's are'} no longer pending.`);
+            }
+            setSelectedIds(new Set());
+            setTimeout(() => onChanged?.(), REFRESH_DELAY_MS);
+        } catch (e) {
+            console.error('[useLoanApproval] LDF unapprove failed', e);
+            toast.error('Unable to remove LDF approval. Please refresh and check the list.');
+        } finally {
+            setBusy(null);
+        }
+    }, [busy, selectedIds, onChanged]);
+
     // ── Approve loans ────────────────────────────────────────────────────
     const approveLoans = useCallback(async () => {
         if (busy) return;
@@ -446,7 +480,7 @@ export function useLoanApproval({
         // selection
         toggle, togglePage, clearSelection, selectAllMatching,
         // actions
-        ldfApprove, approveLoans, openReject, showDetails,
+        ldfApprove, ldfUnapprove, approveLoans, openReject, showDetails,
         // dialogs
         blockersDialog, closeBlockers: () => setBlockersDialog(null),
         disbursementRows, confirmDisbursement, cancelDisbursement,

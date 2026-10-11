@@ -72,6 +72,27 @@ const BranchesPage = () => {
             });
     }
 
+    const canToggleCsf = !!(currentUser.root || currentUser.role?.rep === 1);
+
+    const handleToggleCsf = (branchRow) => {
+        const next = branchRow.csfEnabled === false; // currently off -> turn on
+        const message = next
+            ? `Turn CSF back ON for ${branchRow.name}? Groups whose own CSF setting is also on will resume CSF collection / CSF In.`
+            : `Turn CSF OFF for ALL groups in ${branchRow.name}?\n\nNo CSF collection or CSF In will be recorded. The minimum CSF amount is added to the MCBU minimum instead.`;
+        if (!window.confirm(message)) return;
+
+        fetchWrapper.post(getApiBaseUrl() + 'branches/set-csf-enabled', { branchId: branchRow._id, csfEnabled: next })
+            .then(response => {
+                if (response.success) {
+                    toast.success(`CSF ${next ? 'enabled' : 'disabled'} for ${branchRow.name}.`);
+                    getListBranch();
+                } else {
+                    toast.error(response.message || 'Failed to update CSF setting.');
+                }
+            })
+            .catch(() => toast.error('Failed to update CSF setting.'));
+    };
+
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
@@ -151,6 +172,29 @@ const BranchesPage = () => {
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
+        ...(canToggleCsf ? [{
+            Header: "CSF / CSF In",
+            accessor: 'csfEnabled',
+            Cell: ({ row }) => {
+                const enabled = row.original.csfEnabled;
+                // Not returned by branches/list: show a dash instead of a misleading "Enabled".
+                if (enabled === undefined || enabled === null) {
+                    return <span className="text-gray-400">—</span>;
+                }
+                return (
+                    <button
+                        type="button"
+                        onClick={() => handleToggleCsf(row.original)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                            enabled
+                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+                                : 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'
+                        }`}>
+                        {enabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                );
+            },
+        }] : []),
     ]);
 
     const handleShowAddDrawer = () => {
