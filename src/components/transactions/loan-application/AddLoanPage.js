@@ -208,8 +208,8 @@ const AddLoanPage = ({
 
     // ── Auto-load groups for LO ────────────────────────────────
     useEffect(() => {
-        if (rep === 4) getListGroup(currentUser.transactionType, currentUser._id);
-    }, [rep]);
+        if (rep === 4 && !fromCI) getListGroup(currentUser.transactionType, currentUser._id);
+    }, [rep, fromCI]);
 
     // ── LO Status ──────────────────────────────────────────────
     useEffect(() => {
@@ -1161,6 +1161,12 @@ const AddLoanPage = ({
         values.groupId       = selectedGroup;
 
         const group       = (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup);
+        if (!group?.loanOfficerId || !group?.occurence) {
+            setLoading(false);
+            toast.error('Group details did not load. Please reload the page and try again.');
+            return;
+        }
+
         values.group      = group;
         values.groupName  = group?.name;
         values.loId       = group?.loanOfficerId;
