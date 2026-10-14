@@ -20,6 +20,12 @@ import OtherReceiptPayment from '@/components/transactions/daily-collection-shee
 import MngtExpenses from '@/components/transactions/daily-collection-sheet/MngtExpenses';
 import Cashbook from '@/components/transactions/daily-collection-sheet/Cashbook';
 import Payroll from '@/components/transactions/daily-collection-sheet/Payroll';
+import OtherIncomeMiscIncome from '@/components/transactions/daily-collection-sheet/OtherIncomeMiscIncome';
+import MIS from '@/components/transactions/daily-collection-sheet/MIS';
+import CBHB from '@/components/transactions/daily-collection-sheet/CBHB';
+import CashInBank from '@/components/transactions/daily-collection-sheet/CashInBank';
+import FundTransfer from '@/components/transactions/daily-collection-sheet/fundTransfer';
+import WTaxEEER from '@/components/transactions/daily-collection-sheet/WTaxEEER';
 
 // ── Separated export / print utilities ───────────────────────────────────────
 import { exportDCSExcel } from '@/components/transactions/daily-collection-sheet/exportDCSExcel';
@@ -31,15 +37,26 @@ import { printDCS }       from '@/components/transactions/daily-collection-sheet
 
 const selectStyles = {
     ...borderStyles,
+
     control: (base, state) => ({
         ...base,
         minHeight: '38px',
         borderColor: state.isFocused ? '#14b8a6' : '#d1d5db',
         boxShadow: state.isFocused ? '0 0 0 1px #14b8a6' : 'none',
-        '&:hover': { borderColor: '#14b8a6' }
+        '&:hover': {
+            borderColor: '#14b8a6'
+        }
     }),
-    menu:       (base) => ({ ...base, zIndex: 9999 }),
-    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+
+    menu: (base) => ({
+        ...base,
+        zIndex: 9999
+    }),
+
+    menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999
+    }),
 };
 
 const parseRow = (item) => {
@@ -150,6 +167,12 @@ const DailyCollectionSheet = () => {
     const isLoanOfficer = currentUser?.role?.rep === 4;
     const isBranchManager = currentUser?.role?.rep === 3;
     const isAdminAllBranches = isAdmin && !selectedBranch;
+
+    const transactionBranchId = isLoanOfficer || isBranchManager
+        ? currentUser?.designatedBranchId
+        : isAdmin
+            ? selectedBranch?._id
+            : currentBranch?._id;
 
     // ── Branch list ──────────────────────────────────────────────────────────
     const getListBranch = useCallback(async () => {
@@ -642,8 +665,44 @@ const DailyCollectionSheet = () => {
                                 />
 
                                 <TabBtn
+                                    id="mis"
+                                    label="MIS"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="cash-in-bank"
+                                    label="Cash in Bank"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="cbhb"
+                                    label="CBHB"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
                                     id="payroll"
                                     label="Payroll"
+                                    icon={FileSpreadsheet}
+                                />
+                                
+                                <TabBtn
+                                    id="fundtransfer"
+                                    label="Fund Transfer"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="other-income-misc"
+                                    label="Other Income - Misc Income"
+                                    icon={FileSpreadsheet}
+                                />
+
+                                <TabBtn
+                                    id="wtax-ee-er"
+                                    label="WTax, EE & ER"
                                     icon={FileSpreadsheet}
                                 />
                             </div>
@@ -694,31 +753,89 @@ const DailyCollectionSheet = () => {
                             </div>
                         ) : activeTab === 'other-receipts' ? (
                             <div className="p-6">
-                                <OtherReceiptPayment />
+                                <OtherReceiptPayment
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
                             </div>
 
                         ) : activeTab === 'management-expenses' ? (
                             <div className="p-6">
-                                <MngtExpenses />
+                                <MngtExpenses
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
                             </div>
 
                         ) : activeTab === 'transaction' ? (
                             <div className="p-6">
-                                <TransactionPanel />
+                                <TransactionPanel
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
                             </div>
 
                         ) : activeTab === 'cashbook' ? (
                             <div className="p-6">
                                 <Cashbook
+                                    branchId={transactionBranchId}
                                     selectedDate={selectedDate}
                                     cashbookData={cashbookData}
                                     loading={cashbookLoading}
                                 />
                             </div>
 
+                        ) : activeTab === 'mis' ? (
+                            <div className="p-6">
+                                <MIS
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
+                            </div>
+
+                        ) : activeTab === 'cash-in-bank' ? (
+                            <div className="p-6">
+                                <CashInBank
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
+                            </div>
+
+                        ) : activeTab === 'cbhb' ? (
+                            <div className="p-6">
+                                <CBHB
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
+                            </div>
+
                         ) : activeTab === 'payroll' ? (
                             <div className="p-6">
                                 <Payroll />
+                            </div>
+
+                        ) : activeTab === 'fundtransfer' ? (
+                            <div className="p-6">
+                                <FundTransfer
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
+                            </div>
+
+                        ) : activeTab === 'other-income-misc' ? (
+                            <div className="p-6">
+                                <OtherIncomeMiscIncome
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
+                            </div>
+                        
+                        ) : activeTab === 'wtax-ee-er' ? (
+                            <div className="p-6">
+                                <WTaxEEER
+                                    branchId={transactionBranchId}
+                                    selectedDate={selectedDate}
+                                />
                             </div>
 
                         ) : null}
