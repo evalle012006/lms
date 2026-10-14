@@ -18,15 +18,26 @@ import moment from 'moment';
 const LAFModal = ({ isOpen, onClose, loanData }) => {
   const componentRef = useRef();
 
+  const isCIPrint = String(
+    loanData?.pnNumber || loanData?.ciReferenceCode || ''
+  ).startsWith('CI-');
+
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
     documentTitle: `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`,
     pageStyle: `
       @page {
-        size: A4;
-        margin: 10mm;
+        size: legal portrait;
+        margin: 0.4in;
       }
+
       @media print {
+        html,
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
         body {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
@@ -47,7 +58,11 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           scale: 2, useCORS: false, allowTaint: true,
           letterRendering: true, logging: false, imageTimeout: 0, removeContainer: true
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        jsPDF: {
+            unit: 'in',
+            format: [8.5, 13],
+            orientation: 'portrait'
+        },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -90,7 +105,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   ].filter(Boolean).join(' ') || 'N/A';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto no-print">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto laf-print-wrapper">
       <div className="min-h-screen px-4 py-8">
         <div className="relative bg-white max-w-4xl mx-auto rounded-lg shadow-xl">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center no-print z-10">
@@ -105,7 +120,18 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             </div>
           </div>
 
-          <div ref={componentRef} className="p-8 bg-white printable-content">
+          <div
+            ref={componentRef}
+            className={`p-8 bg-white printable-content ${
+              isCIPrint ? 'ci-laf-print' : 'loan-approval-laf-print'
+            }`}
+            style={{
+              width: '100%',
+              maxWidth: '8.5in',
+              margin: '0 auto',
+              boxSizing: 'border-box'
+            }}
+          >
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-4 mt-10">
@@ -306,7 +332,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             </div>
 
             {/* Promissory Note */}
-            <div className="mb-6 page-break-avoid">
+            <div className="mb-6">
               <h3 className="text-center font-bold text-lg mb-3">PROMISSORY NOTE</h3>
               <p className="text-sm text-justify leading-relaxed">
                 I, the undersigned promise to pay the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> indicated above loan approval{programLabelText} together with the <span className="font-semibold">service charge of 20%</span> with the sum of <span className="font-semibold underline">{totalAmountWords}</span> Pesos (Php.<span className="font-semibold underline">{totalAmount.toLocaleString()}</span>){paymentTermText} In case of my default payment, I allow <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> to take any legal necessary action from my assets to serve as my payment. And I agree with my full knowledge and ability that until the principal and service charge owed under this note are paid in full.
@@ -314,7 +340,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             </div>
 
             {/* Terms & Conditions */}
-            <div className="mb-6 page-break-avoid">
+            <div className="mb-6">
               <h3 className="text-center font-bold text-lg mb-3">TERMS & CONDITIONS</h3>
               <ol className="text-sm space-y-2 list-decimal list-inside">
                 <li>As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</li>
@@ -416,16 +442,122 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
       </div>
 
       <style jsx global>{`
-        .page-break-avoid { page-break-inside: avoid; break-inside: avoid; }
         @media print {
-          .no-print { display: none !important; }
-          .printable-content {
-            display: block !important; visibility: visible !important;
-            position: static !important; margin: 0 !important;
-            padding: 12mm !important; width: 100% !important; max-width: 100% !important;
+          @page {
+            size: 8.5in 13in;
+            margin: 0.35in;
           }
-          .page-break-avoid { page-break-inside: avoid !important; break-inside: avoid !important; }
-          body { background: white !important; }
+
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .loan-approval-laf-print {
+            width: 7.8in !important;
+            max-width: 7.8in !important;
+            min-width: 0 !important;
+
+            margin: 0 auto !important;
+            padding: 0 !important;
+
+            box-sizing: border-box !important;
+
+            transform: none !important;
+            zoom: 1 !important;
+          }
+
+          .loan-approval-laf-print table {
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+
+          .loan-approval-laf-print * {
+            box-sizing: border-box !important;
+          }
+
+          .no-print {
+            display: block !important;
+            position: static !important;
+            background: white !important;
+            overflow: visible !important;
+          }
+
+          .no-print > .min-h-screen {
+            min-height: 0 !important;
+            padding: 0 !important;
+          }
+
+          .no-print > .min-h-screen > div {
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .no-print .sticky {
+            display: none !important;
+          }
+          
+          .printable-content .text-xs {
+              font-size: 10px !important;
+              line-height: 1.2 !important;
+          }
+
+          .printable-content .text-sm {
+              font-size: 11px !important;
+              line-height: 1.25 !important;
+          }
+
+          .printable-content .text-lg {
+              font-size: 14px !important;
+              line-height: 1.25 !important;
+          }
+
+          .printable-content .text-xl {
+              font-size: 17px !important;
+              line-height: 1.25 !important;
+          }
+
+          .printable-content .text-2xl {
+              font-size: 20px !important;
+              line-height: 1.25 !important;
+          }
+
+          .printable-content .mb-6 {
+              margin-bottom: 10px !important;
+          }
+
+          .printable-content .mb-8 {
+              margin-bottom: 12px !important;
+          }
+
+          .printable-content .mt-8 {
+              margin-top: 12px !important;
+          }
+
+          .printable-content .mt-10 {
+              margin-top: 12px !important;
+          }
+
+          .printable-content .mt-12 {
+              margin-top: 16px !important;
+          }
+
+          .printable-content .mt-16 {
+              margin-top: 20px !important;
+          }
+
+          .printable-content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+              margin-top: 4px !important;
+          }
+
+            tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
         }
       `}</style>
     </div>

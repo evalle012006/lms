@@ -1,4 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { getApiBaseUrl } from "@/lib/constants";
 
 /* =========================================================
    CASHBOOK
@@ -71,15 +73,190 @@ const emptyRow = (day) => ({
   rebatesLoan: 0,
   otherPayment: 0,
 
-  paymentFundTransfer: 0,
-  bankDeposit: 0,
-});
+    paymentFundTransfer: 0,
+    bankDeposit: 0,
+  });
 
-const Cashbook = ({
-  selectedDate,
-  cashbookData = {},
-  loading = false,
-}) => {
+  // =========================================================
+  // OTHER RECEIPT MATCHING
+  // Same enabled transactions as Other Receipts Summary
+  // =========================================================
+
+  const normalize = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+  const CASHBOOK_OTHER_RECEIPT_COLUMNS = [
+    {
+      code: "013",
+      aliases: [
+        "Motorcycle Advance",
+        "Motor Loan Principal Collection",
+      ],
+    },
+    {
+      code: "014",
+      aliases: [
+        "Special Advance",
+        "Special Advance Collection",
+      ],
+    },
+    {
+      code: "015",
+      aliases: [
+        "Cash Advance to Staff",
+        "Cash Advance Collection",
+      ],
+    },
+    {
+      code: "016",
+      aliases: [
+        "Other Receivable",
+        "Others/Account Receivables",
+      ],
+    },
+    {
+      code: "017",
+      aliases: ["Office Rental Deposit"],
+    },
+    {
+      code: "030",
+      aliases: [
+        "Staff Benevolent Fund (SBF)",
+        "Staff Benevolent Fund",
+      ],
+    },
+    {
+      aliases: [
+        "Accounts Payable (Payroll A/C)",
+        "Accounts Payable - Payroll A/c",
+      ],
+    },
+    {
+      aliases: [
+        "Accounts Payable (Others)",
+        "Accounts Payable - Others",
+      ],
+    },
+    {
+      code: "033",
+      aliases: [
+        "Accrued Expenses (Picture Collection)",
+        "Picture Collection",
+      ],
+    },
+    {
+      code: "048",
+      aliases: [
+        "Recovered from Bad debt Accounts Collection",
+        "Recoverable from Badept Accounts",
+        "Recoverable from Bad Debt Accounts",
+        "Recovered from Bad Debt Accounts Collection",
+      ],
+    },
+    {
+      code: "052",
+      aliases: [
+        "Interest on Borrowed Funds / Investment Capital",
+        "Borrowed Fund Accounts",
+      ],
+    },
+  ];
+
+  const isIncludedOtherReceipt = (item) => {
+    const category = normalize(item?.category);
+    const code = String(item?.code || "").trim();
+
+    const accountTitle = normalize(
+      item?.account_title ||
+        item?.accountTitle ||
+        ""
+    );
+
+    if (
+      category !== "other receipts" &&
+      code !== "048"
+    ) {
+      return false;
+    }
+
+    return CASHBOOK_OTHER_RECEIPT_COLUMNS.some(
+      (column) => {
+        if (
+          column.code &&
+          code === String(column.code)
+        ) {
+          return true;
+        }
+
+        return (column.aliases || []).some(
+          (alias) =>
+            normalize(alias) === accountTitle
+        );
+      }
+    );
+  };
+
+  // =========================================================
+  // CASHBOOK COMPONENT
+  // =========================================================
+
+  const Cashbook = ({
+    branchId,
+    selectedDate,
+    cashbookData = {},
+    loading = false,
+  }) => {
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    if (!branchId) {
+      setTransactions([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadTransactions = async () => {
+      try {
+        const response = await fetchWrapper.get(
+          `${getApiBaseUrl()}transactions/dcs?branch_id=${encodeURIComponent(
+            branchId
+          )}`
+        );
+
+        if (cancelled) return;
+
+        const data =
+          response?.transactions ||
+          response?.data ||
+          response?.response ||
+          [];
+
+        setTransactions(
+          Array.isArray(data) ? data : []
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load Cashbook transactions:",
+          error
+        );
+
+        if (!cancelled) {
+          setTransactions([]);
+        }
+      }
+    };
+
+    loadTransactions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [branchId]);
+
   /* =======================================================
      TEMPORARY UI DATA
      Later this will come from API / Hasura.
@@ -118,6 +295,133 @@ const Cashbook = ({
 
       const summary = cashbookData[dateKey];
 
+      // =====================================================
+      // TRANSACTION -> CASHBOOK RECEIPT COLLECTIONS
+      // =====================================================
+      let staffCbuCollection = 0;
+      let cashbondCollection = 0;
+      let salaryAdvanceCollection = 0;
+      let clientsMcbuIn = 0;
+      let receiptFundTransfer = 0;
+      let otherReceiptsTotal = 0;
+      let withholdingTax =0;
+
+
+      transactions.forEach((transaction) => {
+        const transactionDate = String(
+          transaction?.transaction_date ||
+          transaction?.date ||
+          ""
+        ).slice(0, 10);
+
+        if (transactionDate !== dateKey) {
+          return;
+        }
+
+        const items =
+          transaction?.dcs_transaction_items ||
+          transaction?.items ||
+          [];
+
+        items.forEach((item) => {
+          const category = String(
+            item?.category || ""
+          )
+            .trim()
+            .toLowerCase();
+
+          const code = String(
+            item?.code || ""
+          ).trim();
+
+          const accountTitle = String(
+            item?.account_title ||
+            item?.accountTitle ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
+          const amount = Number(item?.amount || 0);
+
+          if (!Number.isFinite(amount) || amount <= 0) {
+            return;
+          }
+
+          // =====================================================
+          // OTHER RECEIPT REPORT TOTAL
+          // Uses the SAME enabled/matching rules as
+          // Other Receipts & Payments Summary
+          // =====================================================
+          if (isIncludedOtherReceipt(item)) {
+            otherReceiptsTotal += amount;
+          }
+
+          // Staff CBU Collection
+          if (
+            category === "other receipts" &&
+            code === "028" &&
+            accountTitle === "staff cbu collection"
+          ) {
+            staffCbuCollection += amount;
+          }
+
+          // Staff Cashbond Collection
+          if (
+            category === "other receipts" &&
+            code === "029" &&
+            accountTitle === "staff cashbond collection"
+          ) {
+            cashbondCollection += amount;
+          }
+
+          // Staff Principal Loan Collection
+          if (
+            category === "other receipts" &&
+            code === "012" &&
+            accountTitle === "salary advance"
+          ) {
+            salaryAdvanceCollection += amount;
+          }
+
+          // Client's MCBU (IN)
+          if (
+            category === "other receipts" &&
+            code === "019" &&
+            accountTitle === "client's mcbu (in)"
+          ) {
+            clientsMcbuIn += amount;
+          }
+
+          // Fund Transfer (Giver)
+          // -> Cashbook RECEIPTS / DEBIT Fund Transfer
+          if (
+            category === "other receipts" &&
+            code === "036" &&
+            accountTitle === "fund transfer (giver)"
+          ) {
+            receiptFundTransfer += amount;
+          }
+
+          // =====================================================
+          // MANAGEMENT EXPENSES CODE 055
+          // -> Cashbook RECEIPTS / DEBIT Withholding Tax
+          // =====================================================
+          if (
+            category === "management expenses" &&
+            code === "055" &&
+            (
+              accountTitle === "employers contribution (er)" ||
+              accountTitle === "employers contribution (ee)" ||
+              accountTitle === "witheld tax"
+            )
+          ) {
+            withholdingTax += amount;
+          }
+
+        });
+      });
+
       result.push({
         ...emptyRow(day),
 
@@ -138,16 +442,75 @@ const Cashbook = ({
         // DCS "Other Loan Collection (Weekly)"
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
 
+        // Transaction Other Receipts Code 028
+        // -> Cashbook Staff CBU Collection
+        staffCbuCollection,
+
+        // Transaction Other Receipts Code 029
+        // -> Cashbook Cashbond Collection
+        cashbondCollection,
+
+        // Transaction Other Receipts Code 012
+        // -> Cashbook Staff Principal Loan Collection
+        salaryAdvanceCollection,
+
         // DCS "Admin Fees #" -> Cashbook "Membership Fee"
         membershipFee: summary?.rcptAdminFees ?? 0,
 
         // DCS "LRF Collection"
         lrfCollection: summary?.rcptLrf ?? 0,
+
+        // DCS "C B H B Collection"
+        cbhbCollection: summary?.rcptCbhb ?? 0,
+
+        // DCS "ADD-Hospi #" -> Cashbook "Add. Hospitalization Collection"
+        cbhbAdditional: summary?.rcptAddHospi ?? 0,
+
+        // DCS "Other Income (Passbook)" -> Cashbook "Other (Passbook / Picture / etc.)"
+        cbhbOther: summary?.rcptOtherIncomePassbook ?? 0,
+
+        // Transaction Management Expenses Code 055
+        // Employers Contribution (ER)
+        // Employers Contribution (EE)
+        // Witheld Tax
+        // -> Cashbook RECEIPTS / DEBIT Withholding Tax
+        withholdingTax,
+
+        // Transaction Other Receipts Code 019
+        // -> Cashbook Client's MCBU (IN)
+        mcbuUnclaimReturn: clientsMcbuIn,
+
+        // Transaction Other Receipts Code 036
+        // -> Cashbook RECEIPTS / DEBIT Fund Transfer
+        receiptFundTransfer,
+
+        // ALL Transaction Other Receipts
+        // -> Cashbook RECEIPTS / DEBIT Other Receipts
+        otherReceipts: otherReceiptsTotal,
+
+        // DCS "Rebates" -> Cashbook Payments/Credit "Rebates / Loan"
+        rebatesLoan: summary?.payRebates ?? 0,
+
+        // DCS "Bank Withdrawal" -> Cashbook Receipts "Bank Withdrawal"
+        bankWithdrawal: summary?.rcptBankWithdrawal ?? 0,
+
+        // DCS "Bank Deposits" -> Cashbook Payments "Bank Deposit"
+        bankDeposit: summary?.payBankDeposits ?? 0,
+
+        // DCS "Other payments" -> Cashbook Payments/Credit "Other Payment"
+        otherPayment: summary?.payOtherPayments ?? 0,
+
       });
     }
 
     return result;
-  }, [selected, year, monthIndex, cashbookData]);
+  }, [
+    selected,
+    year,
+    monthIndex,
+    cashbookData,
+    transactions,
+  ]);
 
   /* =======================================================
      CALCULATIONS
@@ -172,7 +535,6 @@ const Cashbook = ({
       Number(row.mcbuUnclaimReturn || 0) +
       Number(row.receiptFundTransfer || 0) +
       Number(row.otherIncome || 0) +
-      Number(row.otherReceipts || 0) +
       Number(row.bankWithdrawal || 0)
     );
   };
@@ -694,15 +1056,15 @@ const Cashbook = ({
               </th>
 
               <th className="cb-special">
-                CBHB
+                Add. Hospitalization
                 <br />
-                Additional
+                Collection
               </th>
 
               <th className="cb-special">
-                CBHB
+                Other Income
                 <br />
-                Other
+                (Passbook)
               </th>
 
               <th className="cb-special">
@@ -712,9 +1074,9 @@ const Cashbook = ({
               </th>
 
               <th className="cb-cbu">
-                MCBU Unclaim
+                Client's MCBU
                 <br />
-                Return
+                (IN)
               </th>
 
               <th className="cb-special">

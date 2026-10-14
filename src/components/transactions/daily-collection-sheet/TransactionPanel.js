@@ -1,17 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import {
-    Receipt,
-    Plus,
-    X,
-    Eye,
-    Printer,
-    Trash2,
-    Pencil,
-} from 'lucide-react';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
+import { Receipt, Plus, X, Eye, Printer, Trash2, Pencil, } from 'lucide-react';
 
 const EMPTY_ITEM = {
-    transactionType: '',
+    category: '',
     code: '',
     accountTitle: '',
     description: '',
@@ -31,57 +25,98 @@ const EMPTY_FORM = {
 };
 
 const INITIAL_TRANSACTION_TYPES = [
-    { id: 1, code: '062', accountTitle: 'Lights & Water' },
-    { id: 2, code: '065', accountTitle: 'Repairing & Maintenance' },
-    { id: 3, code: '066', accountTitle: 'Communication & Postage' },
-    { id: 4, code: '067', accountTitle: 'Office Supply & Xerox' },
-    { id: 5, code: '071', accountTitle: 'Representation' },
-    { id: 6, code: '072', accountTitle: 'Bank Charges' },
-    { id: 7, code: '078', accountTitle: 'Miscellaneous Expenses' },
-    { id: 8, code: '060', accountTitle: 'Office Rental Base' },
-    { id: 9, code: '054', accountTitle: 'Basic Salaries' },
-    { id: 10, code: '055', accountTitle: 'Employers Contribution' },
-    {
-        id: 11,
-        code: '056',
-        accountTitle: 'Bonuses (13th Month & Other Staff Benefits)',
-    },
-    {
-        id: 12,
-        code: '064',
-        accountTitle: 'SSS, HDMF, PH Payment (BM Personnel)',
-    },
-    {
-        id: 13,
-        code: '069',
-        accountTitle: 'Staff Development & Conference',
-    },
-    {
-        id: 14,
-        code: '075',
-        accountTitle: 'Consultancy & Professional Fees',
-    },
-    {
-        id: 15,
-        code: '077',
-        accountTitle: 'Association Dues & Membership Fees',
-    },
-    {
-        id: 16,
-        code: '073',
-        accountTitle: 'Municipality / City Taxes & Licenses',
-    },
-    {
-        id: 17,
-        code: '050',
-        accountTitle: 'Staff CBU/Cashbond & Client MCBU Interest',
-    },
-    {
-        id: 18,
-        code: '076',
-        accountTitle: 'Clients Development & Training',
-    },
-];
+    // =====================================================
+    // MANAGEMENT EXPENSES
+    // =====================================================
+
+    { id: 'ME-030', category: 'Management Expenses', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'ME-050', category: 'Management Expenses', code: '050', accountTitle: 'Staff CBU/Cashbond & Client MCBU Interest' },
+    { id: 'ME-054-01', category: 'Management Expenses', code: '054', accountTitle: 'Basic Salaries' },
+    { id: 'ME-054-02', category: 'Management Expenses', code: '054', accountTitle: 'De Minimis / ECOLA' },
+    { id: 'ME-055-01', category: 'Management Expenses', code: '055', accountTitle: 'Employers Contribution (ER)' },
+    { id: 'ME-055-02', category: 'Management Expenses', code: '055', accountTitle: 'Employers Contribution (EE)' },
+    { id: 'ME-055-03', category: 'Management Expenses', code: '055', accountTitle: 'Witheld Tax' },
+    { id: 'ME-055-04', category: 'Management Expenses', code: '055', accountTitle: 'Monthly Allocated Reimbursement Transportation' },
+    { id: 'ME-055-05', category: 'Management Expenses', code: '055', accountTitle: 'Back Pay' },
+    { id: 'ME-056-01', category: 'Management Expenses', code: '056', accountTitle: 'BONUSES (13th Month & Other Staff Benefits)' },
+    { id: 'ME-056-02', category: 'Management Expenses', code: '056', accountTitle: 'Monthly Special Additional Reimbursement Transportation' },
+    { id: 'ME-056-03', category: 'Management Expenses', code: '056', accountTitle: 'Other Transportation on Official Travel' },
+    { id: 'ME-056-04', category: 'Management Expenses', code: '056', accountTitle: 'Reimbursable Transportation' },
+    { id: 'ME-060', category: 'Management Expenses', code: '060', accountTitle: 'Office Rental Base' },
+    { id: 'ME-062', category: 'Management Expenses', code: '062', accountTitle: 'Light & Water' },
+    { id: 'ME-064', category: 'Management Expenses', code: '064', accountTitle: 'SSS, HDMF, PH Payment (BM Personnel)' },
+    { id: 'ME-065', category: 'Management Expenses', code: '065', accountTitle: 'Repairing & Maintenance' },
+    { id: 'ME-066', category: 'Management Expenses', code: '066', accountTitle: 'Communication and Postage' },
+    { id: 'ME-067', category: 'Management Expenses', code: '067', accountTitle: 'Office Supplies & Xerox' },
+    { id: 'ME-069', category: 'Management Expenses', code: '069', accountTitle: 'Staff Development & Conference' },
+    { id: 'ME-071', category: 'Management Expenses', code: '071', accountTitle: 'Representation' },
+    { id: 'ME-072', category: 'Management Expenses', code: '072', accountTitle: 'Bank Charges' },
+    { id: 'ME-073', category: 'Management Expenses', code: '073', accountTitle: 'City/Municipality Taxes and Licenses' },
+    { id: 'ME-075', category: 'Management Expenses', code: '075', accountTitle: 'Consultancy and Professional Fees' },
+    { id: 'ME-076', category: 'Management Expenses', code: '076', accountTitle: "Clients' Development & Training" },
+    { id: 'ME-077', category: 'Management Expenses', code: '077', accountTitle: 'Association Dues and Membership Fees' },
+    { id: 'ME-078', category: 'Management Expenses', code: '078', accountTitle: 'Miscellaneous Expense' },
+    { id: 'ME-079', category: 'Management Expenses', code: '079', accountTitle: 'Retirement Incentives' },
+
+    // =====================================================
+    // OTHER PAYMENTS
+    // =====================================================
+
+    { id: 'OP-010', category: 'Other Payments', code: '010', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-012', category: 'Other Payments', code: '012', accountTitle: 'Salary Advance' },
+    { id: 'OP-013', category: 'Other Payments', code: '013', accountTitle: 'Motorcycle Advance' },
+    { id: 'OP-014', category: 'Other Payments', code: '014', accountTitle: 'Special Advance' },
+    { id: 'OP-015', category: 'Other Payments', code: '015', accountTitle: 'Cash Advance to Staff' },
+    { id: 'OP-016', category: 'Other Payments', code: '016', accountTitle: 'Others/Account Receivables' },
+    { id: 'OP-017', category: 'Other Payments', code: '017', accountTitle: 'Office Rental Deposit' },
+    { id: 'OP-018', category: 'Other Payments', code: '018', accountTitle: 'STAFF ACCOUNTS PAYABLE' },
+    { id: 'OP-023', category: 'Other Payments', code: '023', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B)' },
+    { id: 'OP-024-01', category: 'Other Payments', code: '024', accountTitle: 'ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)' },
+    { id: 'OP-024-02', category: 'Other Payments', code: '024', accountTitle: 'Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)' },
+    { id: 'OP-025-01', category: 'Other Payments', code: '025', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance)' },
+    { id: 'OP-025-02', category: 'Other Payments', code: '025', accountTitle: 'Financial Assistance for Calamity/Disaster Victim' },
+    { id: 'OP-025-03', category: 'Other Payments', code: '025', accountTitle: 'Scholarship Grant Program' },
+    { id: 'OP-025-04', category: 'Other Payments', code: '025', accountTitle: 'Medical Mission Program (Health Care)' },
+    { id: 'OP-025-05', category: 'Other Payments', code: '025', accountTitle: 'Business Development Program' },
+    { id: 'OP-026', category: 'Other Payments', code: '026', accountTitle: 'Unclaimed Return (Out)' },
+    { id: 'OP-030', category: 'Other Payments', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'OP-033', category: 'Other Payments', code: '033', accountTitle: 'Accrued Expenses' },
+    { id: 'OP-034', category: 'Other Payments', code: '034', accountTitle: 'ACCOUNTS PAYABLE' },
+    { id: 'OP-036', category: 'Other Payments', code: '036', accountTitle: 'Fund Transfer (Receiver)' },
+    { id: 'OP-078', category: 'Other Payments', code: '078', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
+    { id: 'OP-083', category: 'Other Payments', code: '083', accountTitle: 'Loan Loss Provision' },
+    { id: 'OP-085', category: 'Other Payments', code: '085', accountTitle: 'Grants and Donation' },
+    { id: 'OP-086-01', category: 'Other Payments', code: '086', accountTitle: 'Taxes to BIR (Penalty & Others)' },
+    { id: 'OP-086-02', category: 'Other Payments', code: '086', accountTitle: 'REVENUE (2550-M:2550-Q)' },
+
+    // =====================================================
+    // OTHER RECEIPTS
+    // =====================================================
+
+    { id: 'OR-012', category: 'Other Receipts', code: '012', accountTitle: 'Salary Advance' },
+    { id: 'OR-013', category: 'Other Receipts', code: '013', accountTitle: 'Motorcycle Advance' },
+    { id: 'OR-014', category: 'Other Receipts', code: '014', accountTitle: 'Special Advance' },
+    { id: 'OR-015', category: 'Other Receipts', code: '015', accountTitle: 'Cash Advance to Staff' },
+    { id: 'OR-016', category: 'Other Receipts', code: '016', accountTitle: 'Other Receivable' },
+    { id: 'OR-017', category: 'Other Receipts', code: '017', accountTitle: 'Office Rental Deposit' },
+    { id: 'OR-019', category: 'Other Receipts', code: '019', accountTitle: "Client's MCBU (In)" },
+    { id: 'OR-023', category: 'Other Receipts', code: '023', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B) Refund' },
+    { id: 'OR-024', category: 'Other Receipts', code: '024', accountTitle: 'ADD HOSPITALIZATION & Health Benefits Refund' },
+    { id: 'OR-025-01', category: 'Other Receipts', code: '025', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance) Refund' },
+    { id: 'OR-025-02', category: 'Other Receipts', code: '025', accountTitle: 'Financial Assistance for Calamity/Disaster Victim Refund' },
+    { id: 'OR-025-03', category: 'Other Receipts', code: '025', accountTitle: 'Scholarship Grant Program Refund' },
+    { id: 'OR-025-04', category: 'Other Receipts', code: '025', accountTitle: 'Medical Mission Program (Health Care) Refund' },
+    { id: 'OR-025-05', category: 'Other Receipts', code: '025', accountTitle: 'Business Development Program Refund' },
+    { id: 'OR-028', category: 'Other Receipts', code: '028', accountTitle: 'Staff CBU Collection' },
+    { id: 'OR-029', category: 'Other Receipts', code: '029', accountTitle: 'Staff Cashbond Collection' },
+    { id: 'OR-030', category: 'Other Receipts', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'OR-033', category: 'Other Receipts', code: '033', accountTitle: 'Accrued Expenses (Picture Collection)' },
+    { id: 'OR-034-01', category: 'Other Receipts', code: '034', accountTitle: 'Accounts Payable (Payroll A/C)' },
+    { id: 'OR-034-02', category: 'Other Receipts', code: '034', accountTitle: 'Accounts Payable (Others)' },
+    { id: 'OR-036', category: 'Other Receipts', code: '036', accountTitle: 'Fund Transfer (Giver)' },
+    { id: 'OR-048', category: 'Other Receipts', code: '048', accountTitle: 'Recovered from Bad debt Accounts Collection' },
+    { id: 'OR-052', category: 'Other Receipts', code: '052', accountTitle: 'Interest on Borrowed Funds / Investment Capital' },
+    ];
 
 const money = (value) => {
     const amount = Number(value || 0);
@@ -92,7 +127,7 @@ const money = (value) => {
     });
 };
 
-const TransactionPanel = () => {
+const TransactionPanel = ({ branchId, selectedDate }) => {
     const currentUser = useSelector((state) => state.user.data);
     const currentDate = useSelector((state) => state.systemSettings.currentDate);
     const isAdmin = currentUser?.role?.rep === 1;
@@ -100,11 +135,88 @@ const TransactionPanel = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
-    const [transactionTypes, setTransactionTypes] = useState(
-        INITIAL_TRANSACTION_TYPES
-    );
+    const [transactionTypes, setTransactionTypes] = useState(INITIAL_TRANSACTION_TYPES);
 
     const [transactions, setTransactions] = useState([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const [savingTransaction, setSavingTransaction] = useState(false);
+
+    const mapDbTransaction = (row) => ({
+        id: row.id,
+        branchId: row.branch_id,
+        createdBy: row.created_by,
+
+        paidTo: row.paid_to || '',
+        address: row.address || '',
+        date: row.transaction_date || '',
+        voucherNo: row.voucher_no || '',
+
+        totalAmount: Number(row.total_amount || 0),
+        totalAmountWords: row.total_amount_words || '',
+
+        cashierInCharge: row.cashier_in_charge || '',
+        supervisor: row.supervisor || '',
+        receivedBy: row.received_by || '',
+
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+
+        items: (row.dcs_transaction_items || []).map((item) => ({
+            id: item.id,
+            transactionId: item.transaction_id,
+            category: item.category || '',
+            code: item.code || '',
+            accountTitle: item.account_title || '',
+            description: item.description || '',
+            amount: Number(item.amount || 0),
+        })),
+    });
+
+    const loadTransactions = async () => {
+        if (!branchId) {
+            setTransactions([]);
+            return;
+        }
+
+        try {
+            setLoadingTransactions(true);
+
+            const params = new URLSearchParams({
+                branch_id: branchId,
+            });
+
+            const response = await fetchWrapper.get(
+                `${getApiBaseUrl()}transactions/dcs?${params.toString()}`
+            );
+
+            if (response?.error) {
+                throw new Error(
+                    response?.message || 'Failed to load transactions.'
+                );
+            }
+
+            const rows =
+                response?.transactions ||
+                response?.data ||
+                response?.response ||
+                [];
+
+            setTransactions(
+                Array.isArray(rows)
+                    ? rows.map(mapDbTransaction)
+                    : []
+            );
+        } catch (error) {
+            console.error('Failed to load DCS transactions:', error);
+            setTransactions([]);
+        } finally {
+            setLoadingTransactions(false);
+        }
+    };
+
+    useEffect(() => {
+        loadTransactions();
+    }, [branchId]);
 
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [editingTransactionId, setEditingTransactionId] = useState(null);
@@ -114,6 +226,7 @@ const TransactionPanel = () => {
     });
 
     const [typeForm, setTypeForm] = useState({
+        category: '',
         code: '',
         accountTitle: '',
     });
@@ -167,19 +280,15 @@ const TransactionPanel = () => {
         });
     };
 
-    const selectTransactionType = (index, typeId) => {
-        const selected = transactionTypes.find(
-            (item) => String(item.id) === String(typeId)
-        );
-
+    const selectCategory = (index, category) => {
         setTransactionForm((prev) => {
             const nextItems = [...prev.items];
 
             nextItems[index] = {
                 ...nextItems[index],
-                transactionType: typeId,
-                code: selected?.code || '',
-                accountTitle: selected?.accountTitle || '',
+                category,
+                code: '',
+                accountTitle: '',
             };
 
             return {
@@ -187,6 +296,27 @@ const TransactionPanel = () => {
                 items: nextItems,
             };
         });
+    };
+
+    const selectCode = (index, code) => {
+        setTransactionForm((prev) => {
+            const nextItems = [...prev.items];
+
+            nextItems[index] = {
+                ...nextItems[index],
+                code,
+                accountTitle: '',
+            };
+
+            return {
+                ...prev,
+                items: nextItems,
+            };
+        });
+    };
+
+    const selectAccountTitle = (index, accountTitle) => {
+        updateItem(index, 'accountTitle', accountTitle);
     };
 
     const addTransactionItem = () => {
@@ -210,8 +340,14 @@ const TransactionPanel = () => {
     };
 
     const handleSaveTransactionType = () => {
+        const category = typeForm.category.trim();
         const code = typeForm.code.trim();
         const accountTitle = typeForm.accountTitle.trim();
+
+        if (!category) {
+            alert('Please select a category.');
+            return;
+        }
 
         if (!code) {
             alert('Please enter the transaction code.');
@@ -224,16 +360,22 @@ const TransactionPanel = () => {
         }
 
         const duplicate = transactionTypes.some(
-            (item) => item.code.toLowerCase() === code.toLowerCase()
+            (item) =>
+                item.category?.toLowerCase() === category.toLowerCase() &&
+                item.code?.toLowerCase() === code.toLowerCase() &&
+                item.accountTitle?.toLowerCase() === accountTitle.toLowerCase()
         );
 
         if (duplicate) {
-            alert('This transaction code already exists.');
+            alert(
+                'This Category, Code, and Account Title combination already exists.'
+            );
             return;
         }
 
         const newType = {
             id: Date.now(),
+            category,
             code,
             accountTitle,
         };
@@ -241,6 +383,7 @@ const TransactionPanel = () => {
         setTransactionTypes((prev) => [...prev, newType]);
 
         setTypeForm({
+            category: '',
             code: '',
             accountTitle: '',
         });
@@ -248,7 +391,7 @@ const TransactionPanel = () => {
         setShowTypeModal(false);
     };
 
-    const handleSaveTransaction = () => {
+    const handleSaveTransaction = async () => {
         if (!transactionForm.paidTo.trim()) {
             alert('Please enter Paid to.');
             return;
@@ -264,16 +407,38 @@ const TransactionPanel = () => {
             return;
         }
 
+        // Cashier in Charge and Received By must be different people
+        const cashierName = transactionForm.cashierInCharge
+            .trim()
+            .toLowerCase();
+
+        const receivedByName = transactionForm.receivedBy
+            .trim()
+            .toLowerCase();
+
+        if (
+            cashierName &&
+            receivedByName &&
+            cashierName === receivedByName
+        ) {
+            alert(
+                'Cashier in Charge and Received By cannot be the same person.'
+            );
+            return;
+        }
+
         const validItems = transactionForm.items.filter(
             (item) =>
-                item.transactionType &&
+                item.category &&
                 item.code &&
                 item.accountTitle &&
                 Number(item.amount || 0) > 0
         );
 
         if (!validItems.length) {
-            alert('Please add at least one transaction item with an amount.');
+            alert(
+                'Please add at least one transaction item with an amount.'
+            );
             return;
         }
 
@@ -282,73 +447,124 @@ const TransactionPanel = () => {
             0
         );
 
-        // ==========================================
-        // EDIT EXISTING TRANSACTION
-        // ==========================================
-        if (editingTransactionId) {
-            const existingTransaction = transactions.find(
-                (item) => item.id === editingTransactionId
-            );
+        if (!branchId) {
+            alert('Please select a branch first.');
+            return;
+        }
 
-            if (!existingTransaction) {
-                alert('Transaction not found.');
+        const payload = {
+            branch_id: branchId,
+
+            paid_to: transactionForm.paidTo.trim(),
+            address: transactionForm.address.trim(),
+            transaction_date: transactionForm.date,
+            voucher_no: transactionForm.voucherNo.trim(),
+
+            total_amount: calculatedTotal,
+            total_amount_words:
+                transactionForm.totalAmountWords.trim(),
+
+            cashier_in_charge:
+                transactionForm.cashierInCharge.trim(),
+
+            supervisor:
+                transactionForm.supervisor.trim(),
+
+            received_by:
+                transactionForm.receivedBy.trim(),
+
+            items: validItems.map((item) => ({
+                category: item.category,
+                code: item.code,
+                account_title: item.accountTitle,
+                description: item.description || '',
+                amount: Number(item.amount || 0),
+            })),
+        };
+
+        try {
+            setSavingTransaction(true);
+
+            let response;
+
+            // ==========================================
+            // UPDATE EXISTING TRANSACTION
+            // ==========================================
+            if (editingTransactionId) {
+                const existingTransaction = transactions.find(
+                    (item) => item.id === editingTransactionId
+                );
+
+                if (!existingTransaction) {
+                    alert('Transaction not found.');
+                    return;
+                }
+
+                const canEdit =
+                    isAdmin ||
+                    isTransactionToday(existingTransaction);
+
+                if (!canEdit) {
+                    alert(
+                        'Past transactions can no longer be edited.'
+                    );
+                    return;
+                }
+
+                response = await fetchWrapper.post(
+                    `${getApiBaseUrl()}transactions/dcs/update`,
+                    {
+                        id: editingTransactionId,
+                        ...payload,
+
+                        // Preserve original date during edit.
+                        transaction_date:
+                            existingTransaction.date,
+                    }
+                );
+            }
+
+            // ==========================================
+            // CREATE NEW TRANSACTION
+            // ==========================================
+            else {
+                response = await fetchWrapper.post(
+                    `${getApiBaseUrl()}transactions/dcs/create`,
+                    payload
+                );
+            }
+
+            if (response?.error) {
+                alert(
+                    response?.message ||
+                        'Failed to save transaction.'
+                );
                 return;
             }
 
-            const canEdit =
-                isAdmin || isTransactionToday(existingTransaction);
+            await loadTransactions();
 
-            if (!canEdit) {
-                alert('Past transactions can no longer be edited.');
-                return;
-            }
-
-            const updatedTransaction = {
-                ...existingTransaction,
-                ...transactionForm,
-                id: existingTransaction.id,
-
-                // Do not allow the original transaction date
-                // to be changed while editing.
-                date: existingTransaction.date,
-
-                items: validItems,
-                totalAmount: calculatedTotal,
-                updatedAt: new Date().toISOString(),
-            };
-
-            setTransactions((prev) =>
-                prev.map((item) =>
-                    item.id === editingTransactionId
-                        ? updatedTransaction
-                        : item
-                )
-            );
-
-            setSelectedTransaction(updatedTransaction);
+            setSelectedTransaction(null);
             setEditingTransactionId(null);
             setShowCreateModal(false);
             resetTransactionForm();
 
-            return;
+            alert(
+                editingTransactionId
+                    ? 'Transaction updated successfully.'
+                    : 'Transaction created successfully.'
+            );
+        } catch (error) {
+            console.error('Save transaction error:', error);
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                'Failed to save transaction.'
+            );
+        } finally {
+            setSavingTransaction(false);
         }
-
-        // ==========================================
-        // CREATE NEW TRANSACTION
-        // ==========================================
-        const transaction = {
-            id: Date.now(),
-            ...transactionForm,
-            items: validItems,
-            totalAmount: calculatedTotal,
-            createdAt: new Date().toISOString(),
-        };
-
-        setTransactions((prev) => [transaction, ...prev]);
-
-        setSelectedTransaction(transaction);
-        setShowCreateModal(false);
-        resetTransactionForm();
     };
 
     const handleView = (transaction) => {
@@ -384,7 +600,7 @@ const TransactionPanel = () => {
         setShowCreateModal(true);
     };
 
-    const handleDelete = (transaction) => {
+    const handleDelete = async (transaction) => {
         if (!isAdmin) {
             alert('Only Admin can delete transactions.');
             return;
@@ -398,13 +614,44 @@ const TransactionPanel = () => {
             return;
         }
 
-        setTransactions((prev) =>
-            prev.filter((item) => item.id !== transaction.id)
-        );
+        try {
+            const response = await fetchWrapper.post(
+                `${getApiBaseUrl()}transactions/dcs/delete`,
+                {
+                    id: transaction.id,
+                    branch_id:
+                        transaction.branchId ||
+                        currentUser?.branchId ||
+                        currentUser?.branch_id ||
+                        currentUser?.branch?._id ||
+                        currentUser?.branch?.id,
+                }
+            );
 
-        if (selectedTransaction?.id === transaction.id) {
-            setSelectedTransaction(null);
-            setShowViewModal(false);
+            if (response?.error) {
+                alert(
+                    response?.message ||
+                        'Failed to delete transaction.'
+                );
+                return;
+            }
+
+            if (selectedTransaction?.id === transaction.id) {
+                setSelectedTransaction(null);
+                setShowViewModal(false);
+            }
+
+            await loadTransactions();
+
+            alert('Transaction deleted successfully.');
+        } catch (error) {
+            console.error('Delete transaction error:', error);
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                'Failed to delete transaction.'
+            );
         }
     };
 
@@ -908,7 +1155,13 @@ const TransactionPanel = () => {
                 {/* TRANSACTION LIST */}
                 <div className="p-5">
 
-                    {transactions.length === 0 ? (
+                    {loadingTransactions ? (
+                        <div className="py-16 text-center">
+                            <p className="text-sm font-medium text-gray-500">
+                                Loading transactions...
+                            </p>
+                        </div>
+                    ) : transactions.length === 0 ? (
                         <div
                             className="
                                 border border-dashed border-gray-300
@@ -942,6 +1195,10 @@ const TransactionPanel = () => {
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
                                             Voucher No.
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Account Title
                                         </th>
 
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
@@ -979,6 +1236,13 @@ const TransactionPanel = () => {
                                         >
                                             <td className="px-4 py-3 font-semibold text-gray-800">
                                                 {transaction.voucherNo}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-gray-700">
+                                                {transaction.items
+                                                    .map((item) => item.accountTitle)
+                                                    .filter(Boolean)
+                                                    .join(', ') || '-'}
                                             </td>
 
                                             <td className="px-4 py-3 text-gray-600">
@@ -1348,35 +1612,31 @@ const TransactionPanel = () => {
 
                                                 <div className="md:col-span-4">
                                                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                                        Transaction Type
+                                                        Category
                                                     </label>
 
                                                     <select
-                                                        value={item.transactionType}
+                                                        value={item.category}
                                                         onChange={(e) =>
-                                                            selectTransactionType(
-                                                                index,
-                                                                e.target.value
-                                                            )
+                                                            selectCategory(index, e.target.value)
                                                         }
                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                                     >
                                                         <option value="">
-                                                            Select transaction type
+                                                            Select category
                                                         </option>
 
-                                                        {transactionTypes.map(
-                                                            (type) => (
-                                                                <option
-                                                                    key={type.id}
-                                                                    value={type.id}
-                                                                >
-                                                                    {type.code} -{' '}
-                                                                    {type.accountTitle}
-                                                                </option>
-                                                            )
-                                                        )}
+                                                        <option value="Management Expenses">
+                                                            Management Expenses
+                                                        </option>
 
+                                                        <option value="Other Payments">
+                                                            Other Payments
+                                                        </option>
+
+                                                        <option value="Other Receipts">
+                                                            Other Receipts
+                                                        </option>
                                                     </select>
                                                 </div>
 
@@ -1385,13 +1645,33 @@ const TransactionPanel = () => {
                                                         Code
                                                     </label>
 
-                                                    <input
-                                                        type="text"
+                                                    <select
                                                         value={item.code}
-                                                        readOnly
-                                                        placeholder="Code"
-                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-600"
-                                                    />
+                                                        disabled={!item.category}
+                                                        onChange={(e) =>
+                                                            selectCode(index, e.target.value)
+                                                        }
+                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 disabled:text-gray-400"
+                                                    >
+                                                        <option value="">
+                                                            Select code
+                                                        </option>
+
+                                                        {[
+                                                            ...new Set(
+                                                                transactionTypes
+                                                                    .filter(
+                                                                        (type) =>
+                                                                            type.category === item.category
+                                                                    )
+                                                                    .map((type) => type.code)
+                                                            ),
+                                                        ].map((code) => (
+                                                            <option key={code} value={code}>
+                                                                {code}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
 
                                                 <div className="md:col-span-3">
@@ -1399,13 +1679,36 @@ const TransactionPanel = () => {
                                                         Account Title
                                                     </label>
 
-                                                    <input
-                                                        type="text"
+                                                    <select
                                                         value={item.accountTitle}
-                                                        readOnly
-                                                        placeholder="Account title"
-                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-600"
-                                                    />
+                                                        disabled={!item.category || !item.code}
+                                                        onChange={(e) =>
+                                                            selectAccountTitle(
+                                                                index,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 disabled:text-gray-400"
+                                                    >
+                                                        <option value="">
+                                                            Select account title
+                                                        </option>
+
+                                                        {transactionTypes
+                                                            .filter(
+                                                                (type) =>
+                                                                    type.category === item.category &&
+                                                                    type.code === item.code
+                                                            )
+                                                            .map((type) => (
+                                                                <option
+                                                                    key={type.id}
+                                                                    value={type.accountTitle}
+                                                                >
+                                                                    {type.accountTitle}
+                                                                </option>
+                                                            ))}
+                                                    </select>
                                                 </div>
 
                                                 <div className="md:col-span-3">
@@ -1582,6 +1885,7 @@ const TransactionPanel = () => {
                                 <button
                                     type="button"
                                     onClick={handleSaveTransaction}
+                                    disabled={savingTransaction}
                                     className="
                                         px-4 py-2
                                         bg-teal-600
@@ -1591,9 +1895,11 @@ const TransactionPanel = () => {
                                         rounded-md
                                     "
                                 >
-                                    {editingTransactionId
-                                        ? 'Update Transaction'
-                                        : 'Save Transaction'}
+                                    {savingTransaction
+                                        ? 'Saving...'
+                                        : editingTransactionId
+                                            ? 'Update Transaction'
+                                            : 'Save Transaction'}
                                 </button>
 
                             </div>
@@ -1640,6 +1946,33 @@ const TransactionPanel = () => {
                         </div>
 
                         <div className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    Category
+                                </label>
+
+                                <select
+                                    value={typeForm.category}
+                                    onChange={(e) =>
+                                        setTypeForm((prev) => ({
+                                            ...prev,
+                                            category: e.target.value,
+                                        }))
+                                    }
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                >
+                                    <option value="">Select category</option>
+                                    <option value="Management Expenses">
+                                        Management Expenses
+                                    </option>
+                                    <option value="Other Payments">
+                                        Other Payments
+                                    </option>
+                                    <option value="Other Receipts">
+                                        Other Receipts
+                                    </option>
+                                </select>
+                            </div>
 
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">
