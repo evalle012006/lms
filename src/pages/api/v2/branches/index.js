@@ -102,6 +102,9 @@ async function updateBranch(req, res) {
     delete branch._id;
     delete branch.cashOnHand;
     delete branch.noOfLO;
+    // csfEnabled changes only through branches/set-csf-enabled (permission-checked and audited).
+    // The branches table posts whole rows, so a stale row must not be able to overwrite it.
+    delete branch.csfEnabled;
 
     const branchlock = branch.forLock ?? false;
     delete branch.forLock;

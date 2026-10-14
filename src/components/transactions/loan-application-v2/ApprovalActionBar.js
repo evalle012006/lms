@@ -10,13 +10,17 @@ import React from 'react';
 import { Clock, Loader2 } from 'lucide-react';
 
 const TAB_ACTION = {
-    ldf: { label: 'LDF approve', busyKey: 'ldf' },
+    ldf: {
+        label: 'LDF approve',
+        busyKey: 'ldf',
+        secondary: { label: 'LDF unapprove', busyKey: 'ldf-unapprove' },
+    },
     application: { label: 'Approve loans', busyKey: 'application' },
 };
 
 export default function ApprovalActionBar({
     tab, selectedCount, totalOnTab, busy, disabledReason,
-    onSelectAll, onClear, onPrimary,
+    onSelectAll, onClear, onPrimary, onSecondary,
 }) {
     const action = TAB_ACTION[tab];
     if (!action) return null;
@@ -58,16 +62,34 @@ export default function ApprovalActionBar({
                     )}
                 </div>
 
-                <button
-                    type="button"
-                    onClick={onPrimary}
-                    disabled={disabled}
-                    title={disabledReason || (selectedCount === 0 ? 'Select at least one loan' : undefined)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600"
-                >
-                    {working && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {working ? 'Working…' : `${action.label}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    {action.secondary && onSecondary && (
+                        <button
+                            type="button"
+                            onClick={onSecondary}
+                            disabled={disabled}
+                            title={disabledReason || (selectedCount === 0
+                                ? 'Select at least one loan'
+                                : 'Take LDF approval back; the loans return to LDF pending')}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-red-300 bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+                        >
+                            {busy === action.secondary.busyKey && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {busy === action.secondary.busyKey
+                                ? 'Working…'
+                                : `${action.secondary.label}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={onPrimary}
+                        disabled={disabled}
+                        title={disabledReason || (selectedCount === 0 ? 'Select at least one loan' : undefined)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600"
+                    >
+                        {working && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {working ? 'Working…' : `${action.label}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+                    </button>
+                </div>
             </div>
         </div>
     );

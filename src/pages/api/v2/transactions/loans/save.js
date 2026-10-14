@@ -41,7 +41,19 @@ async function save(req, res) {
     let processingFailed = false;
 
     const loanData = req.body;
-    const group = loanData.group;
+    const [dbGroup] = (await graph.query(queryQl(groupType(), {
+        where: { _id: { _eq: loanData.groupId } }
+    }))).data?.groups ?? [];
+
+    if (!dbGroup?.loanOfficerId) {
+        res.send({ error: true, message: 'Group or its Loan Officer could not be resolved.' });
+        return;
+    }
+    const group = dbGroup;
+    loanData.loId      = dbGroup.loanOfficerId;
+    loanData.occurence = dbGroup.occurence;
+    loanData.groupName = dbGroup.name;
+    loanData.branchId  = dbGroup.branchId;
 
     let mode;
     let oldLoanId;

@@ -2,6 +2,8 @@ import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { findUserById } from '@/lib/graph.functions';
+import { canManageGroups } from '@/lib/group-permissions';
 
 const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
@@ -34,6 +36,15 @@ async function updateGroup(req, res) {
     let statusCode = 200;
     let response = {};
 
+    // Only an admin (rep 1) / root can edit groups.
+    const user = await findUserById(req.auth?.sub);
+    if (!canManageGroups(user)) {
+        response = { success: false, error: true, message: 'Only an administrator can edit groups.' };
+        return res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
+    }
+
     const incoming = req.body;
     const groupId = incoming._id ?? null;
 
@@ -58,6 +69,33 @@ async function updateGroup(req, res) {
 
     const noOfClients = existingGroup.noOfClients ?? 0;
     const oldCapacity = existingGroup.capacity ?? 0;
+
+    // Branch / loan officer changes
+    const nextBranchId  = incoming.branchId ?? existingGroup.branchId;
+    const nextOfficerId = incoming.loanOfficerId ?? existingGroup.loanOfficerId;
+    const branchChanged  = nextBranchId !== existingGroup.branchId;
+    const officerChanged = nextOfficerId !== existingGroup.loanOfficerId;
+
+    // Clients, loans and collection rows are tied to the group's branch: never move a group that has clients.
+    if (branchChanged && noOfClients > 0) {
+        response = { success: false, error: true, message: 'A group that has clients cannot be moved to another branch.' };
+        return res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
+    }
+
+    // The loan officer must be an LO (rep 4) assigned to the group's (new) branch.
+    let officerName = null;
+    if (branchChanged || officerChanged) {
+        const officer = nextOfficerId ? await findUserById(nextOfficerId) : null;
+        if (!officer || officer.role?.rep !== 4 || officer.designatedBranchId !== nextBranchId) {
+            response = { success: false, error: true, message: 'The selected loan officer does not belong to the selected branch.' };
+            return res.status(statusCode)
+                .setHeader('Content-Type', 'application/json')
+                .end(JSON.stringify(response));
+        }
+        officerName = `${officer.firstName} ${officer.lastName}`;
+    }
 
     let capacity = incoming.capacity !== undefined
         ? parseInt(incoming.capacity, 10)
@@ -129,6 +167,7 @@ async function updateGroup(req, res) {
     for (const field of ALLOWED_FIELDS) {
         if (incoming[field] !== undefined) set[field] = incoming[field];
     }
+    if (officerName) set.loanOfficerName = officerName;
     set.capacity = capacity;
     set.availableSlots = availableSlots;
     set.status = status;
