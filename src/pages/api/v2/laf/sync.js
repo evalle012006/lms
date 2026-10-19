@@ -9,6 +9,7 @@ import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { generateUUID }                       from '@/lib/utils';
 import { logAudit }                           from '@/lib/audit';
 import { S3Client, PutObjectCommand }          from '@aws-sdk/client-s3';
+import { isBlank }                            from '@/lib/validation-utils';
 
 const s3 = new S3Client({
     endpoint:       'https://sgp1.digitaloceanspaces.com',
@@ -65,7 +66,8 @@ async function syncEntry(req, res) {
         lafPhotoBase64, idPhotoBase64, selfieBase64,
     } = req.body;
 
-    if (!qrToken || !groupId || !firstName || !lastName) {
+    // FIX: isBlank instead of truthiness — "   " is truthy and used to be stored as ''
+    if (!qrToken || !groupId || isBlank(firstName) || isBlank(lastName)) {
         return res.status(200).json({ success: false, message: 'Missing required fields.' });
     }
 
@@ -113,8 +115,9 @@ async function syncEntry(req, res) {
                 distanceFromBranch:     distanceFromBranch    || null,
                 loanAmount:             parseFloat(loanAmount) || 0,
                 loanPurpose:            loanPurpose            || null,
-                guarantorFirstName:     guarantorFirstName     || null,
-                guarantorLastName:      guarantorLastName      || null,
+                // FIX: trim + uppercase to match submit.js; blank → null
+                guarantorFirstName:     guarantorFirstName?.trim().toUpperCase() || null,
+                guarantorLastName:      guarantorLastName?.trim().toUpperCase()  || null,
                 guarantorRelationship:  guarantorRelationship  || null,
                 guarantorContactNumber: guarantorContactNumber || null,
                 lafPhotoKey,

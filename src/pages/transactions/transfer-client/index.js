@@ -330,8 +330,11 @@ const TransferClientPage = () => {
 
                     if (response.success) {
                         setLoading(false);
-                        toast.success('Selected clients successfully transferred.');
-                        // FIXED: Call getTransferList directly instead of window.location.reload()
+                        if (response.message) {
+                            toast.warning(response.message.split('<br/>').join('\n'));
+                        } else {
+                            toast.success('Selected clients successfully transferred.');
+                        }
                         await getTransferList();
                     }
                 }

@@ -25,3 +25,18 @@ export function isValidGovernmentId(raw) {
     if (isPlaceholderValue(raw)) return false;
     return String(raw).trim().length >= 4;
 }
+
+// ── Whitespace helpers ──────────────────────────────────────────────────
+// `"   "` is truthy, so `value || null` and `.filter(Boolean)` both let
+// whitespace-only input through. These helpers are the single place that
+// decides what "blank" means — use them on the server (the real enforcement
+// point) and on the client (UX only).
+
+// Always returns a trimmed string; null/undefined become ''.
+export const trimText = (raw) => (raw == null ? '' : String(raw).trim());
+
+// True for null, undefined, '' and whitespace-only strings.
+export const isBlank = (raw) => trimText(raw).length === 0;
+
+// Trimmed string, or null when blank. Use for optional columns.
+export const orNull = (raw) => trimText(raw) || null;
