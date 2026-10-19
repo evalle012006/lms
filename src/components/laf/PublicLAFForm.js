@@ -15,6 +15,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLAFOfflineQueue, MAX_ENTRIES } from '@/hooks/useLAFOfflineQueue';
 import { usePublicSignedUrl }               from '@/hooks/usePublicSignedUrl';
 import { checkRealConnectivity } from '@/lib/check-online';
+import { isBlank, isPlaceholderValue, isValidGovernmentId } from '@/lib/validation-utils';
 
 // ID number format validation — regex + friendly hint per type
 const ID_FORMAT_RULES = {
@@ -274,7 +275,7 @@ const PublicLAFForm = ({
     // ── Online status — must be declared BEFORE STEPS useMemo ──────────────
     const { isOnline, wasOffline } = useOnlineStatus();
 
-    const existingClientHasId = !!(foundClient?.governmentIdType && foundClient?.governmentIdNumber);
+    const existingClientHasId = !!(foundClient?.governmentIdType && isValidGovernmentId(foundClient?.governmentIdNumber));
 
     // Lock existingClientHasId value at the moment foundClient is first set.
     // This prevents STEPS from changing (and step indices shifting) when foundClient changes.
@@ -591,6 +592,11 @@ const PublicLAFForm = ({
     };
 
     const handleLookup = async () => {
+        // FIX: validate before the offline branch — blank term matched every cached member
+        if (clientType === 'balik' && isBlank(lookupFirstName)) { toast.error('Please enter your first name.'); return; }
+        if (isBlank(lookupLastName)) { toast.error('Please enter your last name.'); return; }
+        if (clientType !== 'balik' && !lookupSlotNo) { toast.error('Please select your slot number.'); return; }
+
         // Offline: search cached clients instead of hitting API
         // Use real probe — navigator.onLine returns true on WiFi-with-no-internet
         const reallyOnline = isOnline ? await checkRealConnectivity() : false;
@@ -639,12 +645,12 @@ const PublicLAFForm = ({
                     loanRelease:   (activeLoan || completedLoan).loanRelease   || 0,
                 });
                 setClientType(activeLoan ? 'reloan' : 'pending');
-                const hasId = !!(found.governmentIdType && found.governmentIdNumber);
+                const hasId = !!(found.governmentIdType && isValidGovernmentId(found.governmentIdNumber));
                 setIdStepNeeded(!hasId);
             } else {
                 const found = matches[0];
                 setFoundClient(found);
-                const hasId = !!(found.governmentIdType && found.governmentIdNumber);
+                const hasId = !!(found.governmentIdType && isValidGovernmentId(found.governmentIdNumber));
                 setIdStepNeeded(!hasId);
             }
             return;
@@ -682,7 +688,7 @@ const PublicLAFForm = ({
                 setFoundClient(data.client);
                 if (data.resolvedType) setClientType(data.resolvedType);
                 // Signal STEPS to include ID step if client has no ID on record
-                const hasId = !!(data.client.governmentIdType && data.client.governmentIdNumber);
+                const hasId = !!(data.client.governmentIdType && isValidGovernmentId(data.client.governmentIdNumber));
                 setIdStepNeeded(!hasId);
                 lockedHasId.current = hasId;
             } else {
@@ -718,6 +724,8 @@ const PublicLAFForm = ({
             if (!idType) errs.idType = 'Required';
             if (!idNumber.trim()) {
                 errs.idNumber = 'Required';
+            }  else if (!isValidGovernmentId(idNumber)) {
+                errs.idNumber = 'Enter a valid ID number';
             } else {
                 const fmtError = validateIdNumber(idType, idNumber);
                 if (fmtError) errs.idNumber = fmtError;
@@ -754,8 +762,12 @@ const PublicLAFForm = ({
             return;
         }
         if (cur === si('Confirm')) {
+            if (!isBlank(clientChanges.contactNumber) && isPlaceholderValue(clientChanges.contactNumber)) {
+                toast.error('Please enter a valid contact number.');
+                return;
+            }
             // Issue 5: require contact number if missing from existing client record
-            if (foundClient && !foundClient.contactNumber?.trim() && !clientChanges.contactNumber?.trim()) {
+            if (foundClient && isPlaceholderValue(foundClient.contactNumber) && isBlank(clientChanges.contactNumber)) {
                 toast.error('Please provide your contact number — it is not on your existing record.');
                 return;
             }
@@ -846,7 +858,11 @@ const PublicLAFForm = ({
         setStep(s => Math.max(s - 1, 0));
     };
 
-    const handleSubmit = useCallback(async (values) => {
+    const handleSubmit = useCallback(async (rawValues) => {
+         // FIX: yup .trim() only trims for validation — normalize what we actually send/queue
+        const values = Object.fromEntries(
+            Object.entries(rawValues || {}).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+        );
         // ── Validate: same existing client already queued offline ─────────
         if (foundClient?._id && (clientType === 'reloan' || clientType === 'pending' || clientType === 'balik')) {
             const alreadyQueued = queue.some(
@@ -879,12 +895,12 @@ const PublicLAFForm = ({
                     clientType,
                     existingClientId: foundClient?._id   || null,
                     clientChanges:    Object.fromEntries(
-                        Object.entries(clientChanges).filter(([, v]) => v?.trim())
+                        Object.entries(clientChanges).map(([k, v]) => [k, v?.trim()]).filter(([, v]) => v)
                     ),
                     existingLoanId:   foundClient?.loanId || null,
                     detailFlags:      Object.keys(detailFlags).filter(k => detailFlags[k]),
                     governmentIdType:   idType   || null,
-                    governmentIdNumber: idNumber || null,
+                    governmentIdNumber: idNumber?.trim() || null,
                     // loanAmount: parseFloat(values.loanAmount) || 0,
                     loanAmount: 0,
                     amountRelease: foundClient?.amountRelease || null,
@@ -935,14 +951,14 @@ const PublicLAFForm = ({
                     groupId, loId, branchId, qrToken, clientType,
                     existingClientId: foundClient?._id || null,
                     clientChanges:    Object.fromEntries(
-                        Object.entries(clientChanges).filter(([, v]) => v?.trim())
+                        Object.entries(clientChanges).map(([k, v]) => [k, v?.trim()]).filter(([, v]) => v)
                     ),
                     existingLoanId: foundClient?.loanId || null,
                     detailFlags: Object.keys(detailFlags).filter(k => detailFlags[k]),
                     ...values,
                     loanAmount: parseFloat(values.loanAmount) || 0,
                     lafPhotoKey, governmentIdPhotoKey, selfieWithIdPhotoKey,
-                    governmentIdType: idType || null, governmentIdNumber: idNumber || null,
+                    governmentIdType: idType || null, governmentIdNumber: idNumber?.trim() || null,
                     landmark: values.landmark || null, distanceFromBranch: values.distanceFromBranch || null,
                     oldGroupId:            foundClient?.oldGroupId  || null,
                     oldLoId:               foundClient?.oldLoId     || null,

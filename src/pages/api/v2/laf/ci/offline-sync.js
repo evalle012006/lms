@@ -1,19 +1,22 @@
 // src/pages/api/v2/laf/ci/offline-sync.js
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, updateQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions'; // ← was missing, caused crash
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import moment from 'moment';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
+import { validateCIPayload, normalizeCIAnswers } from '@/lib/laf/ci-validation';
+import { trimText } from '@/lib/validation-utils';
 
 const SPACES_ROOT = process.env.SPACES_ROOT || 'lms';
 
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations',          CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
+const CI_SETTINGS_TYPE = createGraphType('settings', 'ciQuestions')('settings');
 
 const s3 = new S3Client({
     endpoint:    'https://sgp1.digitaloceanspaces.com',
@@ -66,6 +69,14 @@ async function syncOfflineDrafts(req, res) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
 
+    // FIX: load CI question definitions once — `required` is read from settings,
+    // never from the client-supplied draft. Deliberately NOT wrapped in
+    // try/catch: if this fails we must fail the request, not skip validation.
+    const [ciSettings] = await graph.query(
+        queryQl(CI_SETTINGS_TYPE, { limit: 1 })
+    ).then(r => r.data?.settings ?? []);
+    const ciQuestions = Array.isArray(ciSettings?.ciQuestions) ? ciSettings.ciQuestions : [];
+
     const results = [];
 
     for (const draft of drafts) {
@@ -77,6 +88,16 @@ async function syncOfflineDrafts(req, res) {
                 decision, declineReason,
                 selfieBase64, ciAnswers,
             } = draft;
+
+            // FIX: same rules as the online route
+            const ciError = validateCIPayload(
+                { decision, declineReason, businessVerified, addressVerified, ciAnswers },
+                ciQuestions
+            );
+            if (ciError) {
+                results.push({ ciReferenceCode, success: false, error: ciError });
+                continue;
+            }
 
             if (decision === 'approved' && !draft.selfieKey && !selfieBase64) {
                 results.push({ ciReferenceCode, success: false, error: 'Selfie required for approval.' });
@@ -104,12 +125,12 @@ async function syncOfflineDrafts(req, res) {
                         businessVerified: !!businessVerified,
                         addressVerified:  !!addressVerified,
                         decision,
-                        declineReason:   decision === 'declined' ? declineReason : null,
+                        declineReason:   decision === 'declined' ? trimText(declineReason) : null,
                         selfieKey:       decision === 'approved'  ? selfieKey    : null,
                         picUserId:       decision === 'approved'  ? userId : null,
                         picUserName:     decision === 'approved'
                             ? `${user.firstName} ${user.lastName}` : null,
-                        ciAnswers:       ciAnswers || [],
+                        ciAnswers:       normalizeCIAnswers(ciAnswers),
                         offlinePayload:  draft,
                         syncedAt:        new Date().toISOString(),
                         investigatedAt:  draft.investigatedAt || getSystemDate().toISOString(),

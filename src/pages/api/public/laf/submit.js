@@ -9,6 +9,9 @@ import moment from 'moment';
 import crypto from 'crypto';
 // CHANGED: shared with check-duplicate.js so the two endpoints can't drift apart
 import { compareMiddle, compareBirthdate } from '@/lib/laf/name-match';
+// FIX: whitespace-only values are blank — "   " is truthy so `x || null` and
+// `.filter(Boolean)` let it through. Server is the real enforcement point.
+import { isBlank, trimText, orNull } from '@/lib/validation-utils';
 
 const graph = new GraphProvider();
 
@@ -163,6 +166,28 @@ async function submitLAF(req, res) {
         return res.status(200).json({
             success: false,
             message: 'A client photo is required to submit the application.',
+        });
+    }
+
+    // ── FIX: server-side required-field validation ────────────────────────
+    // The client schemas are UX only. Reloan / pending members come from their
+    // existing record (the Personal and Address steps are skipped for them), so
+    // only the loan + guarantor fields are required for those types.
+    const isExistingType = clientType === 'reloan' || clientType === 'pending';
+    const requiredFields = isExistingType
+        ? { loanPurpose, guarantorFirstName, guarantorLastName, guarantorRelationship, guarantorContactNumber }
+        : {
+            firstName, lastName, middleName, birthdate, contactNumber, civilStatus,
+            addressStreetNo, addressBarangayDistrict, addressMunicipalityCity, addressProvince,
+            loanPurpose, guarantorFirstName, guarantorLastName, guarantorRelationship, guarantorContactNumber,
+        };
+    const missingFields = Object.entries(requiredFields)
+        .filter(([, value]) => isBlank(value))
+        .map(([key]) => key);
+    if (missingFields.length > 0) {
+        return res.status(200).json({
+            success: false,
+            message: `Missing required fields: ${missingFields.join(', ')}.`,
         });
     }
 
@@ -392,6 +417,9 @@ async function submitLAF(req, res) {
     const branchCode      = group.branch?.code || branchId.slice(-4).toUpperCase();
     const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
 
+    // FIX: normalize once, reuse for the stored address and the SMS
+    const cleanContactNumber = trimText(contactNumber);
+
     // ── Insert into temporaryLoanApplications ─────────────────────────────
     const [application] = await graph.mutation(
         insertQl(TEMP_TYPE, {
@@ -405,28 +433,28 @@ async function submitLAF(req, res) {
                 lastName:   lastName?.trim().toUpperCase(),
                 middleName: middleName?.trim().toUpperCase() || '',
                 birthdate,
-                contactNumber,
-                addressStreetNo,
-                addressBarangayDistrict,
-                addressMunicipalityCity,
-                addressProvince,
-                addressZipCode,
+                contactNumber: cleanContactNumber,
+                addressStreetNo:         trimText(addressStreetNo),
+                addressBarangayDistrict: trimText(addressBarangayDistrict),
+                addressMunicipalityCity: trimText(addressMunicipalityCity),
+                addressProvince:         trimText(addressProvince),
+                addressZipCode:          trimText(addressZipCode),
                 address: [
                     addressStreetNo, addressBarangayDistrict,
                     addressMunicipalityCity, addressProvince, addressZipCode,
-                ].filter(Boolean).join(', '),
+                ].map(trimText).filter(Boolean).join(', '),
                 loanAmount:             loanAmount ? parseFloat(loanAmount) : null,
-                loanPurpose,
+                loanPurpose:            trimText(loanPurpose),
                 guarantorFirstName:     guarantorFirstName?.trim().toUpperCase(),
                 guarantorLastName:      guarantorLastName?.trim().toUpperCase(),
-                guarantorRelationship,
-                guarantorContactNumber,
+                guarantorRelationship:  trimText(guarantorRelationship),
+                guarantorContactNumber: trimText(guarantorContactNumber),
                 guarantorAddress:         guarantorAddress?.trim() || null,
                 // Guarantor extended fields
-                guarantorBirthDate:    guarantorBirthDate    || null,
-                guarantorCivilStatus:  guarantorCivilStatus  || null,
-                guarantorBusiness:     guarantorBusiness     || null,
-                guarantorDailyIncome:  guarantorDailyIncome  || null,
+                guarantorBirthDate:    orNull(guarantorBirthDate),
+                guarantorCivilStatus:  orNull(guarantorCivilStatus),
+                guarantorBusiness:     orNull(guarantorBusiness),
+                guarantorDailyIncome:  orNull(guarantorDailyIncome),
                 lafPhotoKey,
                 // FIX: status starts as 'pending' by default.
                 // Overridden to 'pending_validation' below if server detected a name match.
@@ -435,8 +463,8 @@ async function submitLAF(req, res) {
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
                 // Address extras
-                landmark:              landmark           || null,
-                distanceFromBranch:    distanceFromBranch || null,
+                landmark:              orNull(landmark),
+                distanceFromBranch:    orNull(distanceFromBranch),
                 // Biometric
                 biometricCredentialId: biometricCredentialId || null,
                 biometricPublicKey:    biometricPublicKey    || null,
@@ -445,7 +473,7 @@ async function submitLAF(req, res) {
                 biometricDeviceName:   biometricDeviceName   || null,
                 // Government ID
                 governmentIdType:      governmentIdType     || null,
-                governmentIdNumber:    governmentIdNumber   || null,
+                governmentIdNumber:    orNull(governmentIdNumber),
                 governmentIdPhotoKey:  governmentIdPhotoKey || null,
                 selfieWithIdPhotoKey:  selfieWithIdPhotoKey || null,
                 // Client type metadata
@@ -472,10 +500,10 @@ async function submitLAF(req, res) {
                 livenessScore:  livenessScore  != null ? livenessScore : null,
                 faceEnrollPhotoKey: faceEnrollPhotoKey || null,
                 // Borrower personal info
-                civilStatus:  civilStatus  || null,
-                yearsOfStay:  yearsOfStay  || null,
-                business:     business     || null,
-                dailyIncome:  dailyIncome  || null,
+                civilStatus:  orNull(civilStatus),
+                yearsOfStay:  orNull(yearsOfStay),
+                business:     orNull(business),
+                dailyIncome:  orNull(dailyIncome),
                 // FIX: server-derived flag → override status to pending_validation
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]
@@ -491,7 +519,7 @@ async function submitLAF(req, res) {
 
     // Send SMS — non-blocking, never fails the request
     sendLAFSubmittedSMS({
-        contactNumber:   contactNumber,
+        contactNumber:   cleanContactNumber || undefined,
         firstName:       firstName,
         ciReferenceCode: ciReferenceCode,
         branchName:      group?.branch?.name || 'our branch',
