@@ -23,18 +23,7 @@ async function getData(req, res) {
         user.designatedBranchId ??
         null;
 
-    let {
-        areaId,
-        divisionId,
-        regionId,
-        branchId,
-        loId,
-        filter,
-        date_added,
-        currentDate,
-        type,
-        view
-    } = req.query;
+    let { areaId, divisionId, regionId, branchId, loId, filter, date_added, currentDate, type, view } = req.query;
 
     const get_data = async (selectedDate, group, overrides = {}) => {
         const [result] = await graph.apollo.query({
@@ -107,13 +96,9 @@ async function getData(req, res) {
 
     if (type === 'performance') {
         try {
-            // ─────────────────────────────────────────────
-            // BRANCHES VIEW
-            // ─────────────────────────────────────────────
             if (view === 'branches') {
                 const _and = [];
 
-                // Respect logged-in user's organizational scope
                 if (user.divisionId) {
                     _and.push({
                         divisionId: { _eq: user.divisionId }
@@ -138,7 +123,6 @@ async function getData(req, res) {
                     });
                 }
 
-                // Respect dashboard filters
                 if (!user.divisionId && divisionId) {
                     _and.push({
                         divisionId: { _eq: divisionId }
@@ -261,33 +245,25 @@ async function getData(req, res) {
         }
     }
 
-    if(type == 'summary') {
-        const result = await get_data(date_added);
-        res.status(200)
-          .setHeader('Content-Type', 'application/json')
-          .end(JSON.stringify({
-              data: [result]
-          }));
+    if (type === 'summary') {
+        try {
+            const result = await get_data(date_added);
 
-          return;
-    }
+            return res.status(200).json({
+                success: true,
+                data: result
+            });
 
-    /*
-    const dates = await graph.apollo.query({
-        query: gql`
-        query get_dashboard_dates_by_range {
-            get_dashboard_dates_by_range(args: {
-                date_added: "${date_added}",
-                range: "${filter}"
-            }) {
-                data
-            }
+        } catch (error) {
+            console.error('Dashboard summary error:', error);
+
+            return res.status(500).json({
+                success: false,
+                data: [],
+                message: error.message
+            });
         }
-        `
-    }).then(res => res.data.get_dashboard_dates_by_range.map(o => o.data));
-
-   const results = await Promise.all(dates.map(o => get_data(o.selected_date, o.group)));
-    */
+    }
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
