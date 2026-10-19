@@ -10,7 +10,7 @@ import {
     ShieldAlert,
 } from 'lucide-react';
 import ClientSearchTool from './ClientSearchTool';
-import { Doughnut, Bar } from 'react-chartjs-2';
+import { Doughnut, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { useRouter } from 'next/router';
@@ -56,6 +56,202 @@ const DashboardPage = () => {
     const [divisionFilter, setDivisionFilter] = useState('all');
     const [loanOfficerFilter, setLoanOfficerFilter] = useState('all');
     const [summaryData, setSummaryData] = useState({});
+
+    // ── PAYMENT PERFORMANCE CHART ──────────────────────────────
+    const paymentMetrics = [
+        { value: 'newMember', label: 'New Member', type: 'number' },
+        { value: 'totalReloaner', label: 'Total Reloaner', type: 'number' },
+        { value: 'mcbuWithdrawals', label: 'MCBU Withdrawals', type: 'currency' },
+        { value: 'csfWithdrawals', label: 'CSF Withdrawals', type: 'currency' },
+        { value: 'mcbuReturnPerson', label: 'No. of MCBU Return Person', type: 'number' },
+        { value: 'mcbuCsfReturnAmount', label: 'MCBU / CSF Return Amount', type: 'currency' },
+        { value: 'mcbuInterest', label: 'MCBU Interest', type: 'currency' },
+        { value: 'fullPaymentPerson', label: 'Full Payment Person', type: 'number' },
+        { value: 'fullPaymentAmount', label: 'Full Payment Amount', type: 'currency' }
+    ];
+
+    const [paymentPeriod, setPaymentPeriod] = useState('week');
+    const [paymentCustomStart, setPaymentCustomStart] = useState('');
+    const [paymentCustomEnd, setPaymentCustomEnd] = useState('');
+    const [paymentChartRows, setPaymentChartRows] = useState([]);
+    const [paymentChartLoading, setPaymentChartLoading] = useState(false);
+    const [paymentChartError, setPaymentChartError] = useState('');
+
+    // ============================================================
+    // PAYMENT COLLECTION CHART - FETCH DATA
+    // ============================================================
+
+    useEffect(() => {
+        if (!currentDate) return;
+
+        if (
+            paymentPeriod === 'custom' &&
+            (!paymentCustomStart || !paymentCustomEnd)
+        ) {
+            setPaymentChartRows([]);
+            setPaymentChartError('');
+            return;
+        }
+
+        const fetchPaymentChart = async () => {
+            setPaymentChartLoading(true);
+            setPaymentChartError('');
+
+            try {
+                const selectedDate = moment(
+                    dateFilter || currentDate
+                );
+
+                let startDate;
+                let endDate;
+
+                switch (paymentPeriod) {
+                    case 'day':
+                        startDate = selectedDate.format('YYYY-MM-DD');
+                        endDate = selectedDate.format('YYYY-MM-DD');
+                        break;
+
+                    case 'week':
+                        startDate = selectedDate
+                            .clone()
+                            .startOf('isoWeek')
+                            .format('YYYY-MM-DD');
+
+                        endDate = selectedDate
+                            .clone()
+                            .endOf('isoWeek')
+                            .format('YYYY-MM-DD');
+                        break;
+
+                    case 'month':
+                        startDate = selectedDate
+                            .clone()
+                            .startOf('month')
+                            .format('YYYY-MM-DD');
+
+                        endDate = selectedDate
+                            .clone()
+                            .endOf('month')
+                            .format('YYYY-MM-DD');
+                        break;
+
+                    case 'year':
+                        startDate = selectedDate
+                            .clone()
+                            .startOf('year')
+                            .format('YYYY-MM-DD');
+
+                        endDate = selectedDate
+                            .clone()
+                            .endOf('year')
+                            .format('YYYY-MM-DD');
+                        break;
+
+                    case 'custom':
+                        startDate = paymentCustomStart;
+                        endDate = paymentCustomEnd;
+                        break;
+
+                    default:
+                        return;
+                }
+
+                if (startDate > endDate) {
+                    throw new Error(
+                        'Start date cannot be later than end date.'
+                    );
+                }
+
+                const params = new URLSearchParams({
+                    startDate,
+                    endDate
+                });
+
+                if (divisionFilter !== 'all') {
+                    params.set('divisionId', divisionFilter);
+                }
+
+                if (regionFilter !== 'all') {
+                    params.set('regionId', regionFilter);
+                }
+
+                if (areaFilter !== 'all') {
+                    params.set('areaId', areaFilter);
+                }
+
+                if (branchFilter !== 'all') {
+                    params.set('branchId', branchFilter);
+                }
+
+                if (loanOfficerFilter !== 'all') {
+                    params.set('loId', loanOfficerFilter);
+                }
+
+                const response = await fetchWrapper.get(
+                    getApiBaseUrl() +
+                    '/dashboard/payment-collection-chart?' +
+                    params.toString()
+                );
+
+                if (!response?.success) {
+                    throw new Error(
+                        response?.message ||
+                        'Failed to load payment chart.'
+                    );
+                }
+
+                const rows = Array.isArray(response.data)
+                    ? response.data
+                    : [];
+
+                const normalizedRows = rows
+                    .map(row => ({
+                        ...row,
+                        date: row.reportDate
+                    }))
+                    .sort((a, b) =>
+                        String(a.date).localeCompare(String(b.date))
+                    );
+
+                setPaymentChartRows(normalizedRows);
+
+                console.log(
+                    'PAYMENT CHART DATA:',
+                    normalizedRows
+                );
+
+            } catch (error) {
+                console.error(
+                    'Payment Chart Error:',
+                    error
+                );
+
+                setPaymentChartError(
+                    error.message || 'Unable to load chart.'
+                );
+
+                setPaymentChartRows([]);
+
+            } finally {
+                setPaymentChartLoading(false);
+            }
+        };
+
+        fetchPaymentChart();
+
+    }, [
+        currentDate,
+        dateFilter,
+        paymentPeriod,
+        paymentCustomStart,
+        paymentCustomEnd,
+        divisionFilter,
+        regionFilter,
+        areaFilter,
+        branchFilter,
+        loanOfficerFilter
+    ]);
+
     const [branchList, setBranches] = useState([]);
     const [regionList, setRegions] = useState([]);
     const [areaList, setAreas] = useState([]);
@@ -69,19 +265,64 @@ const DashboardPage = () => {
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
-    const [performanceView, setPerformanceView] = useState('branches');
-    const [performanceData, setPerformanceData] = useState([]);
-    const [performanceLoading, setPerformanceLoading] = useState(false);
+    // ── LOWER REPORT FILTER ─────────────────────────────────────────
+    const [reportTimeFilter, setReportTimeFilter] = useState('daily');
+    const [reportDate, setReportDate] = useState(null);
+    const [reportYear, setReportYear] = useState(moment(currentDate).year());
+    const [reportPeriodList, setReportPeriodList] = useState([]);
+    const [reportSelectedPeriod, setReportSelectedPeriod] = useState(null);
 
-    const performanceViews = [
-        { value: 'branches', label: 'Branches' },
-        { value: 'daily', label: 'Daily' },
-        { value: 'weekly_accelerated', label: 'Weekly Accelerated' },
-        { value: 'consolidated', label: 'Consolidated' },
-        { value: 'area', label: 'Area' },
-        { value: 'region', label: 'Region' },
-        { value: 'division', label: 'Division' },
-    ];
+    const [reportDivision, setReportDivision] = useState('all');
+    const [reportRegion, setReportRegion] = useState('all');
+    const [reportArea, setReportArea] = useState('all');
+    const [reportBranch, setReportBranch] = useState('all');
+
+    const [reportMoreFilters, setReportMoreFilters] = useState(false);
+    const [reportData, setReportData] = useState({});
+    const [reportLoading, setReportLoading] = useState(false);
+
+    useEffect(() => {
+        if (currentDate && !reportDate) {
+            setReportDate(
+                moment(currentDate).format('YYYY-MM-DD')
+            );
+        }
+    }, [currentDate]);
+
+    useEffect(() => {
+        let list = [];
+
+        switch (reportTimeFilter) {
+            case 'weekly':
+                list = getWeeks(reportYear).map(item => ({
+                    ...item,
+                    field: 'week'
+                }));
+                break;
+
+            case 'monthly':
+                list = getMonths(reportYear).map(item => ({
+                    ...item,
+                    field: 'month'
+                }));
+                break;
+
+            case 'quarterly':
+                list = getQuarters().map(item => ({
+                    ...item,
+                    field: 'quarter'
+                }));
+                break;
+
+            default:
+                list = [];
+                break;
+        }
+
+        setReportPeriodList(list);
+        setReportSelectedPeriod(list.length > 0 ? list[0] : null);
+
+    }, [reportTimeFilter, reportYear]);
 
     const regions = useMemo(() => 
         regionList.filter(
@@ -306,6 +547,87 @@ const DashboardPage = () => {
     }, [currentDate, holidayList]);
 
     const formatNumber = (num) => { if (num === undefined || num === null) return 'N/A'; if (typeof num === 'number') return num.toLocaleString('en-US'); return num; };
+    const formatCurrency = (num) => {
+        const value = Number(num || 0);
+
+        return `₱${value.toLocaleString('en-US')}`;
+    };
+
+    // ============================================================
+    // DCS TABLE VALUE HELPER
+    // ============================================================
+
+    const getDcsValue = (label, category) => {
+        const fieldMap = {
+            'Active Clients': 'activeClients',
+            'MCBU Balance': 'mcbu',
+            'CSF Balance': 'csf',
+            'Total loan Release': 'totalLoanRelease',
+            'Active Borrower': 'activeBorrowers',
+            'Total Loan Balance': 'totalLoanBalance',
+            'Past Due Person': 'pastDuePerson',
+            'Past Due MCBU Balance': 'pastDueMcbu',
+            'Past Due Loan Release': 'pastDueLoanRelease',
+            'Past Due Loan Balance': 'pastDueLoanBalance',
+            'Past Due Net Risk': 'pastDueNetRisk',
+            'No. Of Excuses': 'noOfExcuses',
+            'Excuses MCBU Balance': 'excusesMcbu',
+            'Excuses Loan Release': 'excusesLoanRelease',
+            'Excuses Loan Balance': 'excusesLoanBalance',
+            'Net Loan Balance': 'netLoanBalance'
+        };
+
+        const field = fieldMap[label];
+
+        if (!field) {
+            return '-';
+        }
+
+        const capitalizedField =
+            field.charAt(0).toUpperCase() +
+            field.slice(1);
+
+        let dataKey = field;
+
+        if (category === 'weekly') {
+            dataKey = `weekly${capitalizedField}`;
+        }
+
+        if (category === 'accelerated') {
+            dataKey = `accelerated${capitalizedField}`;
+        }
+
+        if (category === 'consolidated') {
+            dataKey = `consolidated${capitalizedField}`;
+        }
+
+        // No result should not be displayed as a real zero.
+        if (
+            reportData[dataKey] === undefined ||
+            reportData[dataKey] === null
+        ) {
+            return '-';
+        }
+
+        const value = Number(reportData[dataKey]);
+
+        if (!Number.isFinite(value)) {
+            return '-';
+        }
+
+        const numberFields = [
+            'activeClients',
+            'activeBorrowers',
+            'pastDuePerson',
+            'noOfExcuses'
+        ];
+
+        if (numberFields.includes(field)) {
+            return formatNumber(value);
+        }
+
+        return formatCurrency(value);
+    };
 
     const fetchSummaries = () => {
         if (!currentDate || !dateFilter) return;
@@ -314,21 +636,21 @@ const DashboardPage = () => {
             setLoading(true);
             let selectedDate = null;
             switch(timeFilter) {
-                case 'weekly':    selectedDate = { value: moment(selectedFilter?.value ?? currentDate).format('YYYY-MM-DD'), field: 'date_added' }; break;
-                case 'monthly':   selectedDate = { value: moment(selectedYear+'-'+(selectedFilter?.value??'01')+'-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'weekly': selectedDate = { value: moment(selectedFilter?.value ?? currentDate).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'monthly': selectedDate = { value: moment(selectedYear+'-'+(selectedFilter?.value??'01')+'-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'quarterly': selectedDate = { value: moment(selectedYear+'-01-01').quarter(selectedFilter?.value??1).format('YYYY-MM-DD'), field: 'date_added' }; break;
-                case 'yearly':    selectedDate = { value: moment(selectedYear+'-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
-                default:          selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'yearly': selectedDate = { value: moment(selectedYear+'-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
+                default: selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
             }
             const queries = [
                 selectedDate,
                 { value: moment(currentDate).format('YYYY-MM-DD'), field: 'currentDate' },
-                { value: timeFilter,        field: 'filter' },
-                { value: divisionFilter,    field: 'divisionId' },
-                { value: regionFilter,      field: 'regionId' },
-                { value: areaFilter,        field: 'areaId' },
-                { value: branchFilter,      field: 'branchId' },
-                { value: selectedYear,      field: 'year' },
+                { value: timeFilter, field: 'filter' },
+                { value: divisionFilter, field: 'divisionId' },
+                { value: regionFilter, field: 'regionId' },
+                { value: areaFilter, field: 'areaId' },
+                { value: branchFilter, field: 'branchId' },
+                { value: selectedYear, field: 'year' },
                 { value: loanOfficerFilter, field: 'loId' },
             ].filter(a => a.value !== 'all' && !!a.value).map(a => `${a.field}=${a.value}`).join('&');
 
@@ -340,159 +662,28 @@ const DashboardPage = () => {
         }, 400);
     };
 
-    const fetchPerformanceData = async () => {
-        if (!currentDate || !dateFilter) return;
+    const fetchBranches = () =>
+        fetchWrapper.get(getApiBaseUrl()+'/dashboard/branches').then(r =>
+            setBranches([{_id:'all',name:'All',code:''},...r.data])).catch(console.log);
 
-        try {
-            setPerformanceLoading(true);
+    const fetchRegions = () =>
+        fetchWrapper.get(getApiBaseUrl()+'/dashboard/regions').then(r =>
+            setRegions([{_id:'all',name:'All'},...r.data])).catch(console.log);
 
-            let selectedDate;
+    const fetchAreas = () =>
+        fetchWrapper.get(getApiBaseUrl()+'/dashboard/areas').then(r =>
+            setAreas([{_id:'all',name:'All'},...r.data])).catch(console.log);
 
-            switch (timeFilter) {
-                case 'weekly':
-                    selectedDate = moment(
-                        selectedFilter?.value ?? currentDate
-                    ).format('YYYY-MM-DD');
-                    break;
+    const fetchDivisions = () =>
+        fetchWrapper.get(getApiBaseUrl()+'/dashboard/divisions').then(r =>
+            setDivisions([{_id:'all',name:'All'},...r.data])).catch(console.log);
 
-                case 'monthly':
-                    selectedDate = moment(
-                        selectedYear +
-                        '-' +
-                        (selectedFilter?.value ?? '01') +
-                        '-01'
-                    )
-                        .endOf('month')
-                        .format('YYYY-MM-DD');
-                    break;
-
-                case 'quarterly':
-                    selectedDate = moment(
-                        selectedYear + '-01-01'
-                    )
-                        .quarter(selectedFilter?.value ?? 1)
-                        .format('YYYY-MM-DD');
-                    break;
-
-                case 'yearly':
-                    selectedDate = moment(
-                        selectedYear + '-12-01'
-                    )
-                        .endOf('month')
-                        .format('YYYY-MM-DD');
-                    break;
-
-                default:
-                    selectedDate = moment(dateFilter)
-                        .format('YYYY-MM-DD');
-                    break;
-            }
-
-            const queries = [
-                {
-                    field: 'type',
-                    value: 'performance'
-                },
-                {
-                    field: 'view',
-                    value: performanceView
-                },
-                {
-                    field: 'date_added',
-                    value: selectedDate
-                },
-                {
-                    field: 'currentDate',
-                    value: moment(currentDate).format('YYYY-MM-DD')
-                },
-                {
-                    field: 'filter',
-                    value: timeFilter
-                },
-                {
-                    field: 'divisionId',
-                    value: divisionFilter
-                },
-                {
-                    field: 'regionId',
-                    value: regionFilter
-                },
-                {
-                    field: 'areaId',
-                    value: areaFilter
-                },
-                {
-                    field: 'branchId',
-                    value: branchFilter
-                },
-                {
-                    field: 'loId',
-                    value: loanOfficerFilter
-                },
-                {
-                    field: 'year',
-                    value: selectedYear
-                }
-            ]
-                .filter(
-                    q =>
-                        q.value !== 'all' &&
-                        q.value !== undefined &&
-                        q.value !== null &&
-                        q.value !== ''
-                )
-                .map(
-                    q =>
-                        `${q.field}=${encodeURIComponent(q.value)}`
-                )
-                .join('&');
-
-            const resp = await fetchWrapper.get(
-                getApiBaseUrl() +
-                '/dashboard?' +
-                queries
-            );
-
-            setPerformanceData(
-                Array.isArray(resp?.data)
-                    ? resp.data
-                    : []
-            );
-
-        } catch (error) {
-            console.error(
-                'fetchPerformanceData:',
-                error
-            );
-
-            setPerformanceData([]);
-        } finally {
-            setPerformanceLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchPerformanceData();
-    }, [
-        performanceView,
-        divisionFilter,
-        regionFilter,
-        areaFilter,
-        branchFilter,
-        loanOfficerFilter,
-        timeFilter,
-        dateFilter,
-        selectedFilter,
-        selectedYear,
-        currentDate
-    ]);
-
-    const fetchBranches     = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/branches').then(r => setBranches([{_id:'all',name:'All',code:''},...r.data])).catch(console.log);
-    const fetchRegions      = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/regions').then(r => setRegions([{_id:'all',name:'All'},...r.data])).catch(console.log);
-    const fetchAreas        = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/areas').then(r => setAreas([{_id:'all',name:'All'},...r.data])).catch(console.log);
-    const fetchDivisions    = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/divisions').then(r => setDivisions([{_id:'all',name:'All'},...r.data])).catch(console.log);
-    const fetchLoanOfficers = () => fetchWrapper.get(getApiBaseUrl()+'/dashboard/loan-officers').then(r => setLoanOfficers([{_id:'all',firstName:'All',lastName:''},...r.data])).catch(console.log);
-    const handleDateFilter  = (selected) => setDateFilter(selected.target.value);
+    const fetchLoanOfficers = () =>
+        fetchWrapper.get(getApiBaseUrl()+'/dashboard/loan-officers').then(r =>
+            setLoanOfficers([{_id:'all',firstName:'All',lastName:''},...r.data])).catch(console.log);
+            
+    const handleDateFilter = (selected) =>
+        setDateFilter(selected.target.value);
 
     useEffect(() => {
         fetchBranches();
@@ -503,14 +694,242 @@ const DashboardPage = () => {
         fetchSummaries();
     }, []);
 
-    const timeFilterOptions     = [{value:'daily',label:'Daily'},{value:'weekly',label:'Weekly'},{value:'monthly',label:'Monthly'},{value:'quarterly',label:'Quarterly'},{value:'yearly',label:'Yearly'}];
-    const branchOptions         = branches.map(b => ({value:b._id, label:`${b.code} ${b.name}`.trim()}));
-    const regionOptions         = regions.map(r => ({value:r._id, label:r.name}));
-    const areaOptions           = areas.map(a => ({value:a._id, label:a.name}));
-    const divisionOptions       = divisions.map(d => ({value:d._id, label:d.name}));
-    const loanOfficerOptions    = loanOfficers.map(lo => ({value:lo._id, label:`${lo.firstName} ${lo.lastName}`.trim()}));
-    const yearOptions           = yearList.map(y => ({value:y.value, label:y.label}));
+    const timeFilterOptions = [
+        {value:'daily',label:'Daily'},
+        {value:'weekly',label:'Weekly'},
+        {value:'monthly',label:'Monthly'},
+        {value:'quarterly',label:'Quarterly'},
+        {value:'yearly',label:'Yearly'}
+    ];
+    
+    const branchOptions = branches.map(b => ({value:b._id, label:`${b.code} ${b.name}`.trim()}));
+    const regionOptions = regions.map(r => ({value:r._id, label:r.name}));
+    const areaOptions = areas.map(a => ({value:a._id, label:a.name}));
+    const divisionOptions = divisions.map(d => ({value:d._id, label:d.name}));
+    const loanOfficerOptions = loanOfficers.map(lo => ({value:lo._id, label:`${lo.firstName} ${lo.lastName}`.trim()}));
+    const yearOptions = yearList.map(y => ({value:y.value, label:y.label}));
     const timeFilterListOptions = timeFilterList.map((item,index) => ({value:index, label:item.label}));
+
+    // ── DCS REPORT FILTER OPTIONS ────────────────────────────────
+    const reportRegionOptions = regionList
+        .filter(item =>
+            reportDivision === 'all' ||
+            item._id === 'all' ||
+            item.divisionId === reportDivision
+        )
+        .map(item => ({
+            value: item._id,
+            label: item.name
+        }));
+
+    const reportAreaOptions = areaList
+        .filter(item =>
+            reportRegion === 'all' ||
+            item._id === 'all' ||
+            item.regionId === reportRegion
+        )
+        .map(item => ({
+            value: item._id,
+            label: item.name
+        }));
+
+    const reportBranchOptions = branchList
+        .filter(item =>
+            reportArea === 'all' ||
+            item._id === 'all' ||
+            item.areaId === reportArea
+        )
+        .map(item => ({
+            value: item._id,
+            label: `${item.code || ''} ${item.name || ''}`.trim()
+        }));
+
+    const reportPeriodOptions = reportPeriodList.map((item, index) => ({
+        value: index,
+        label: item.label
+    }));
+
+    // ============================================================
+    // DCS PERFORMANCE REPORT
+    // Daily             = 60 days
+    // Weekly Standard   = 24 weeks
+    // Weekly Accelerated = 12 weeks
+    // Consolidated      = Daily + Weekly + Accelerated
+    // ============================================================
+
+    const handleReportSearch = async () => {
+        setReportLoading(true);
+        setReportData({});
+
+        try {
+            // Determine the selected reporting date
+            let selectedReportDate = moment(
+                reportDate || currentDate
+            ).format('YYYY-MM-DD');
+
+            if (reportTimeFilter === 'weekly') {
+                if (!reportSelectedPeriod?.value) {
+                    throw new Error('Please select a week.');
+                }
+
+                selectedReportDate = moment(
+                    reportSelectedPeriod.value
+                ).format('YYYY-MM-DD');
+            }
+
+            if (reportTimeFilter === 'monthly') {
+                const month = Number(reportSelectedPeriod?.value);
+
+                if (!month || month < 1 || month > 12) {
+                    throw new Error('Please select a valid month.');
+                }
+
+                selectedReportDate = moment(
+                    `${reportYear}-${String(month).padStart(2, '0')}-01`
+                )
+                    .endOf('month')
+                    .format('YYYY-MM-DD');
+            }
+
+            if (reportTimeFilter === 'quarterly') {
+                const quarter = Number(reportSelectedPeriod?.value);
+
+                if (!quarter || quarter < 1 || quarter > 4) {
+                    throw new Error('Please select a valid quarter.');
+                }
+
+                selectedReportDate = moment(
+                    `${reportYear}-01-01`
+                )
+                    .quarter(quarter)
+                    .endOf('quarter')
+                    .format('YYYY-MM-DD');
+            }
+
+            if (reportTimeFilter === 'yearly') {
+                selectedReportDate = `${reportYear}-12-31`;
+            }
+
+            // Build parameters for the new DCS API
+            const params = new URLSearchParams({
+                date: selectedReportDate
+            });
+
+            if (reportDivision !== 'all') {
+                params.set('divisionId', reportDivision);
+            }
+
+            if (reportRegion !== 'all') {
+                params.set('regionId', reportRegion);
+            }
+
+            if (reportArea !== 'all') {
+                params.set('areaId', reportArea);
+            }
+
+            if (reportBranch !== 'all') {
+                params.set('branchId', reportBranch);
+            }
+
+            // NEW API — uses fn_get_dcs_performance_report
+            const response = await fetchWrapper.get(
+                getApiBaseUrl() +
+                '/dashboard/dcs-performance?' +
+                params.toString()
+            );
+
+            if (response?.success === false) {
+                throw new Error(
+                    response.message || 'Unable to load DCS report.'
+                );
+            }
+
+            const rows = Array.isArray(response?.data)
+                ? response.data
+                : [];
+
+            console.log('DCS PERFORMANCE RESPONSE:', rows);
+
+            if (!rows.length) {
+                throw new Error('No DCS performance data was returned.');
+            }
+
+            // The SQL function returns four categorized rows.
+            const categories = {
+                daily: rows.find(
+                    row => row.category === 'daily'
+                ),
+                weekly: rows.find(
+                    row => row.category === 'weekly'
+                ),
+                accelerated: rows.find(
+                    row => row.category === 'accelerated'
+                ),
+                consolidated: rows.find(
+                    row => row.category === 'consolidated'
+                )
+            };
+
+            const fields = [
+                'activeClients',
+                'mcbu',
+                'csf',
+                'totalLoanRelease',
+                'activeBorrowers',
+                'totalLoanBalance',
+                'pastDuePerson',
+                'pastDueMcbu',
+                'pastDueLoanRelease',
+                'pastDueLoanBalance',
+                'pastDueNetRisk',
+                'noOfExcuses',
+                'excusesMcbu',
+                'excusesLoanRelease',
+                'excusesLoanBalance',
+                'netLoanBalance'
+            ];
+
+            const result = {};
+
+            fields.forEach(field => {
+                const capitalizedField =
+                    field.charAt(0).toUpperCase() +
+                    field.slice(1);
+
+                // Daily
+                result[field] =
+                    categories.daily?.[field] ?? null;
+
+                // Weekly Standard
+                result[`weekly${capitalizedField}`] =
+                    categories.weekly?.[field] ?? null;
+
+                // Weekly Accelerated
+                result[`accelerated${capitalizedField}`] =
+                    categories.accelerated?.[field] ?? null;
+
+                // Consolidated — use actual SQL result
+                result[`consolidated${capitalizedField}`] =
+                    categories.consolidated?.[field] ?? null;
+            });
+
+            console.log('DCS PERFORMANCE DATA:', result);
+
+            setReportData(result);
+
+        } catch (error) {
+            console.error('DCS PERFORMANCE ERROR:', error);
+
+            toast.error(
+                error.message || 'Unable to load DCS performance.'
+            );
+
+            setReportData({});
+
+        } finally {
+            setReportLoading(false);
+        }
+    };
 
     const donutChartOptions = {
         responsive:true, maintainAspectRatio:false,
@@ -556,29 +975,179 @@ const DashboardPage = () => {
             }
         };
 
-        // Payment Collection
-        const paymentCollectionChartData = {
-            labels: [
-                'Loan Collection',
-                'MCBU',
-                'CSF'
-            ],
-            datasets: [
-                {
-                    data: [
-                        Number(summaryData.loanCollectionDaily || 0),
-                        Number(summaryData.mcbuCollection || 0),
-                        Number(summaryData.csfCollection || 0)
-                    ],
-                    backgroundColor: [
-                        '#22C55E',
-                        '#3B82F6',
-                        '#8B5CF6'
-                    ],
-                    borderWidth: 0,
-                    borderRadius: 6
+        // ── PAYMENT COLLECTION LINE CHART ─────────────────────────
+
+        const paymentChartColors = [
+            '#F5B700', // New Member
+            '#2563EB', // Total Reloaner
+            '#16A34A', // MCBU Withdrawals
+            '#9333EA', // CSF Withdrawals
+            '#EA580C', // MCBU Return Person
+            '#0891B2', // MCBU / CSF Return Amount
+            '#DB2777', // MCBU Interest
+            '#64748B', // Full Payment Person
+            '#DC2626'  // Full Payment Amount
+        ];
+
+        const paymentChartData = {
+            labels: paymentChartRows.map(row =>
+                moment(row.date).format(
+                    paymentPeriod === 'year'
+                        ? 'MMM'
+                        : 'MMM D'
+                )
+            ),
+
+            datasets: paymentMetrics.map((metric, index) => ({
+                label: metric.label,
+
+                data: paymentChartRows.map(row => {
+                    const value = row[metric.value];
+
+                    return value === null || value === undefined
+                        ? null
+                        : Number(value);
+                }),
+
+                borderColor: paymentChartColors[index],
+                backgroundColor: paymentChartColors[index],
+
+                yAxisID:
+                    metric.type === 'currency'
+                        ? 'yCurrency'
+                        : 'yPerson',
+
+                fill: false,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBorderWidth: 2,
+                pointHoverBorderColor: '#FFFFFF',
+                spanGaps: false
+            }))
+        };
+
+        const paymentChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        padding: 12,
+
+                        color: '#475569',
+
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+
+                datalabels: {
+                    display: false
+                },
+
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+
+                    backgroundColor: '#FFFFFF',
+                    titleColor: '#334155',
+                    bodyColor: '#334155',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    padding: 12,
+
+                    callbacks: {
+                        label: (context) => {
+                            const metric = paymentMetrics[context.datasetIndex];
+
+                            const value = context.parsed.y;
+
+                            if (value === null) {
+                                return `${metric.label}: No data`;
+                            }
+
+                            const formatted =
+                                metric.type === 'currency'
+                                    ? `₱${value.toLocaleString('en-PH')}`
+                                    : value.toLocaleString('en-PH');
+
+                            return `${metric.label}: ${formatted}`;
+                        }
+                    }
                 }
-            ]
+            },
+
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+
+                    ticks: {
+                        color: '#94A3B8',
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+
+                yPerson: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+
+                    title: {
+                        display: true,
+                        text: 'Persons'
+                    },
+
+                    grid: {
+                        color: '#F1F5F9'
+                    },
+
+                    ticks: {
+                        precision: 0
+                    }
+                },
+
+                yCurrency: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+
+                    title: {
+                        display: true,
+                        text: 'Amount (₱)'
+                    },
+
+                    grid: {
+                        drawOnChartArea: false
+                    },
+
+                    ticks: {
+                        callback: value =>
+                            '₱' + Number(value).toLocaleString('en-PH')
+                    }
+                }
+            }
         };
 
         // Loan Portfolio Status
@@ -640,8 +1209,8 @@ const DashboardPage = () => {
         };
 
     // ── derived values ─────────────────────────────────
-    const totalReleasePerson     = (summaryData.currentReleasePerson_New||0) + (summaryData.currentReleasePerson_Rel||0);
-    const filterLabel            = timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1);
+    const totalReleasePerson = (summaryData.currentReleasePerson_New||0) + (summaryData.currentReleasePerson_Rel||0);
+    const filterLabel = timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1);
 
     // ── Reusable row for top cards (no trend indicator needed) ────────
     const InfoRow = ({ label, value }) => (
@@ -713,11 +1282,68 @@ const DashboardPage = () => {
                     </div>
                     {isFiltersExpanded && (
                         <div className="flex flex-wrap gap-3 p-4 bg-gray-50 rounded-lg border">
-                            {divisions.length > 2    && <CustomSelect value={divisionFilter}    onChange={setDivisionFilter}    options={divisionOptions}    placeholder="Select Division"     className="w-40" />}
-                            {regions.length > 2      && <CustomSelect value={regionFilter}      onChange={setRegionFilter}      options={regionOptions}      placeholder="Select Region"       className="w-40" />}
-                            {areas.length > 2        && <CustomSelect value={areaFilter}        onChange={setAreaFilter}        options={areaOptions}        placeholder="Select Area"         className="w-40" />}
-                            {branchList.length > 2   && <CustomSelect value={branchFilter}      onChange={setBranchFilter}      options={branchOptions}      placeholder="Select Branch"       className="w-48" />}
-                            {loanOfficerList.length > 2 && <CustomSelect value={loanOfficerFilter} onChange={setLoanOfficerFilter} options={loanOfficerOptions} placeholder="Select Loan Officer" className="w-48" />}
+                            {divisions.length > 2 && 
+                                <CustomSelect 
+                                    value={divisionFilter}
+                                    onChange={(value) => {
+                                        setDivisionFilter(value);
+                                        setRegionFilter('all');
+                                        setAreaFilter('all');
+                                        setBranchFilter('all');
+                                        setLoanOfficerFilter('all');
+                                    }}
+                                    options={divisionOptions}
+                                    placeholder="Select Division" className="w-40" 
+                                />
+                            }
+
+                            {regions.length > 2 && 
+                                <CustomSelect value={regionFilter}
+                                    onChange={(value) => {
+                                        setRegionFilter(value);
+                                        setAreaFilter('all');
+                                        setBranchFilter('all');
+                                        setLoanOfficerFilter('all');
+                                    }}
+                                    options={regionOptions}
+                                    placeholder="Select Region" className="w-40" 
+                                />
+                            }
+
+                            {areas.length > 2 && 
+                                <CustomSelect 
+                                    value={areaFilter}
+                                    onChange={(value) => {
+                                        setAreaFilter(value);
+                                        setBranchFilter('all');
+                                        setLoanOfficerFilter('all');
+                                    }}
+                                    options={areaOptions}
+                                    placeholder="Select Area"
+                                    className="w-40" 
+                                />
+                            }
+
+                            {branchList.length > 2 && 
+                                <CustomSelect 
+                                    value={branchFilter}
+                                    onChange={(value) => {
+                                        setBranchFilter(value);
+                                        setLoanOfficerFilter('all');
+                                    }}
+                                    options={branchOptions}
+                                    placeholder="Select Branch" className="w-48" 
+                                />
+                            }
+                            
+                            {loanOfficerList.length > 2 &&
+                                <CustomSelect 
+                                    value={loanOfficerFilter} 
+                                    onChange={setLoanOfficerFilter} 
+                                    options={loanOfficerOptions} 
+                                    placeholder="Select Loan Officer" className="w-48" 
+                                />
+                            }
                         </div>
                     )}
                     {isSearchVisible && <div className="p-4 bg-white rounded-lg border shadow-sm"><ClientSearchTool /></div>}
@@ -891,27 +1517,91 @@ const DashboardPage = () => {
                         {/* ── DASHBOARD ANALYTICS ── */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                            {/* 1 — PAYMENT COLLECTION CHART */}
-                            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Banknote className="w-5 h-5 text-green-500" />
+                        {/* 1 — PAYMENT COLLECTION CHART */}
+                        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            {/* REVIEW CHART HEADER */}
+                            <div className="flex items-center justify-between gap-3 mb-4">
+
+                                {/* LEFT — CHART TITLE */}
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-5 h-5 text-yellow-500" />
+
                                     <div>
                                         <h2 className="text-sm font-bold text-gray-800">
-                                            Payment Collection Chart
+                                            Review Chart
                                         </h2>
+
                                         <p className="text-xs text-gray-400">
-                                            Today&apos;s collection
+                                            Lending performance trends
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="h-[250px]">
-                                    <Bar
-                                        data={paymentCollectionChartData}
-                                        options={miniBarOptions}
+                                {/* RIGHT — PERIOD DROPDOWN */}
+                                <div className="w-36 flex-shrink-0">
+                                    <CustomSelect
+                                        value={paymentPeriod}
+                                        onChange={setPaymentPeriod}
+                                        options={[
+                                            { value: 'day', label: 'Daily' },
+                                            { value: 'week', label: 'Weekly' },
+                                            { value: 'month', label: 'Monthly' },
+                                            { value: 'year', label: 'Yearly' },
+                                            { value: 'custom', label: 'Custom Date Range' }
+                                        ]}
+                                        placeholder="Select Period"
+                                        icon={Calendar}
+                                        className="w-full"
                                     />
                                 </div>
+
                             </div>
+
+                            {/* CUSTOM DATE RANGE */}
+                            {paymentPeriod === 'custom' && (
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="date"
+                                        value={paymentCustomStart}
+                                        onChange={(e) =>
+                                            setPaymentCustomStart(e.target.value)
+                                        }
+                                        className="w-1/2 px-2 py-2 text-xs border rounded-lg"
+                                    />
+
+                                    <input
+                                        type="date"
+                                        value={paymentCustomEnd}
+                                        onChange={(e) =>
+                                            setPaymentCustomEnd(e.target.value)
+                                        }
+                                        className="w-1/2 px-2 py-2 text-xs border rounded-lg"
+                                    />
+                                </div>
+                            )}
+
+                            {/* GRAPH */}
+                            <div className="h-[320px] relative">
+                                {paymentChartLoading ? (
+                                    <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                                        Loading chart...
+                                    </div>
+                                ) : paymentChartError ? (
+                                    <div className="h-full flex items-center justify-center text-xs text-red-500 text-center">
+                                        {paymentChartError}
+                                    </div>
+                                ) : paymentChartRows.length === 0 ? (
+                                    <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                                        No chart data available
+                                    </div>
+                                ) : (
+                                    <Line
+                                        data={paymentChartData}
+                                        options={paymentChartOptions}
+                                    />
+                                )}
+                            </div>
+                        </div>
 
 
                             {/* 2 — LOAN PORTFOLIO STATUS */}
@@ -920,7 +1610,7 @@ const DashboardPage = () => {
                                     <Scale className="w-5 h-5 text-blue-500" />
                                     <div>
                                         <h2 className="text-sm font-bold text-gray-800">
-                                            Loan Portfolio Status
+                                            Portfolio Status
                                         </h2>
                                         <p className="text-xs text-gray-400">
                                             Current loan balance distribution
@@ -960,153 +1650,272 @@ const DashboardPage = () => {
                             </div>
                         </div>
 
-                        {/* ── PERFORMANCE SUMMARY TABLE ── */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        {/* ── DCS REPORT FILTER ───────────────────────────────────── */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                            <div className="p-4 flex flex-col gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
 
-                            {/* HEADER */}
-                            <div className="px-5 py-4 border-b border-gray-200">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-sm font-bold text-gray-800">
-                                            Performance Summary
-                                        </h2>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            Branch and organizational performance monitoring
-                                        </p>
-                                    </div>
-                                </div>
+                                    {/* TIME FILTER */}
+                                    <CustomSelect
+                                        value={reportTimeFilter}
+                                        onChange={setReportTimeFilter}
+                                        options={timeFilterOptions}
+                                        placeholder="Select Time Period"
+                                        icon={Calendar}
+                                        className="w-40"
+                                    />
 
-                                {/* VIEW TABS */}
-                                <div className="flex flex-wrap gap-2 mt-4">
-                                    {performanceViews.map((item) => (
-                                        <button
-                                            key={item.value}
-                                            type="button"
-                                            onClick={() => setPerformanceView(item.value)}
-                                            className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                                                performanceView === item.value
-                                                    ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                                    {/* DAILY DATE */}
+                                    {reportTimeFilter === 'daily' && currentDate && (
+                                        <div className="w-40">
+                                            <DatePicker
+                                                name="reportDate"
+                                                value={
+                                                    reportDate
+                                                        ? moment(reportDate).format('YYYY-MM-DD')
+                                                        : ''
+                                                }
+                                                maxDate={currentDate}
+                                                onChange={(e) =>
+                                                    setReportDate(e.target.value)
+                                                }
+                                                height="h-[42px]"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* YEAR */}
+                                    {reportTimeFilter !== 'daily' && (
+                                        <CustomSelect
+                                            value={reportYear}
+                                            onChange={setReportYear}
+                                            options={yearOptions}
+                                            placeholder="Select Year"
+                                            className="w-32"
+                                        />
+                                    )}
+
+                                    {/* WEEK / MONTH / QUARTER */}
+                                    {reportTimeFilter !== 'daily' &&
+                                    reportTimeFilter !== 'yearly' && (
+                                        <CustomSelect
+                                            value={
+                                                reportSelectedPeriod
+                                                    ? reportPeriodList.indexOf(reportSelectedPeriod)
+                                                    : 0
+                                            }
+                                            onChange={(index) =>
+                                                setReportSelectedPeriod(
+                                                    reportPeriodList[index]
+                                                )
+                                            }
+                                            options={reportPeriodOptions}
+                                            placeholder={
+                                                reportTimeFilter === 'weekly'
+                                                    ? 'Select Week'
+                                                    : reportTimeFilter === 'monthly'
+                                                    ? 'Select Month'
+                                                    : 'Select Quarter'
+                                            }
+                                            className="w-40"
+                                        />
+                                    )}
+
+                                    {/* MORE FILTERS */}
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setReportMoreFilters(prev => !prev)
+                                        }
+                                        className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-gray-300
+                                            rounded-lg shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2
+                                            focus:ring-blue-500 transition-all duration-200"
+                                    >
+                                        <Filter className="w-4 h-4 text-gray-500" />
+
+                                        <span className="text-sm font-medium text-gray-700">
+                                            {reportMoreFilters
+                                                ? 'Less Filters'
+                                                : 'More Filters'}
+                                        </span>
+
+                                        <ChevronDown
+                                            className={`w-4 h-4 text-gray-500 transition-transform ${
+                                                reportMoreFilters ? 'rotate-180' : ''
                                             }`}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                                        />
+                                    </button>
 
-                            {/* TABLE */}
-                            <div className="overflow-auto max-h-[500px]">
-                                <table className="w-full text-sm">
+                                    {/* SEARCH */}
+                                    <button
+                                        type="button"
+                                        onClick={handleReportSearch}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg
+                                            shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500
+                                            transition-all duration-200">
+                                        
+                                        <Search className="w-4 h-4" />
+
+                                        <span className="text-sm font-medium">
+                                            Search
+                                        </span>
+                                    </button>
+
+                                </div>
+
+                                {/* EXPANDED FILTERS */}
+                                {reportMoreFilters && (
+                                    <div className="flex flex-wrap gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+
+                                        {/* DIVISION */}
+                                        <CustomSelect
+                                            value={reportDivision}
+                                            onChange={(value) => {
+                                                setReportDivision(value);
+                                                setReportRegion('all');
+                                                setReportArea('all');
+                                                setReportBranch('all');
+                                            }}
+                                            options={divisionOptions}
+                                            placeholder="Select Division"
+                                            className="w-48"
+                                        />
+
+                                        {/* REGION */}
+                                        <CustomSelect
+                                            value={reportRegion}
+                                            onChange={(value) => {
+                                                setReportRegion(value);
+                                                setReportArea('all');
+                                                setReportBranch('all');
+                                            }}
+                                            options={reportRegionOptions}
+                                            placeholder="Select Region"
+                                            className="w-48"
+                                        />
+
+                                        {/* AREA */}
+                                        <CustomSelect
+                                            value={reportArea}
+                                            onChange={(value) => {
+                                                setReportArea(value);
+                                                setReportBranch('all');
+                                            }}
+                                            options={reportAreaOptions}
+                                            placeholder="Select Area"
+                                            className="w-48"
+                                        />
+
+                                        {/* BRANCH */}
+                                        <CustomSelect
+                                            value={reportBranch}
+                                            onChange={setReportBranch}
+                                            options={reportBranchOptions}
+                                            placeholder="Select Branch"
+                                            className="w-48"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ============================================================
+                            DCS PERFORMANCE TABLE
+                            ============================================================ */}
+
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+                                <table className="w-full min-w-[1100px] text-sm">
+
+                                    {/* TABLE HEADER */}
                                     <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
-                                                #
+                                            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-gray-200 min-w-[220px]">
+                                                Particulars
                                             </th>
 
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
-                                                {performanceView === 'area'
-                                                    ? 'Area'
-                                                    : performanceView === 'region'
-                                                    ? 'Region'
-                                                    : performanceView === 'division'
-                                                    ? 'Division'
-                                                    : 'Branch'}
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-gray-200 min-w-[140px]">
+                                                Daily (60 Days)
                                             </th>
 
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Active Clients
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-gray-200 min-w-[170px]">
+                                                Weekly (24 Weeks)
                                             </th>
 
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Collection
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-gray-200 min-w-[180px]">
+                                                Weekly Accelerated (12 Weeks)
                                             </th>
 
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Release Person
-                                            </th>
-
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Release Amount
-                                            </th>
-
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Loan Balance
-                                            </th>
-
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                Past Due
-                                            </th>
-
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">
-                                                PAR %
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 min-w-[160px]">
+                                                Consolidated
                                             </th>
                                         </tr>
                                     </thead>
 
-                                    <tbody className="divide-y divide-gray-100">
-                                        {performanceLoading ? (
-                                            <tr>
-                                                <td
-                                                    colSpan="9"
-                                                    className="px-4 py-10 text-center text-gray-400"
-                                                >
-                                                    Loading performance data...
+                                    {/* TABLE BODY */}
+                                    <tbody className="divide-y divide-gray-200">
+                                        {[
+                                            'Active Clients',
+                                            'MCBU Balance',
+                                            'CSF Balance',
+                                            'Total loan Release',
+                                            'Active Borrower',
+                                            'Total Loan Balance',
+                                            'Past Due Person',
+                                            'Past Due MCBU Balance',
+                                            'Past Due Loan Release',
+                                            'Past Due Loan Balance',
+                                            'Past Due Net Risk',
+                                            'No. Of Excuses',
+                                            'Excuses MCBU Balance',
+                                            'Excuses Loan Release',
+                                            'Excuses Loan Balance',
+                                            'Net Loan Balance'
+                                        ].map((label, index) => (
+
+                                            <tr
+                                                key={`${label}-${index}`}
+                                                className="hover:bg-gray-50"
+                                            >
+
+                                                {/* PARTICULARS */}
+                                                <td className="px-4 py-2 text-sm font-medium text-gray-700 border-r border-gray-200">
+                                                    {label}
+                                                </td>
+
+                                                {/* DAILY */}
+                                                <td className="px-4 py-2 text-center text-sm text-gray-700 border-r border-gray-200">
+                                                    {reportLoading
+                                                        ? '...'
+                                                        : getDcsValue(label, 'daily')
+                                                    }
+                                                </td>
+
+                                                {/* WEEKLY STANDARD */}
+                                                <td className="px-4 py-2 text-center text-sm text-gray-700 border-r border-gray-200">
+                                                    {reportLoading
+                                                        ? '...'
+                                                        : getDcsValue(label, 'weekly')
+                                                    }
+                                                </td>
+
+                                                {/* WEEKLY ACCELERATED */}
+                                                <td className="px-4 py-2 text-center text-sm text-gray-700 border-r border-gray-200">
+                                                    {reportLoading
+                                                        ? '...'
+                                                        : getDcsValue(label, 'accelerated')
+                                                    }
+                                                </td>
+
+                                                {/* CONSOLIDATED */}
+                                                <td className="px-4 py-2 text-center text-sm font-bold text-gray-900">
+                                                    {reportLoading
+                                                        ? '...'
+                                                        : getDcsValue(label, 'consolidated')
+                                                    }
                                                 </td>
                                             </tr>
-                                        ) : performanceData.length === 0 ? (
-                                            <tr>
-                                                <td
-                                                    colSpan="9"
-                                                    className="px-4 py-10 text-center text-gray-400"
-                                                >
-                                                    No performance data available.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            performanceData.map((row, index) => (
-                                                <tr
-                                                    key={row._id || row.id || index}
-                                                    className="hover:bg-gray-50 transition-colors"
-                                                >
-                                                    <td className="px-4 py-3 text-gray-400">
-                                                        {index + 1}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 font-semibold text-gray-800">
-                                                        {row.name || row.branchName || '-'}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.activeClients || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.collection || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.releasePerson || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.releaseAmount || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.loanBalance || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right">
-                                                        {formatNumber(row.pastDueAmount || 0)}
-                                                    </td>
-
-                                                    <td className="px-4 py-3 text-right font-semibold">
-                                                        {Number(row.par || 0).toFixed(2)}%
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
