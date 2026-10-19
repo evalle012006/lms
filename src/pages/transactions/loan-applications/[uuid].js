@@ -2,7 +2,9 @@ import React, { useRef, useState } from 'react';
 import Spinner from '@/components/Spinner';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ReactToPrint from 'node_modules/react-to-print/lib/index';
-import { PrinterIcon } from '@heroicons/react/24/outline';
+import { PrinterIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
+import { downloadElementAsPdf } from '@/lib/pdf-download';
 import Image from 'next/image';
 import logo from "/public/images/logo.png";
 import { useEffect } from 'react';
@@ -19,6 +21,7 @@ const ClientNDSPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(true);
+    const [pdfBusy, setPdfBusy] = useState(false);
     const ndsFormRef = useRef();
 
     const [currentBranch, setCurrentBranch] = useState();
@@ -63,6 +66,27 @@ const ClientNDSPage = () => {
         });
     }, [uuid, currentUser, currentDate]);
 
+    // Same document the Print button prints, as a landscape A4 PDF (Branch Copy and
+    // Borrower's Copy side by side, as on paper).
+    const handleDownloadPdf = async () => {
+        if (pdfBusy || !ndsFormRef.current) return;
+        setPdfBusy(true);
+        try {
+            const ref = loan?.pnNumber || loan?.client?.lastName || uuid;
+            const { skippedImages } = await downloadElementAsPdf(ndsFormRef.current, {
+                filename: `NDS-${ref}`,
+                orientation: 'landscape',
+                margin: 5,
+            });
+            if (skippedImages > 0) toast.warning('The PDF was created without some images.');
+        } catch (e) {
+            console.error('NDS PDF failed', e);
+            toast.error('Unable to create the PDF. Use Print and choose "Save as PDF" instead.');
+        } finally {
+            setPdfBusy(false);
+        }
+    };
+
     return (
         <React.Fragment>
             {loading ? (
@@ -72,7 +96,14 @@ const ClientNDSPage = () => {
                     <div className='hidden'>
                         <Layout />
                     </div>
-                    <div className='flex justify-end mr-8'>
+                    <div className='flex justify-end mr-8 gap-3'>
+                        <ButtonSolid
+                            label={pdfBusy ? 'Preparing…' : 'Download PDF'}
+                            type="button"
+                            icon={[<ArrowDownTrayIcon className="w-5 h-5" />, 'left']}
+                            width='!w-40'
+                            onClick={handleDownloadPdf}
+                        />
                         <ReactToPrint
                             trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-20'/> }
                             content={() => ndsFormRef.current }

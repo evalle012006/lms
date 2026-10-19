@@ -39,6 +39,7 @@
     "html2pdf.js": "^0.14.0",
     "immutability-helper": "^3.1.1",
     "jsonwebtoken": "^9.0.2",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.475.0",
     "luxon": "^3.7.2",
     "micro": "^9.4.1",

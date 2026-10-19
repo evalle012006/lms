@@ -10,6 +10,7 @@ import { savePendingLoans } from '../cash-collections/update-pending-loans';
 import moment from 'moment';
 import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
 import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
+import { resolveWeeklyScheduleType } from '@/lib/weekly-schedule';
 
 const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)
@@ -49,11 +50,37 @@ async function save(req, res) {
         res.send({ error: true, message: 'Group or its Loan Officer could not be resolved.' });
         return;
     }
-    const group = dbGroup;
+        const group = dbGroup;
     loanData.loId      = dbGroup.loanOfficerId;
     loanData.occurence = dbGroup.occurence;
     loanData.groupName = dbGroup.name;
     loanData.branchId  = dbGroup.branchId;
+
+    // CHANGED: the group is the source of truth for weekly schedule type.
+    // Never persist a client-supplied value (it can come from stale LO state).
+    loanData.weeklyScheduleType = dbGroup.occurence === 'weekly'
+        ? resolveWeeklyScheduleType(dbGroup)
+        : null;
+
+    if (dbGroup.occurence === 'weekly') {
+        const expectedTerms = loanData.weeklyScheduleType === 'accelerated' ? 12 : 24;
+        if (Number(loanData.loanTerms) !== expectedTerms) {
+            logger.warn({
+                user_id,
+                page: `Saving Loan: ${loanData.clientId}`,
+                message: 'Weekly loanTerms does not match group schedule',
+                groupId: dbGroup._id,
+                scheduleType: loanData.weeklyScheduleType,
+                expectedTerms,
+                received: loanData.loanTerms
+            });
+            res.send({
+                error: true,
+                message: "Loan terms don't match this group's weekly schedule. Please reload the page and try again."
+            });
+            return;
+        }
+    }
 
     let mode;
     let oldLoanId;
