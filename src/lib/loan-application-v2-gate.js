@@ -34,10 +34,11 @@ export const LOAN_APPLICATION_CLASSIC_PATH = LOAN_APPLICATION_HOME_PATH; // kept
 // Old bookmark: redirects to the home path and selects the new version.
 export const LOAN_APPLICATION_V2_PATH = '/transactions/loan-applications/v2';
 
-// Which version eligible users see until they choose for themselves.
-// Cutover: flip this to 'v2'. Everyone then lands on the new page, with a button to
-// go back to classic, and anyone who already picked a version keeps their pick.
-export const LOAN_APPLICATION_DEFAULT_VIEW = 'classic'; // 'classic' | 'v2'
+// Which version eligible users see until they choose for themselves. The default is
+// never written to the browser, only an explicit click on the switch button is, so
+// changing this constant moves everyone who has not chosen, instantly, in either
+// direction. Anyone who picked a version keeps their pick.
+export const LOAN_APPLICATION_DEFAULT_VIEW = 'v2'; // 'classic' | 'v2'
 
 // Existing sub-routes the classic page already navigates to. They are separate
 // pages, so the list page can link to them without touching them.

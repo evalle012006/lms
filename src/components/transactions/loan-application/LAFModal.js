@@ -10,13 +10,16 @@
 //        hardcodes occurence: 'daily' and never sets weeklyScheduleType — this
 //        branch will not fire for prospect LAFs until that's wired through.
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, Printer, Download } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import moment from 'moment';
+import { numberToWords } from '@/lib/utils';
+import { downloadElementAsPdf } from '@/lib/pdf-download';
 
 const LAFModal = ({ isOpen, onClose, loanData }) => {
   const componentRef = useRef();
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const isCIPrint = String(
     loanData?.pnNumber || loanData?.ciReferenceCode || ''
@@ -46,30 +49,25 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
     `,
   });
 
+  // Used for the loan LAF and, through TempLAFModal, the CI (prospect) LAF.
   const handleDownloadPDF = async () => {
+    if (pdfBusy || !componentRef.current) return;
+    setPdfBusy(true);
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = componentRef.current;
-      const opt = {
+      const ref = loanData.pnNumber || loanData.ciReferenceCode || loanData.id || loanData.client?.lastName || 'document';
+      const { skippedImages } = await downloadElementAsPdf(componentRef.current, {
+        filename: `LAF-${ref}`,
+        orientation: 'portrait',
         margin: 10,
-        filename: `LAF-${loanData.pnNumber || loanData.id || 'document'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2, useCORS: false, allowTaint: true,
-          letterRendering: true, logging: false, imageTimeout: 0, removeContainer: true
-        },
-        jsPDF: {
-            unit: 'in',
-            format: [8.5, 13],
-            orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await html2pdf().set(opt).from(element).save();
+      });
+      if (skippedImages > 0) {
+        alert('The PDF was created without some images (the photo could not be loaded for export).');
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. The document will be generated without some images.');
+      alert('Failed to generate the PDF. Use Print and choose "Save as PDF" instead.');
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -113,6 +111,14 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             <div className="flex gap-2">
               <button onClick={handlePrint} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Print">
                 <Printer className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={pdfBusy}
+                className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                title={pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
+              >
+                <Download className="w-5 h-5" />
               </button>
               <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Close">
                 <X className="w-5 h-5" />
@@ -563,24 +569,5 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
     </div>
   );
 };
-
-function numberToWords(num) {
-  if (num === 0) return "Zero";
-  const ones  = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"];
-  const tens  = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
-  const teens = ["Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
-  function convertHundreds(n) {
-    let str = "";
-    if (n >= 100) { str += ones[Math.floor(n/100)] + " Hundred "; n %= 100; }
-    if (n >= 10 && n < 20) { str += teens[n-10] + " "; }
-    else { if (n >= 20) { str += tens[Math.floor(n/10)] + " "; n %= 10; } if (n > 0) str += ones[n] + " "; }
-    return str.trim();
-  }
-  let result = "";
-  if (num >= 1000000) { result += convertHundreds(Math.floor(num/1000000)) + " Million "; num %= 1000000; }
-  if (num >= 1000)    { result += convertHundreds(Math.floor(num/1000)) + " Thousand "; num %= 1000; }
-  if (num > 0)        { result += convertHundreds(num); }
-  return result.trim();
-}
 
 export default LAFModal;

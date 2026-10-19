@@ -25,6 +25,8 @@ export const DEFAULT_FILTERS = {
     branchId: null,
     loId: null,
     groupId: null,
+    clientId: null,       // a scanned client QR, resolved to the client's id
+    clientLabel: null,    // that client's name, for the chip (display only, never sent)
     loanCycle: 'all',     // all | new_member | reloaner
     occurence: 'all',     // all | daily | weekly_standard | weekly_accelerated
     loType: 'all',        // all | main | ext
@@ -45,6 +47,7 @@ function buildParams(page, f, withCounts) {
     if (f.branchId) params.set('branchId', f.branchId);
     if (f.loId) params.set('loId', f.loId);
     if (f.groupId) params.set('groupId', f.groupId);
+    if (f.clientId) params.set('clientId', f.clientId);
     if (f.loanCycle !== 'all') params.set('loanCycle', f.loanCycle);
     if (f.occurence !== 'all') params.set('occurence', f.occurence);
     if (f.loType !== 'all') params.set('loType', f.loType);

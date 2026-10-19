@@ -57,6 +57,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { getMonths, getYears } from '@/lib/date-utils';
 import { formatPricePhp } from '@/lib/utils';
+import { describeScanFilter, otherTabsWithMatches } from '@/lib/qr-scan';
 import {
     approvalMode,
     isEligibleForLoanApplicationV2,
@@ -69,7 +70,6 @@ import {
 const TABS = [
     { key: 'ldf',              label: 'LDF pending',       counted: true },
     { key: 'tomorrow',         label: 'Tomorrow',          counted: true },
-    { key: 'forecast',         label: 'Forecasted',        counted: true },
     { key: 'application',      label: 'LDF approved',      counted: true },
     { key: 'duplicate',        label: 'Duplicate clients', counted: true, minAccess: 'admin' },
     { key: 'guarantor-review', label: 'Guarantor review',  counted: true, minAccess: 'rep3' },
@@ -338,6 +338,17 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
         return <Layout header={false} noPad><Spinner /></Layout>;
     }
 
+    // When a QR scan finds nothing on this tab, say where the loan might be instead.
+    const scanned = describeScanFilter(filters);
+    const emptyHint = scanned
+        ? {
+            ...scanned,
+            elsewhere: otherTabsWithMatches(visibleTabs, tabCounts, filters.tab),
+            onSwitchTab: handleTab,
+            onOpenCi: (code) => router.push(`/transactions/ci-investigation?code=${encodeURIComponent(code)}`),
+        }
+        : null;
+
     const monthOptions = getMonths(Number(filters.year) || moment().year());
     const yearOptions = getYears();
     const isHistory = filters.tab === 'history';
@@ -506,6 +517,8 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
                     viewingId={viewingId}
                     actions={rowActions}
                     selection={selection}
+                    emptyHint={emptyHint}
+                    activeTab={filters.tab}
                 />
             </div>
 

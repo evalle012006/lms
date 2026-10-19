@@ -12,6 +12,7 @@ import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
 import { getEarliestDateOfRelease, getNextValidDate, validateDateOfRelease, ENFORCE_CI_DOR_VALIDATION } from '@/lib/date-utils';
 import { resolveLoanCycle } from '@/lib/loan-cycle';
+import { resolveWeeklyScheduleType } from '@/lib/weekly-schedule';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
@@ -147,6 +148,31 @@ const AddLoanPage = ({
     // fromCI: true when arriving from CI Investigation promote flow.
     // LO, Group, and client type are locked — user must not change them.
     const fromCI = !!(initialClientId && initialGroupId && initialLoId);
+
+    // Group-derived schedule type. Never use loWeeklyScheduleType directly for logic.
+    const selectedGroupObj = useMemo(
+        () => (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup) || null,
+        [groupList, selectedGroup]
+    );
+    const effectiveOccurence    = selectedGroupObj?.occurence || groupOccurence;
+    const effectiveScheduleType = effectiveOccurence === 'weekly'
+        ? resolveWeeklyScheduleType(selectedGroupObj, loWeeklyScheduleType)
+        : null;
+
+    // initialValues is memoized once, so re-derive the default MCBU when the
+    // group/schedule changes. Add mode only, skips group leaders, and never
+    // overrides a field the user already touched.
+    // Standard weekly -> prefill the minimum. Accelerated/daily -> 0 (no minimum).
+    useEffect(() => {
+        if (mode === 'edit' || groupLeader) return;
+        const form = formikRef.current;
+        if (!form || form.touched?.mcbu) return;
+        const next = (effectiveOccurence === 'weekly' && effectiveScheduleType === 'standard')
+            ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+            : 0;
+        form.setFieldValue('mcbu', next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, groupLeader, effectiveOccurence, effectiveScheduleType, transactionSettings]);
 
     const [hasPreFilled, setHasPreFilled] = useState(false);
 
@@ -420,7 +446,8 @@ const AddLoanPage = ({
                     setClientId(l.clientId);
                     setSlotNo(l.slotNo);
                     setLoanTerms(l.loanTerms || 60);
-                    if (l.weeklyScheduleType) setLoWeeklyScheduleType(l.weeklyScheduleType);
+                    // Group wins over the loan's stored value (which may be null/wrong)
+                    setLoWeeklyScheduleType(resolveWeeklyScheduleType(l.group, l.weeklyScheduleType) || 'standard');
                     if (l.loId) setSelectedLo(l.loId);
                     if (l.occurence) setGroupOccurence(l.occurence);
 
@@ -846,6 +873,22 @@ const AddLoanPage = ({
         if (group) {
             form?.setFieldValue('loId', group.loanOfficerId);
             setGroupOccurence(group.occurence || 'daily');
+
+            // Reset MCBU to the new group's default. Without this, a value typed
+            // for a standard group survives a switch to an accelerated/daily group,
+            // where the MCBU field is hidden but the value would still be submitted.
+            // Add mode only; edit mode keeps the loan's stored MCBU.
+            // Group leaders are handled when the client is selected (handleClientIdChange).
+            if (!isEdit) {
+                const nextScheduleType = group.occurence === 'weekly'
+                    ? resolveWeeklyScheduleType(group, loWeeklyScheduleType)
+                    : null;
+                const defaultMcbu = (group.occurence === 'weekly' && nextScheduleType === 'standard')
+                    ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+                    : 0;
+                form?.setFieldValue('mcbu', defaultMcbu);
+                form?.setFieldTouched('mcbu', false, false);
+            }
         }
         form?.setFieldValue(field, value);
         resetClient(form);
@@ -1172,6 +1215,13 @@ const AddLoanPage = ({
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
 
+        // Group is authoritative (matches the server). One value drives terms,
+        // payload and validation below.
+        const scheduleType = group.occurence === 'weekly'
+            ? resolveWeeklyScheduleType(group, loWeeklyScheduleType)
+            : null;
+        values.weeklyScheduleType = scheduleType;
+
         // ── v2 Date of Release validation ───────────────────────────────
         // fromCI path (new client, just came out of CI approval): use the
         // date forwarded from CIPromotedClientBanner.
@@ -1276,16 +1326,12 @@ const AddLoanPage = ({
         if (values.status !== 'active') {
             const serviceChargeRate = transactionSettings.serviceChargeRate;
             if (values.occurence === 'weekly') {
-                // values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
-                // values.loanTerms  = 24;
-                const weeklyTermDays = loWeeklyScheduleType === 'accelerated' ? 12 : 24;
+                const weeklyTermDays = scheduleType === 'accelerated' ? 12 : 24;
                 values.activeLoan       = (values.principalLoan * serviceChargeRate) / weeklyTermDays;
                 values.loanTerms        = weeklyTermDays;
-                values.weeklyScheduleType = loWeeklyScheduleType;
             } else {
                 values.loanTerms  = loanTerms;
                 values.activeLoan = (values.principalLoan * serviceChargeRate) / (loanTerms === 60 ? 60 : 100);
-                values.weeklyScheduleType = null;
             }
             values.loanBalance          = values.principalLoan * serviceChargeRate;
             values.amountRelease        = values.loanBalance;
@@ -1355,12 +1401,14 @@ const AddLoanPage = ({
             toast.error('Principal loan must be divisible by 1,000.');
             return;
         }
-        if (values.occurence === 'weekly' && values.weeklyScheduleType === 'standard' 
+        // Minimum MCBU applies to STANDARD weekly only. Accelerated has no minimum.
+        if (values.occurence === 'weekly' && scheduleType === 'standard'
                 && (!values.mcbu || parseFloat(values.mcbu) < transactionSettings.minWeeklyMcbuCollection)) {
             setLoading(false);
             toast.error(`Invalid MCBU. Please enter at least ${transactionSettings.minWeeklyMcbuCollection}.`);
             return;
         }
+
         if (loanTerms === 100 && values.principalLoan < 10000) {
             setLoading(false);
             toast.error('For 100-day loan term, principal must be ≥ 10,000.');
@@ -1897,7 +1945,7 @@ const AddLoanPage = ({
                                 loanTerms={loanTerms}
                                 setLoanTerms={setLoanTerms}
                                 groupOccurence={groupOccurence}
-                                weeklyScheduleType={loWeeklyScheduleType}
+                                weeklyScheduleType={effectiveScheduleType || 'standard'}
                                 groupLeader={groupLeader}
                                 clientId={clientId}
                                 clientType={clientType}
