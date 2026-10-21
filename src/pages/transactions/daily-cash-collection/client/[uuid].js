@@ -24,7 +24,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_NO_CSF_IN_REMARKS, LOR_DAILY_REMARKS, getApiBaseUrl } from '@/lib/constants';
+import { LOR_NO_CSF_IN_REMARKS, LOR_DAILY_REMARKS, getApiBaseUrl, NON_MISPAY_REMARKS } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
 import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer';
@@ -1962,9 +1962,9 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
+                        const isNonMispayRemark = NON_MISPAY_REMARKS.includes(temp.remarks?.value);
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && !isNonMispayRemark) {
                             temp.mispayment = true;
-                            // temp.mispaymentStr = 'Yes';
                         }
 
                         if (temp.remarks && temp.remarks.value === 'excused advance payment') {
@@ -2806,6 +2806,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.pastDue = temp.pastDue !== '-' ? temp.pastDue + temp.activeLoan : temp.activeLoan;
                                 temp.pastDueStr = formatPricePhp(temp.pastDue);
                                 temp.mispayment = false;
+                                temp.mispaymentStr = 'No';
                                 temp.error = false;
                                 temp.excused = true;
                                 temp.mcbuError = false;
