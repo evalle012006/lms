@@ -30,6 +30,24 @@
 //     the modal and the PDF margin is the only margin.
 //     Opt-in: callers that don't pass it behave exactly as before.
 //
+//  5. (NEW) Fonts are settled before capture, in the live document AND in the iframe that
+//     html2canvas builds. html2canvas measures text boxes in that iframe, then draws the
+//     glyphs with whatever font is available at paint time. If the app's web fonts are
+//     still loading in one of the two (this app logs Chrome's "Slow network ... Fallback
+//     font will be used while loading" intervention), the boxes come from fallback-font
+//     metrics and the text is drawn lower than its box, so table borders and signature
+//     lines run through it, and the result differs from export to export.
+//
+//  6. (NEW) Text-baseline fix for Tailwind. To place text vertically, html2canvas builds a
+//     hidden 1x1 <img>, aligns it to the baseline and reads its offsetTop. Tailwind's
+//     preflight sets `img { display: block }`, which drops that probe onto its own line,
+//     so the measured baseline is too low and every glyph is drawn about half a font-size
+//     below its box (table borders and signature lines then run through the text).
+//     While exporting, a rule restores `display: inline-block` for that probe only
+//     (matched by its width="1" height="1"). html2canvas runs the probe in the MAIN
+//     document, so the rule is injected there (and into its cloned iframe) and removed
+//     again afterwards. Real images are unaffected.
+//
 // Page-break control (html2pdf has no CSS "keep together" support): every element
 // matching `avoidBreakInside` that would straddle a page edge is pushed whole to the
 // next page. There is no "keep heading with next paragraph" — wrap a heading and the
@@ -85,6 +103,30 @@ async function inlineImage(img) {
     }
 }
 
+// Best-effort: make sure every @font-face in `doc` is loaded (or give up after 4s).
+async function settleFonts(doc) {
+    try {
+        if (!doc || !doc.fonts) return;
+        await Promise.race([
+            Promise.all(Array.from(doc.fonts).map((face) => face.load().catch(() => null))),
+            new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
+        await doc.fonts.ready;
+    } catch (e) {
+        /* never let font loading block the export */
+    }
+}
+
+const METRICS_FIX_CSS = 'img[width="1"][height="1"]{display:inline-block !important;}';
+
+function injectMetricsFix(doc) {
+    const style = doc.createElement('style');
+    style.setAttribute('data-pdf-metrics-fix', '');
+    style.textContent = METRICS_FIX_CSS;
+    doc.head.appendChild(style);
+    return style;
+}
+
 // Lay the clone out at a fixed width, off-screen, inside the live document (so the
 // app's global/Tailwind CSS applies). Inline styles beat the utility classes
 // (p-8, max-width, auto margins) that the on-screen version uses for its own chrome.
@@ -98,6 +140,7 @@ function stageForRender(clone, renderWidth) {
     clone.style.width = '100%';
     clone.style.maxWidth = 'none';
     clone.style.margin = '0';
+    clone.style.minHeight = '0';
     clone.style.padding = '0';
     // Small buffer under the last line: the final page of the export was being clipped
     // through the last text line (capture height ending slightly short of the content).
@@ -139,8 +182,14 @@ export async function downloadElementAsPdf(element, options = {}) {
     const skippedImages = results.filter((ok) => !ok).length;
 
     const holder = renderWidth ? stageForRender(clone, renderWidth) : null;
+    // Staging can pull in font weights/styles the page hasn't used yet; wait for them,
+    // then one frame so layout is final before html2pdf measures anything.
+    await settleFonts(document);
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
+    let metricsFix = null;
     try {
+        metricsFix = injectMetricsFix(document);
         const name = safeFilename(filename.replace(/\.pdf$/i, ''));
         await html2pdf()
             .set({
@@ -153,6 +202,11 @@ export async function downloadElementAsPdf(element, options = {}) {
                     allowTaint: false, // images are inlined, so the canvas stays exportable
                     backgroundColor: '#ffffff',
                     logging: false,
+                    // html2canvas awaits this; the cloned document has its own FontFaceSet
+                    onclone: (clonedDoc) => {
+                        injectMetricsFix(clonedDoc);
+                        return settleFonts(clonedDoc);
+                    },
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation },
                 pagebreak: { mode: ['css', 'legacy'], avoid: avoidBreakInside },
@@ -160,6 +214,7 @@ export async function downloadElementAsPdf(element, options = {}) {
             .from(clone)
             .save();
     } finally {
+        if (metricsFix) metricsFix.remove();
         if (holder) holder.remove();
     }
 

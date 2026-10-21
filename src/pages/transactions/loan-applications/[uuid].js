@@ -77,6 +77,7 @@ const ClientNDSPage = () => {
                 filename: `NDS-${ref}`,
                 orientation: 'landscape',
                 margin: 5,
+                renderWidth: 756,
             });
             if (skippedImages > 0) toast.warning('The PDF was created without some images.');
         } catch (e) {
