@@ -9,17 +9,45 @@
 //        for confirmed loans. NOTE: TempLAFModal.js (public/CI prospect flow)
 //        hardcodes occurence: 'daily' and never sets weeklyScheduleType — this
 //        branch will not fire for prospect LAFs until that's wired through.
+// FIX 5: Borrower photo — client.profile is a Spaces storage KEY (lms/laf-photos/...),
+//        not a URL. Using it as <img src> made the browser request it relative to the
+//        current page (/transactions/lms/...) → 404. It is now resolved through
+//        useSignedUrl. If the value is already a presigned URL (CI endpoint returns
+//        one), it is used as-is. Fallback is state-driven (no parentElement.innerHTML),
+//        and Print / Download PDF are disabled while the photo URL is resolving so a
+//        blank photo box can't be printed by accident.
+// FIX 6: Print CSS — removed the @media print font-size / spacing overrides (they
+//        shrank .text-sm 14px→11px and .text-xs 12px→10px, which is why print didn't
+//        match the modal), removed the duplicate/conflicting @page rule (single source
+//        of truth is now pageStyle below), and let content fill the printable width.
+//        Expect the form to run longer than before; signature blocks and headings are
+//        kept from splitting across pages.
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import moment from 'moment';
 import { numberToWords } from '@/lib/utils';
 import { downloadElementAsPdf } from '@/lib/pdf-download';
+import { useSignedUrl } from 'hooks/useSignedUrl';
 
 const LAFModal = ({ isOpen, onClose, loanData }) => {
   const componentRef = useRef();
   const [pdfBusy, setPdfBusy] = useState(false);
+
+  // FIX 5: resolve the photo storage key to a signed URL.
+  // These hooks must stay ABOVE the `if (!isOpen || !loanData) return null;` below.
+  const rawPhoto = loanData?.client?.profile || loanData?.profile || null;
+
+  // The CI endpoint (/laf/ci/[refCode]) already returns a presigned URL — don't re-sign it.
+  const alreadySigned = typeof rawPhoto === 'string' && /X-Amz-Signature=/i.test(rawPhoto);
+  const { signedUrl, loading: photoLoading } = useSignedUrl(alreadySigned ? null : rawPhoto);
+  const profilePicture = alreadySigned ? rawPhoto : signedUrl;
+
+  const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [profilePicture]);
 
   const isCIPrint = String(
     loanData?.pnNumber || loanData?.ciReferenceCode || ''
@@ -28,9 +56,11 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
     documentTitle: `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`,
+    // FIX 6: this is the ONLY @page rule now. Change the size to match the paper you
+    // actually print on (8.5in 13in = PH long bond; CSS "legal" would be 8.5in 14in).
     pageStyle: `
       @page {
-        size: legal portrait;
+        size: 8.5in 13in;
         margin: 0.4in;
       }
 
@@ -93,9 +123,6 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   const csfAmount    = isAccelerated ? 25 : 5;
   const csfFrequency = isAccelerated ? 'weekly basis' : 'daily basis';
 
-  // FIX 1: client photo — use client.profile first, then loanData.profile
-  const profilePicture = client.profile || loanData.profile;
-
   const guarantorFullName = [
     loanData.guarantorFirstName,
     loanData.guarantorMiddleName,
@@ -109,14 +136,20 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center no-print z-10">
             <h2 className="text-xl font-semibold">Loan Agreement Form</h2>
             <div className="flex gap-2">
-              <button onClick={handlePrint} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Print">
+              {/* FIX 5: disabled until the photo URL has resolved */}
+              <button
+                onClick={handlePrint}
+                disabled={photoLoading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                title={photoLoading ? 'Loading photo…' : 'Print'}
+              >
                 <Printer className="w-5 h-5" />
               </button>
               <button
                 onClick={handleDownloadPDF}
-                disabled={pdfBusy}
+                disabled={pdfBusy || photoLoading}
                 className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
-                title={pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
+                title={pdfBusy ? 'Preparing PDF…' : photoLoading ? 'Loading photo…' : 'Download PDF'}
               >
                 <Download className="w-5 h-5" />
               </button>
@@ -159,24 +192,14 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 </div>
               </div>
 
-              {/* FIX 1: object-contain so faces are not cropped — bg-gray-50 fills whitespace */}
+              {/* FIX 1 + FIX 5: signed URL, object-contain, state-driven fallback */}
               <div className="border-2 border-gray-400 w-64 h-44 flex items-center justify-center text-xs text-gray-500 overflow-hidden bg-gray-50">
-                {profilePicture ? (
+                {profilePicture && !photoFailed ? (
                   <img
                     src={profilePicture}
                     alt="Borrower"
                     className="w-full h-full object-contain bg-gray-50"
-                    onError={e => {
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-center p-2">
-                          <svg class="w-16 h-16 text-gray-300 mb-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                          </svg>
-                          <span class="text-gray-400">Borrower Photo<br />(1.5X3)</span>
-                        </div>
-                      `;
-                    }}
+                    onError={() => setPhotoFailed(true)}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-2">
@@ -447,13 +470,15 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         </div>
       </div>
 
+      {/*
+        FIX 6: print CSS.
+        - No @page here (pageStyle in useReactToPrint is the single source of truth).
+        - No font-size / margin overrides: print renders at the same sizes as the modal.
+        - padding: 0 is intentional — the @page margin is the only margin; keeping p-8 on
+          top of it is what produced the wide-gutter look.
+      */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: 8.5in 13in;
-            margin: 0.35in;
-          }
-
           html,
           body {
             margin: 0 !important;
@@ -461,11 +486,11 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           }
 
           .loan-approval-laf-print {
-            width: 7.8in !important;
-            max-width: 7.8in !important;
+            width: 100% !important;
+            max-width: none !important;
             min-width: 0 !important;
 
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
 
             box-sizing: border-box !important;
@@ -481,6 +506,19 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
 
           .loan-approval-laf-print * {
             box-sizing: border-box !important;
+          }
+
+          /* keep rows, signature blocks and headings from splitting across pages */
+          .loan-approval-laf-print tr,
+          .loan-approval-laf-print .flex.justify-around,
+          .loan-approval-laf-print .flex.justify-between {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .loan-approval-laf-print h3 {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
 
           .no-print {
@@ -506,64 +544,6 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           .no-print .sticky {
             display: none !important;
           }
-          
-          .printable-content .text-xs {
-              font-size: 10px !important;
-              line-height: 1.2 !important;
-          }
-
-          .printable-content .text-sm {
-              font-size: 11px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-lg {
-              font-size: 14px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-xl {
-              font-size: 17px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-2xl {
-              font-size: 20px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .mb-6 {
-              margin-bottom: 10px !important;
-          }
-
-          .printable-content .mb-8 {
-              margin-bottom: 12px !important;
-          }
-
-          .printable-content .mt-8 {
-              margin-top: 12px !important;
-          }
-
-          .printable-content .mt-10 {
-              margin-top: 12px !important;
-          }
-
-          .printable-content .mt-12 {
-              margin-top: 16px !important;
-          }
-
-          .printable-content .mt-16 {
-              margin-top: 20px !important;
-          }
-
-          .printable-content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
-              margin-top: 4px !important;
-          }
-
-            tr {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
         }
       `}</style>
     </div>
