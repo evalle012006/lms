@@ -22,7 +22,11 @@
 //        of truth is now pageStyle below), and let content fill the printable width.
 //        Expect the form to run longer than before; signature blocks and headings are
 //        kept from splitting across pages.
-// FIX 7: Named @page ("laf-page") so size/margin beat other unnamed @page rules on the screen.
+// FIX 7: (superseded by FIX 11) named @page experiment.
+// FIX 11: Print no longer uses react-to-print. It copied every host-page stylesheet into the
+//         print frame, including other components' global @page rules (LDFList: landscape +
+//         5px margins !important). Print now uses an isolated hidden iframe: page CSS copied
+//         without @page rules, LAF_PAGE_CSS (8.5in x 13in, 0.4in margin) written last.
 // FIX 8: Download PDF — render at the modal's content width (renderWidth: 752) so the PDF
 //        wraps like the modal, and mark paragraphs / signature blocks `avoid-break` so
 //        html2pdf's page slicing no longer cuts through lines. Requires the matching
@@ -30,11 +34,18 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
 import moment from 'moment';
 import { numberToWords } from '@/lib/utils';
 import { downloadElementAsPdf } from '@/lib/pdf-download';
 import { useSignedUrl } from 'hooks/useSignedUrl';
+
+// FIX 11: the LAF's own page setup. It is written LAST into the print frame (see handlePrint),
+// so it wins over any other @page rule that survives the copy.
+const LAF_PAGE_CSS = `
+  @page { size: 8.5in 13in; margin: 0.4in; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+`;
 
 // FIX 10: one structure for every "printed name over a signature line" slot.
 // The name sits in its own bottom-aligned box with padding under it, so it can never touch
@@ -73,40 +84,67 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
     loanData?.pnNumber || loanData?.ciReferenceCode || ''
   ).startsWith('CI-');
 
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`,
-    // FIX 7: NAMED page. react-to-print copies the host document's styles into the print
-    // iframe, and other components on this screen (e.g. LDFList: `@page { size: landscape }`
-    // + getPageMargins(), styles/print.css: letter portrait) inject unnamed @page rules that
-    // can override ours. A named @page ("laf-page") beats any unnamed @page regardless of
-    // order. Change the size to the paper you actually print on
-    // (8.5in 13in = PH long bond; CSS "legal" would be 8.5in 14in).
-    pageStyle: `
-      @page laf-page {
-        size: 8.5in 13in;
-        margin: 0.4in;
-      }
+  // FIX 11: print through our own hidden iframe instead of react-to-print.
+  // react-to-print copies EVERY stylesheet of the host page into the print frame, and this
+  // screen hosts components that inject global @page rules of their own (LDFList stays mounted
+  // for branch managers and renders `@page { margin: 30px 5px 20px 5px !important }` and
+  // `@page { size: landscape }`). Those silently replaced the LAF's page size and margins.
+  // Here the page's CSS is copied WITHOUT its top-level @page rules, and LAF_PAGE_CSS comes last.
+  const handlePrint = async () => {
+    const node = componentRef.current;
+    if (!node) return;
 
-      .loan-approval-laf-print,
-      .ci-laf-print {
-        page: laf-page;
+    let css = '';
+    let links = '';
+    Array.from(document.styleSheets).forEach((sheet) => {
+      try {
+        css += Array.from(sheet.cssRules)
+          .filter((rule) => !(typeof CSSPageRule !== 'undefined' && rule instanceof CSSPageRule))
+          .map((rule) => rule.cssText)
+          .join('\n') + '\n';
+      } catch (e) {
+        // cross-origin stylesheet: its rules can't be read, link it instead
+        if (sheet.href) links += `<link rel="stylesheet" href="${sheet.href}">`;
       }
+    });
 
-      @media print {
-        html,
-        body {
-          margin: 0 !important;
-          padding: 0 !important;
-        }
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+    const cleanup = () => setTimeout(() => iframe.remove(), 500);
 
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-      }
-    `,
-  });
+    try {
+      const win = iframe.contentWindow;
+      const doc = iframe.contentDocument;
+      const loaded = new Promise((resolve) => {
+        win.addEventListener('load', resolve, { once: true });
+        setTimeout(resolve, 5000); // never hang on a stylesheet that won't load
+      });
+      doc.open();
+      doc.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${document.baseURI}"><title></title>` +
+        `${links}<style>${css}</style><style>${LAF_PAGE_CSS}</style></head><body>${node.outerHTML}</body></html>`
+      );
+      doc.close();
+      doc.title = `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`;
+      await loaded;
+
+      await Promise.all(
+        Array.from(doc.images).map((img) => (img.decode ? img.decode().catch(() => {}) : null))
+      );
+      if (doc.fonts?.ready) await doc.fonts.ready;
+
+      win.addEventListener('afterprint', cleanup, { once: true });
+      win.focus();
+      win.print();
+      setTimeout(cleanup, 60000); // fallback if afterprint never fires
+    } catch (error) {
+      console.error('Error printing the LAF:', error);
+      cleanup();
+      alert('Failed to open the print preview.');
+    }
+  };
 
   // Used for the loan LAF and, through TempLAFModal, the CI (prospect) LAF.
   const handleDownloadPDF = async () => {
@@ -526,7 +564,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
 
       {/*
         FIX 6: print CSS.
-        - No @page here (pageStyle in useReactToPrint is the single source of truth).
+        - No @page here (LAF_PAGE_CSS, written last into the print frame, is the single source of truth).
         - No font-size / margin overrides: print renders at the same sizes as the modal.
         - padding: 0 is intentional — the @page margin is the only margin; keeping p-8 on
           top of it is what produced the wide-gutter look.
