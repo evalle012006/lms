@@ -23,6 +23,7 @@ import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
+import { NON_MISPAY_REMARKS } from '@/lib/constants';
 
 // ============================================
 // CONFIGURATION
@@ -370,6 +371,9 @@ async function executeSave(req, user_id, transactionId, user) {
                 // cashCollections.mispayment is a boolean; loans.mispayment is a counter.
                 // Never let a counter (or '-') from the client reach the boolean column or the counter increment.
                 collection.mispayment = collection.mispayment === true;
+                if (NON_MISPAY_REMARKS.includes(collection.remarks?.value)) {
+                    collection.mispayment = false;
+                }
 
                 // get loan snapshot 
                 let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
