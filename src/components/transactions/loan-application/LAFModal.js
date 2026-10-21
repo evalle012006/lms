@@ -22,6 +22,11 @@
 //        of truth is now pageStyle below), and let content fill the printable width.
 //        Expect the form to run longer than before; signature blocks and headings are
 //        kept from splitting across pages.
+// FIX 7: Named @page ("laf-page") so size/margin beat other unnamed @page rules on the screen.
+// FIX 8: Download PDF — render at the modal's content width (renderWidth: 752) so the PDF
+//        wraps like the modal, and mark paragraphs / signature blocks `avoid-break` so
+//        html2pdf's page slicing no longer cuts through lines. Requires the matching
+//        pdf-download.js (renderWidth option).
 
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
@@ -56,12 +61,21 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
     documentTitle: `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`,
-    // FIX 6: this is the ONLY @page rule now. Change the size to match the paper you
-    // actually print on (8.5in 13in = PH long bond; CSS "legal" would be 8.5in 14in).
+    // FIX 7: NAMED page. react-to-print copies the host document's styles into the print
+    // iframe, and other components on this screen (e.g. LDFList: `@page { size: landscape }`
+    // + getPageMargins(), styles/print.css: letter portrait) inject unnamed @page rules that
+    // can override ours. A named @page ("laf-page") beats any unnamed @page regardless of
+    // order. Change the size to the paper you actually print on
+    // (8.5in 13in = PH long bond; CSS "legal" would be 8.5in 14in).
     pageStyle: `
-      @page {
+      @page laf-page {
         size: 8.5in 13in;
         margin: 0.4in;
+      }
+
+      .loan-approval-laf-print,
+      .ci-laf-print {
+        page: laf-page;
       }
 
       @media print {
@@ -89,6 +103,10 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         filename: `LAF-${ref}`,
         orientation: 'portrait',
         margin: 10,
+        // FIX 8: lay out at the modal's content width (max-w 8.5in = 816px minus p-8 = 752px)
+        // so the PDF wraps like the modal, and keep list items / signature blocks whole.
+        renderWidth: 752,
+        avoidBreakInside: ['tr', 'img', 'li', '.avoid-break'],
       });
       if (skippedImages > 0) {
         alert('The PDF was created without some images (the photo could not be loaded for export).');
@@ -361,35 +379,62 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             </div>
 
             {/* Promissory Note */}
-            <div className="mb-6">
+            <div className="mb-6 avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">PROMISSORY NOTE</h3>
               <p className="text-sm text-justify leading-relaxed">
                 I, the undersigned promise to pay the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> indicated above loan approval{programLabelText} together with the <span className="font-semibold">service charge of 20%</span> with the sum of <span className="font-semibold underline">{totalAmountWords}</span> Pesos (Php.<span className="font-semibold underline">{totalAmount.toLocaleString()}</span>){paymentTermText} In case of my default payment, I allow <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> to take any legal necessary action from my assets to serve as my payment. And I agree with my full knowledge and ability that until the principal and service charge owed under this note are paid in full.
               </p>
             </div>
 
-            {/* Terms & Conditions */}
-            <div className="mb-6">
+            {/* Terms & Conditions — always starts on page 2 (FIX 9) */}
+            <div className="mb-6" style={{ breakBefore: 'page', pageBreakBefore: 'always' }}>
               <h3 className="text-center font-bold text-lg mb-3">TERMS & CONDITIONS</h3>
-              <ol className="text-sm space-y-2 list-decimal list-inside">
-                <li>As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</li>
-                <li>Promise to pay the loan in full without fail{isAccelerated ? ' according to the 12-week accelerated term.' : '.'}</li>
-                <li>All clients can avail their succeeding loan depending on their performance in <span className="font-semibold">AmberCash PH Micro Lending Corp.</span></li>
-                <li>No objection shall be raised on this regard by its successors or by member itself, and if the Lender/company prevails in a lawsuit to collect on this note, borrower will pay Lender's court cost, collection agency cost and attorney fees in an amount the court finds to be reasonable.</li>
-                <li>Must also agree that no delay or omission on part of the holder of this note in exercising any right hereunder shall operate as a waiver of any such right or of any other right of such holder, nor shall any delay.</li>
-                <li>The rights and remedies of the payee shall be cumulative and may be pursued singly, successively, or together, in the sole discretion of the payee.</li>
-                <li>The undersigned and all other parties to this note, whether the guarantors and the co-maker will hereby agree to remain fully liable and clearly understood hereunder until this note shall be fully paid and waive presentment, protest and further agree to remain bound, notwithstanding any extension, renewal or modification.</li>
-                <li>Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP {csfAmount} at every group meeting or on a {csfFrequency}. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</li>
-                <li>As a member, you agree to abide by the terms and conditions set by AmberCash PH Micro Lending Corp.</li>
-              </ol>
-              <p className="text-sm mt-4 text-justify">
+              <div className="text-sm space-y-2">
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">1.</span>
+                  <div className="flex-1">As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">2.</span>
+                  <div className="flex-1">Promise to pay the loan in full without fail{isAccelerated ? ' according to the 12-week accelerated term.' : '.'}</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">3.</span>
+                  <div className="flex-1">All clients can avail their succeeding loan depending on their performance in <span className="font-semibold">AmberCash PH Micro Lending Corp.</span></div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">4.</span>
+                  <div className="flex-1">No objection shall be raised on this regard by its successors or by member itself, and if the Lender/company prevails in a lawsuit to collect on this note, borrower will pay Lender's court cost, collection agency cost and attorney fees in an amount the court finds to be reasonable.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">5.</span>
+                  <div className="flex-1">Must also agree that no delay or omission on part of the holder of this note in exercising any right hereunder shall operate as a waiver of any such right or of any other right of such holder, nor shall any delay.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">6.</span>
+                  <div className="flex-1">The rights and remedies of the payee shall be cumulative and may be pursued singly, successively, or together, in the sole discretion of the payee.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">7.</span>
+                  <div className="flex-1">The undersigned and all other parties to this note, whether the guarantors and the co-maker will hereby agree to remain fully liable and clearly understood hereunder until this note shall be fully paid and waive presentment, protest and further agree to remain bound, notwithstanding any extension, renewal or modification.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">8.</span>
+                  <div className="flex-1">Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP {csfAmount} at every group meeting or on a {csfFrequency}. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">9.</span>
+                  <div className="flex-1">As a member, you agree to abide by the terms and conditions set by AmberCash PH Micro Lending Corp.</div>
+                </div>
+              </div>
+              <p className="text-sm mt-4 text-justify avoid-break">
                 This promissory note was made to govern and imposed in accordance with the policy of the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> and hereby execute this note as primary guarantee.
               </p>
             </div>
 
             {/* Signature Section */}
             <div className="mb-6">
-              <div className="flex justify-between items-end mb-8">
+              <div className="flex justify-between items-end mb-8 avoid-break">
                 <div className="text-center">
                   <p className="text-xs font-semibold uppercase mb-1">{loanData.fullName || client.fullName}</p>
                   <div className="border-t-2 border-gray-800 w-64 mb-1"></div>
@@ -404,12 +449,14 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 </div>
               </div>
 
+              <div className="avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">Co-maker and Guarantor's Contract of Agreement</h3>
               <p className="text-sm text-justify mb-6 leading-relaxed">
                 We, the Co-maker and Guarantor confirm that the borrower (Ms./Mrs./Mr.)<span className="underline">{loanData.fullName || client.fullName}</span>, a residence of <span className="underline">{client.address || ''}</span>, received the exact amount <span className="underline font-semibold">₱{totalAmount.toLocaleString()}</span> (loan w/ s/c) pesos from <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> representing as her loan proceeds. On the event of default payment, We, as co-maker and guarantor agreed to be completely liable and promise to pay the exact amount received by the borrower until the outstanding balance will be fully paid. In case we fail to fulfill our obligations and responsibilities, the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> has the right to take any legal action against us to recover the loan balances.
               </p>
+              </div>
 
-              <div className="flex justify-around mb-8">
+              <div className="flex justify-around mb-8 avoid-break">
                 <div className="text-center">
                   <div className="h-[5.5rem]"></div>
                   <div className="border-t-2 border-gray-800 w-56 mb-1"></div>
@@ -425,6 +472,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 </div>
               </div>
 
+              <div className="avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">Group Leader's Promissory Note</h3>
               <p className="text-sm text-justify mb-4 leading-relaxed">
                 I, <span className="underline">{client.groupLeaderName || '__________________'}</span>, hereby recommend (Ms./Mrs./Mr.) <span className="underline">{client.fullName || loanData.fullName}</span> for loan approval and affirm that I am endorsing this application in good faith. By signing this document, I acknowledge my role in supporting the applicant's compliance with AmberCash PH's policies and repayment obligations.
@@ -434,8 +482,9 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 <div className="border-t-2 border-gray-800 w-64 mx-auto mb-1 mt-16"></div>
                 <p className="text-sm font-semibold">GL Signature over printed name</p>
               </div>
+              </div>
 
-              <div className="flex justify-between mt-12">
+              <div className="flex justify-between mt-12 avoid-break">
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">Recommended By:</p>
                   <div className="h-16"></div>

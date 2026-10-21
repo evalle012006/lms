@@ -20,6 +20,20 @@
 //  3. Page breaks avoid cutting table rows in half, and honour the document's own
 //     `break-before` / `page-break-before` rules. ("avoid-all" is not used: it pushes
 //     any element that crosses a page edge to the next page and leaves large gaps.)
+//  4. (NEW) Optional `renderWidth`: the clone is laid out at a fixed CSS width in an
+//     off-screen holder, with the root's own padding/margin/max-width removed, before
+//     it is handed to html2pdf. Without it, html2pdf lays a detached clone out at the
+//     PDF's inner page width and the document's own padding stacks on top of the PDF
+//     margin, so the PDF wraps differently from the on-screen modal (narrower text
+//     column, extra wrapping in table cells) and its page breaks land in different
+//     places. With renderWidth set to the modal's content width, the layout matches
+//     the modal and the PDF margin is the only margin.
+//     Opt-in: callers that don't pass it behave exactly as before.
+//
+// Page-break control (html2pdf has no CSS "keep together" support): every element
+// matching `avoidBreakInside` that would straddle a page edge is pushed whole to the
+// next page. There is no "keep heading with next paragraph" — wrap a heading and the
+// block it introduces in one `.avoid-break` element instead.
 
 const DEFAULT_AVOID = ['tr', 'img', '.avoid-break'];
 const PLACEHOLDER_FALLBACK_PX = { width: 120, height: 120 };
@@ -71,6 +85,29 @@ async function inlineImage(img) {
     }
 }
 
+// Lay the clone out at a fixed width, off-screen, inside the live document (so the
+// app's global/Tailwind CSS applies). Inline styles beat the utility classes
+// (p-8, max-width, auto margins) that the on-screen version uses for its own chrome.
+// Returns the holder so the caller can remove it afterwards.
+function stageForRender(clone, renderWidth) {
+    const holder = document.createElement('div');
+    holder.setAttribute('aria-hidden', 'true');
+    holder.style.cssText =
+        `position:fixed;left:-100000px;top:0;width:${renderWidth}px;` +
+        'background:#fff;pointer-events:none;';
+    clone.style.width = '100%';
+    clone.style.maxWidth = 'none';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+    // Small buffer under the last line: the final page of the export was being clipped
+    // through the last text line (capture height ending slightly short of the content).
+    clone.style.paddingBottom = '24px';
+    clone.style.boxSizing = 'border-box';
+    holder.appendChild(clone);
+    document.body.appendChild(holder);
+    return holder;
+}
+
 /**
  * @param {HTMLElement} element  the printable area (what react-to-print prints)
  * @param {object} options
@@ -79,6 +116,8 @@ async function inlineImage(img) {
  * @param {number}  [options.margin=10]  millimetres
  * @param {number}  [options.scale=2]    render scale; higher is sharper and larger
  * @param {string[]} [options.avoidBreakInside]  selectors a page break should not split
+ * @param {number|null} [options.renderWidth=null]  CSS px to lay the document out at
+ *        before capture (see note 4 above). Use the on-screen content width.
  * @returns {Promise<{ skippedImages: number }>}
  */
 export async function downloadElementAsPdf(element, options = {}) {
@@ -89,6 +128,7 @@ export async function downloadElementAsPdf(element, options = {}) {
         margin = 10,
         scale = 2,
         avoidBreakInside = DEFAULT_AVOID,
+        renderWidth = null,
     } = options;
 
     const html2pdf = (await import('html2pdf.js')).default;
@@ -98,24 +138,30 @@ export async function downloadElementAsPdf(element, options = {}) {
     const results = await Promise.all(Array.from(clone.querySelectorAll('img')).map(inlineImage));
     const skippedImages = results.filter((ok) => !ok).length;
 
-    const name = safeFilename(filename.replace(/\.pdf$/i, ''));
-    await html2pdf()
-        .set({
-            margin,
-            filename: `${name}.pdf`,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: {
-                scale,
-                useCORS: true,
-                allowTaint: false, // images are inlined, so the canvas stays exportable
-                backgroundColor: '#ffffff',
-                logging: false,
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation },
-            pagebreak: { mode: ['css', 'legacy'], avoid: avoidBreakInside },
-        })
-        .from(clone)
-        .save();
+    const holder = renderWidth ? stageForRender(clone, renderWidth) : null;
+
+    try {
+        const name = safeFilename(filename.replace(/\.pdf$/i, ''));
+        await html2pdf()
+            .set({
+                margin,
+                filename: `${name}.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: {
+                    scale,
+                    useCORS: true,
+                    allowTaint: false, // images are inlined, so the canvas stays exportable
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation },
+                pagebreak: { mode: ['css', 'legacy'], avoid: avoidBreakInside },
+            })
+            .from(clone)
+            .save();
+    } finally {
+        if (holder) holder.remove();
+    }
 
     return { skippedImages };
 }
