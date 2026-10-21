@@ -36,6 +36,21 @@ import { numberToWords } from '@/lib/utils';
 import { downloadElementAsPdf } from '@/lib/pdf-download';
 import { useSignedUrl } from 'hooks/useSignedUrl';
 
+// FIX 10: one structure for every "printed name over a signature line" slot.
+// The name sits in its own bottom-aligned box with padding under it, so it can never touch
+// the line, whatever line-box metrics the renderer (browser print vs html2canvas) uses.
+// Every slot has the same space + name box, so lines in the same row always align.
+//   space: blank height above the name for the actual signature ('' = none)
+const SignatureLine = ({ children, className = 'w-56', uppercase = false, space = 'h-16' }) => (
+  <div className={`mx-auto ${className}`}>
+    {space ? <div className={space}></div> : null}
+    <div className="min-h-[1.5rem] flex items-end justify-center text-center pb-1.5">
+      <span className={`text-xs font-semibold leading-tight ${uppercase ? 'uppercase' : ''}`}>{children}</span>
+    </div>
+    <div className="border-t-2 border-gray-800"></div>
+  </div>
+);
+
 const LAFModal = ({ isOpen, onClose, loanData }) => {
   const componentRef = useRef();
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -436,9 +451,8 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             <div className="mb-6">
               <div className="flex justify-between items-end mb-8 avoid-break">
                 <div className="text-center">
-                  <p className="text-xs font-semibold uppercase mb-1">{loanData.fullName || client.fullName}</p>
-                  <div className="border-t-2 border-gray-800 w-64 mb-1"></div>
-                  <p className="text-sm font-semibold">Borrower</p>
+                  <SignatureLine className="w-64" uppercase space="">{loanData.fullName || client.fullName}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Borrower</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
                 <div className="text-center">
@@ -458,16 +472,13 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
 
               <div className="flex justify-around mb-8 avoid-break">
                 <div className="text-center">
-                  <div className="h-[5.5rem]"></div>
-                  <div className="border-t-2 border-gray-800 w-56 mb-1"></div>
-                  <p className="text-sm font-semibold">Co-Maker</p>
+                  <SignatureLine className="w-56" uppercase>{''}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Co-Maker</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
                 <div className="text-center">
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-2 font-semibold uppercase">{guarantorFullName}</p>
-                  <div className="border-t-2 border-gray-800 w-56 mb-1"></div>
-                  <p className="text-sm font-semibold">Guarantor</p>
+                  <SignatureLine className="w-56" uppercase>{guarantorFullName}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Guarantor</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
               </div>
@@ -487,27 +498,21 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
               <div className="flex justify-between mt-12 avoid-break">
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">Recommended By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">
+                  <SignatureLine className="w-48">
                     {loanData.loanOfficerName || (loanOfficer.firstName && loanOfficer.lastName
                       ? loanOfficer.firstName + ' ' + loanOfficer.lastName : '')}
-                  </p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Loan Officer's name and signature</p>
+                  </SignatureLine>
+                  <p className="text-xs mt-1">Loan Officer's name and signature</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">CI&BI By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">{loanData.ciName || client.ciName || ''}</p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Branch Manager/Supervisor</p>
+                  <SignatureLine className="w-48">{loanData.ciName || client.ciName || ''}</SignatureLine>
+                  <p className="text-xs mt-1">Branch Manager/Supervisor</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">Approved By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">{branch.name ? 'BM - ' + branch.name : ''}</p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Branch Manager/Area Manager</p>
+                  <SignatureLine className="w-48">{branch.name ? 'BM - ' + branch.name : ''}</SignatureLine>
+                  <p className="text-xs mt-1">Branch Manager/Area Manager</p>
                 </div>
               </div>
             </div>
