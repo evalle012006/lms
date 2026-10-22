@@ -24,7 +24,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_NO_CSF_IN_REMARKS, LOR_DAILY_REMARKS, getApiBaseUrl, NON_MISPAY_REMARKS } from '@/lib/constants';
+import { LOR_NO_CSF_IN_REMARKS, LOR_DAILY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
 import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer';
@@ -48,6 +48,7 @@ import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
 import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
+import { resolveMispayment } from '@/lib/mispayment-utils';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -959,8 +960,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
                                 collection.paymentCollection = current.paymentCollection;
                                 collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
-                                collection.mispayment = current.mispayment;
-                                collection.mispaymentStr = current.mispayment ? 'Yes' : 'No';
+                                collection.mispayment = resolveMispayment(current);
+                                collection.mispaymentStr = collection.mispayment ? 'Yes' : 'No';
                                 collection.remarks = current.remarks;
                                 collection.delinquent = current.delinquent ? current.delinquent : false;
                                 collection._id = current._id;
@@ -1962,10 +1963,10 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        const isNonMispayRemark = NON_MISPAY_REMARKS.includes(temp.remarks?.value);
-                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && !isNonMispayRemark) {
+                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
                             temp.mispayment = true;
                         }
+                        temp.mispayment = resolveMispayment(temp);
 
                         if (temp.remarks && temp.remarks.value === 'excused advance payment') {
                             temp.activeLoan = 0;

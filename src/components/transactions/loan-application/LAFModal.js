@@ -566,6 +566,8 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         FIX 6: print CSS.
         - No @page here (LAF_PAGE_CSS, written last into the print frame, is the single source of truth).
         - No font-size / margin overrides: print renders at the same sizes as the modal.
+        - Selectors use .printable-content (present on BOTH the loan print and the CI/prospect print);
+          they used to target .loan-approval-laf-print only, so the CI print kept the modal's p-8 padding.
         - padding: 0 is intentional — the @page margin is the only margin; keeping p-8 on
           top of it is what produced the wide-gutter look.
       */}
@@ -577,7 +579,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             padding: 0 !important;
           }
 
-          .loan-approval-laf-print {
+          .printable-content {
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
@@ -591,24 +593,24 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             zoom: 1 !important;
           }
 
-          .loan-approval-laf-print table {
+          .printable-content table {
             width: 100% !important;
             table-layout: fixed !important;
           }
 
-          .loan-approval-laf-print * {
+          .printable-content * {
             box-sizing: border-box !important;
           }
 
           /* keep rows, signature blocks and headings from splitting across pages */
-          .loan-approval-laf-print tr,
-          .loan-approval-laf-print .flex.justify-around,
-          .loan-approval-laf-print .flex.justify-between {
+          .printable-content tr,
+          .printable-content .flex.justify-around,
+          .printable-content .flex.justify-between {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
 
-          .loan-approval-laf-print h3 {
+          .printable-content h3 {
             break-after: avoid !important;
             page-break-after: avoid !important;
           }

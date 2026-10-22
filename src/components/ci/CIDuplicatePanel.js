@@ -311,7 +311,10 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
     useEffect(() => {
         if (!candidateIds.length) return;
         setLoading(true);
-        fetchWrapper.post(getApiBaseUrl() + 'clients/by-ids', { ids: candidateIds })
+        fetchWrapper.post(getApiBaseUrl() + 'clients/by-ids', {
+            ids: candidateIds,
+            ciReferenceCode: application.ciReferenceCode,
+        })
             .then(res => { if (res.success) setCandidates(res.clients || []); })
             .catch(() => {})
             .finally(() => setLoading(false));

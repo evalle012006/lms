@@ -148,7 +148,7 @@ const CIInvestigationPage = () => {
     useEffect(() => {
         if (!isOnline) return;
         fetchWrapper.get(
-            getApiBaseUrl() + 'laf/applications/list?status=pending&limit=20&offset=0'
+            getApiBaseUrl() + 'laf/applications/list?status=pending&limit=1&offset=0'
         ).then(r => {
             if (r.success) {
                 setPendingCount(r.total ?? r.applications?.length ?? 0);
@@ -159,7 +159,7 @@ const CIInvestigationPage = () => {
 
     useEffect(() => {
         if (!isOnline) return;
-        fetchWrapper.get(getApiBaseUrl() + 'laf/pending-validation-list')
+        fetchWrapper.get(getApiBaseUrl() + 'laf/pending-validation-list?limit=1')
             .then(r => { if (r.success) setDuplicateCount(r.total ?? r.applications?.length ?? 0); })
             .catch(() => {});
     }, [listRefreshKey]);
@@ -231,7 +231,9 @@ const CIInvestigationPage = () => {
 
             if (clientIdForHistory) {
                 const histRes = await fetchWrapper.get(
-                    getApiBaseUrl() + `clients/loan-history?clientId=${clientIdForHistory}`
+                    getApiBaseUrl() +
+                    `clients/loan-history?clientId=${encodeURIComponent(clientIdForHistory)}` +
+                    `&ciReferenceCode=${encodeURIComponent(ciCode)}`
                 );
                 setClientLoanHistory(histRes.success ? (histRes.loans || []) : []);
             } else {

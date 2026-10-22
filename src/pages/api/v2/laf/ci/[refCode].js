@@ -11,6 +11,8 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS } from '@/lib/graph.fields';
+import { findUserById } from '@/lib/graph.functions';
+import { isBranchInScope } from '@/lib/ci-scope';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -44,11 +46,17 @@ export default apiHandler({ get: getByRefCode });
 async function getByRefCode(req, res) {
     const { refCode } = req.query;
 
+    const user = await findUserById(req.auth?.sub);
+    if (!user) {
+        return res.status(200).json({ success: false, message: 'User not found.' });
+    }
+
     const [application] = await graph.query(
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: refCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) {
+    // Out-of-scope looks identical to not-found
+    if (!application || !(await isBranchInScope(user, application.branchId))) {
         return res.status(200).json({ success: false, message: 'Reference code not found.' });
     }
 

@@ -1,19 +1,21 @@
 // src/pages/api/v2/laf/pending-validation-list.js
-// GET — list all temporaryLoanApplications with status='pending_validation'.
+// GET — temporaryLoanApplications with status='pending_validation'.
 // Feeds the "Flagged as Duplicate" tab in ci-investigation/index.js.
-// Same role gate as validate-duplicate.js — admin, supervisors, or BM.
+// Roles: system admin, deputy_director / regional_manager / area_admin, branch_manager.
+// Rows are SCOPED by role (see src/lib/ci-scope.js); fail-closed.
 
-import { apiHandler }               from '@/services/api-handler';
-import { GraphProvider }            from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { TEMP_LOAN_APP_FIELDS }     from '@/lib/graph.fields';
-import { findUserById }             from '@/lib/graph.functions';
-import { S3Client, GetObjectCommand }  from '@aws-sdk/client-s3';
-import { getSignedUrl }                from '@aws-sdk/s3-request-presigner';
+import { apiHandler }                           from '@/services/api-handler';
+import { GraphProvider }                        from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
+import { findUserById }                         from '@/lib/graph.functions';
+import { resolveBranchWhere, getShortCode, isSystemAdmin } from '@/lib/ci-scope';
+import { TEMP_LOAN_APP_QUEUE_FIELDS }           from '@/lib/ci-list-fields';
+import { S3Client, GetObjectCommand }           from '@aws-sdk/client-s3';
+import { getSignedUrl }                         from '@aws-sdk/s3-request-presigner';
 
 const graph = new GraphProvider();
 const TEMP_TYPE = createGraphType(
-    'temporaryLoanApplications', TEMP_LOAN_APP_FIELDS
+    'temporaryLoanApplications', TEMP_LOAN_APP_QUEUE_FIELDS
 )('temporaryLoanApplications');
 
 const s3 = new S3Client({
@@ -38,56 +40,64 @@ export default apiHandler({ get: getPendingValidationList });
 
 async function getPendingValidationList(req, res) {
     const { search, limit: limitStr, offset: offsetStr } = req.query;
-    const limit  = Math.min(parseInt(limitStr) || 20, 50);
-    const offset = parseInt(offsetStr) || 0;
+    const limit  = Math.min(Math.max(parseInt(limitStr, 10) || 20, 1), 50);
+    const offset = Math.max(parseInt(offsetStr, 10) || 0, 0);
 
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    const isAdmin      = currentUser.role?.rep === 1 || currentUser.root === true;
+    const shortCode    = getShortCode(currentUser);
     const isSupervisor = currentUser.role?.rep === 2 &&
-        (currentUser.role?.shortCode === 'deputy_director' || currentUser.role?.shortCode === 'regional_manager'
-            || currentUser.role?.shortCode === 'area_admin'
-        );
-    const isBM = currentUser.role?.shortCode === 'branch_manager';
+        ['deputy_director', 'regional_manager', 'area_admin'].includes(shortCode);
+    const isBM         = shortCode === 'branch_manager';
 
-    if (!isAdmin && !isSupervisor && !isBM) {
+    if (!isSystemAdmin(currentUser) && !isSupervisor && !isBM) {
         return res.status(200).json({
             success: false,
             message: 'Only system administrators, supervisors, or branch managers can view this list.',
         });
     }
 
-    const where = { status: { _eq: 'pending_validation' } };
-    if (isBM && !isAdmin && !isSupervisor && currentUser.designatedBranchId) {
-        where.branchId = { _eq: currentUser.designatedBranchId };
+    // Fail closed: null = deny (unknown role, missing areaId/designatedBranchId, ...)
+    const branchWhere = await resolveBranchWhere(currentUser);
+    if (branchWhere === null) {
+        console.warn('[laf/pending-validation-list] scope denied', {
+            userId: currentUser._id, rep: currentUser.role?.rep, shortCode,
+        });
+        return res.status(200).json({ success: false, message: 'You do not have access to this list.' });
     }
+
+    const where = { ...branchWhere, status: { _eq: 'pending_validation' } };
     if (search?.trim()) {
         const term = search.trim().toUpperCase();
         where._or = [
-            { firstName: { _ilike: `%${term}%` } },
-            { lastName:  { _ilike: `%${term}%` } },
+            { firstName:       { _ilike: `%${term}%` } },
+            { lastName:        { _ilike: `%${term}%` } },
             { ciReferenceCode: { _ilike: `%${term}%` } },
         ];
     }
 
-    const [applications, totalCount] = await Promise.all([
+    const [rows, total] = await Promise.all([
         graph.query(
             queryQl(TEMP_TYPE, {
                 where,
                 order_by: [{ submittedAt: 'desc' }],
-                limit,
+                limit:  limit + 1,   // +1 detects hasMore exactly
                 offset,
             })
         ).then(r => r.data?.temporaryLoanApplications ?? []),
         graph.query(
-            queryQl(
-                createGraphType('temporaryLoanApplications_aggregate', 'aggregate { count }')('temporaryLoanApplications_aggregate'),
-                { where }
+            aggregateQl(
+                createGraphType('temporaryLoanApplications', '_id')('tempCount'),
+                'aggregate { count }',
+                where
             )
-        ).then(r => r.data?.temporaryLoanApplications_aggregate?.aggregate?.count ?? 0)
-            .catch(() => null), // aggregate type may not be tracked — fall back below
+        ).then(r => r.data?.tempCount?.aggregate?.count ?? null)
+         .catch(() => null),
     ]);
+
+    const hasMore      = rows.length > limit;
+    const applications = hasMore ? rows.slice(0, limit) : rows;
 
     const withPhotos = await Promise.all(
         applications.map(async app => ({
@@ -101,7 +111,7 @@ async function getPendingValidationList(req, res) {
     return res.status(200).json({
         success:      true,
         applications: withPhotos,
-        total:        totalCount ?? withPhotos.length, // fallback if aggregate unavailable
-        hasMore:      withPhotos.length === limit,
+        total:        total ?? withPhotos.length,
+        hasMore,
     });
 }

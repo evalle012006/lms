@@ -15,7 +15,8 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
-import { findUserById } from '@/lib/graph.functions'; // ← ADD THIS
+import { findUserById } from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope } from '@/lib/ci-scope';
 import moment from 'moment';
 import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
@@ -37,6 +38,12 @@ async function saveInvestigation(req, res) {
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
+    if (!canDecideCI(user)) {
+        return res.status(200).json({
+            success: false,
+            message: 'You are not allowed to approve or reject a CI investigation.',
+        });
+    }
 
     const {
         ciReferenceCode, tempApplicationId,
@@ -44,6 +51,10 @@ async function saveInvestigation(req, res) {
         decision, declineReason, selfieKey, ciAnswers,
         groupLeader,
     } = req.body;
+
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim()) {
+        return res.status(200).json({ success: false, message: 'ciReferenceCode is required.' });
+    }
 
     if (decision === 'approved' && !selfieKey) {
         return res.status(200).json({
@@ -71,8 +82,16 @@ async function saveInvestigation(req, res) {
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) {
+    // Out-of-scope is reported exactly like not-found so CI codes can't be probed
+    if (!application || !(await isBranchInScope(user, application.branchId))) {
         return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
+
+    if (application.status === 'pending_validation') {
+        return res.status(200).json({
+            success: false,
+            message: 'This application is flagged as a possible duplicate. Validate it in the "Flagged as Duplicate" tab before recording a CI decision.',
+        });
     }
 
     if (application.status === 'promoted') {

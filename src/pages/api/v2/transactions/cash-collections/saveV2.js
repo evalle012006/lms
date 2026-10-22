@@ -24,6 +24,7 @@ import { getSystemDate } from '@/lib/date-utils';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS } from '@/lib/constants';
+import { resolveMispayment } from '@/lib/mispayment-utils';
 
 // ============================================
 // CONFIGURATION
@@ -370,7 +371,18 @@ async function executeSave(req, user_id, transactionId, user) {
                 delete collection.reverted;
                 // cashCollections.mispayment is a boolean; loans.mispayment is a counter.
                 // Never let a counter (or '-') from the client reach the boolean column or the counter increment.
-                collection.mispayment = collection.mispayment === true;
+                const mispaymentSent = collection.mispayment === true;
+                collection.mispayment = resolveMispayment(collection);
+
+                if (mispaymentSent && !collection.mispayment) {
+                    logger.warn({
+                        user_id, transactionId, page: 'Cash Collection SaveV2',
+                        message: 'mispayment=true overridden to false',
+                        clientId: collection.clientId, loanId: collection.loanId,
+                        paymentCollection: collection.paymentCollection,
+                        remarks: collection.remarks?.value, qrEntryId: collection.qrEntryId
+                    });
+                }
                 if (NON_MISPAY_REMARKS.includes(collection.remarks?.value)) {
                     collection.mispayment = false;
                 }

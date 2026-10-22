@@ -161,6 +161,10 @@ async function submitLAF(req, res) {
     }
 
     const resolvedLoId = group.loanOfficerId;
+    // The group (found by qrToken) is the source of truth for the branch. The client-sent
+    // `branchId` is ignored: every CI scope check keys off branchId, so accepting it would
+    // let a public submitter place an application in any branch's or area's queue.
+    const appBranchId = group.branchId;
 
     if (!lafPhotoKey) {
         return res.status(200).json({
@@ -189,6 +193,31 @@ async function submitLAF(req, res) {
             success: false,
             message: `Missing required fields: ${missingFields.join(', ')}.`,
         });
+    }
+
+    // ── existingClientId must be real, and only valid for existing-client types ──
+    const EXISTING_CLIENT_TYPES = ['reloan', 'pending', 'balik'];
+    if (existingClientId) {
+        if (typeof existingClientId !== 'string' || !EXISTING_CLIENT_TYPES.includes(clientType)) {
+            return res.status(200).json({ success: false, message: 'Invalid application type.' });
+        }
+        const [existing] = await graph.query(
+            queryQl(CLIENT_VERIFY_TYPE, { where: { _id: { _eq: existingClientId } }, limit: 1 })
+        ).then(r => r.data?.clients ?? []);
+
+        if (!existing || ['archived', 'merged'].includes(existing.status)) {
+            return res.status(200).json({
+                success: false,
+                message: 'Member record not found. Please ask your Loan Officer for help.',
+            });
+        }
+        // Reloan / pending members stay in their branch; balik members may have moved
+        if (clientType !== 'balik' && existing.branchId !== appBranchId) {
+            return res.status(200).json({
+                success: false,
+                message: 'This member record does not belong to this branch.',
+            });
+        }
     }
 
     // ── Server-side Government ID uniqueness check ────────────────────────
@@ -325,7 +354,7 @@ async function submitLAF(req, res) {
 
             // Hard block: same branch + same birthdate + middle name not contradicting
             const hardBlock = lafMatches.find(m =>
-                m.a.branchId === branchId && m.bd === 'same' && m.mid !== 'conflict'
+                m.a.branchId === appBranchId && m.bd === 'same' && m.mid !== 'conflict'
             );
             if (hardBlock) {
                 // Log the blocking record server-side so support can trace it
@@ -414,7 +443,7 @@ async function submitLAF(req, res) {
     // ── Generate CI reference code ────────────────────────────────────────
     const dateStr         = moment().format('YYYYMMDD');
     const suffix          = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const branchCode      = group.branch?.code || branchId.slice(-4).toUpperCase();
+    const branchCode      = group.branch?.code || String(appBranchId).slice(-4).toUpperCase();
     const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
 
     // FIX: normalize once, reuse for the stored address and the SMS
@@ -426,7 +455,7 @@ async function submitLAF(req, res) {
             objects: [{
                 _id: generateUUID(),
                 ciReferenceCode,
-                branchId,
+                branchId: appBranchId,
                 groupId: group._id,
                 loId:    resolvedLoId,
                 firstName:  firstName?.trim().toUpperCase(),

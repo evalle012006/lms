@@ -34,13 +34,15 @@ import { checkDuplicates }          from '@/lib/duplicate-check';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { generateUUID } from '@/lib/utils';
+import { findUserById } from '@/lib/graph.functions';
+import { canPromoteCI, isBranchInScope } from '@/lib/ci-scope';
 import moment from 'moment';
 
 const graph = new GraphProvider();
 const TEMP_TYPE       = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_TYPE         = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const CLIENT_TYPE     = createGraphType('client', CLIENT_FIELDS)('clients');
-const GROUP_NAME_TYPE = createGraphType('groups', '_id name')('groups');
+const GROUP_NAME_TYPE = createGraphType('groups', '_id name branchId')('groups');
 
 const s3 = new S3Client({
     endpoint: 'https://sgp1.digitaloceanspaces.com',
@@ -63,11 +65,20 @@ async function promoteApplication(req, res) {
     const { refCode } = req.query;
     const { groupId: overrideGroupId, loId: overrideLoId } = req.body || {};
 
+    const user = await findUserById(req.auth?.sub);
+    if (!user) {
+        return res.status(200).json({ success: false, message: 'User not found.' });
+    }
+    if (!canPromoteCI(user)) {
+        return res.status(200).json({ success: false, message: 'You are not allowed to promote CI applications.' });
+    }
+
     const [application] = await graph.query(
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: refCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) {
+    // Out-of-scope is reported exactly like not-found
+    if (!application || !(await isBranchInScope(user, application.branchId))) {
         return res.status(200).json({ success: false, message: 'CI code not found.' });
     }
 
@@ -85,6 +96,19 @@ async function promoteApplication(req, res) {
                 ? 'This CI code has already been used. The client record already exists.'
                 : `Cannot promote — application status is "${application.status}". CI must approve first.`,
         });
+    }
+
+    // A caller-supplied group must belong to the application's own branch
+    if (!application.existingClientId && overrideGroupId) {
+        const [overrideGroup] = await graph.query(
+            queryQl(GROUP_NAME_TYPE, { where: { _id: { _eq: overrideGroupId } } })
+        ).then(r => r.data?.groups ?? []);
+        if (!overrideGroup || overrideGroup.branchId !== application.branchId) {
+            return res.status(200).json({
+                success: false,
+                message: "The selected group is not in this application's branch.",
+            });
+        }
     }
 
     // ── Atomic claim ─────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { GraphProvider }                      from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { findUserById }                       from '@/lib/graph.functions';
+import { isBranchInScope }                    from '@/lib/ci-scope';
 import { logAudit }                           from '@/lib/audit';
 import moment                                 from 'moment';
 
@@ -23,7 +24,7 @@ export default apiHandler({ post: validateDuplicate });
 async function validateDuplicate(req, res) {
     const { ciReferenceCode, action, note } = req.body;
 
-    if (!ciReferenceCode || !action) {
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim() || !action) {
         return res.status(200).json({ success: false, message: 'ciReferenceCode and action required.' });
     }
     if (!['approve', 'decline'].includes(action)) {
@@ -55,6 +56,9 @@ async function validateDuplicate(req, res) {
             success: false,
             message: 'Only system administrators, supervisors, or branch managers can validate duplicate applications.',
         });
+    }
+    if (!(await isBranchInScope(currentUser, application.branchId))) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
     }
     if (!application.isDuplicateFlagged) {
         return res.status(200).json({ success: false, message: 'This application is not flagged for duplicate validation.' });

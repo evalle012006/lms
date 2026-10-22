@@ -21,6 +21,7 @@ import { GraphProvider }    from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl, deleteQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS, CLIENT_FIELDS } from '@/lib/graph.fields';
 import { findUserById }     from '@/lib/graph.functions';
+import { isBranchInScope }  from '@/lib/ci-scope';
 import { logAudit }         from '@/lib/audit';
 import moment from 'moment';
 
@@ -84,8 +85,12 @@ async function freeGroupSlot(groupId, slotNo) {
 
 async function revertPromotion(req, res) {
     const { ciReferenceCode, reason } = req.body;
-    if (!ciReferenceCode) return res.status(200).json({ success: false, message: 'ciReferenceCode required.' });
-    if (!reason?.trim())  return res.status(200).json({ success: false, message: 'A reason is required to revert a promotion.' });
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim()) {
+        return res.status(200).json({ success: false, message: 'ciReferenceCode required.' });
+    }
+    if (typeof reason !== 'string' || !reason.trim()) {
+        return res.status(200).json({ success: false, message: 'A reason is required to revert a promotion.' });
+    }
 
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
@@ -109,7 +114,10 @@ async function revertPromotion(req, res) {
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) return res.status(200).json({ success: false, message: 'Application not found.' });
+    // Out-of-scope looks identical to not-found
+    if (!application || !(await isBranchInScope(currentUser, application.branchId))) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
     if (application.status !== 'promoted') {
         return res.status(200).json({ success: false, message: `Cannot revert — status is "${application.status}", not "promoted".` });
     }
@@ -126,9 +134,11 @@ async function revertPromotion(req, res) {
         // longer a simple "ghost" — deleting the client would orphan real
         // transaction history. A pending loan, however, hasn't disbursed
         // anything yet — safe to reject-and-revert.
-        const [existingLoan] = await graph.query(
-            queryQl(LOAN_TYPE, { where: { clientId: { _eq: application.promotedClientId } }, limit: 1 })
+        const clientLoans = await graph.query(
+            queryQl(LOAN_TYPE, { where: { clientId: { _eq: application.promotedClientId } } })
         ).then(r => r.data?.loans ?? []);
+        // Any non-pending loan blocks the hard delete, not just whichever row happens to come back first
+        const existingLoan = clientLoans.find(l => l.status !== 'pending') || clientLoans[0];
 
         if (existingLoan && existingLoan.status !== 'pending') {
             return res.status(200).json({

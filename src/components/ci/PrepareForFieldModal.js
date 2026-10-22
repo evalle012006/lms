@@ -43,7 +43,7 @@ const PrepareForFieldModal = ({ isOpen, onClose, currentUser, onCached, cachedId
         setLoading(true);
         try {
             const res = await fetchWrapper.get(
-                getApiBaseUrl() + 'laf/applications/list?status=pending'
+                getApiBaseUrl() + 'laf/applications/list?status=pending&limit=100&offset=0'
             );
             if (res.success) {
                 setApplications(res.applications || []);
