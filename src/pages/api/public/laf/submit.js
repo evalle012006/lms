@@ -46,6 +46,7 @@ const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
 `)('temporaryLoanApplications');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
+const CLIENT_VERIFY_TYPE = createGraphType('client', '_id branchId status')('clients');
 
 export default publicApiHandler({ post: submitLAF });
 
