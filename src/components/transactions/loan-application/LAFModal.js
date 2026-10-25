@@ -4,33 +4,20 @@
 // FIX 3: Slot No. and Loan Cycle row added to table
 // FIX 4: Conditional promissory-note / T&C / CSF content for accelerated
 //        weekly loans (occurence === 'weekly' && weeklyScheduleType === 'accelerated').
-//        Verified against graph.fields.js — weeklyScheduleType lives directly on
-//        LOAN_FIELDS, so loanData.weeklyScheduleType should already be populated
-//        for confirmed loans. NOTE: TempLAFModal.js (public/CI prospect flow)
-//        hardcodes occurence: 'daily' and never sets weeklyScheduleType — this
-//        branch will not fire for prospect LAFs until that's wired through.
-// FIX 5: Borrower photo — client.profile is a Spaces storage KEY (lms/laf-photos/...),
-//        not a URL. Using it as <img src> made the browser request it relative to the
-//        current page (/transactions/lms/...) → 404. It is now resolved through
-//        useSignedUrl. If the value is already a presigned URL (CI endpoint returns
-//        one), it is used as-is. Fallback is state-driven (no parentElement.innerHTML),
-//        and Print / Download PDF are disabled while the photo URL is resolving so a
-//        blank photo box can't be printed by accident.
-// FIX 6: Print CSS — removed the @media print font-size / spacing overrides (they
-//        shrank .text-sm 14px→11px and .text-xs 12px→10px, which is why print didn't
-//        match the modal), removed the duplicate/conflicting @page rule (single source
-//        of truth is now pageStyle below), and let content fill the printable width.
-//        Expect the form to run longer than before; signature blocks and headings are
-//        kept from splitting across pages.
-// FIX 7: (superseded by FIX 11) named @page experiment.
-// FIX 11: Print no longer uses react-to-print. It copied every host-page stylesheet into the
-//         print frame, including other components' global @page rules (LDFList: landscape +
-//         5px margins !important). Print now uses an isolated hidden iframe: page CSS copied
-//         without @page rules, LAF_PAGE_CSS (8.5in x 13in, 0.4in margin) written last.
-// FIX 8: Download PDF — render at the modal's content width (renderWidth: 752) so the PDF
-//        wraps like the modal, and mark paragraphs / signature blocks `avoid-break` so
-//        html2pdf's page slicing no longer cuts through lines. Requires the matching
-//        pdf-download.js (renderWidth option).
+//        NOTE: TempLAFModal.js (public/CI prospect flow) hardcodes occurence: 'daily'
+//        and never sets weeklyScheduleType — this branch will not fire for prospect
+//        LAFs until that's wired through.
+// FIX 5: Borrower photo — client.profile is a Spaces storage KEY, not a URL. It is resolved
+//        through useSignedUrl. If the value is already a presigned URL (CI endpoint), it is
+//        used as-is. Print / Download PDF are disabled while the photo URL is resolving.
+// FIX 6: Print CSS — no font-size / spacing overrides in @media print, no @page rule here.
+// FIX 8: Download PDF — render at the modal's content width (renderWidth: 752).
+// FIX 10: SignatureLine — one structure for every "printed name over a line" slot.
+// FIX 11: Print uses an isolated hidden iframe (no react-to-print): page CSS copied without
+//         @page rules, LAF_PAGE_CSS written last.
+// FIX 12: ONE PAGE. Print and PDF both use a compact layout (COMPACT_CSS, scoped to
+//         .laf-fit-compact so the on-screen modal is unchanged) and then scale to fit a single
+//         8.5in x 13in (folio) page. Terms & Conditions no longer force a page break.
 
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
@@ -39,22 +26,42 @@ import { numberToWords } from '@/lib/utils';
 import { downloadElementAsPdf } from '@/lib/pdf-download';
 import { useSignedUrl } from 'hooks/useSignedUrl';
 
-// FIX 11: the LAF's own page setup. It is written LAST into the print frame (see handlePrint),
-// so it wins over any other @page rule that survives the copy.
+// Folio / long bond paper: 8.5in x 13in.
 const LAF_PAGE_CSS = `
   @page { size: 8.5in 13in; margin: 0.4in; }
-  html, body { margin: 0; padding: 0; background: #fff; }
+  html, body { margin: 0; padding: 0; background: #fff; height: auto; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 `;
 
-// FIX 10: one structure for every "printed name over a signature line" slot.
-// The name sits in its own bottom-aligned box with padding under it, so it can never touch
-// the line, whatever line-box metrics the renderer (browser print vs html2canvas) uses.
-// Every slot has the same space + name box, so lines in the same row always align.
+// Printable area of the 13in folio page minus the 0.4in margins, in CSS px (96px/in).
+const PRINT_W = (8.5 - 0.8) * 96; // 739.2
+const PRINT_H = (13 - 0.8) * 96;  // 1171.2
+
+// Compact layout used ONLY for the one-page print / PDF. Every selector is scoped to
+// .laf-fit-compact, which exists only in the print frame and on the PDF clone.
+const COMPACT_CSS = `
+  .laf-fit-compact > .printable-content { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+  .laf-fit-compact .printable-content table { table-layout: fixed; width: 100%; }
+  .laf-fit-compact .mb-8 { margin-bottom: 0.5rem !important; }
+  .laf-fit-compact .mb-6 { margin-bottom: 0.4rem !important; }
+  .laf-fit-compact .mb-4 { margin-bottom: 0.3rem !important; }
+  .laf-fit-compact .mb-3 { margin-bottom: 0.2rem !important; }
+  .laf-fit-compact .mt-12, .laf-fit-compact .mt-10, .laf-fit-compact .mt-8, .laf-fit-compact .mt-6 { margin-top: 0.3rem !important; }
+  .laf-fit-compact .mt-16 { margin-top: 1.5rem !important; }
+  .laf-fit-compact .laf-sig-space { height: 2.25rem !important; }
+  .laf-fit-compact .laf-photo { width: 14rem !important; height: 8.5rem !important; }
+  .laf-fit-compact .laf-thumb { width: 6rem !important; height: 6rem !important; }
+  .laf-fit-compact .space-y-2 > * + * { margin-top: 0.15rem !important; }
+  .laf-fit-compact .laf-terms { column-count: 2; column-gap: 1.5rem; font-size: 12px; }
+  .laf-fit-compact .laf-terms > * { break-inside: avoid; }
+  .laf-fit-compact .leading-relaxed { line-height: 1.35 !important; }
+`;
+
+// One structure for every "printed name over a signature line" slot.
 //   space: blank height above the name for the actual signature ('' = none)
 const SignatureLine = ({ children, className = 'w-56', uppercase = false, space = 'h-16' }) => (
   <div className={`mx-auto ${className}`}>
-    {space ? <div className={space}></div> : null}
+    {space ? <div className={`${space} laf-sig-space`}></div> : null}
     <div className="min-h-[1.5rem] flex items-end justify-center text-center pb-1.5">
       <span className={`text-xs font-semibold leading-tight ${uppercase ? 'uppercase' : ''}`}>{children}</span>
     </div>
@@ -84,12 +91,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
     loanData?.pnNumber || loanData?.ciReferenceCode || ''
   ).startsWith('CI-');
 
-  // FIX 11: print through our own hidden iframe instead of react-to-print.
-  // react-to-print copies EVERY stylesheet of the host page into the print frame, and this
-  // screen hosts components that inject global @page rules of their own (LDFList stays mounted
-  // for branch managers and renders `@page { margin: 30px 5px 20px 5px !important }` and
-  // `@page { size: landscape }`). Those silently replaced the LAF's page size and margins.
-  // Here the page's CSS is copied WITHOUT its top-level @page rules, and LAF_PAGE_CSS comes last.
+  // FIX 11 + FIX 12: print through our own hidden iframe, compacted and scaled to ONE page.
   const handlePrint = async () => {
     const node = componentRef.current;
     if (!node) return;
@@ -124,7 +126,8 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
       doc.open();
       doc.write(
         `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${document.baseURI}"><title></title>` +
-        `${links}<style>${css}</style><style>${LAF_PAGE_CSS}</style></head><body>${node.outerHTML}</body></html>`
+        `${links}<style>${css}</style><style>${COMPACT_CSS}</style><style>${LAF_PAGE_CSS}</style></head>` +
+        `<body><div id="laf-fit-wrap" class="laf-fit-compact">${node.outerHTML}</div></body></html>`
       );
       doc.close();
       doc.title = `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`;
@@ -134,6 +137,27 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         Array.from(doc.images).map((img) => (img.decode ? img.decode().catch(() => {}) : null))
       );
       if (doc.fonts?.ready) await doc.fonts.ready;
+
+      // ---- fit to ONE page ----
+      // Lay the form out at width PRINT_W / s, find the largest s whose height fits the page,
+      // then scale it back down to PRINT_W. A wider layout wraps less, so the scale needed
+      // is gentler than a plain zoom.
+      const wrap = doc.getElementById('laf-fit-wrap');
+      const content = wrap?.firstElementChild;
+      if (content) {
+        content.style.transformOrigin = 'top left';
+        let s = 1;
+        for (; s > 0.4; s -= 0.01) {
+          content.style.setProperty('width', `${PRINT_W / s}px`, 'important');
+          if (content.scrollHeight * s <= PRINT_H - 6) break;
+        }
+        // The wrapper reserves only the scaled height; otherwise the unscaled layout box
+        // would still spill onto a 2nd (blank) page.
+        wrap.style.cssText = `width:${PRINT_W}px;height:${Math.floor(content.scrollHeight * s)}px;overflow:hidden;`;
+        // !important is required: @media print sets `transform: none !important` on
+        // .printable-content, which would otherwise cancel the scale during printing.
+        content.style.setProperty('transform', `scale(${s})`, 'important');
+      }
 
       win.addEventListener('afterprint', cleanup, { once: true });
       win.focus();
@@ -155,11 +179,11 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
       const { skippedImages } = await downloadElementAsPdf(componentRef.current, {
         filename: `LAF-${ref}`,
         orientation: 'portrait',
-        margin: 10,
-        // FIX 8: lay out at the modal's content width (max-w 8.5in = 816px minus p-8 = 752px)
-        // so the PDF wraps like the modal, and keep list items / signature blocks whole.
+        margin: 10, // mm
+        format: [215.9, 330.2], // 8.5in x 13in (folio), same as print
+        fitOnePage: true,
+        cloneClass: 'laf-fit-compact',
         renderWidth: 752,
-        avoidBreakInside: ['tr', 'img', 'li', '.avoid-break'],
       });
       if (skippedImages > 0) {
         alert('The PDF was created without some images (the photo could not be loaded for export).');
@@ -264,7 +288,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
               </div>
 
               {/* FIX 1 + FIX 5: signed URL, object-contain, state-driven fallback */}
-              <div className="border-2 border-gray-400 w-64 h-44 flex items-center justify-center text-xs text-gray-500 overflow-hidden bg-gray-50">
+              <div className="laf-photo border-2 border-gray-400 w-64 h-44 flex items-center justify-center text-xs text-gray-500 overflow-hidden bg-gray-50">
                 {profilePicture && !photoFailed ? (
                   <img
                     src={profilePicture}
@@ -439,10 +463,10 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
               </p>
             </div>
 
-            {/* Terms & Conditions — always starts on page 2 (FIX 9) */}
-            <div className="mb-6" style={{ breakBefore: 'page', pageBreakBefore: 'always' }}>
+            {/* Terms & Conditions — flows on the same page (FIX 12: one-page LAF) */}
+            <div className="mb-6">
               <h3 className="text-center font-bold text-lg mb-3">TERMS & CONDITIONS</h3>
-              <div className="text-sm space-y-2">
+              <div className="text-sm space-y-2 laf-terms">
                 <div className="avoid-break flex gap-2">
                   <span className="flex-none w-5 text-right">1.</span>
                   <div className="flex-1">As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</div>
@@ -494,7 +518,7 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
                 <div className="text-center">
-                  <div className="border-2 border-gray-800 w-32 h-32 flex items-center justify-center mb-1">
+                  <div className="laf-thumb border-2 border-gray-800 w-32 h-32 flex items-center justify-center mb-1">
                     <span className="text-xs text-gray-500">Thumb Mark</span>
                   </div>
                   <p className="text-sm font-semibold">Right Thumb Mark</p>
@@ -562,14 +586,17 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         </div>
       </div>
 
+      {/* FIX 12: compact layout rules, scoped to .laf-fit-compact (print frame + PDF clone only).
+          The print iframe copies document.styleSheets, so this one tag serves Print and PDF. */}
+      <style>{COMPACT_CSS}</style>
+
       {/*
         FIX 6: print CSS.
         - No @page here (LAF_PAGE_CSS, written last into the print frame, is the single source of truth).
-        - No font-size / margin overrides: print renders at the same sizes as the modal.
-        - Selectors use .printable-content (present on BOTH the loan print and the CI/prospect print);
-          they used to target .loan-approval-laf-print only, so the CI print kept the modal's p-8 padding.
-        - padding: 0 is intentional — the @page margin is the only margin; keeping p-8 on
-          top of it is what produced the wide-gutter look.
+        - No font-size / margin overrides.
+        - padding: 0 is intentional — the @page margin is the only margin.
+        NOTE: `transform: none !important` below is why handlePrint sets the fit scale with
+        setProperty(..., 'important').
       */}
       <style jsx global>{`
         @media print {
