@@ -1,57 +1,27 @@
 // src/lib/pdf-download.js
 // "Download PDF" for the printable documents (LAF, NDS / disclosure).
 //
-// Uses html2pdf.js, which is already a dependency and is what LAFModal's dormant
-// handleDownloadPDF used. The document is rendered to page images, so the text in the
-// PDF is not selectable and a page is a few hundred KB to a few MB. If you need
-// searchable, vector PDFs, that is a server-side job (headless Chrome), not this.
+// Uses html2pdf.js. The document is rendered to page images, so the text in the PDF is not
+// selectable. If you need searchable, vector PDFs, that is a server-side job (headless Chrome).
 //
 // What this adds over calling html2pdf directly:
 //
-//  1. Images are inlined first. The client's photo is a signed URL on another
-//     origin (the Spaces bucket). html2canvas with allowTaint draws such an image
-//     but then refuses to export the canvas, so the whole PDF used to fail. Here
-//     each <img> is fetched and swapped for a data: URL on a COPY of the document;
-//     one that cannot be fetched is replaced by a labelled placeholder, the PDF is
-//     still produced, and the caller is told how many were skipped.
-//     Fetching a cross-origin image needs the bucket to send CORS headers (allow GET
-//     from your app's origin); without that, photos are skipped, nothing else breaks.
-//  2. The page is the user's live document, untouched: everything happens on a clone.
-//  3. Page breaks avoid cutting table rows in half, and honour the document's own
-//     `break-before` / `page-break-before` rules. ("avoid-all" is not used: it pushes
-//     any element that crosses a page edge to the next page and leaves large gaps.)
-//  4. (NEW) Optional `renderWidth`: the clone is laid out at a fixed CSS width in an
-//     off-screen holder, with the root's own padding/margin/max-width removed, before
-//     it is handed to html2pdf. Without it, html2pdf lays a detached clone out at the
-//     PDF's inner page width and the document's own padding stacks on top of the PDF
-//     margin, so the PDF wraps differently from the on-screen modal (narrower text
-//     column, extra wrapping in table cells) and its page breaks land in different
-//     places. With renderWidth set to the modal's content width, the layout matches
-//     the modal and the PDF margin is the only margin.
-//     Opt-in: callers that don't pass it behave exactly as before.
-//
-//  5. (NEW) Fonts are settled before capture, in the live document AND in the iframe that
-//     html2canvas builds. html2canvas measures text boxes in that iframe, then draws the
-//     glyphs with whatever font is available at paint time. If the app's web fonts are
-//     still loading in one of the two (this app logs Chrome's "Slow network ... Fallback
-//     font will be used while loading" intervention), the boxes come from fallback-font
-//     metrics and the text is drawn lower than its box, so table borders and signature
-//     lines run through it, and the result differs from export to export.
-//
-//  6. (NEW) Text-baseline fix for Tailwind. To place text vertically, html2canvas builds a
-//     hidden 1x1 <img>, aligns it to the baseline and reads its offsetTop. Tailwind's
-//     preflight sets `img { display: block }`, which drops that probe onto its own line,
-//     so the measured baseline is too low and every glyph is drawn about half a font-size
-//     below its box (table borders and signature lines then run through the text).
-//     While exporting, a rule restores `display: inline-block` for that probe only
-//     (matched by its width="1" height="1"). html2canvas runs the probe in the MAIN
-//     document, so the rule is injected there (and into its cloned iframe) and removed
-//     again afterwards. Real images are unaffected.
-//
-// Page-break control (html2pdf has no CSS "keep together" support): every element
-// matching `avoidBreakInside` that would straddle a page edge is pushed whole to the
-// next page. There is no "keep heading with next paragraph" — wrap a heading and the
-// block it introduces in one `.avoid-break` element instead.
+//  1. Images are inlined first (signed cross-origin URLs would otherwise taint the canvas).
+//     An image that cannot be fetched is replaced by a labelled placeholder; the caller is
+//     told how many were skipped. Needs CORS (GET) on the storage bucket.
+//  2. The live document is untouched: everything happens on a clone.
+//  3. Page breaks avoid cutting table rows and honour `break-before` rules (multi-page mode).
+//  4. Optional `renderWidth`: lay the clone out at a fixed CSS width, off-screen, with the
+//     root's own padding/margin/max-width removed, so the PDF wraps like the on-screen modal.
+//  5. Fonts are settled before capture, in the live document AND html2canvas's cloned iframe.
+//  6. Tailwind text-baseline fix: restores `display: inline-block` for html2canvas's 1x1
+//     baseline probe image (Tailwind preflight sets img { display: block }).
+//  7. (NEW) `format`: any jsPDF page format, e.g. [215.9, 330.2] for 8.5in x 13in folio.
+//  8. (NEW) `cloneClass`: a class added to the clone, so scoped CSS (e.g. a compact layout
+//     written as ".laf-fit-compact .x { ... }") applies to the exported copy only.
+//  9. (NEW) `fitOnePage`: render once to a canvas and place it on a SINGLE page, scaled to fit
+//     (aspect ratio preserved). It never slices, so it can never produce a second page.
+//     Requires `jspdf` (html2pdf.js's own dependency; `npm i jspdf` to make it explicit).
 
 const DEFAULT_AVOID = ['tr', 'img', '.avoid-break'];
 const PLACEHOLDER_FALLBACK_PX = { width: 120, height: 120 };
@@ -130,7 +100,6 @@ function injectMetricsFix(doc) {
 // Lay the clone out at a fixed width, off-screen, inside the live document (so the
 // app's global/Tailwind CSS applies). Inline styles beat the utility classes
 // (p-8, max-width, auto margins) that the on-screen version uses for its own chrome.
-// Returns the holder so the caller can remove it afterwards.
 function stageForRender(clone, renderWidth) {
     const holder = document.createElement('div');
     holder.setAttribute('aria-hidden', 'true');
@@ -142,8 +111,7 @@ function stageForRender(clone, renderWidth) {
     clone.style.margin = '0';
     clone.style.minHeight = '0';
     clone.style.padding = '0';
-    // Small buffer under the last line: the final page of the export was being clipped
-    // through the last text line (capture height ending slightly short of the content).
+    // Small buffer under the last line so the capture never clips the final text line.
     clone.style.paddingBottom = '24px';
     clone.style.boxSizing = 'border-box';
     holder.appendChild(clone);
@@ -152,7 +120,7 @@ function stageForRender(clone, renderWidth) {
 }
 
 /**
- * @param {HTMLElement} element  the printable area (what react-to-print prints)
+ * @param {HTMLElement} element  the printable area
  * @param {object} options
  * @param {string}  options.filename     with or without .pdf
  * @param {'portrait'|'landscape'} [options.orientation='portrait']
@@ -160,7 +128,9 @@ function stageForRender(clone, renderWidth) {
  * @param {number}  [options.scale=2]    render scale; higher is sharper and larger
  * @param {string[]} [options.avoidBreakInside]  selectors a page break should not split
  * @param {number|null} [options.renderWidth=null]  CSS px to lay the document out at
- *        before capture (see note 4 above). Use the on-screen content width.
+ * @param {string|number[]} [options.format='a4']  jsPDF page format, or [width, height] in mm
+ * @param {boolean} [options.fitOnePage=false]  scale the whole document onto a single page
+ * @param {string|null} [options.cloneClass=null]  class added to the clone (scoped CSS hook)
  * @returns {Promise<{ skippedImages: number }>}
  */
 export async function downloadElementAsPdf(element, options = {}) {
@@ -172,12 +142,18 @@ export async function downloadElementAsPdf(element, options = {}) {
         scale = 2,
         avoidBreakInside = DEFAULT_AVOID,
         renderWidth = null,
+        format = 'a4',
+        fitOnePage = false,
+        cloneClass = null,
     } = options;
 
     const html2pdf = (await import('html2pdf.js')).default;
     if (typeof document !== 'undefined' && document.fonts?.ready) await document.fonts.ready;
 
     const clone = element.cloneNode(true);
+    // Compact rules are scoped as ".laf-fit-compact .x"; descendants of the clone match.
+    if (cloneClass) clone.classList.add(cloneClass);
+
     const results = await Promise.all(Array.from(clone.querySelectorAll('img')).map(inlineImage));
     const skippedImages = results.filter((ok) => !ok).length;
 
@@ -191,28 +167,49 @@ export async function downloadElementAsPdf(element, options = {}) {
     try {
         metricsFix = injectMetricsFix(document);
         const name = safeFilename(filename.replace(/\.pdf$/i, ''));
-        await html2pdf()
-            .set({
-                margin,
-                filename: `${name}.pdf`,
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: {
-                    scale,
-                    useCORS: true,
-                    allowTaint: false, // images are inlined, so the canvas stays exportable
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    // html2canvas awaits this; the cloned document has its own FontFaceSet
-                    onclone: (clonedDoc) => {
-                        injectMetricsFix(clonedDoc);
-                        return settleFonts(clonedDoc);
-                    },
+
+        const opts = {
+            margin,
+            filename: `${name}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: {
+                scale,
+                useCORS: true,
+                allowTaint: false, // images are inlined, so the canvas stays exportable
+                backgroundColor: '#ffffff',
+                logging: false,
+                // html2canvas awaits this; the cloned document has its own FontFaceSet
+                onclone: (clonedDoc) => {
+                    injectMetricsFix(clonedDoc);
+                    return settleFonts(clonedDoc);
                 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation },
-                pagebreak: { mode: ['css', 'legacy'], avoid: avoidBreakInside },
-            })
-            .from(clone)
-            .save();
+            },
+            jsPDF: { unit: 'mm', format, orientation },
+            pagebreak: { mode: ['css', 'legacy'], avoid: avoidBreakInside },
+        };
+
+        if (fitOnePage) {
+            // Render once to a canvas, then place it on a single page, scaled to fit.
+            const canvas = await html2pdf().set(opts).from(clone).toCanvas().get('canvas');
+            const { jsPDF } = await import('jspdf');
+            const pdf = new jsPDF({ unit: 'mm', format, orientation });
+            const innerW = pdf.internal.pageSize.getWidth() - margin * 2;
+            const innerH = pdf.internal.pageSize.getHeight() - margin * 2;
+            const k = Math.min(innerW / canvas.width, innerH / canvas.height);
+            const w = canvas.width * k;
+            const h = canvas.height * k;
+            pdf.addImage(
+                canvas.toDataURL('image/jpeg', 0.95),
+                'JPEG',
+                margin + (innerW - w) / 2,
+                margin,
+                w,
+                h
+            );
+            pdf.save(`${name}.pdf`);
+        } else {
+            await html2pdf().set(opts).from(clone).save();
+        }
     } finally {
         if (metricsFix) metricsFix.remove();
         if (holder) holder.remove();
