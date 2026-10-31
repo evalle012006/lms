@@ -87,6 +87,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     // not evidence of a new loan from this promotion.
     const linkedLoan = Array.isArray(loanHistory)
         ? loanHistory.find(l => {
+            if (l.status === 'reject') return false;   // rejected = resolved history, not a live loan
             if (l.ciReferenceCode && l.ciReferenceCode === application?.ciReferenceCode) return true;
             if (!l.ciReferenceCode &&
                 (application?.clientType === 'prospect' || application?.clientType === 'balik') &&

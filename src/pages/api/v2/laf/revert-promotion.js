@@ -203,7 +203,10 @@ async function revertPromotion(req, res) {
     // Loan guard applies to ALL of these client types now, not just balik —
     // a linked loan blocks revert only once it's past 'pending'.
     const [existingLoan] = await graph.query(
-        queryQl(LOAN_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } }, limit: 1 })
+        queryQl(LOAN_TYPE, {
+            where: { ciReferenceCode: { _eq: ciReferenceCode }, status: { _neq: 'reject' } },
+            limit: 1,
+        })
     ).then(r => r.data?.loans ?? []);
 
     if (existingLoan && existingLoan.status !== 'pending') {
@@ -228,7 +231,7 @@ async function revertPromotion(req, res) {
         await graph.mutation(
             updateQl(CLIENT_TYPE, {
                 where: { _id: { _eq: application.existingClientId } },
-                set:   { status: 'offset' },
+                set:   { status: 'offset', groupId: null, loId: null },
             })
         );
     }

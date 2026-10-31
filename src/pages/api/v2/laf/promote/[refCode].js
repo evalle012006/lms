@@ -199,6 +199,10 @@ async function promoteApplication(req, res) {
 
             if (application.clientType === 'balik') {
                 updatePayload.status = 'pending';
+                // Offset cleared these (old values live in oldGroupId/oldLoId).
+                // Re-assign from the LAF so the client is searchable like a promoted prospect.
+                if (application.groupId) updatePayload.groupId = application.groupId;
+                if (application.loId)    updatePayload.loId    = application.loId;
             }
 
             if (application.faceTemplate)   updatePayload.faceTemplate   = application.faceTemplate;

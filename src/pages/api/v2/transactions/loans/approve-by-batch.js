@@ -355,7 +355,13 @@ async function updateClient(loan, addToMutationList) {
     // should fire once, not on every subsequent loan approval for the same client.
     const wasActiveBefore = client.status === 'active';
  
-    if (client.status === "offset") {
+    // Balik clients are promoted to 'pending' (promote.js) before approval, so they
+    // arrive here as 'pending' with oldGroupId/oldLoId still set, not as 'offset'.
+    const isReturningClient =
+      client.status === "offset" ||
+      (client.status === "pending" && !!(client.oldGroupId || client.oldLoId));
+
+    if (isReturningClient) {
       client.status = "active";
       client.groupName = loan?.groupName;
       client.groupId = loan.groupId;
@@ -363,7 +369,6 @@ async function updateClient(loan, addToMutationList) {
       client.loId = loan.loId;
       client.oldGroupId = null;
       client.oldLoId = null;
-      
     }
  
     const clientId = client._id;
