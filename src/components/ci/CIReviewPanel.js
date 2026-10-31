@@ -13,6 +13,7 @@ import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { checkRealConnectivity } from '@/lib/check-online';
 import FaceLivenessStep from '@/components/laf/FaceLivenessStep';
+import { canDecideCI } from '@/lib/ci-roles';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -76,6 +77,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const systemSettings = useSelector(state => state.systemSettings.data);
     const { isOnline }   = useOnlineStatus();
     const { saveDraft }  = useCIDraftStorage();
+    const canDecide      = canDecideCI(currentUser);
 
     const { application, lafPhotoUrl } = applicationData;
 
@@ -108,19 +110,22 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     // Kept separate from the render condition below so the success state (once
     // captured) actually stays visible instead of the block vanishing the
     // instant faceCapture is set.
-    const needsFaceEnrollment = !!application?.isOffline && !application?.faceTemplate;
+    const needsFaceEnrollment = !!application?.isOffline
+        && !(application?.hasFaceTemplate ?? application?.faceTemplate);
     const faceEnrollmentBlocking = needsFaceEnrollment && !faceCapture; // still gates Save
 
     const [existingClientGroupLeader, setExistingClientGroupLeader] = useState(null);
 
     useEffect(() => {
         if (!application?.existingClientId) return;
-        fetchWrapper.post(getApiBaseUrl() + 'clients/by-ids', { ids: [application.existingClientId] })
-            .then(res => {
-                const c = res?.clients?.[0] || null;
-                if (c) setExistingClientGroupLeader({ groupLeader: !!c.groupLeader, status: c.status });
-            })
-            .catch(() => {});
+        fetchWrapper.post(getApiBaseUrl() + 'clients/by-ids', {
+            ids: [application.existingClientId],
+            ciReferenceCode: application.ciReferenceCode,
+        }).then(res => {
+            const c = res?.clients?.[0] || null;
+            if (c) setExistingClientGroupLeader({ groupLeader: !!c.groupLeader, status: c.status });
+        })
+        .catch(() => {});
     }, [application?.existingClientId]);
 
     const [groupLeader, setGroupLeader] = useState(
@@ -199,6 +204,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     }), [application, businessVerified, addressVerified, decision, declineReason, groupLeader, buildCiAnswers]);
 
     const handleSave = useCallback(async () => {
+        if (!canDecide) {
+            toast.error('Your role is not allowed to approve or decline a CI investigation.');
+            return;
+        }
         if (application?.status === 'pending_validation') {
             toast.error('This application requires admin duplicate validation before CI can be saved.');
             return;
@@ -320,7 +329,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
         }
     }, [decision, declineReason, businessVerified, addressVerified,
         selfieFile, investigationData, ciQuestions, needsFaceEnrollment, faceCapture,
-        answers, isOnline, buildPayload, saveDraft, onSaved, application]);
+        answers, isOnline, buildPayload, saveDraft, onSaved, application, canDecide]);
 
     return (
         <div className="space-y-6">
@@ -495,6 +504,12 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                 </div>
             )}
 
+            {!canDecide && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                    Your role can view this investigation but cannot approve or decline it.
+                </div>
+            )}
+
             {/* Decision */}
             <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Decision *</p>
@@ -646,7 +661,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
 
             {/* Save button */}
             <button type="button" onClick={handleSave}
-                disabled={saving || !decision || application?.status === 'pending_validation'}
+                disabled={saving || !decision || !canDecide || application?.status === 'pending_validation'}
                 className="w-full py-3 bg-blue-600 text-white text-sm font-semibold
                     rounded-xl hover:bg-blue-700 disabled:opacity-50
                     disabled:cursor-not-allowed flex items-center justify-center gap-2">

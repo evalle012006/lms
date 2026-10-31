@@ -9,7 +9,7 @@ import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { findUserById }             from '@/lib/graph.functions';
-import { getShortCode, isSystemAdmin, resolveBranchWhere, branchWhereAllows } from '@/lib/ci-scope';
+import { canDecideCI, resolveBranchWhere, branchWhereAllows } from '@/lib/ci-scope';
 
 const graph = new GraphProvider();
 
@@ -20,7 +20,7 @@ const CLIENT_TYPE = createGraphType('client', `
 `)('clients');
 
 const APP_TYPE = createGraphType(
-    'temporaryLoanApplications', '_id branchId duplicateCandidateIds'
+    'temporaryLoanApplications', '_id branchId duplicateCandidateIds existingClientId promotedClientId'
 )('temporaryLoanApplications');
 
 export default apiHandler({ post: getByIds });
@@ -40,11 +40,7 @@ async function getByIds(req, res) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
 
-    const shortCode = getShortCode(user);
-    const canValidate = isSystemAdmin(user) ||
-        (user.role?.rep === 2 && ['deputy_director', 'regional_manager', 'area_admin'].includes(shortCode)) ||
-        shortCode === 'branch_manager';
-    if (!canValidate) {
+    if (!canDecideCI(user)) {
         return res.status(200).json({ success: false, message: 'Not allowed.' });
     }
 
@@ -57,9 +53,13 @@ async function getByIds(req, res) {
         return res.status(200).json({ success: true, clients: [] });
     }
 
-    const candidateSet = new Set(
-        Array.isArray(application.duplicateCandidateIds) ? application.duplicateCandidateIds : []
-    );
+    // The application's duplicate candidates, plus the application's own client
+    // (CIReviewPanel reads the existing client's groupLeader/status)
+    const candidateSet = new Set([
+        ...(Array.isArray(application.duplicateCandidateIds) ? application.duplicateCandidateIds : []),
+        application.existingClientId,
+        application.promotedClientId,
+    ].filter(Boolean));
     const wanted = [...new Set(ids)].filter(id => candidateSet.has(id)).slice(0, 20);
     if (wanted.length === 0) {
         return res.status(200).json({ success: true, clients: [] });

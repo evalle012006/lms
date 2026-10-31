@@ -5,7 +5,10 @@
     "build": "next build",
     "start": "next start",
     "test": "jest --watch",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:ci": "jest __tests__/ci --watchAll=false",
+    "verify:api": "node scripts/verify-ci-api.mjs",
+    "verify": "npm run test:ci && npm run verify:api"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1029.0",

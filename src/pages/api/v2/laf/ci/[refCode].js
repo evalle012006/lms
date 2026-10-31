@@ -91,10 +91,13 @@ async function getByRefCode(req, res) {
             : Promise.resolve(null),
     ]);
 
+    const { faceTemplate, ...safeApplication } = application;
+
     res.status(200).json({
         success: true,
         application: {
-            ...application,
+            ...safeApplication,
+            hasFaceTemplate: !!faceTemplate,
             branchName: branch?.name || '—',
             branchCode: branch?.code || '—',
             groupName:  group?.name  || '',

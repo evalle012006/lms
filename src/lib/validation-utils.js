@@ -40,3 +40,6 @@ export const isBlank = (raw) => trimText(raw).length === 0;
 
 // Trimmed string, or null when blank. Use for optional columns.
 export const orNull = (raw) => trimText(raw) || null;
+
+// Escape LIKE/ILIKE wildcards so user input can only ever match literally
+export const escapeLike = (raw) => String(raw ?? '').replace(/[\\%_]/g, '\\$&');

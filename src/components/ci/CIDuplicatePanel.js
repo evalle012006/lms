@@ -12,6 +12,7 @@ import { useSignedUrl }   from 'hooks/useSignedUrl';
 import { toast }          from 'react-toastify';
 import { CheckCircle, XCircle, User, X, ZoomIn, GitMerge, AlertTriangle } from 'lucide-react';
 import moment             from 'moment';
+import { canDecideCI } from '@/lib/ci-roles';
 
 // ── Confirmation dialog ───────────────────────────────────────────────────
 const ConfirmDialog = ({ title, message, warning, onConfirm, onCancel, confirmLabel, confirmCls }) => (
@@ -300,7 +301,7 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
             || currentUser?.role?.shortCode === 'area_admin'
         );
     const isBM          = currentUser?.role?.shortCode === 'branch_manager';
-    const canValidate    = isAdmin || isSupervisor || isBM;
+    const canValidate    = canDecideCI(currentUser);
 
     const isDuplicateFlagged  = application?.isDuplicateFlagged;
     const isPendingValidation = application?.status === 'pending_validation';

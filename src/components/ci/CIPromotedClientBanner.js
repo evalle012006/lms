@@ -21,6 +21,7 @@ import { getLatestNonPendingLoan, resolveLoanCycle } from '@/lib/loan-cycle';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { toast } from 'react-toastify';
+import { canDecideCI } from '@/lib/ci-roles';
 
 const CIPromotedClientBanner = ({ application, investigation, currentUser, loanHistory, onReverted }) => {
     const router = useRouter();
@@ -75,12 +76,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     const [revertReason, setRevertReason] = useState('');
     const [reverting, setReverting]       = useState(false);
 
-    const isAdmin      = currentUser?.role?.rep === 1 || currentUser?.root === true;
-    const isSupervisor = currentUser?.role?.rep === 2 &&
-        (currentUser?.role?.shortCode === 'deputy_director' || currentUser?.role?.shortCode === 'regional_manager'
-            || currentUser?.role?.shortCode === 'area_admin'
-        );
-    const isBM = currentUser?.role?.shortCode === 'branch_manager';
+    const canDecide = canDecideCI(currentUser);
 
     // The loan (if any) tied to THIS promotion — used both to gate "Add Loan
     // Application" and to decide whether revert is blocked.
@@ -109,7 +105,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
     const hasBlockingLoanForRevert = hasLinkedLoan && linkedLoan.status !== 'pending';
 
     const buttonReady = !hasLinkedLoan && !isLoading && !groupNotAvailable;
-    const canRevert    = (isAdmin || isSupervisor || isBM) && !hasBlockingLoanForRevert && !isLoading;
+    const canRevert    = canDecide && !hasBlockingLoanForRevert && !isLoading;
 
     const handleRevert = async () => {
         if (!revertReason.trim()) return;
@@ -244,7 +240,7 @@ const CIPromotedClientBanner = ({ application, investigation, currentUser, loanH
                             Checking loan status...
                         </div>
                     ) : (
-                        currentUser?.role?.rep <= 3 && clientId && (
+                        canDecide && clientId && (
                             <button
                                 type="button"
                                 onClick={handleAddLoan}

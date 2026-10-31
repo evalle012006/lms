@@ -8,7 +8,7 @@ import { apiHandler }                           from '@/services/api-handler';
 import { GraphProvider }                        from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById }                         from '@/lib/graph.functions';
-import { resolveBranchWhere, getShortCode, isSystemAdmin } from '@/lib/ci-scope';
+import { resolveBranchWhere, getShortCode, canDecideCI } from '@/lib/ci-scope';
 import { TEMP_LOAN_APP_QUEUE_FIELDS }           from '@/lib/ci-list-fields';
 import { S3Client, GetObjectCommand }           from '@aws-sdk/client-s3';
 import { getSignedUrl }                         from '@aws-sdk/s3-request-presigner';
@@ -46,12 +46,9 @@ async function getPendingValidationList(req, res) {
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    const shortCode    = getShortCode(currentUser);
-    const isSupervisor = currentUser.role?.rep === 2 &&
-        ['deputy_director', 'regional_manager', 'area_admin'].includes(shortCode);
-    const isBM         = shortCode === 'branch_manager';
+    const shortCode = getShortCode(currentUser);
 
-    if (!isSystemAdmin(currentUser) && !isSupervisor && !isBM) {
+    if (!canDecideCI(currentUser)) {
         return res.status(200).json({
             success: false,
             message: 'Only system administrators, supervisors, or branch managers can view this list.',

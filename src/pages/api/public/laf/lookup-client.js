@@ -7,6 +7,9 @@
 
 import { GraphProvider }            from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
+import { maskGovernmentId } from '@/lib/laf/id-mask';
+import { resolveGroupFromQr }       from '@/lib/laf/qr-gate';
+import { escapeLike } from '@/lib/validation-utils';
 
 const graph = new GraphProvider();
 
@@ -98,7 +101,7 @@ const ACTIVE_CI_STATUSES = ['pending', 'pending_validation', 'ci_approved'];
 // name fields (e.g. "DELA  LINA" vs "DELA LINA"). _ilike is an exact
 // pattern match — without this, a single extra space silently produces
 // zero rows with no error surfaced anywhere.
-const namePattern = (v) => `%${v.trim().replace(/\s+/g, '%')}%`;
+const namePattern = (v) => `%${escapeLike(String(v).trim()).replace(/\s+/g, '%')}%`;
 
 // Occupied slots = any slotNo currently tied to an active or pending loan
 // in this group. Completed/closed/offset loans free the slot back up.
@@ -131,12 +134,23 @@ function computeAvailableSlots(capacity, occupied) {
 
 export async function handler(req, res) {
     const {
-        groupId, branchId, lastName, firstName, middleName, slotNo, mode,
+        groupId: groupIdParam, branchId, lastName, firstName, middleName, slotNo, mode, qrToken,
     } = req.query;
 
     if (!mode) {
         return res.status(200).json({ success: false, message: 'mode is required.' });
     }
+
+    // Only someone holding this group's current QR code may look members up
+    // (same rule as submit.js). The group comes from the token, not the query string.
+    const qrGroup = await resolveGroupFromQr(qrToken, groupIdParam);
+    if (!qrGroup) {
+        return res.status(200).json({
+            success: false,
+            message: 'QR code is invalid or has expired. Please scan the latest QR code.',
+        });
+    }
+    const groupId = qrGroup._id;
 
     // mode=all — used for offline cache pre-load
     if (mode === 'all') {
@@ -172,7 +186,7 @@ export async function handler(req, res) {
                 profile:    cl.profile    || null,
                 contactNumber: cl.contactNumber || '',
                 governmentIdType:   cl.governmentIdType   || null,
-                governmentIdNumber: cl.governmentIdNumber || null,
+                governmentIdNumber: maskGovernmentId(cl.governmentIdNumber) || null,
                 loans: (cl.loans || []).map(l => ({
                     _id: l._id, slotNo: l.slotNo, groupId: l.groupId,
                     status: l.status, loanCycle: l.loanCycle,
@@ -442,7 +456,7 @@ export async function handler(req, res) {
                 ciName:                  matchedClient.ciName,
                 profile:                 matchedClient.profile              || null,
                 governmentIdType:        matchedClient.governmentIdType      || null,
-                governmentIdNumber:      matchedClient.governmentIdNumber    || null,
+                governmentIdNumber:      maskGovernmentId(matchedClient.governmentIdNumber) || null,
                 governmentIdPhotoKey:    matchedClient.governmentIdPhotoKey  || null,
                 branchId:                matchedClient.branchId              || null,
                 branchName:              matchedClient.branchName            || null,

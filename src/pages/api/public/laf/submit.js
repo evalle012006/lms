@@ -11,7 +11,8 @@ import crypto from 'crypto';
 import { compareMiddle, compareBirthdate } from '@/lib/laf/name-match';
 // FIX: whitespace-only values are blank — "   " is truthy so `x || null` and
 // `.filter(Boolean)` let it through. Server is the real enforcement point.
-import { isBlank, trimText, orNull } from '@/lib/validation-utils';
+import { isBlank, trimText, orNull, escapeLike } from '@/lib/validation-utils';
+import { maskGovernmentId, isMaskedId } from '@/lib/laf/id-mask';
 
 const graph = new GraphProvider();
 
@@ -47,6 +48,7 @@ const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CLIENT_VERIFY_TYPE = createGraphType('client', '_id branchId status')('clients');
+const CLIENT_ID_OWNER_TYPE = createGraphType('client', '_id governmentIdNumber')('clients');
 
 export default publicApiHandler({ post: submitLAF });
 
@@ -224,8 +226,23 @@ async function submitLAF(req, res) {
     // ── Server-side Government ID uniqueness check ────────────────────────
     // Runs for ALL client types that capture an ID.
     // existingClientId excludes self so reloan/pending/balik don't block on their own ID.
-    if (governmentIdType && governmentIdNumber?.trim()) {
-        const cleanId   = governmentIdNumber.trim();
+    // Existing members get a MASKED ID from lookup-client; resolve it back to the real number
+    // from their own record. Any other value containing the mask is rejected.
+    let realIdNumber = governmentIdNumber;
+    if (isMaskedId(governmentIdNumber)) {
+        const [owner] = existingClientId
+            ? await graph.query(
+                queryQl(CLIENT_ID_OWNER_TYPE, { where: { _id: { _eq: existingClientId } }, limit: 1 })
+              ).then(r => r.data?.clients ?? [])
+            : [];
+        if (!owner || maskGovernmentId(owner.governmentIdNumber) !== String(governmentIdNumber).trim()) {
+            return res.status(200).json({ success: false, message: 'Government ID is invalid. Please re-enter it.' });
+        }
+        realIdNumber = owner.governmentIdNumber;
+    }
+
+    if (governmentIdType && realIdNumber?.trim()) {
+        const cleanId   = escapeLike(realIdNumber.trim());
         const excludeId = existingClientId || '__none__';
 
         const [dupeClients, dupeLAFs] = await Promise.all([
@@ -503,7 +520,7 @@ async function submitLAF(req, res) {
                 biometricDeviceName:   biometricDeviceName   || null,
                 // Government ID
                 governmentIdType:      governmentIdType     || null,
-                governmentIdNumber:    orNull(governmentIdNumber),
+                governmentIdNumber:    orNull(realIdNumber),
                 governmentIdPhotoKey:  governmentIdPhotoKey || null,
                 selfieWithIdPhotoKey:  selfieWithIdPhotoKey || null,
                 // Client type metadata
