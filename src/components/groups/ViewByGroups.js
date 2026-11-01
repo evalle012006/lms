@@ -12,7 +12,7 @@ import moment                          from 'moment';
 import {
     QrCode, Search, RefreshCw, Edit2, Trash2,
     ChevronDown, ChevronRight, Users, CheckCircle,
-    AlertTriangle, Clock, Building2,
+    AlertTriangle, Clock, Building2, FileSpreadsheet,
 } from 'lucide-react';
 import Layout                          from '@/components/Layout';
 import Spinner                         from '@/components/Spinner';
@@ -27,6 +27,7 @@ import ButtonSolid   from '@/lib/ui/ButtonSolid';
 import { PlusIcon }                    from '@heroicons/react/24/solid';
 import { setBranch } from '@/redux/actions/branchActions';
 import { canManageGroups } from '@/lib/group-permissions';
+import { canUseOfflineUpload } from '@/lib/offline-upload/permissions';
 
 // Stable reference so the drawer's effect doesn't re-run on every render
 const NO_DEFAULTS = {};
@@ -119,7 +120,7 @@ const QRBadge = ({ currentBranch, group, onClick }) => {
 };
 
 // ── Group row ─────────────────────────────────────────────────────────────
-const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClick }) => {
+const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDelete, onRowClick, onTemplate, canTemplate }) => {
     const showQR = currentBranch?.clientFlowVersion === 'v2';
     return (
         <div onClick={() => onRowClick(group)}
@@ -166,6 +167,12 @@ const GroupRow = ({ currentBranch, group, onQR, onEdit, onDelete, canEdit, canDe
                 </div>
             )}
             <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                {canTemplate && group.noOfClients > 0 && (
+                    <button type="button" title="Download offline collection template" onClick={() => onTemplate(group)}
+                        className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors">
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                    </button>
+                )}
                 {canEdit && (
                     <button type="button" onClick={() => onEdit(group)}
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
@@ -540,6 +547,8 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
         onRowClick: g => router.push('/groups/clients/' + g._id),
         canEdit,
         canDelete,
+        onTemplate: g => router.push(`/transactions/${g.occurence}-cash-collection/client/${g._id}?downloadTemplate=1`),
+        canTemplate: canUseOfflineUpload(currentUser),
     };
 
     const actionButtons = canEdit ? [

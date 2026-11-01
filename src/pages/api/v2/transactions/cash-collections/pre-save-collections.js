@@ -158,7 +158,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
                     where: {
                         clientId: { _in: $clientIds }
                         dateAdded: { _eq: $currentDate }
-                        origin: { _eq: "pre-save" }
+                        origin: { _in: ["pre-save", "offline"] }
                     }
                 ) {
                     clientId

@@ -453,6 +453,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   otherIncome
   addHospitalization
   bmRevertCount
+  uploadBatchId
   `;
 
 export const LOS_TOTALS_FIELDS = `
@@ -1048,4 +1049,39 @@ export const LOAN_CLOSING_REVIEW_FIELDS = `
   view_count
   acknowledged
   acknowledged_at
+`;
+
+export const CASH_COLLECTION_UPLOAD_FIELDS = `
+  _id
+  group_id
+  branch_id
+  lo_id
+  occurence
+  date_added
+  uploaded_by
+  uploaded_by_name
+  uploaded_at
+  file_name
+  file_hash
+  template_version
+  reason
+  row_count
+  applied_count
+  skipped_count
+  status
+  totals
+`;
+
+export const CASH_COLLECTION_UPLOAD_ROW_FIELDS = `
+  _id
+  upload_id
+  cash_collection_id
+  loan_id
+  client_id
+  slot_no
+  action
+  skip_reason
+  before_data
+  after_data
+  inserted_date
 `;
