@@ -54,7 +54,7 @@ const CIApplicantCard = ({ application, loanHistory }) => {
         : null;
 
     // Identity verification: face liveness takes priority over legacy biometric
-    const hasFaceID    = !!(application.faceTemplate || application.faceEnrolledAt);
+    const hasFaceID    = !!(application.hasFaceTemplate || application.faceTemplate || application.faceEnrolledAt);
     const hasBiometric = !!(application.biometricCredentialId);
 
     const identityStatus = hasFaceID

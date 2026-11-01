@@ -1,6 +1,6 @@
 // src/pages/api/v2/laf/ci/latest.js
 // GET ?clientId=xxx
-// Returns the most recent CI investigation for an existing client
+// Returns the most recent approved CI investigation for an existing client
 // Used by AddLoanPage to warn if reloan client needs a new CI
 
 import { apiHandler } from '@/services/api-handler';
@@ -16,27 +16,27 @@ const CI_TYPE = createGraphType('ciInvestigations', `
     tempApplicationId
 `)('ciInvestigations');
 
-// Also check temporaryLoanApplications to find the client's CI ref code
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', `
     _id ciReferenceCode status submittedAt
-    firstName lastName
+    firstName lastName branchId birthdate
+    existingClientId promotedClientId
 `)('temporaryLoanApplications');
 
-// Check clients table for ciReferenceCode link
 const CLIENT_TYPE = createGraphType('client', `
-    _id firstName lastName ciName status
+    _id firstName lastName ciName status branchId birthdate
     biometricCredentialId
 `)('clients');
+
+const APPROVED_STATUSES = ['ci_approved', 'promoted'];
 
 export default apiHandler({ get: getLatestCI });
 
 async function getLatestCI(req, res) {
     const { clientId } = req.query;
-    if (!clientId) {
+    if (typeof clientId !== 'string' || !clientId) {
         return res.status(200).json({ success: false, message: 'clientId required' });
     }
 
-    // Get client info
     const [client] = await graph.query(
         queryQl(CLIENT_TYPE, { where: { _id: { _eq: clientId } } })
     ).then(r => r.data?.clients ?? []);
@@ -45,37 +45,60 @@ async function getLatestCI(req, res) {
         return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
-    // Find all temporaryLoanApplications for this client
-    // Match by name since clientId may not be stored on temp apps directly
-    const tempApps = await graph.query(
+    // 1. Exact link: applications created for / promoted into THIS client
+    let tempApps = await graph.query(
         queryQl(TEMP_TYPE, {
             where: {
-                firstName: { _eq: client.firstName },
-                lastName:  { _eq: client.lastName },
-                status:    { _in: ['ci_approved', 'promoted'] },
+                _or: [
+                    { existingClientId: { _eq: clientId } },
+                    { promotedClientId: { _eq: clientId } },
+                ],
+                status: { _in: APPROVED_STATUSES },
             },
             order_by: [{ submittedAt: 'desc' }],
             limit: 10,
         })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
+    // 2. Legacy fallback for approvals that predate the client link: same name in the same
+    //    branch, never an application linked to a different client, and not a known
+    //    birthdate mismatch.
     if (tempApps.length === 0) {
-        return res.status(200).json({
-            success:   true,
-            hasCI:     false,
-            latestCI:  null,
-            message:   'No CI investigation found for this client.',
-        });
+        const nameMatches = await graph.query(
+            queryQl(TEMP_TYPE, {
+                where: {
+                    firstName: { _eq: client.firstName },
+                    lastName:  { _eq: client.lastName },
+                    status:    { _in: APPROVED_STATUSES },
+                    ...(client.branchId ? { branchId: { _eq: client.branchId } } : {}),
+                },
+                order_by: [{ submittedAt: 'desc' }],
+                limit: 10,
+            })
+        ).then(r => r.data?.temporaryLoanApplications ?? []);
+
+        tempApps = nameMatches.filter(a =>
+            !(a.existingClientId && a.existingClientId !== clientId) &&
+            !(a.promotedClientId && a.promotedClientId !== clientId) &&
+            (!a.birthdate || !client.birthdate || a.birthdate === client.birthdate)
+        );
+        if (tempApps.length > 0) {
+            console.warn('[ci/latest] legacy name-match used', { clientId });
+        }
     }
 
-    // Get the most recent approved CI investigation
-    const ciRefs = tempApps.map(a => a.ciReferenceCode).filter(Boolean);
-    if (ciRefs.length === 0) {
+    if (tempApps.length === 0) {
         return res.status(200).json({
             success:  true,
             hasCI:    false,
             latestCI: null,
+            message:  'No CI investigation found for this client.',
         });
+    }
+
+    const ciRefs = tempApps.map(a => a.ciReferenceCode).filter(Boolean);
+    if (ciRefs.length === 0) {
+        return res.status(200).json({ success: true, hasCI: false, latestCI: null });
     }
 
     const investigations = await graph.query(
@@ -92,9 +115,9 @@ async function getLatestCI(req, res) {
     const latestCI = investigations[0] || null;
 
     return res.status(200).json({
-        success:    true,
-        hasCI:      !!latestCI,
-        latestCI:   latestCI ? {
+        success:  true,
+        hasCI:    !!latestCI,
+        latestCI: latestCI ? {
             ciReferenceCode: latestCI.ciReferenceCode,
             decision:        latestCI.decision,
             investigatedAt:  latestCI.investigatedAt,

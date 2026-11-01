@@ -89,13 +89,16 @@ async function registerComplete(req, res) {
 
         const { credential: cred } = verification.registrationInfo;
 
-        // Mark token as used FIRST (prevent race condition re-use)
-        await graph.mutation(
+        // Claim the token atomically: only one request can flip usedAt from null
+        const claimed = await graph.mutation(
             updateQl(TOKEN_TYPE, {
-                where: { _id: { _eq: decoded.tokenId } },
+                where: { _id: { _eq: decoded.tokenId }, usedAt: { _is_null: true } },
                 set: { usedAt: moment().toISOString() },
             })
-        );
+        ).then(r => r.data?.biometricRegistrationTokens?.returning ?? []);
+        if (claimed.length === 0) {
+            return res.status(200).json({ success: false, message: 'This link has already been used.' });
+        }
 
         // Save biometric to client record
         await graph.mutation(
@@ -106,7 +109,7 @@ async function registerComplete(req, res) {
                     biometricPublicKey:    Buffer.from(cred.publicKey).toString('base64'),
                     biometricCounter:      cred.counter,
                     biometricRegisteredAt: moment().toISOString(),
-                    biometricDeviceName:   deviceName || 'Mobile Device',
+                    biometricDeviceName:   (typeof deviceName === 'string' && deviceName.trim().slice(0, 100)) || 'Mobile Device',
                 },
             })
         );
@@ -125,9 +128,10 @@ async function registerComplete(req, res) {
 
     } catch (err) {
         const isExpired = err.name === 'TokenExpiredError';
+        if (!isExpired) console.error('[biometric/register-complete]', err);
         return res.status(200).json({
             success: false,
-            message: isExpired ? 'Link expired.' : (err.message || 'Registration failed.'),
+            message: isExpired ? 'Link expired.' : 'Registration failed. Please ask the Branch Manager for a new QR code.',
         });
     }
 }

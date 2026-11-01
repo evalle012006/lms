@@ -401,7 +401,7 @@ const PublicLAFForm = ({
         setCacheLoading(true);
         try {
             const res  = await publicFetch(
-                `/api/public/laf/lookup-client?groupId=${groupId}&mode=all`
+                `/api/public/laf/lookup-client?groupId=${groupId}&mode=all&qrToken=${encodeURIComponent(qrToken)}`
             );
             const data = await res.json();  // publicFetch returns raw Response — must parse
             if (data.success && data.clients) {
@@ -574,7 +574,7 @@ const PublicLAFForm = ({
 
     useEffect(() => {
         if (clientType !== 'existing' || !isOnline || availableSlots !== null) return;
-        publicFetch(`/api/public/laf/lookup-client?mode=slots&groupId=${groupId}`)
+        publicFetch(`/api/public/laf/lookup-client?mode=slots&groupId=${groupId}&qrToken=${encodeURIComponent(qrToken)}`)
             .then(r => r.json())
             .then(d => { if (d.success) setAvailableSlots(d.availableSlots); })
             .catch(() => {}); // fail silent — dropdown falls back to full 1..30 range below
@@ -665,7 +665,7 @@ const PublicLAFForm = ({
         setLookupLooking(true);
         try {
             const mode = clientType === 'balik' ? 'balik' : 'existing';
-            const p = new URLSearchParams({ mode, groupId });
+            const p = new URLSearchParams({ mode, groupId, qrToken });
             if (clientType === 'balik') {
                 // Balik: firstName + lastName mandatory, middleName + branchId optional
                 p.set('firstName', lookupFirstName.trim());
@@ -737,7 +737,7 @@ const PublicLAFForm = ({
             // Check for duplicate ID number — block if already registered to another client
             setIdDupChecking(true);
             try {
-                const p = new URLSearchParams({ idType, idNumber: idNumber.trim() });
+                const p = new URLSearchParams({ idType, idNumber: idNumber.trim(), qrToken, groupId });
                 // Pass existingClientId so reloan/pending/balik don't block on their own ID
                 if (foundClient?._id) p.set('existingClientId', foundClient._id);
                 const res  = await publicFetch(`/api/public/laf/check-id-duplicate?${p}`);

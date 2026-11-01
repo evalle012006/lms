@@ -10,6 +10,7 @@ import { GraphProvider }                      from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { findUserById }                       from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope }       from '@/lib/ci-scope';
 import { logAudit }                           from '@/lib/audit';
 import moment                                 from 'moment';
 
@@ -23,7 +24,7 @@ export default apiHandler({ post: validateDuplicate });
 async function validateDuplicate(req, res) {
     const { ciReferenceCode, action, note } = req.body;
 
-    if (!ciReferenceCode || !action) {
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim() || !action) {
         return res.status(200).json({ success: false, message: 'ciReferenceCode and action required.' });
     }
     if (!['approve', 'decline'].includes(action)) {
@@ -43,18 +44,14 @@ async function validateDuplicate(req, res) {
     }
 
     // Role check — exact 4-field matches require admin; fuzzy matches allow BM too
-    const isAdmin = currentUser.role?.rep === 1 || currentUser.root === true;
-    const isSupervisors = currentUser.role?.rep === 2 && 
-        (currentUser.role?.shortCode === 'deputy_director' || currentUser.role?.shortCode === 'regional_manager'
-            || currentUser.role?.shortCode === 'area_admin'
-        );
-    const isBM = currentUser.role?.shortCode === 'branch_manager';
-
-    if (!isAdmin && !isSupervisors && !isBM) {
+    if (!canDecideCI(currentUser)) {
         return res.status(200).json({
             success: false,
             message: 'Only system administrators, supervisors, or branch managers can validate duplicate applications.',
         });
+    }
+    if (!(await isBranchInScope(currentUser, application.branchId))) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
     }
     if (!application.isDuplicateFlagged) {
         return res.status(200).json({ success: false, message: 'This application is not flagged for duplicate validation.' });

@@ -21,6 +21,7 @@
 // Non-blocking — UI shows a warning but does not hard-stop submission.
 
 import { publicApiHandler }          from '@/services/public-api-handler';
+import { resolveGroupFromQr }        from '@/lib/laf/qr-gate';
 import { GraphProvider }             from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl }  from '@/lib/graph/graph.util';
 // CHANGED: shared with submit.js so the form warning and server enforcement agree
@@ -50,9 +51,15 @@ const ACTIVE_LAF_STATUSES = ['pending', 'ci_approved', 'pending_validation'];
 export default publicApiHandler({ get: checkDuplicate });
 
 async function checkDuplicate(req, res) {
-    const { firstName, lastName, birthdate, middleName, contactNumber } = req.query;
+    const { firstName, lastName, birthdate, middleName, contactNumber, qrToken, groupId } = req.query;
 
     if (!firstName || !lastName) {
+        return res.status(200).json({ success: true, duplicates: [] });
+    }
+
+    // Only a holder of a valid group QR may probe for duplicates; submit.js re-derives the
+    // flags server-side, so an empty answer for a bad token is safe.
+    if (!(await resolveGroupFromQr(qrToken, groupId))) {
         return res.status(200).json({ success: true, duplicates: [] });
     }
 

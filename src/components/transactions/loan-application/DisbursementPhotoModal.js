@@ -131,8 +131,8 @@ const DisbursementPhotoModal = ({
             ),
             Promise.all(
                 clientIds.map(id =>
-                    fetchWrapper.get(getApiBaseUrl() + `clients?clientId=${id}`)
-                        .then(res => ({ id, record: res.client || null }))
+                    fetchWrapper.get(getApiBaseUrl() + `clients/face-template?clientId=${encodeURIComponent(id)}`)
+                        .then(res => ({ id, record: res.success ? { faceTemplate: res.faceTemplate } : null }))
                         .catch(() => ({ id, record: null }))
                 )
             ),
@@ -619,7 +619,7 @@ const DisbursementPhotoModal = ({
                                                     onEnroll={handleClientEnrolled}
                                                     onSkip={handleClientSkipped}
                                                     onRetry={() => setFaceVerifyKey(k => k + 1)}
-                                                    canSkip={currentUser?.role?.rep === 1 || currentUser?.root === true}
+                                                    canSkip={isSystemAdmin(currentUser)}
                                                 />
                                             </div>
                                         )}

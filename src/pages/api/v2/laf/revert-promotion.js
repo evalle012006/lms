@@ -21,6 +21,7 @@ import { GraphProvider }    from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl, deleteQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS, CLIENT_FIELDS } from '@/lib/graph.fields';
 import { findUserById }     from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope }  from '@/lib/ci-scope';
 import { logAudit }         from '@/lib/audit';
 import moment from 'moment';
 
@@ -84,21 +85,17 @@ async function freeGroupSlot(groupId, slotNo) {
 
 async function revertPromotion(req, res) {
     const { ciReferenceCode, reason } = req.body;
-    if (!ciReferenceCode) return res.status(200).json({ success: false, message: 'ciReferenceCode required.' });
-    if (!reason?.trim())  return res.status(200).json({ success: false, message: 'A reason is required to revert a promotion.' });
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim()) {
+        return res.status(200).json({ success: false, message: 'ciReferenceCode required.' });
+    }
+    if (typeof reason !== 'string' || !reason.trim()) {
+        return res.status(200).json({ success: false, message: 'A reason is required to revert a promotion.' });
+    }
 
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
 
-    // Same role model as validate-duplicate.js / pending-validation-list.js
-    const isAdmin      = currentUser.role?.rep === 1 || currentUser.root === true;
-    const isSupervisor = currentUser.role?.rep === 2 &&
-        (currentUser.role?.shortCode === 'deputy_director' || currentUser.role?.shortCode === 'regional_manager'
-            || currentUser.role?.shortCode === 'area_admin'
-        );
-    const isBM = currentUser.role?.shortCode === 'branch_manager';
-
-    if (!isAdmin && !isSupervisor && !isBM) {
+    if (!canDecideCI(currentUser)) {
         return res.status(200).json({
             success: false,
             message: 'Only branch managers, supervisors, or administrators can revert a promotion.',
@@ -109,7 +106,10 @@ async function revertPromotion(req, res) {
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) return res.status(200).json({ success: false, message: 'Application not found.' });
+    // Out-of-scope looks identical to not-found
+    if (!application || !(await isBranchInScope(currentUser, application.branchId))) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
     if (application.status !== 'promoted') {
         return res.status(200).json({ success: false, message: `Cannot revert — status is "${application.status}", not "promoted".` });
     }
@@ -126,9 +126,11 @@ async function revertPromotion(req, res) {
         // longer a simple "ghost" — deleting the client would orphan real
         // transaction history. A pending loan, however, hasn't disbursed
         // anything yet — safe to reject-and-revert.
-        const [existingLoan] = await graph.query(
-            queryQl(LOAN_TYPE, { where: { clientId: { _eq: application.promotedClientId } }, limit: 1 })
+        const clientLoans = await graph.query(
+            queryQl(LOAN_TYPE, { where: { clientId: { _eq: application.promotedClientId } } })
         ).then(r => r.data?.loans ?? []);
+        // Any non-pending loan blocks the hard delete, not just whichever row happens to come back first
+        const existingLoan = clientLoans.find(l => l.status !== 'pending') || clientLoans[0];
 
         if (existingLoan && existingLoan.status !== 'pending') {
             return res.status(200).json({
@@ -201,7 +203,10 @@ async function revertPromotion(req, res) {
     // Loan guard applies to ALL of these client types now, not just balik —
     // a linked loan blocks revert only once it's past 'pending'.
     const [existingLoan] = await graph.query(
-        queryQl(LOAN_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } }, limit: 1 })
+        queryQl(LOAN_TYPE, {
+            where: { ciReferenceCode: { _eq: ciReferenceCode }, status: { _neq: 'reject' } },
+            limit: 1,
+        })
     ).then(r => r.data?.loans ?? []);
 
     if (existingLoan && existingLoan.status !== 'pending') {
@@ -226,7 +231,7 @@ async function revertPromotion(req, res) {
         await graph.mutation(
             updateQl(CLIENT_TYPE, {
                 where: { _id: { _eq: application.existingClientId } },
-                set:   { status: 'offset' },
+                set:   { status: 'offset', groupId: null, loId: null },
             })
         );
     }

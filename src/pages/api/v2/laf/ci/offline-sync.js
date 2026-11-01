@@ -4,7 +4,8 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
-import { findUserById } from '@/lib/graph.functions'; // ← was missing, caused crash
+import { findUserById } from '@/lib/graph.functions';
+import { canDecideCI, resolveBranchWhere, branchWhereAllows } from '@/lib/ci-scope';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import moment from 'moment';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
@@ -17,6 +18,7 @@ const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations',          CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_SETTINGS_TYPE = createGraphType('settings', 'ciQuestions')('settings');
+const TEMP_GUARD_TYPE  = createGraphType('temporaryLoanApplications', '_id branchId status')('temporaryLoanApplications');
 
 const s3 = new S3Client({
     endpoint:    'https://sgp1.digitaloceanspaces.com',
@@ -68,6 +70,16 @@ async function syncOfflineDrafts(req, res) {
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
+    if (!canDecideCI(user)) {
+        return res.status(200).json({
+            success: false,
+            message: 'You are not allowed to approve or reject a CI investigation.',
+        });
+    }
+    const branchWhere = await resolveBranchWhere(user);
+    if (branchWhere === null) {
+        return res.status(200).json({ success: false, message: 'You do not have access to these applications.' });
+    }
 
     // FIX: load CI question definitions once — `required` is read from settings,
     // never from the client-supplied draft. Deliberately NOT wrapped in
@@ -88,6 +100,37 @@ async function syncOfflineDrafts(req, res) {
                 decision, declineReason,
                 selfieBase64, ciAnswers,
             } = draft;
+
+            if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim()) {
+                results.push({ ciReferenceCode, success: false, error: 'ciReferenceCode is required.' });
+                continue;
+            }
+
+            const [application] = await graph.query(
+                queryQl(TEMP_GUARD_TYPE, {
+                    where: { ciReferenceCode: { _eq: ciReferenceCode } },
+                    limit: 1,
+                })
+            ).then(r => r.data?.temporaryLoanApplications ?? []);
+
+            if (!application || !branchWhereAllows(branchWhere, application.branchId)) {
+                results.push({ ciReferenceCode, success: false, error: 'Application not found.' });
+                continue;
+            }
+            if (application.status === 'pending_validation') {
+                results.push({
+                    ciReferenceCode, success: false,
+                    error: 'Flagged as a possible duplicate; it must be validated before a CI decision can be recorded.',
+                });
+                continue;
+            }
+            if (application.status === 'promoted') {
+                results.push({
+                    ciReferenceCode, success: false,
+                    error: 'Already promoted to a client record; the decision cannot be changed.',
+                });
+                continue;
+            }
 
             // FIX: same rules as the online route
             const ciError = validateCIPayload(
