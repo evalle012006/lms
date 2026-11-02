@@ -1,6 +1,8 @@
 // src/components/transactions/loan-application/FaceVerifyStep.js
 // Face verification at LDF disbursement — same UX improvements as FaceLivenessStep.
 // FIX: mirrored display + flipped pose thresholds + improved UX overlays.
+// Supports: first-time enrollment (no template), verification, and supervisor-approved
+// re-enrollment ("recapture") of the reference face after repeated mismatches.
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
@@ -11,10 +13,17 @@ import {
     isTooDark,
     canvasToDebugThumbnail,
 } from '@/lib/face-capture-utils';
+import { openCameraStream } from '@/lib/camera-stream';
+import {
+    FACE_MATCH_THRESHOLD,
+    MIN_MISMATCHES_FOR_RECAPTURE,
+    MIN_RECAPTURE_REASON_LENGTH,
+    getRecaptureState,
+} from '@/lib/face-recapture-utils';
 
 const MODEL_URL         = '/models';
 const SCORE_THRESHOLD   = 0.5;
-const MATCH_THRESHOLD   = 0.50;
+const MATCH_THRESHOLD   = FACE_MATCH_THRESHOLD;
 const POSE_SAMPLES      = 6;
 const LANDMARK_INTERVAL = 150;
 
@@ -84,7 +93,10 @@ const DirectionArrow = ({ direction, active }) => {
     return null;
 };
 
-const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) => (
+const VerifyResult = ({
+    matched, score, onRetry, onConfirm, canSkip, onSkip,
+    recaptureState, mismatchCount, onStartRecapture,
+}) => (
     <div className="space-y-4">
         <div className={`p-5 rounded-2xl border-2 text-center ${
             matched ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
@@ -115,6 +127,36 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
                         rounded-xl hover:bg-blue-700 transition-colors">
                     Try Again
                 </button>
+
+                {recaptureState === 'available' && (
+                    <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-2">
+                        <p className="text-xs font-semibold text-amber-800">
+                            Still not matching after {mismatchCount} attempts
+                        </p>
+                        <p className="text-xs text-amber-700 leading-snug">
+                            If this is the right person but the saved face is poor or outdated, you can
+                            re-enroll it. The old record and all attempts are kept in the client's history.
+                        </p>
+                        <button type="button" onClick={onStartRecapture}
+                            className="w-full py-2 bg-amber-600 text-white text-sm font-semibold
+                                rounded-xl hover:bg-amber-700 transition-colors">
+                            Re-enroll Reference Face…
+                        </button>
+                    </div>
+                )}
+                {recaptureState === 'locked' && (
+                    <p className="text-[11px] text-center text-gray-400">
+                        Re-enrollment unlocks after {MIN_MISMATCHES_FOR_RECAPTURE} failed attempts
+                        ({Math.min(mismatchCount, MIN_MISMATCHES_FOR_RECAPTURE)}/{MIN_MISMATCHES_FOR_RECAPTURE}).
+                    </p>
+                )}
+                {recaptureState === 'no_permission' && (
+                    <p className="text-[11px] text-center text-amber-600">
+                        Re-enrollment needs a branch manager, area admin, regional manager,
+                        deputy director or admin signed in.
+                    </p>
+                )}
+
                 {canSkip && (
                     <button type="button" onClick={onSkip}
                         className="w-full py-2.5 border border-gray-300 text-gray-600
@@ -133,12 +175,23 @@ const VerifyResult = ({ matched, score, onRetry, onConfirm, canSkip, onSkip }) =
 // onRetry — optional callback to parent when user clicks Try Again
 // Parent (DisbursementPhotoModal) uses this to bump a key and remount this component,
 // clearing all state cleanly. Without this, internal state can get stuck after a mismatch.
-const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false, clientId, loanId, branchId, ciReferenceCode, }) => {
+//
+// Re-enrollment props (omit onRecapture to disable the feature entirely):
+//   onMismatch     — called each time a verification attempt does not match (parent counts them)
+//   onRecapture    — async ({ faceTemplate, photoKey, livenessScore, reason }) => void
+//   mismatchCount  — failed attempts so far this session (UX gate; the server re-checks)
+//   canRecapture   — whether the signed-in user may approve a re-enrollment
+const FaceVerifyStep = ({
+    faceTemplate, onVerified, onEnroll, onSkip, onRetry, canSkip = false,
+    clientId, loanId, branchId, ciReferenceCode,
+    onMismatch, onRecapture, mismatchCount = 0, canRecapture = false,
+}) => {
     const videoRef     = useRef(null);
     const streamRef    = useRef(null);
     const intervalRef  = useRef(null);
     const faceApiRef   = useRef(null);
     const poseCountRef = useRef(0);
+    const mountedRef   = useRef(true);
 
     const [modelsLoaded,  setModelsLoaded]  = useState(false);
     const [modelsLoading, setModelsLoading] = useState(false);
@@ -152,8 +205,16 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
     const [streamReady,   setStreamReady]   = useState(false);
     const [result,        setResult]        = useState(null);
 
+    // Re-enrollment (recapture) flow
+    const [recaptureStage,      setRecaptureStage]      = useState(null);   // null | 'reason'
+    const [recaptureReason,     setRecaptureReason]     = useState('');
+    const [recaptureActive,     setRecaptureActive]     = useState(false);  // render flag
+    const recaptureActiveRef = useRef(false);                                // read inside extractAndMatch (no stale closure)
+    const [submittingRecapture, setSubmittingRecapture] = useState(false);
+
     const currentChallenge = CHALLENGES[challengeIdx];
     const noTemplate = !faceTemplate || !Array.isArray(faceTemplate) || faceTemplate.length !== 128;
+    const recaptureState = getRecaptureState({ enabled: !!onRecapture, mismatchCount, canRecapture });
 
     async function uploadDebugThumbnail(blob, clientId) {
         if (!blob) return null;
@@ -212,12 +273,15 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
     const getStream = useCallback(async () => {
         setCameraError(null);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false,
+            // null when we unmounted mid-open — the helper already released the stream
+            return await openCameraStream({
+                streamRef,
+                isActive: () => mountedRef.current,
+                constraints: {
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false,
+                },
             });
-            streamRef.current = stream;
-            return stream;
         } catch (err) {
             const msg = err.name === 'NotAllowedError'
                 ? 'Camera access denied. Please allow camera access.'
@@ -260,7 +324,10 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
         setStreamReady(false);
     }, []);
 
-    useEffect(() => () => stopCamera(), [stopCamera]);
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; stopCamera(); };
+    }, [stopCamera]);
 
     const extractAndMatch = useCallback(async () => {
         setCapturing(true);
@@ -295,23 +362,32 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
             stopCamera();
             const capturedDescriptor = Array.from(detection.descriptor);
 
-            // ── Enrollment path — no template exists, this capture BECOMES it ──
-            if (noTemplate) {
-                setResult({ enrolled: true, template: capturedDescriptor });
-                uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
-                    logFaceVerifyAttempt({
-                        clientId, loanId, branchId, ciReferenceCode, distance: null, confidence: null,
-                        matched: null, photoKey,
-                    });
+            // ── Enrollment path — first enrollment (no template) OR supervisor re-enrollment ──
+            // The upload is awaited so the photo key travels with the enrollment.
+            const isRecapture = recaptureActiveRef.current;
+            if (noTemplate || isRecapture) {
+                const photoKey = await uploadDebugThumbnail(thumbnailBlob, clientId);
+                logFaceVerifyAttempt({
+                    clientId, loanId, branchId, ciReferenceCode, distance: null, confidence: null,
+                    matched: null, photoKey,
+                });
+                if (!mountedRef.current) return;
+                setResult({
+                    enrolled: true,
+                    recapture: isRecapture,
+                    template: capturedDescriptor,
+                    photoKey,
+                    livenessScore: detection.detection?.score ?? null,
                 });
                 return;
             }
 
-            // ── Existing verification path — unchanged ──
+            // ── Existing verification path ──
             const distance   = euclideanDistance(capturedDescriptor, faceTemplate);
             const confidence = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
             const matched    = distance < MATCH_THRESHOLD;
             setResult({ matched, score: confidence / 100, distance });
+            if (!matched) onMismatch?.();
 
             uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
                 logFaceVerifyAttempt({ clientId, loanId, branchId, ciReferenceCode, distance, confidence, matched, photoKey });
@@ -325,7 +401,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
             toast.error('Face verification failed. Please try again.');
             setCapturing(false);
         }
-    }, [faceTemplate, stopCamera, onVerified, noTemplate, clientId, loanId, branchId, ciReferenceCode]);
+    }, [faceTemplate, stopCamera, onVerified, onMismatch, noTemplate, clientId, loanId, branchId, ciReferenceCode]);
 
     const startDetectionLoop = useCallback((challengeIndex) => {
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -395,12 +471,88 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
 
     const handleRetry = useCallback(() => {
         setResult(null);
-        // FIX: call parent onRetry so DisbursementPhotoModal can force remount via key
-        onRetry?.();
+        // The parent remounts us via key on retry. Starting the camera on this
+        // about-to-unmount instance would leak the stream, so only self-start
+        // when there is no parent to remount us.
+        if (onRetry) { onRetry(); return; }
         handleStart();
     }, [handleStart, onRetry]);
 
-    if (noTemplate && !cameraOpen && !result) {
+    // ── Re-enrollment handlers ───────────────────────────────────────────
+    const beginRecaptureCapture = () => {
+        recaptureActiveRef.current = true;
+        setRecaptureActive(true);
+        setRecaptureStage(null);
+        handleStart();
+    };
+
+    // Abandon re-enrollment: remount to a clean start screen (also releases the camera).
+    const cancelRecapture = () => {
+        stopCamera();
+        recaptureActiveRef.current = false;
+        setRecaptureActive(false);
+        setRecaptureStage(null);
+        setRecaptureReason('');
+        if (onRetry) onRetry(); else setResult(null);
+    };
+
+    const confirmRecapture = async () => {
+        if (!result?.photoKey || submittingRecapture) return;
+        setSubmittingRecapture(true);
+        try {
+            await onRecapture?.({
+                faceTemplate: result.template,
+                photoKey: result.photoKey,
+                livenessScore: result.livenessScore,
+                reason: recaptureReason.trim(),
+            });
+        } finally {
+            setSubmittingRecapture(false);
+        }
+    };
+
+    // ── Render ───────────────────────────────────────────────────────────
+
+    // Re-enrollment: reason
+    if (recaptureStage === 'reason') {
+        const reasonOk = recaptureReason.trim().length >= MIN_RECAPTURE_REASON_LENGTH;
+        return (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
+                <p className="text-sm font-semibold text-amber-800">Re-enroll Reference Face</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                    This replaces the face this client is verified against. The old record and every
+                    attempt so far stay in the client's history. Compare the client with the LAF photo,
+                    government ID and selfie at the top of this window first — only continue if this is
+                    the same person.
+                </p>
+                <textarea
+                    value={recaptureReason}
+                    onChange={(e) => setRecaptureReason(e.target.value)}
+                    rows={3}
+                    placeholder="Why is the saved face not matching? (required)"
+                    className="w-full border border-amber-300 rounded-lg text-sm px-3 py-2
+                        focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                />
+                <p className="text-[11px] text-amber-600">
+                    {recaptureReason.trim().length}/{MIN_RECAPTURE_REASON_LENGTH} characters minimum
+                </p>
+                <div className="flex gap-2">
+                    <button type="button"
+                        onClick={() => { setRecaptureStage(null); setRecaptureReason(''); }}
+                        className="flex-1 py-2 border border-gray-300 text-gray-600 text-sm rounded-xl hover:bg-gray-50">
+                        Back
+                    </button>
+                    <button type="button" onClick={beginRecaptureCapture} disabled={!reasonOk}
+                        className="flex-1 py-2 bg-amber-600 text-white text-sm font-semibold rounded-xl
+                            hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Continue to Capture
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (noTemplate && !cameraOpen && !result && !capturing) {
         return (
             <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
                 <p className="text-sm font-semibold text-amber-800">⚠ No Face Template on Record</p>
@@ -424,22 +576,72 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
         );
     }
 
+    // Re-enrollment: camera starting
+    if (recaptureActive && !cameraOpen && !result && !capturing) {
+        return (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-center space-y-2">
+                <p className="text-sm text-amber-800">{cameraError || 'Preparing camera…'}</p>
+                <button type="button" onClick={cancelRecapture}
+                    className="text-xs text-gray-500 underline">Cancel</button>
+            </div>
+        );
+    }
+
+    // Saving a capture (enrollment upload in flight)
+    if (capturing && !cameraOpen && !result) {
+        return (
+            <div className="p-4 text-center text-sm text-gray-500">Saving capture…</div>
+        );
+    }
+
     if (result?.enrolled) {
+        const isRecapture = !!result.recapture;
         return (
             <div className="space-y-4">
-                <div className="p-5 rounded-2xl border-2 border-green-300 bg-green-50 text-center">
-                    <p className="text-4xl mb-2">✅</p>
-                    <p className="text-base font-bold text-green-800">Face Captured</p>
-                    <p className="text-xs text-green-600 mt-1">
-                        This will be enrolled as the client's face record and disbursement can proceed.
+                <div className={`p-5 rounded-2xl border-2 text-center ${
+                    isRecapture ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                }`}>
+                    <p className="text-4xl mb-2">{isRecapture ? '🔁' : '✅'}</p>
+                    <p className={`text-base font-bold ${isRecapture ? 'text-amber-800' : 'text-green-800'}`}>
+                        {isRecapture ? 'New Face Captured' : 'Face Captured'}
                     </p>
+                    <p className={`text-xs mt-1 ${isRecapture ? 'text-amber-700' : 'text-green-600'}`}>
+                        {isRecapture
+                            ? 'This will replace the saved reference face. The old one is kept in history.'
+                            : "This will be enrolled as the client's face record and disbursement can proceed."}
+                    </p>
+                    {isRecapture && !result.photoKey && (
+                        <p className="text-xs text-red-600 mt-2">
+                            The capture photo did not upload. Cancel and capture again.
+                        </p>
+                    )}
                 </div>
-                <button type="button"
-                    onClick={() => onEnroll?.({ faceTemplate: result.template, faceEnrolledAt: new Date().toISOString() })}
-                    className="w-full py-3 bg-green-600 text-white text-sm font-semibold
-                        rounded-xl hover:bg-green-700 transition-colors">
-                    Confirm & Enroll
-                </button>
+                {isRecapture ? (
+                    <div className="space-y-2">
+                        <button type="button" onClick={confirmRecapture}
+                            disabled={submittingRecapture || !result.photoKey}
+                            className="w-full py-3 bg-amber-600 text-white text-sm font-semibold
+                                rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-colors">
+                            {submittingRecapture ? 'Saving…' : 'Confirm & Replace Reference'}
+                        </button>
+                        <button type="button" onClick={cancelRecapture} disabled={submittingRecapture}
+                            className="w-full py-2 text-xs text-gray-500 underline">
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <button type="button"
+                        onClick={() => onEnroll?.({
+                            faceTemplate: result.template,
+                            faceEnrolledAt: new Date().toISOString(),
+                            photoKey: result.photoKey ?? null,
+                            livenessScore: result.livenessScore ?? null,
+                        })}
+                        className="w-full py-3 bg-green-600 text-white text-sm font-semibold
+                            rounded-xl hover:bg-green-700 transition-colors">
+                        Confirm & Enroll
+                    </button>
+                )}
             </div>
         );
     }
@@ -453,6 +655,9 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
                 onConfirm={() => onVerified({ matched: true, score: result.score, faceMatchScore: result.distance })}
                 canSkip={canSkip}
                 onSkip={() => onSkip?.()}
+                recaptureState={recaptureState}
+                mismatchCount={mismatchCount}
+                onStartRecapture={() => setRecaptureStage('reason')}
             />
         );
     }
@@ -577,7 +782,7 @@ const FaceVerifyStep = ({ faceTemplate, onVerified, onEnroll, onSkip, onRetry, c
                     </p>
                 )}
 
-                <button type="button" onClick={stopCamera}
+                <button type="button" onClick={recaptureActive ? cancelRecapture : stopCamera}
                     className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 underline">
                     Cancel
                 </button>

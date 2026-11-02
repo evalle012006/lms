@@ -7,7 +7,20 @@ import formidable from "formidable";
 import fs from "fs";
 import moment from 'moment';
 import { notifyGroupLeaderUpdated, notifyClientDelinquent, isNotificationEnabled } from '@/lib/notification-service';
-import { findBranches, findGroups } from '@/lib/graph.functions';
+import { findBranches, findGroups, findUserById } from '@/lib/graph.functions';
+import { logAudit } from '@/lib/audit';
+import { resolveBranchWhere, branchWhereAllows } from '@/lib/ci-scope';
+import { resolveClientInScope } from '@/lib/client-scope';
+
+// Rollback switch (restart required): ENFORCE_CLIENT_SCOPE=false
+const ENFORCE_CLIENT_SCOPE = process.env.ENFORCE_CLIENT_SCOPE !== 'false';
+
+// The browser never needs the raw face template (see clients/face-template.js)
+const stripBiometrics = (client) => {
+    if (!client) return client;
+    const { faceTemplate, ...safe } = client;
+    return safe;
+};
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
@@ -120,6 +133,17 @@ const sanitizeClientFields = (fields, existing) => {
 // error making the mismatch obvious.
 async function getClient(req, res) {
     const { clientId = null } = req.query;
+    const send = (payload) => res.status(200)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(payload));
+
+    const user = req.auth?.sub ? await findUserById(req.auth.sub) : null;
+    if (!user) return send({ success: false, message: 'User not found.' });
+
+    // Out-of-scope reads exactly like not-found
+    if (ENFORCE_CLIENT_SCOPE && !(await resolveClientInScope(user, clientId))) {
+        return send({ success: true, client: null });
+    }
 
     const [client] = await graph.query(
         queryQl(CLIENT_TYPE, {
@@ -129,9 +153,7 @@ async function getClient(req, res) {
         })
     ).then(res => res.data.clients);
 
-    res.status(200)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify({ success: true, client: client || null }));
+    send({ success: true, client: stripBiometrics(client) || null });
 }
 
 async function updateClient(req, res) {
@@ -155,6 +177,17 @@ async function updateClient(req, res) {
                     return;
                 }
 
+                // Who is calling, and may they touch this client? Out-of-scope = not-found.
+                const actingUser = req.auth?.sub ? await findUserById(req.auth.sub) : null;
+                if (!actingUser) {
+                    resolve({ success: false, message: 'User not found.' });
+                    return;
+                }
+                if (ENFORCE_CLIENT_SCOPE && !(await resolveClientInScope(actingUser, clientData._id))) {
+                    resolve({ success: false, message: 'Client not found' });
+                    return;
+                }
+
                 const isNotificationEnabledFlag = await isNotificationEnabled();
 
                 // Save previous values for comparison (for notifications)
@@ -171,8 +204,20 @@ async function updateClient(req, res) {
                 // to their current DB value instead of a fixed null/''/false.
                 const sanitizedFields = sanitizeClientFields(fields, clientData);
 
+                // A client can only be moved to a branch the caller is allowed to see
+                if (ENFORCE_CLIENT_SCOPE && sanitizedFields.branchId !== clientData.branchId) {
+                    const where = await resolveBranchWhere(actingUser);
+                    if (!branchWhereAllows(where, sanitizedFields.branchId)) {
+                        resolve({ success: false, message: 'You cannot move a client to a branch outside your scope.' });
+                        return;
+                    }
+                }
+
                 // Handle profile field
                 const profile = sanitizeString(fields.profile, clientData.profile);
+
+                // Snapshot BEFORE the merge below overwrites clientData — used for the audit diff
+                const beforeClient = { ...clientData };
 
                 // Merge sanitized fields with existing client data — this is
                 // now genuinely a merge, since sanitizedFields itself already
@@ -225,6 +270,51 @@ async function updateClient(req, res) {
                     })
                 );
 
+                // ── Audit: what actually changed ────────────────────────────────
+                try {
+                    const changedKeys = Object.keys(sanitizedFields)
+                        .filter(k => String(sanitizedFields[k] ?? '') !== String(beforeClient[k] ?? ''));
+                    const profileChanged = String(profile ?? '') !== String(beforeClient.profile ?? '');
+
+                    if (changedKeys.length > 0 || profileChanged) {
+                        const actor = actingUser;
+                        const actorName = actor ? `${actor.firstName} ${actor.lastName}` : null;
+                        const pickKeys = (src, keys) => Object.fromEntries(keys.map(k => [k, src[k] ?? null]));
+                        const label = `${beforeClient.firstName} ${beforeClient.lastName}`;
+                        const base = {
+                            category: 'CLIENT', entityType: 'client',
+                            entityId: fields._id, clientId: fields._id,
+                            branchId: beforeClient.branchId,
+                            userId: actor?._id, userName: actorName,
+                        };
+
+                        if (changedKeys.length > 0) {
+                            await logAudit(req, {
+                                ...base,
+                                action: 'CLIENT_UPDATED',
+                                severity: changedKeys.includes('archived') ? 'WARNING' : 'INFO',
+                                description: `Client ${label} updated (${changedKeys.join(', ')})${actorName ? ` by ${actorName}` : ''}`,
+                                beforeData: pickKeys(beforeClient, changedKeys),
+                                afterData: pickKeys(sanitizedFields, changedKeys),
+                                metadata: { clientId: fields._id, changedFields: changedKeys },
+                            });
+                        }
+                        if (profileChanged) {
+                            await logAudit(req, {
+                                ...base,
+                                action: 'CLIENT_PROFILE_PHOTO_CHANGED',
+                                severity: 'WARNING',
+                                description: `Profile photo of ${label} changed${actorName ? ` by ${actorName}` : ''}`,
+                                beforeData: { profile: beforeClient.profile ?? null },
+                                afterData: { profile: profile ?? null },
+                                metadata: { clientId: fields._id },
+                            });
+                        }
+                    }
+                } catch (auditErr) {
+                    console.error('[clients] audit failed:', auditErr.message); // never break the update
+                }
+
                 // Handle notifications for groupLeader change
                 if (isNotificationEnabledFlag && sanitizedFields.groupLeader !== previousGroupLeader) {
                     try {
@@ -261,7 +351,7 @@ async function updateClient(req, res) {
                     }
                 }
 
-                resolve({ success: true, client: clientData });
+                resolve({ success: true, client: stripBiometrics(clientData) });
             } catch (error) {
                 console.error('Error updating client:', error);
                 resolve({ success: false, message: error.message });

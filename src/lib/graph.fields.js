@@ -288,7 +288,6 @@ export const SETTINGS_FIELDS = `
   companyEmail
   companyName
   companyPhoneNumber
-  superPwd
   enableNotifications
   allowLoCI
   requireClientBiometric
@@ -306,6 +305,7 @@ export const SETTINGS_FIELDS = `
   qrAllowedStartTime
   qrAllowedEndTime
   passwordLoginEnabled
+  allowFaceRecapture
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -920,6 +920,7 @@ export const AUDIT_LOG_FIELDS = `
   severity
   entityType
   entityId
+  clientId
   description
   beforeData
   afterData
@@ -1014,6 +1015,7 @@ export const FACE_VERIFY_ATTEMPT_FIELDS = `
     user_agent
     inserted_by
     captured_at
+    enrollment_id
 `;
 
 export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
@@ -1084,4 +1086,24 @@ export const CASH_COLLECTION_UPLOAD_ROW_FIELDS = `
   before_data
   after_data
   inserted_date
+`;
+
+export const CLIENT_FACE_ENROLLMENT_FIELDS = `
+  _id
+  client_id
+  version
+  status
+  source
+  face_template
+  photo_key
+  liveness_score
+  enrolled_at
+  reason
+  trigger_attempt_id
+  loan_id
+  branch_id
+  captured_by
+  approved_by
+  created_at
+  superseded_at
 `;

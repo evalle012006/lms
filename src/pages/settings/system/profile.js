@@ -455,6 +455,71 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                 </div>
             </div>
 
+            {/* Allow Client Face Re-enrollment Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-amber-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Allow Client Face Re-enrollment
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, a branch manager, area admin, regional manager, deputy
+                                director or admin can replace a client's saved face during disbursement
+                                after repeated mismatches. Each re-enrollment needs a written reason, keeps
+                                the old face and every attempt in the client's history, and is shown in the
+                                branch closing review. When disabled, a mismatch can only be retried or
+                                overridden by an administrator.
+                            </p>
+                            {values.allowFaceRecapture && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Re-enrollment changes the face a client is verified against.
+                                        Users who already have the app open need to reload to see the change.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('allowFaceRecapture', !values.allowFaceRecapture)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-600
+                                focus:ring-offset-2 ${values.allowFaceRecapture ? 'bg-amber-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.allowFaceRecapture ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.allowFaceRecapture
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.allowFaceRecapture ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* QR Application Time Restriction */}
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <p className="text-base font-semibold text-gray-900 mb-1">
@@ -513,6 +578,48 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
     </div>
 );
 
+// Loads the super password from its own root-only endpoint (the general settings API never returns it).
+// Until it has loaded, the form value stays undefined and is NOT sent on save, so it can't be wiped by accident.
+const SuperPasswordField = ({ values, handleChange, setFieldValue, errors }) => {
+    const [status, setStatus] = useState('loading'); // loading | ready | hidden | error
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchWrapper.get(`${getApiBaseUrl()}settings/super-password`)
+            .then((res) => {
+                if (cancelled) return;
+                if (res?.success) {
+                    setFieldValue('superPwd', res.superPwd ?? '', false);
+                    setStatus('ready');
+                } else {
+                    setStatus('hidden');
+                }
+            })
+            .catch(() => { if (!cancelled) setStatus('error'); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    if (status === 'hidden') return null; // not allowed to manage it: don't show the field at all
+    if (status === 'loading') return <p className="text-sm text-gray-400">Loading super password…</p>;
+    if (status === 'error') {
+        return <p className="text-sm text-amber-600">Could not load the super password. It will be left unchanged when you save.</p>;
+    }
+    return (
+        <ModernInput
+            name="superPwd"
+            value={values.superPwd ?? ''}
+            label="Super Password"
+            placeholder="Enter super password"
+            icon={ShieldCheckIcon}
+            onChange={handleChange}
+            setFieldValue={setFieldValue}
+            errors={errors}
+            isPassword={true}
+        />
+    );
+};
+
 const ProfileSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
     // Use the correct Redux state path from the screenshot: systemSettings.data
@@ -530,12 +637,12 @@ const ProfileSettingsPage = (props) => {
         branchName: state.branchName || '',
         branchAddress: state.branchAddress || '',
         branchPhoneNumber: state.branchPhoneNumber || '',
-        superPwd: state.superPwd || '',
         enableNotifications: state.enableNotifications ?? false,
         allowLoCI: state.allowLoCI ?? false,
         requireClientBiometric:  state.requireClientBiometric  ?? true,
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
         requireLoanVerificationAtClosing: state.requireLoanVerificationAtClosing ?? true,
+        allowFaceRecapture: state.allowFaceRecapture ?? false,
         qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
         qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }
@@ -574,11 +681,14 @@ const ProfileSettingsPage = (props) => {
         setLoading(true);
         try {
             const updatedValues = {...values, _id: state._id};
+            // Only send the super password when the field actually loaded; otherwise leave it untouched
+            if (updatedValues.superPwd === undefined) delete updatedValues.superPwd;
             const apiURL = `${getApiBaseUrl()}settings/system`;
             const response = await fetchWrapper.post(apiURL, updatedValues);
 
             if (response.success) {
-                dispatch(setSystemSettings(response.system || { ...state, ...values }));
+                const { superPwd: _secret, ...safeValues } = values;
+                dispatch(setSystemSettings(response.system || { ...state, ...safeValues }));
                 setSaved(true);
                 toast.success('System Profile updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
@@ -699,16 +809,11 @@ const ProfileSettingsPage = (props) => {
                                                 errors={touched.companyPhoneNumber && errors.companyPhoneNumber}
                                             />
                                             
-                                            <ModernInput
-                                                name="superPwd"
-                                                value={values.superPwd}
-                                                label="Super Password"
-                                                placeholder="Enter super password"
-                                                icon={ShieldCheckIcon}
-                                                onChange={handleChange}
+                                            <SuperPasswordField
+                                                values={values}
+                                                handleChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.superPwd && errors.superPwd}
-                                                isPassword={true}
                                             />
                                         </div>
                                     </div>

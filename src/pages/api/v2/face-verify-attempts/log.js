@@ -1,8 +1,8 @@
 // src/pages/api/v2/face-verify-attempts/log.js
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl } from '@/lib/graph/graph.util';
-import { FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
+import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
+import { FACE_VERIFY_ATTEMPT_FIELDS, CLIENT_FACE_ENROLLMENT_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import { canDecideCI } from '@/lib/ci-scope';
 import { resolveClientInScope } from '@/lib/client-scope';
@@ -10,6 +10,7 @@ import { generateUUID } from '@/lib/utils';
 
 const graph = new GraphProvider();
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS)('face_verify_attempts');
+const ENROLLMENT_TYPE = createGraphType('client_face_enrollments', CLIENT_FACE_ENROLLMENT_FIELDS);
 
 export default apiHandler({ post: logAttempt });
 
@@ -39,10 +40,24 @@ async function logAttempt(req, res) {
         return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
+    // Tie this attempt to the reference version it is checked against.
+    // Best-effort: a lookup failure must never lose the attempt row.
+    let enrollmentId = null;
+    try {
+        const [active] = await graph.query(
+            queryQl(ENROLLMENT_TYPE('enrollments'), {
+                where: { _and: [{ client_id: { _eq: client_id } }, { status: { _eq: 'active' } }] },
+                limit: 1,
+            })
+        ).then(r => r.data?.enrollments ?? []);
+        enrollmentId = active?._id ?? null;
+    } catch { /* leave null */ }
+
     const result = await graph.mutation(
         insertQl(ATTEMPT_TYPE, {
             objects: [{
                 _id: generateUUID(),
+                enrollment_id: enrollmentId,
                 client_id,
                 loan_id: loan_id ?? null,
                 branch_id: client.branchId,

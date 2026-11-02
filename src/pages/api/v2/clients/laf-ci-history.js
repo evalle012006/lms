@@ -21,6 +21,9 @@
 import { apiHandler }               from '@/services/api-handler';
 import { GraphProvider }            from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
+import { findUserById } from '@/lib/graph.functions';
+import { canDecideCI } from '@/lib/ci-scope';
+import { resolveClientInScope } from '@/lib/client-scope';
 
 const graph = new GraphProvider();
 
@@ -38,8 +41,16 @@ export default apiHandler({ get: getLafCiHistory });
 async function getLafCiHistory(req, res) {
     const { clientId } = req.query;
 
-    if (!clientId) {
+    if (typeof clientId !== 'string' || !clientId) {
         return res.status(200).json({ success: false, message: 'clientId required.' });
+    }
+
+    const user = await findUserById(req.auth?.sub);
+    if (!user || !canDecideCI(user)) {
+        return res.status(200).json({ success: false, message: 'Not allowed.' });
+    }
+    if (!(await resolveClientInScope(user, clientId))) {
+        return res.status(200).json({ success: false, message: 'Client not found.' });
     }
 
     const applications = await graph.query(
