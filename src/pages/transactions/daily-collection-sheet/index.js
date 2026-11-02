@@ -811,7 +811,28 @@ const DailyCollectionSheet = () => {
 
                         ) : activeTab === 'payroll' ? (
                             <div className="p-6">
-                                <Payroll />
+                                {(isAdmin || isBranchManager) && transactionBranchId ? (
+                                    <Payroll
+                                        branchId={transactionBranchId}
+                                        branchName={getBranchName()}
+                                        currentUser={currentUser}
+                                        selectedDate={selectedDate}
+                                    />
+                                ) : (
+                                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+                                        <h3 className="text-lg font-semibold text-yellow-800">
+                                            {isAdmin && !transactionBranchId
+                                                ? "Please Select a Branch"
+                                                : "Payroll Access Restricted"}
+                                        </h3>
+
+                                        <p className="mt-2 text-sm text-yellow-700">
+                                            {isAdmin && !transactionBranchId
+                                                ? "Please select a branch from the Branch filter above to view or edit its payroll."
+                                                : "Only Administrators and Branch Managers can manually enter and edit payroll."}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                         ) : activeTab === 'fundtransfer' ? (
