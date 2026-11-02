@@ -42,6 +42,8 @@ const UPLOAD_ROW_TYPE = createGraphType('cash_collection_upload_rows', '_id');
 // same shape qr-cash-collection/submit.js uses for its holiday lookup: date is stored as 'MM-DD'
 const HOLIDAY_TYPE = createGraphType('holidays', HOLIDAY_FIELDS);
 const TX_SETTINGS_TYPE = createGraphType('transactionSettings', 'allowWeekendTransaction');
+// System Settings > Feature Enablement > Allow Offline Collection Upload
+const SYSTEM_SETTINGS_TYPE = createGraphType('settings', 'allowOfflineUpload');
 
 
 const CC_FIELD_SET = new Set(
@@ -99,6 +101,13 @@ async function commit(req, res) {
         if (!/^[a-f0-9]{64}$/.test(fileHash || '')) return reply(res, false, 'Invalid file hash.');
         if (reason.length < 5 || reason.length > 500) return reply(res, false, 'Please enter the reason this collection was done offline (5-500 characters).');
         if (!Array.isArray(templateLoanIds)) return reply(res, false, 'Template metadata is missing.');
+
+        // ---- 1b. the feature switch (turning it off stops NEW uploads; drafts already saved stay submittable)
+        const [systemSettings] = await graph.query(queryQl(SYSTEM_SETTINGS_TYPE('upload_settings'), { limit: 1 }))
+            .then(r => r.data?.upload_settings ?? []);
+        if (systemSettings?.allowOfflineUpload !== true) {
+            return reply(res, false, 'The offline collection upload is turned off. Ask an administrator to enable it in System Settings.', { errorCode: 'FEATURE_DISABLED' });
+        }
 
         // ---- 2. permission + scope (server is the source of truth) --------------------------
         if (!canUseOfflineUpload(user)) {

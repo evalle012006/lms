@@ -28,6 +28,7 @@ import { PlusIcon }                    from '@heroicons/react/24/solid';
 import { setBranch } from '@/redux/actions/branchActions';
 import { canManageGroups } from '@/lib/group-permissions';
 import { canUseOfflineUpload } from '@/lib/offline-upload/permissions';
+import { useOfflineUploadEnabled } from '@/hooks/useOfflineUploadEnabled';
 
 // Stable reference so the drawer's effect doesn't re-run on every render
 const NO_DEFAULTS = {};
@@ -285,6 +286,7 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
     const currentBranch = useSelector(state => state.branch.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const selectedLO = useSelector(s => s.user.selectedLO);
+    const offlineUploadEnabled = useOfflineUploadEnabled();
 
     const [loading,    setLoading]    = useState(true);
     const [mode,       setMode]       = useState('add');
@@ -548,7 +550,7 @@ const ViewByGroupsPage = ({ origin, uuid }) => {
         canEdit,
         canDelete,
         onTemplate: g => router.push(`/transactions/${g.occurence}-cash-collection/client/${g._id}?downloadTemplate=1`),
-        canTemplate: canUseOfflineUpload(currentUser),
+        canTemplate: canUseOfflineUpload(currentUser) && offlineUploadEnabled,
     };
 
     const actionButtons = canEdit ? [

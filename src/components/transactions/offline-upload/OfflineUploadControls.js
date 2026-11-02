@@ -17,6 +17,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl, LOR_DAILY_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
 import { CASH_COLLECTIONS_FIELDS } from '@/lib/graph.fields';
 import { safeNumber } from '@/lib/utils';
+import { useOfflineUploadEnabled } from '@/hooks/useOfflineUploadEnabled';
 import { canUseOfflineUpload } from '@/lib/offline-upload/permissions';
 import { createRowEngine, UPLOAD_BLOCKED_REMARKS } from '@/lib/offline-upload/lor-row-engine';
 import {
@@ -50,6 +51,7 @@ const OfflineUploadControls = ({
     engineDeps,         // { getMinMcbu, isCsfCollectionAllowed, csfEnabled, hasGroupLeader, minCsfCollection }
     autoDownload = false,   // opened from the Groups page with ?downloadTemplate=1
 }) => {
+    const enabled = useOfflineUploadEnabled();     // System Settings > Allow Offline Collection Upload
     const fileRef = useRef(null);
     const autoRan = useRef(false);
     const [busy, setBusy] = useState(false);
@@ -182,16 +184,16 @@ const OfflineUploadControls = ({
 
     // Groups page -> "download template" opens this page with ?downloadTemplate=1
     useEffect(() => {
-        if (!autoDownload || autoRan.current || !allowedRole) return;
+        if (!autoDownload || autoRan.current || !allowedRole || !enabled) return;
         if (!rows.some(r => r?.clientId)) return;              // wait until the rows are in
         autoRan.current = true;
         // strip the query without a router event, so the page does not reload its data
         window.history.replaceState(window.history.state, '', window.location.pathname);
         handleDownload();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [autoDownload, rows.length, allowedRole]);
+    }, [autoDownload, rows.length, allowedRole, enabled]);
 
-    if (!allowedRole) return null;
+    if (!allowedRole || !enabled) return null;
 
     const closePreview = () => { if (!busy) setPreview(null); };
     const closeResult = () => {

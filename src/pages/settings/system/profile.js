@@ -21,6 +21,7 @@ import {
   EyeSlashIcon,
   BellIcon,
   CogIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import CIQuestionsSettings from '@/components/settings/CIQuestionsSettings';
 
@@ -520,6 +521,66 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                 </div>
             </div>
 
+            {/* Allow Offline Collection Upload Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-cyan-100 rounded-lg">
+                            <ArrowUpTrayIcon className="h-6 w-6 text-cyan-600" />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Allow Offline Collection Upload
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, Branch Managers, Loan Officers and administrators can download a
+                                collection template from a group and upload the filled-in file on the LOR page.
+                                Rows are saved as drafts for today and nothing is posted until the collection is
+                                submitted. Turning it off hides the buttons and blocks new uploads; drafts that
+                                were already saved can still be submitted.
+                            </p>
+                            {values.allowOfflineUpload && (
+                                <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50
+                                    rounded-lg text-xs text-amber-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                        className="h-4 w-4 flex-shrink-0 mt-0.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>
+                                        Every upload is recorded with who, when, the reason given and a
+                                        before/after of each row.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('allowOfflineUpload', !values.allowOfflineUpload)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-600
+                                focus:ring-offset-2 ${values.allowOfflineUpload ? 'bg-cyan-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.allowOfflineUpload ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.allowOfflineUpload
+                                ? 'bg-cyan-100 text-cyan-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.allowOfflineUpload ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* QR Application Time Restriction */}
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <p className="text-base font-semibold text-gray-900 mb-1">
@@ -643,6 +704,7 @@ const ProfileSettingsPage = (props) => {
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
         requireLoanVerificationAtClosing: state.requireLoanVerificationAtClosing ?? true,
         allowFaceRecapture: state.allowFaceRecapture ?? false,
+        allowOfflineUpload: state.allowOfflineUpload ?? false,
         qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
         qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',
     }

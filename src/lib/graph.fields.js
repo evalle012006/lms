@@ -306,6 +306,7 @@ export const SETTINGS_FIELDS = `
   qrAllowedEndTime
   passwordLoginEnabled
   allowFaceRecapture
+  allowOfflineUpload
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `

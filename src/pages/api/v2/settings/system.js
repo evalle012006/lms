@@ -19,6 +19,7 @@ export const ROOT_ONLY_SETTINGS = [
     'requireClientBiometric',
     'requireStaffBiometric',
     'requireLoanVerificationAtClosing',
+    'allowOfflineUpload',
 ];
 const flagsType  = createGraphType('settings', ROOT_ONLY_SETTINGS.join(' '))('currentFlags');
 const secretType = createGraphType('settings', 'superPwd')('currentSecret');
@@ -60,6 +61,9 @@ async function updateSystemSettings(req, res) {
 
     if ('allowFaceRecapture' in system && typeof system.allowFaceRecapture !== 'boolean') {
         return refuse(res, 'allowFaceRecapture must be true or false.');
+    }
+    if ('allowOfflineUpload' in system && typeof system.allowOfflineUpload !== 'boolean') {
+        return refuse(res, 'allowOfflineUpload must be true or false.');
     }
 
     // Super password: only when sent by someone allowed to manage it. Unchanged → nothing to write or
