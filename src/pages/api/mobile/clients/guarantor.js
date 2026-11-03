@@ -52,7 +52,9 @@ async function getGuarantor(req, res) {
             data: {
                 firstName: linkedApplication.guarantorFirstName,
                 lastName: linkedApplication.guarantorLastName,
+                address: linkedApplication.guarantorAddress ?? null,
                 relationship: linkedApplication.guarantorRelationship,
+                phoneNumber: linkedApplication.guarantorContactNumber ?? null,
             },
         });
 

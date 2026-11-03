@@ -29,93 +29,93 @@ const INITIAL_TRANSACTION_TYPES = [
     // MANAGEMENT EXPENSES
     // =====================================================
 
-    { id: 'ME-030', category: 'Management Expenses', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
-    { id: 'ME-050', category: 'Management Expenses', code: '050', accountTitle: 'Staff CBU/Cashbond & Client MCBU Interest' },
-    { id: 'ME-054-01', category: 'Management Expenses', code: '054', accountTitle: 'Basic Salaries' },
-    { id: 'ME-054-02', category: 'Management Expenses', code: '054', accountTitle: 'De Minimis / ECOLA' },
-    { id: 'ME-055-01', category: 'Management Expenses', code: '055', accountTitle: 'Employers Contribution (ER)' },
-    { id: 'ME-055-02', category: 'Management Expenses', code: '055', accountTitle: 'Employers Contribution (EE)' },
-    { id: 'ME-055-03', category: 'Management Expenses', code: '055', accountTitle: 'Witheld Tax' },
-    { id: 'ME-055-04', category: 'Management Expenses', code: '055', accountTitle: 'Monthly Allocated Reimbursement Transportation' },
-    { id: 'ME-055-05', category: 'Management Expenses', code: '055', accountTitle: 'Back Pay' },
-    { id: 'ME-056-01', category: 'Management Expenses', code: '056', accountTitle: 'BONUSES (13th Month & Other Staff Benefits)' },
-    { id: 'ME-056-02', category: 'Management Expenses', code: '056', accountTitle: 'Monthly Special Additional Reimbursement Transportation' },
-    { id: 'ME-056-03', category: 'Management Expenses', code: '056', accountTitle: 'Other Transportation on Official Travel' },
-    { id: 'ME-056-04', category: 'Management Expenses', code: '056', accountTitle: 'Reimbursable Transportation' },
-    { id: 'ME-060', category: 'Management Expenses', code: '060', accountTitle: 'Office Rental Base' },
-    { id: 'ME-062', category: 'Management Expenses', code: '062', accountTitle: 'Light & Water' },
-    { id: 'ME-064', category: 'Management Expenses', code: '064', accountTitle: 'SSS, HDMF, PH Payment (BM Personnel)' },
-    { id: 'ME-065', category: 'Management Expenses', code: '065', accountTitle: 'Repairing & Maintenance' },
-    { id: 'ME-066', category: 'Management Expenses', code: '066', accountTitle: 'Communication and Postage' },
-    { id: 'ME-067', category: 'Management Expenses', code: '067', accountTitle: 'Office Supplies & Xerox' },
-    { id: 'ME-069', category: 'Management Expenses', code: '069', accountTitle: 'Staff Development & Conference' },
-    { id: 'ME-071', category: 'Management Expenses', code: '071', accountTitle: 'Representation' },
-    { id: 'ME-072', category: 'Management Expenses', code: '072', accountTitle: 'Bank Charges' },
-    { id: 'ME-073', category: 'Management Expenses', code: '073', accountTitle: 'City/Municipality Taxes and Licenses' },
-    { id: 'ME-075', category: 'Management Expenses', code: '075', accountTitle: 'Consultancy and Professional Fees' },
-    { id: 'ME-076', category: 'Management Expenses', code: '076', accountTitle: "Clients' Development & Training" },
-    { id: 'ME-077', category: 'Management Expenses', code: '077', accountTitle: 'Association Dues and Membership Fees' },
-    { id: 'ME-078', category: 'Management Expenses', code: '078', accountTitle: 'Miscellaneous Expense' },
-    { id: 'ME-079', category: 'Management Expenses', code: '079', accountTitle: 'Retirement Incentives' },
+    { id: 'ME-030', category: 'Management Expenses', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'ME-050', category: 'Management Expenses', code: '050 - Staff CBU/Cashbond & Client MCBU Interest', accountTitle: 'Staff CBU/Cashbond & Client MCBU Interest' },
+    { id: 'ME-054-01', category: 'Management Expenses', code: '054 - Basic Salaries', accountTitle: 'Basic Salaries' },
+    { id: 'ME-054-02', category: 'Management Expenses', code: '054 - De Minimis / ECOLA', accountTitle: 'De Minimis / ECOLA' },
+    { id: 'ME-055-01', category: 'Management Expenses', code: '055 - Employers Contribution (ER)', accountTitle: 'Employers Contribution (ER)' },
+    { id: 'ME-055-02', category: 'Management Expenses', code: '055 - Employers Contribution (EE)', accountTitle: 'Employers Contribution (EE)' },
+    { id: 'ME-055-03', category: 'Management Expenses', code: '055 - Witheld Tax', accountTitle: 'Witheld Tax' },
+    { id: 'ME-055-04', category: 'Management Expenses', code: '055 - Monthly Allocated Reimbursement Transportation', accountTitle: 'Monthly Allocated Reimbursement Transportation' },
+    { id: 'ME-055-05', category: 'Management Expenses', code: '055 - Back Pay', accountTitle: 'Back Pay' },
+    { id: 'ME-056-01', category: 'Management Expenses', code: '056 - BONUSES (13th Month & Other Staff Benefits)', accountTitle: 'BONUSES (13th Month & Other Staff Benefits)' },
+    { id: 'ME-056-02', category: 'Management Expenses', code: '056 - Monthly Special Additional Reimbursement Transportation', accountTitle: 'Monthly Special Additional Reimbursement Transportation' },
+    { id: 'ME-056-03', category: 'Management Expenses', code: '056 - Other Transportation on Official Travel', accountTitle: 'Other Transportation on Official Travel' },
+    { id: 'ME-056-04', category: 'Management Expenses', code: '056 - Reimbursable Transportation', accountTitle: 'Reimbursable Transportation' },
+    { id: 'ME-060', category: 'Management Expenses', code: '060 - Office Rental Base', accountTitle: 'Office Rental Base' },
+    { id: 'ME-062', category: 'Management Expenses', code: '062 - Light & Water', accountTitle: 'Light & Water' },
+    { id: 'ME-064', category: 'Management Expenses', code: '064 - SSS, HDMF, PH Payment (BM Personnel)', accountTitle: 'SSS, HDMF, PH Payment (BM Personnel)' },
+    { id: 'ME-065', category: 'Management Expenses', code: '065 - Repairing & Maintenance', accountTitle: 'Repairing & Maintenance' },
+    { id: 'ME-066', category: 'Management Expenses', code: '066 - Communication and Postage', accountTitle: 'Communication and Postage' },
+    { id: 'ME-067', category: 'Management Expenses', code: '067 - Office Supplies & Xerox', accountTitle: 'Office Supplies & Xerox' },
+    { id: 'ME-069', category: 'Management Expenses', code: '069 - Staff Development & Conference', accountTitle: 'Staff Development & Conference' },
+    { id: 'ME-071', category: 'Management Expenses', code: '071 - Representation', accountTitle: 'Representation' },
+    { id: 'ME-072', category: 'Management Expenses', code: '072 - Bank Charges', accountTitle: 'Bank Charges' },
+    { id: 'ME-073', category: 'Management Expenses', code: '073 - City/Municipality Taxes and Licenses', accountTitle: 'City/Municipality Taxes and Licenses' },
+    { id: 'ME-075', category: 'Management Expenses', code: '075 - Consultancy and Professional Fees', accountTitle: 'Consultancy and Professional Fees' },
+    { id: 'ME-076', category: 'Management Expenses', code: '076 - Clients Development & Training', accountTitle: "Clients' Development & Training" },
+    { id: 'ME-077', category: 'Management Expenses', code: '077 - Association Dues and Membership Fees', accountTitle: 'Association Dues and Membership Fees' },
+    { id: 'ME-078', category: 'Management Expenses', code: '078 - Miscellaneous Expense', accountTitle: 'Miscellaneous Expense' },
+    { id: 'ME-079', category: 'Management Expenses', code: '079 - Retirement Incentives', accountTitle: 'Retirement Incentives' },
 
     // =====================================================
     // OTHER PAYMENTS
     // =====================================================
 
-    { id: 'OP-010', category: 'Other Payments', code: '010', accountTitle: 'Furniture and Fixtures' },
-    { id: 'OP-012', category: 'Other Payments', code: '012', accountTitle: 'Salary Advance' },
-    { id: 'OP-013', category: 'Other Payments', code: '013', accountTitle: 'Motorcycle Advance' },
-    { id: 'OP-014', category: 'Other Payments', code: '014', accountTitle: 'Special Advance' },
-    { id: 'OP-015', category: 'Other Payments', code: '015', accountTitle: 'Cash Advance to Staff' },
-    { id: 'OP-016', category: 'Other Payments', code: '016', accountTitle: 'Others/Account Receivables' },
-    { id: 'OP-017', category: 'Other Payments', code: '017', accountTitle: 'Office Rental Deposit' },
-    { id: 'OP-018', category: 'Other Payments', code: '018', accountTitle: 'STAFF ACCOUNTS PAYABLE' },
-    { id: 'OP-023', category: 'Other Payments', code: '023', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B)' },
-    { id: 'OP-024-01', category: 'Other Payments', code: '024', accountTitle: 'ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)' },
-    { id: 'OP-024-02', category: 'Other Payments', code: '024', accountTitle: 'Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)' },
-    { id: 'OP-025-01', category: 'Other Payments', code: '025', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance)' },
-    { id: 'OP-025-02', category: 'Other Payments', code: '025', accountTitle: 'Financial Assistance for Calamity/Disaster Victim' },
-    { id: 'OP-025-03', category: 'Other Payments', code: '025', accountTitle: 'Scholarship Grant Program' },
-    { id: 'OP-025-04', category: 'Other Payments', code: '025', accountTitle: 'Medical Mission Program (Health Care)' },
-    { id: 'OP-025-05', category: 'Other Payments', code: '025', accountTitle: 'Business Development Program' },
-    { id: 'OP-026', category: 'Other Payments', code: '026', accountTitle: 'Unclaimed Return (Out)' },
-    { id: 'OP-030', category: 'Other Payments', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
-    { id: 'OP-033', category: 'Other Payments', code: '033', accountTitle: 'Accrued Expenses' },
-    { id: 'OP-034', category: 'Other Payments', code: '034', accountTitle: 'ACCOUNTS PAYABLE' },
-    { id: 'OP-036', category: 'Other Payments', code: '036', accountTitle: 'Fund Transfer (Receiver)' },
-    { id: 'OP-078', category: 'Other Payments', code: '078', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
-    { id: 'OP-083', category: 'Other Payments', code: '083', accountTitle: 'Loan Loss Provision' },
-    { id: 'OP-085', category: 'Other Payments', code: '085', accountTitle: 'Grants and Donation' },
-    { id: 'OP-086-01', category: 'Other Payments', code: '086', accountTitle: 'Taxes to BIR (Penalty & Others)' },
-    { id: 'OP-086-02', category: 'Other Payments', code: '086', accountTitle: 'REVENUE (2550-M:2550-Q)' },
+    { id: 'OP-010', category: 'Other Payments', code: '010 - Furniture and Fixtures', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-012', category: 'Other Payments', code: '012 - Salary Advance', accountTitle: 'Salary Advance' },
+    { id: 'OP-013', category: 'Other Payments', code: '013 - Motorcycle Advance', accountTitle: 'Motorcycle Advance' },
+    { id: 'OP-014', category: 'Other Payments', code: '014 - Special Advance', accountTitle: 'Special Advance' },
+    { id: 'OP-015', category: 'Other Payments', code: '015 - Cash Advance to Staff', accountTitle: 'Cash Advance to Staff' },
+    { id: 'OP-016', category: 'Other Payments', code: '016 - Others/Account Receivables', accountTitle: 'Others/Account Receivables' },
+    { id: 'OP-017', category: 'Other Payments', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
+    { id: 'OP-018', category: 'Other Payments', code: '018 - STAFF ACCOUNTS PAYABLE', accountTitle: 'STAFF ACCOUNTS PAYABLE' },
+    { id: 'OP-023', category: 'Other Payments', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B)', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B)' },
+    { id: 'OP-024-01', category: 'Other Payments', code: '024 - ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)', accountTitle: 'ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)' },
+    { id: 'OP-024-02', category: 'Other Payments', code: '024 - Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)', accountTitle: 'Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)' },
+    { id: 'OP-025-01', category: 'Other Payments', code: '025 - Calamity Benefits: (Relief & Disaster Assistance)', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance)' },
+    { id: 'OP-025-02', category: 'Other Payments', code: '025 - Financial Assistance for Calamity/Disaster Victim', accountTitle: 'Financial Assistance for Calamity/Disaster Victim' },
+    { id: 'OP-025-03', category: 'Other Payments', code: '025 - Scholarship Grant Program', accountTitle: 'Scholarship Grant Program' },
+    { id: 'OP-025-04', category: 'Other Payments', code: '025 - Medical Mission Program (Health Care)', accountTitle: 'Medical Mission Program (Health Care)' },
+    { id: 'OP-025-05', category: 'Other Payments', code: '025 - Business Development Program', accountTitle: 'Business Development Program' },
+    { id: 'OP-026', category: 'Other Payments', code: '026 - Unclaimed Return (Out)', accountTitle: 'Unclaimed Return (Out)' },
+    { id: 'OP-030', category: 'Other Payments', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
+    { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },
+    { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
+    { id: 'OP-078', category: 'Other Payments', code: '078 - Client Death Benefits (Burial Financial Assistance)', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
+    { id: 'OP-083', category: 'Other Payments', code: '083 - Loan Loss Provision', accountTitle: 'Loan Loss Provision' },
+    { id: 'OP-085', category: 'Other Payments', code: '085 - Grants and Donation', accountTitle: 'Grants and Donation' },
+    { id: 'OP-086-01', category: 'Other Payments', code: '086 - Taxes to BIR (Penalty & Others)', accountTitle: 'Taxes to BIR (Penalty & Others)' },
+    { id: 'OP-086-02', category: 'Other Payments', code: '086 - REVENUE (2550-M:2550-Q)', accountTitle: 'REVENUE (2550-M:2550-Q)' },
 
     // =====================================================
     // OTHER RECEIPTS
     // =====================================================
 
-    { id: 'OR-012', category: 'Other Receipts', code: '012', accountTitle: 'Salary Advance' },
-    { id: 'OR-013', category: 'Other Receipts', code: '013', accountTitle: 'Motorcycle Advance' },
-    { id: 'OR-014', category: 'Other Receipts', code: '014', accountTitle: 'Special Advance' },
-    { id: 'OR-015', category: 'Other Receipts', code: '015', accountTitle: 'Cash Advance to Staff' },
-    { id: 'OR-016', category: 'Other Receipts', code: '016', accountTitle: 'Other Receivable' },
-    { id: 'OR-017', category: 'Other Receipts', code: '017', accountTitle: 'Office Rental Deposit' },
-    { id: 'OR-019', category: 'Other Receipts', code: '019', accountTitle: "Client's MCBU (In)" },
-    { id: 'OR-023', category: 'Other Receipts', code: '023', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B) Refund' },
-    { id: 'OR-024', category: 'Other Receipts', code: '024', accountTitle: 'ADD HOSPITALIZATION & Health Benefits Refund' },
-    { id: 'OR-025-01', category: 'Other Receipts', code: '025', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance) Refund' },
-    { id: 'OR-025-02', category: 'Other Receipts', code: '025', accountTitle: 'Financial Assistance for Calamity/Disaster Victim Refund' },
-    { id: 'OR-025-03', category: 'Other Receipts', code: '025', accountTitle: 'Scholarship Grant Program Refund' },
-    { id: 'OR-025-04', category: 'Other Receipts', code: '025', accountTitle: 'Medical Mission Program (Health Care) Refund' },
-    { id: 'OR-025-05', category: 'Other Receipts', code: '025', accountTitle: 'Business Development Program Refund' },
-    { id: 'OR-028', category: 'Other Receipts', code: '028', accountTitle: 'Staff CBU Collection' },
-    { id: 'OR-029', category: 'Other Receipts', code: '029', accountTitle: 'Staff Cashbond Collection' },
-    { id: 'OR-030', category: 'Other Receipts', code: '030', accountTitle: 'Staff Benevolent Fund (SBF)' },
-    { id: 'OR-033', category: 'Other Receipts', code: '033', accountTitle: 'Accrued Expenses (Picture Collection)' },
-    { id: 'OR-034-01', category: 'Other Receipts', code: '034', accountTitle: 'Accounts Payable (Payroll A/C)' },
-    { id: 'OR-034-02', category: 'Other Receipts', code: '034', accountTitle: 'Accounts Payable (Others)' },
-    { id: 'OR-036', category: 'Other Receipts', code: '036', accountTitle: 'Fund Transfer (Giver)' },
-    { id: 'OR-048', category: 'Other Receipts', code: '048', accountTitle: 'Recovered from Bad debt Accounts Collection' },
-    { id: 'OR-052', category: 'Other Receipts', code: '052', accountTitle: 'Interest on Borrowed Funds / Investment Capital' },
+    { id: 'OR-012', category: 'Other Receipts', code: '012 - Salary Advance', accountTitle: 'Salary Advance' },
+    { id: 'OR-013', category: 'Other Receipts', code: '013 - Motorcycle Advance', accountTitle: 'Motorcycle Advance' },
+    { id: 'OR-014', category: 'Other Receipts', code: '014 - Special Advance', accountTitle: 'Special Advance' },
+    { id: 'OR-015', category: 'Other Receipts', code: '015 - Cash Advance to Staff', accountTitle: 'Cash Advance to Staff' },
+    { id: 'OR-016', category: 'Other Receipts', code: '016 - Other Receivable', accountTitle: 'Other Receivable' },
+    { id: 'OR-017', category: 'Other Receipts', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
+    { id: 'OR-019', category: 'Other Receipts', code: '019 - Clients MCBU (In)', accountTitle: "Client's MCBU (In)" },
+    { id: 'OR-023', category: 'Other Receipts', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B) Refund', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B) Refund' },
+    { id: 'OR-024', category: 'Other Receipts', code: '024 - ADD HOSPITALIZATION & Health Benefits Refund', accountTitle: 'ADD HOSPITALIZATION & Health Benefits Refund' },
+    { id: 'OR-025-01', category: 'Other Receipts', code: '025 - Calamity Benefits: (Relief & Disaster Assistance) Refund', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance) Refund' },
+    { id: 'OR-025-02', category: 'Other Receipts', code: '025 - Financial Assistance for Calamity/Disaster Victim Refund', accountTitle: 'Financial Assistance for Calamity/Disaster Victim Refund' },
+    { id: 'OR-025-03', category: 'Other Receipts', code: '025 - Scholarship Grant Program Refund', accountTitle: 'Scholarship Grant Program Refund' },
+    { id: 'OR-025-04', category: 'Other Receipts', code: '025 - Medical Mission Program (Health Care) Refund', accountTitle: 'Medical Mission Program (Health Care) Refund' },
+    { id: 'OR-025-05', category: 'Other Receipts', code: '025 - Business Development Program Refund', accountTitle: 'Business Development Program Refund' },
+    { id: 'OR-028', category: 'Other Receipts', code: '028 - Staff CBU Collection', accountTitle: 'Staff CBU Collection' },
+    { id: 'OR-029', category: 'Other Receipts', code: '029 - Staff Cashbond Collection', accountTitle: 'Staff Cashbond Collection' },
+    { id: 'OR-030', category: 'Other Receipts', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
+    { id: 'OR-033', category: 'Other Receipts', code: '033 - Accrued Expenses (Picture Collection)', accountTitle: 'Accrued Expenses (Picture Collection)' },
+    { id: 'OR-034-01', category: 'Other Receipts', code: '034 - Accounts Payable (Payroll A/C)', accountTitle: 'Accounts Payable (Payroll A/C)' },
+    { id: 'OR-034-02', category: 'Other Receipts', code: '034 - Accounts Payable (Others)', accountTitle: 'Accounts Payable (Others)' },
+    { id: 'OR-036', category: 'Other Receipts', code: '036 - Fund Transfer (Giver)', accountTitle: 'Fund Transfer (Giver)' },
+    { id: 'OR-048', category: 'Other Receipts', code: '048 - Recovered from Bad debt Accounts Collection', accountTitle: 'Recovered from Bad debt Accounts Collection' },
+    { id: 'OR-052', category: 'Other Receipts', code: '052 - Interest on Borrowed Funds / Investment Capital', accountTitle: 'Interest on Borrowed Funds / Investment Capital' },
     ];
 
 const money = (value) => {
@@ -716,7 +716,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                     .voucher {
                         width: 100%;
-                        max-width: 1050px;
+                        max-width: 186mm;
                         margin: 0 auto;
                     }
 
@@ -885,14 +885,60 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         font-style: italic;
                     }
 
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm;
+                    }
+
                     @media print {
+                        html,
                         body {
+                            width: 100%;
+                            margin: 0;
                             padding: 0;
                         }
 
-                        @page {
-                            size: landscape;
-                            margin: 12mm;
+                        .voucher {
+                            width: 100%;
+                            max-width: 100%;
+                            margin: 0 auto;
+                        }
+
+                        .info-grid {
+                            grid-template-columns: 1fr 180px;
+                            gap: 12px;
+                        }
+
+                        .words-section {
+                            grid-template-columns: 1fr 170px;
+                            gap: 12px;
+                        }
+
+                        .signatures {
+                            gap: 20px;
+                        }
+
+                        table {
+                            width: 100%;
+                            table-layout: fixed;
+                        }
+
+                        th,
+                        td {
+                            padding: 6px 5px;
+                            font-size: 11px;
+                            overflow-wrap: anywhere;
+                        }
+
+                        .info-row,
+                        .words,
+                        .received,
+                        .signature-box {
+                            font-size: 12px;
+                        }
+
+                        .voucher {
+                            break-inside: avoid;
                         }
                     }
 

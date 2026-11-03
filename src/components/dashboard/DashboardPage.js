@@ -2,15 +2,12 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { 
-    UserPlus, Wallet, Banknote, Scale, AlertCircle, XCircle, UserMinus,
-    Share2, Lock, Truck, AlertTriangle, Heart, X, DollarSign, HelpCircle,
-    MinusCircle, ArrowLeftRight, RotateCcw, Users, Clock, PencilLine,
-    TrendingUp, TrendingDown, Minus, Search, Filter, Calendar, ChevronDown,
-    CheckCircle2, XOctagon, ChevronLeft, ChevronRight, Activity, BarChart2, Upload,
-    ShieldAlert,
+    UserPlus, Wallet, Banknote, Scale, AlertTriangle, DollarSign, Users, TrendingUp, 
+    Search, Filter, Calendar, ChevronDown,ShieldAlert,
 } from 'lucide-react';
+
 import ClientSearchTool from './ClientSearchTool';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { useRouter } from 'next/router';
@@ -56,6 +53,9 @@ const DashboardPage = () => {
     const [divisionFilter, setDivisionFilter] = useState('all');
     const [loanOfficerFilter, setLoanOfficerFilter] = useState('all');
     const [summaryData, setSummaryData] = useState({});
+    const [branchPerformanceRows, setBranchPerformanceRows] = useState([]);
+    const [branchPerformanceLoading, setBranchPerformanceLoading] = useState(false);
+    const [branchPerformanceError, setBranchPerformanceError] = useState('');
 
     // ── PAYMENT PERFORMANCE CHART ──────────────────────────────
     const paymentMetrics = [
@@ -365,8 +365,9 @@ const DashboardPage = () => {
         closedBranches: 0,
         totalBranches: 0,
         activeUsers: 0,
-        cashOnHand: 0,
-        bankBalance: 0,
+        totalProspectClients: null,
+        cashOnHand: null,
+        bankBalance: null,
         managementExpenses: 0,
         staleBranchesCount: 0,
         staleBranches: [],
@@ -511,19 +512,47 @@ const DashboardPage = () => {
     }, []);
 
     const toggleNav = () => setIsNavVisible(!isNavVisible);
-    const lastStatusDateRef = useRef(null);
-
-    const fetchDashboardStatus = useCallback(() => {
+    
+    const fetchDashboardStatus = useCallback(async () => {
         if (!currentDate || !currentUser) return;
-        const date = moment(dateFilter ?? currentDate).format('YYYY-MM-DD');
-        if (lastStatusDateRef.current === date) return;
-        lastStatusDateRef.current = date;
-        fetchWrapper.get(getApiBaseUrl() + '/dashboard/status?date=' + date)
-            .then(resp => { if (resp.success) setStatusData(resp.data); })
-            .catch(err => console.error('fetchDashboardStatus', err));
+
+        const date = moment(dateFilter ?? currentDate)
+            .format('YYYY-MM-DD');
+
+        try {
+            const response = await fetchWrapper.get(
+                getApiBaseUrl() +
+                '/dashboard/status?date=' +
+                encodeURIComponent(date)
+            );
+
+            console.log('DASHBOARD STATUS:', response);
+
+            if (response?.success === false) {
+                throw new Error(
+                    response.message || 'Failed to fetch dashboard status'
+                );
+            }
+
+            if (!response?.data) {
+                throw new Error('Dashboard status returned no data');
+            }
+
+            setStatusData(prev => ({
+                ...prev,
+                ...response.data
+            }));
+
+        } catch (error) {
+            console.error('Dashboard status error:', error);
+        }
     }, [currentDate, dateFilter, currentUser]);
 
-    useEffect(() => { if (currentUser?.role?.rep <= 2) fetchDashboardStatus(); }, [fetchDashboardStatus]);
+    useEffect(() => {
+        if (currentUser && currentDate) {
+            fetchDashboardStatus();
+        }
+    }, [fetchDashboardStatus, currentUser, currentDate]);
 
     useEffect(() => {
         if (summaryData.activeClients) {
@@ -601,7 +630,6 @@ const DashboardPage = () => {
             dataKey = `consolidated${capitalizedField}`;
         }
 
-        // No result should not be displayed as a real zero.
         if (
             reportData[dataKey] === undefined ||
             reportData[dataKey] === null
@@ -710,7 +738,6 @@ const DashboardPage = () => {
     const yearOptions = yearList.map(y => ({value:y.value, label:y.label}));
     const timeFilterListOptions = timeFilterList.map((item,index) => ({value:index, label:item.label}));
 
-    // ── DCS REPORT FILTER OPTIONS ────────────────────────────────
     const reportRegionOptions = regionList
         .filter(item =>
             reportDivision === 'all' ||
@@ -749,20 +776,11 @@ const DashboardPage = () => {
         label: item.label
     }));
 
-    // ============================================================
-    // DCS PERFORMANCE REPORT
-    // Daily             = 60 days
-    // Weekly Standard   = 24 weeks
-    // Weekly Accelerated = 12 weeks
-    // Consolidated      = Daily + Weekly + Accelerated
-    // ============================================================
-
     const handleReportSearch = async () => {
         setReportLoading(true);
         setReportData({});
 
         try {
-            // Determine the selected reporting date
             let selectedReportDate = moment(
                 reportDate || currentDate
             ).format('YYYY-MM-DD');
@@ -810,7 +828,6 @@ const DashboardPage = () => {
                 selectedReportDate = `${reportYear}-12-31`;
             }
 
-            // Build parameters for the new DCS API
             const params = new URLSearchParams({
                 date: selectedReportDate
             });
@@ -831,7 +848,6 @@ const DashboardPage = () => {
                 params.set('branchId', reportBranch);
             }
 
-            // NEW API — uses fn_get_dcs_performance_report
             const response = await fetchWrapper.get(
                 getApiBaseUrl() +
                 '/dashboard/dcs-performance?' +
@@ -854,7 +870,6 @@ const DashboardPage = () => {
                 throw new Error('No DCS performance data was returned.');
             }
 
-            // The SQL function returns four categorized rows.
             const categories = {
                 daily: rows.find(
                     row => row.category === 'daily'
@@ -896,19 +911,15 @@ const DashboardPage = () => {
                     field.charAt(0).toUpperCase() +
                     field.slice(1);
 
-                // Daily
                 result[field] =
                     categories.daily?.[field] ?? null;
 
-                // Weekly Standard
                 result[`weekly${capitalizedField}`] =
                     categories.weekly?.[field] ?? null;
 
-                // Weekly Accelerated
                 result[`accelerated${capitalizedField}`] =
                     categories.accelerated?.[field] ?? null;
 
-                // Consolidated — use actual SQL result
                 result[`consolidated${capitalizedField}`] =
                     categories.consolidated?.[field] ?? null;
             });
@@ -1018,12 +1029,18 @@ const DashboardPage = () => {
                         : 'yPerson',
 
                 fill: false,
-                tension: 0.4,
-                borderWidth: 2,
+                tension: 0.45,
+                cubicInterpolationMode: 'default',
+
+                borderWidth: 2.5,
+
                 pointRadius: 0,
-                pointHoverRadius: 5,
-                pointHoverBorderWidth: 2,
+                pointHoverRadius: 6,
+
+                pointHoverBackgroundColor: paymentChartColors[index],
+                pointHoverBorderWidth: 3,
                 pointHoverBorderColor: '#FFFFFF',
+
                 spanGaps: false
             }))
         };
@@ -1039,7 +1056,7 @@ const DashboardPage = () => {
 
             plugins: {
                 legend: {
-                    display: true,
+                    display: false,
                     position: 'bottom',
 
                     labels: {
@@ -1208,6 +1225,160 @@ const DashboardPage = () => {
             ]
         };
 
+        useEffect(() => {
+            if (!currentDate || !dateFilter) return;
+
+            let cancelled = false;
+
+            const fetchBranchPerformance = async () => {
+                setBranchPerformanceLoading(true);
+                setBranchPerformanceError('');
+
+                try {
+                    const params = new URLSearchParams({
+                        type: 'performance',
+                        view: 'branches',
+                        filter: timeFilter,
+                        date_added: moment(dateFilter).format('YYYY-MM-DD'),
+                        currentDate: moment(currentDate).format('YYYY-MM-DD')
+                    });
+
+                    if (divisionFilter !== 'all') {
+                        params.set('divisionId', divisionFilter);
+                    }
+
+                    if (regionFilter !== 'all') {
+                        params.set('regionId', regionFilter);
+                    }
+
+                    if (areaFilter !== 'all') {
+                        params.set('areaId', areaFilter);
+                    }
+
+                    if (branchFilter !== 'all') {
+                        params.set('branchId', branchFilter);
+                    }
+
+                    if (loanOfficerFilter !== 'all') {
+                        params.set('loId', loanOfficerFilter);
+                    }
+
+                    const response = await fetchWrapper.get(
+                        getApiBaseUrl() + '/dashboard?' + params.toString()
+                    );
+
+                    if (response?.success === false) {
+                        throw new Error(
+                            response.message || 'Failed to load branch performance.'
+                        );
+                    }
+
+                    if (!cancelled) {
+                        setBranchPerformanceRows(
+                            Array.isArray(response?.data) ? response.data : []
+                        );
+                    }
+                } catch (error) {
+                    if (!cancelled) {
+                        console.error('Branch Performance Error:', error);
+                        setBranchPerformanceError(error.message);
+                        setBranchPerformanceRows([]);
+                    }
+                } finally {
+                    if (!cancelled) {
+                        setBranchPerformanceLoading(false);
+                    }
+                }
+            };
+
+            fetchBranchPerformance();
+
+            return () => {
+                cancelled = true;
+            };
+        }, [
+            currentDate,
+            dateFilter,
+            timeFilter,
+            divisionFilter,
+            regionFilter,
+            areaFilter,
+            branchFilter,
+            loanOfficerFilter
+        ]);
+
+    // ============================================================ 
+    // BRANCH PERFORMANCE CHART
+    // ============================================================
+
+    const branchPerformanceData = {
+        labels: branchPerformanceRows.map(
+            branch => `${branch.code || ''} ${branch.name || ''}`.trim()
+        ),
+        datasets: [
+            {
+                label: 'Collection',
+                data: branchPerformanceRows.map(
+                    branch => Number(branch.collection || 0)
+                ),
+                backgroundColor: '#3B82F6',
+                borderRadius: 4
+            },
+            {
+                label: 'Loan Release',
+                data: branchPerformanceRows.map(
+                    branch => Number(branch.releaseAmount || 0)
+                ),
+                backgroundColor: '#8B5CF6',
+                borderRadius: 4
+            },
+            {
+                label: 'Loan Balance',
+                data: branchPerformanceRows.map(
+                    branch => Number(branch.loanBalance || 0)
+                ),
+                backgroundColor: '#06B6D4',
+                borderRadius: 4
+            }
+        ]
+    };
+
+    const branchPerformanceOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    usePointStyle: true,
+                    boxWidth: 8,
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            datalabels: {
+                display: false
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    callback: value =>
+                        '₱' + Number(value).toLocaleString('en-PH')
+                }
+            },
+            y: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    };
+
     // ── derived values ─────────────────────────────────
     const totalReleasePerson = (summaryData.currentReleasePerson_New||0) + (summaryData.currentReleasePerson_Rel||0);
     const filterLabel = timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1);
@@ -1366,7 +1537,7 @@ const DashboardPage = () => {
                                             </p>
 
                                             <p className="text-2xl font-bold text-gray-900">
-                                                {formatNumber(summaryData.activeClients || 0)}
+                                                {formatNumber(statusData.totalProspectClients)}
                                             </p>
                                         </div>
 
@@ -1385,7 +1556,9 @@ const DashboardPage = () => {
                                             </p>
 
                                             <p className="text-2xl font-bold text-gray-900">
-                                                {formatNumber(statusData.cashOnHand || 0)}
+                                                {statusData.cashOnHand == null
+                                                    ? 'N/A'
+                                                    : formatCurrency(statusData.cashOnHand)}
                                             </p>
                                         </div>
 
@@ -1404,7 +1577,9 @@ const DashboardPage = () => {
                                             </p>
 
                                             <p className="text-2xl font-bold text-gray-900">
-                                                {formatNumber(statusData.bankBalance || 0)}
+                                                {statusData.bankBalance == null
+                                                    ? 'N/A'
+                                                    : formatCurrency(statusData.bankBalance)}
                                             </p>
                                         </div>
 
@@ -1515,7 +1690,7 @@ const DashboardPage = () => {
                             </div>
 
                         {/* ── DASHBOARD ANALYTICS ── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                         {/* 1 — PAYMENT COLLECTION CHART */}
                         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
@@ -1527,12 +1702,12 @@ const DashboardPage = () => {
                                     <TrendingUp className="w-5 h-5 text-yellow-500" />
 
                                     <div>
-                                        <h2 className="text-sm font-bold text-gray-800">
-                                            Review Chart
+                                        <h2 className="text-lg font-bold text-gray-900">
+                                            Data Information
                                         </h2>
 
                                         <p className="text-xs text-gray-400">
-                                            Lending performance trends
+                                            Lending collection and performance overview
                                         </p>
                                     </div>
                                 </div>
@@ -1580,26 +1755,66 @@ const DashboardPage = () => {
                                 </div>
                             )}
 
-                            {/* GRAPH */}
-                            <div className="h-[320px] relative">
-                                {paymentChartLoading ? (
-                                    <div className="h-full flex items-center justify-center text-xs text-gray-400">
-                                        Loading chart...
+                            {/* DATA INFORMATION CHART */}
+                            <div className="flex flex-row items-start gap-4">
+
+                                {/* LEFT SIDE — METRIC LEGENDS */}
+                                <div className="w-[160px] flex-shrink-0 order-1">
+
+                                    <p className="text-xs font-semibold text-gray-500 mb-4">
+                                        Performance Metrics
+                                    </p>
+
+                                    <div className="flex flex-col gap-3">
+
+                                        {paymentMetrics.map((metric, index) => (
+
+                                            <div
+                                                key={metric.value}
+                                                className="flex items-center gap-3"
+                                            >
+
+                                                <span className="text-xs font-medium text-gray-700 leading-5">
+                                                    {metric.label}
+                                                </span>
+
+                                            </div>
+                                        ))}
                                     </div>
-                                ) : paymentChartError ? (
-                                    <div className="h-full flex items-center justify-center text-xs text-red-500 text-center">
-                                        {paymentChartError}
+                                </div>
+
+                                {/* RIGHT SIDE — LINE CHART */}
+                                <div className="flex-1 min-w-0 order-2">
+                                    <div className="h-[320px] relative">
+
+                                        {paymentChartLoading ? (
+
+                                            <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                                                Loading chart...
+                                            </div>
+
+                                        ) : paymentChartError ? (
+
+                                            <div className="h-full flex items-center justify-center text-xs text-red-500 text-center">
+                                                {paymentChartError}
+                                            </div>
+
+                                        ) : paymentChartRows.length === 0 ? (
+
+                                            <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                                                No chart data available
+                                            </div>
+
+                                        ) : (
+
+                                            <Line
+                                                data={paymentChartData}
+                                                options={paymentChartOptions}
+                                            />
+
+                                        )}
                                     </div>
-                                ) : paymentChartRows.length === 0 ? (
-                                    <div className="h-full flex items-center justify-center text-xs text-gray-400">
-                                        No chart data available
-                                    </div>
-                                ) : (
-                                    <Line
-                                        data={paymentChartData}
-                                        options={paymentChartOptions}
-                                    />
-                                )}
+                                </div>
                             </div>
                         </div>
 
@@ -1647,6 +1862,32 @@ const DashboardPage = () => {
                                         options={dashboardDonutOptions}
                                     />
                                 </div>
+                            </div>
+
+                            {/* 4 — BRANCH PERFORMANCE */}
+                            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+
+                                <div className="flex items-center gap-2 mb-4">
+                                    <TrendingUp className="w-5 h-5 text-green-500" />
+
+                                    <div>
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            Branch Performance
+                                        </h2>
+
+                                        <p className="text-xs text-gray-400">
+                                            Collection, release and loan balance
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-[250px]">
+                                    <Bar
+                                        data={branchPerformanceData}
+                                        options={branchPerformanceOptions}
+                                    />
+                                </div>
+
                             </div>
                         </div>
 
@@ -1834,6 +2075,10 @@ const DashboardPage = () => {
                                                 Particulars
                                             </th>
 
+                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 min-w-[160px]">
+                                                Consolidated
+                                            </th>
+
                                             <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-gray-200 min-w-[140px]">
                                                 Daily (60 Days)
                                             </th>
@@ -1844,10 +2089,6 @@ const DashboardPage = () => {
 
                                             <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-gray-200 min-w-[180px]">
                                                 Weekly Accelerated (12 Weeks)
-                                            </th>
-
-                                            <th className="px-4 py-3 text-center font-semibold text-gray-700 min-w-[160px]">
-                                                Consolidated
                                             </th>
                                         </tr>
                                     </thead>
@@ -1883,6 +2124,14 @@ const DashboardPage = () => {
                                                     {label}
                                                 </td>
 
+                                                {/* CONSOLIDATED */}
+                                                <td className="px-4 py-2 text-center text-sm font-bold text-gray-900">
+                                                    {reportLoading
+                                                        ? '...'
+                                                        : getDcsValue(label, 'consolidated')
+                                                    }
+                                                </td>
+
                                                 {/* DAILY */}
                                                 <td className="px-4 py-2 text-center text-sm text-gray-700 border-r border-gray-200">
                                                     {reportLoading
@@ -1904,14 +2153,6 @@ const DashboardPage = () => {
                                                     {reportLoading
                                                         ? '...'
                                                         : getDcsValue(label, 'accelerated')
-                                                    }
-                                                </td>
-
-                                                {/* CONSOLIDATED */}
-                                                <td className="px-4 py-2 text-center text-sm font-bold text-gray-900">
-                                                    {reportLoading
-                                                        ? '...'
-                                                        : getDcsValue(label, 'consolidated')
                                                     }
                                                 </td>
                                             </tr>

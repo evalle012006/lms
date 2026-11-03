@@ -105,16 +105,47 @@ async function list(req, res) {
         }
         
         // Date filtering
-        if (dateFrom && dateFrom !== 'Invalid date' && dateTo && dateTo !== 'null') {
-            const formattedDateFrom = moment(dateFrom, 'YYYY-MM-DD', true);
-            const formattedDateTo = moment(dateTo, 'YYYY-MM-DD', true);
-            
-            if (formattedDateFrom.isValid() && formattedDateTo.isValid()) {
-                where.date_added = {
-                    _gte: formattedDateFrom.format('YYYY-MM-DD'),
-                    _lte: formattedDateTo.format('YYYY-MM-DD')
-                };
+        if (dateFrom || dateTo) {
+            if (!dateFrom || !dateTo) {
+                return res.status(400).json({
+                    error: true,
+                    message: 'Both dateFrom and dateTo are required'
+                });
             }
+
+            const formattedDateFrom = moment(
+                dateFrom,
+                'YYYY-MM-DD',
+                true
+            );
+
+            const formattedDateTo = moment(
+                dateTo,
+                'YYYY-MM-DD',
+                true
+            );
+
+            if (
+                !formattedDateFrom.isValid() ||
+                !formattedDateTo.isValid()
+            ) {
+                return res.status(400).json({
+                    error: true,
+                    message: 'Invalid date format. Expected YYYY-MM-DD'
+                });
+            }
+
+            if (formattedDateFrom.isAfter(formattedDateTo)) {
+                return res.status(400).json({
+                    error: true,
+                    message: 'dateFrom cannot be later than dateTo'
+                });
+            }
+
+            where.date_added = {
+                _gte: formattedDateFrom.format('YYYY-MM-DD'),
+                _lte: formattedDateTo.format('YYYY-MM-DD')
+            };
         }
 
         // Query transactions

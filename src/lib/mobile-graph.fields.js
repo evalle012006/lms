@@ -146,6 +146,8 @@ export const GUARANTOR_MOBILE_FIELDS = `
   guarantorFirstName
   guarantorLastName
   guarantorRelationship
+  guarantorAddress
+  guarantorContactNumber
 `;
 
 // A client's enrolled programs (scholarships, etc.) — snake_case, new

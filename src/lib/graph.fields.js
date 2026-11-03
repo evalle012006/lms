@@ -1056,6 +1056,55 @@ export const LOAN_CLOSING_REVIEW_FIELDS = `
   acknowledged_at
 `;
 
+// =====================================================
+// LMS BRANCH PAYROLL
+// =====================================================
+
+export const BRANCH_PAYROLL_EMPLOYEE_FIELDS = `
+    id
+    row_order
+    family_name
+    first_name
+    middle_name
+    employee_id
+    position
+    date_regularized
+    basic_salary
+    ecola
+    employer_hdmf
+    employer_sss
+    employer_ph
+    employee_hdmf
+    employee_sss
+    employee_ph
+    withholding_tax
+    utility_charge
+    cbu
+    cash_bond
+    salary_advance
+    special_advance
+    cash_advance
+    other_receivables
+    pagibig_mpl
+    sss_loan
+    staff_accounts_payable
+`;
+
+export const BRANCH_PAYROLL_FIELDS = `
+    id
+    branch_id
+    payroll_month
+    payroll_year
+    created_at
+    updated_at
+
+    branch_payroll_employees(
+        order_by: { row_order: asc }
+    ) {
+        ${BRANCH_PAYROLL_EMPLOYEE_FIELDS}
+    }
+`;
+
 export const CASH_COLLECTION_UPLOAD_FIELDS = `
   _id
   group_id
