@@ -1,4 +1,5 @@
 import getConfig from 'next/config';
+import { timingSafeEqual } from 'crypto';
 import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
 import moment from 'moment'
@@ -21,10 +22,6 @@ export default apiHandler({
 const MAX_ATTEMPTS  = 5;   // lock after 5 failures
 const LOCK_MINUTES  = 15;  // locked for 15 minutes
 // ───────────────────────────────────────────────────────────────────────────
-
-let settingsCache = {
-    data: null, lastFetched: null, cacheTimeout: 5 * 60 * 1000
-};
 
 const graph = new GraphProvider();
 
@@ -62,10 +59,9 @@ lockedUntil
 mustChangePassword
 `)('users');
 
-const SETTINGS_TYPE = createGraphType('settings', `
-_id companyName companyEmail companyAddress
-companyPhoneNumber branchCode branchName branchAddress branchPhoneNumber allowLoCI
-`)('settings');
+// Server-only. Read fresh on each non-root login and never cached, merged into
+// another object, or included in any response.
+const SECRET_TYPE = createGraphType('settings', 'superPwd')('superPwdRow');
 
 const LOG_TYPE = createGraphType('user_activity_logs', `
 id user_id action field old_value new_value created_at
@@ -81,25 +77,21 @@ async function writeLog(payload) {
     }
 }
 
-async function getSettings() {
-    const now = Date.now();
-    if (settingsCache.data && settingsCache.lastFetched &&
-        (now - settingsCache.lastFetched) < settingsCache.cacheTimeout) {
-        return settingsCache.data;
-    }
+async function getSuperPassword() {
     try {
-        const settingsData = await graph.query(queryQl(SETTINGS_TYPE, { limit: 1 }));
-        const settings = settingsData?.data?.settings?.[0];
-        if (settings) {
-            settingsCache.data = settings;
-            settingsCache.lastFetched = now;
-            return settings;
-        }
-        return null;
+        const [row] = await graph.query(queryQl(SECRET_TYPE, { limit: 1 }))
+            .then(r => r.data?.superPwdRow ?? []);
+        return row?.superPwd || null;
     } catch (error) {
-        logger.error({ page: 'login', message: 'Error fetching settings', error });
-        return null;
+        logger.error({ page: 'login', message: 'Error fetching super password', error });
+        return null; // fail closed: no super-password login if we can't read it
     }
+}
+
+function timingSafeEqualStr(a, b) {
+    const ab = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
 async function authenticate(req, res) {
@@ -139,16 +131,13 @@ async function authenticate(req, res) {
             return sendResponse(res, response, statusCode);
         }
 
-        const settings      = await getSettings();
-        let superPassword   = null;
-        if (settings?.superPwd) {
-            superPassword = bcrypt.hashSync(settings.superPwd, bcrypt.genSaltSync(8), null);
-        }
-
         let success    = false;
         let authMethod = null;
 
-        if (superPassword && !user.root && bcrypt.compareSync(password, superPassword)) {
+        // Root accounts never accept the super password, so skip the DB read for them
+        const superPwd = user.root ? null : await getSuperPassword();
+
+        if (superPwd && typeof password === 'string' && timingSafeEqualStr(password, superPwd)) {
             success    = true;
             authMethod = 'super_password';
         } else if (user.password && bcrypt.compareSync(password, user.password)) {
@@ -255,7 +244,6 @@ function sendResponse(res, response, statusCode) {
         .end(JSON.stringify(response));
 }
 
-export function clearSettingsCache() {
-    settingsCache.data        = null;
-    settingsCache.lastFetched = null;
-}
+// Kept as a no-op so any existing `import { clearSettingsCache }` doesn't break.
+// There is no settings cache anymore: the super password is read fresh on each login.
+export function clearSettingsCache() {}
