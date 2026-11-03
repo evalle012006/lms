@@ -9,12 +9,14 @@ import {
   PencilSquareIcon,
   Cog6ToothIcon,
   LockClosedIcon,
-  LockOpenIcon
+  LockOpenIcon,
+  SignalSlashIcon
 } from '@heroicons/react/24/solid';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useSignedUrl } from 'hooks/useSignedUrl';
 import { getApiBaseUrl } from '@/lib/constants';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { isOfflineModeActive } from '@/lib/offline-mode';
 
 const Avatar = ({ name, src, className }) => {
   // Only pass src to Image if it's a valid absolute URL
@@ -50,6 +52,8 @@ const Avatar = ({ name, src, className }) => {
 
 const BranchLockBadge = ({ user }) => {
   const [locked, setLocked] = React.useState(null);
+  const [offlineMode, setOfflineMode] = React.useState(false);
+  const [offlineUntil, setOfflineUntil] = React.useState(null);
   const router = useRouter();
 
   React.useEffect(() => {
@@ -64,6 +68,8 @@ const BranchLockBadge = ({ user }) => {
         );
         if (mounted && res?.branch) {
           setLocked(!!res.branch.lockTransaction);
+          setOfflineMode(isOfflineModeActive(res.branch));
+          setOfflineUntil(res.branch.skipClientFaceVerifyUntil || null);
         }
       } catch (_) {}
     };
@@ -76,20 +82,31 @@ const BranchLockBadge = ({ user }) => {
   if (locked === null) return null;
 
   return (
-    <div
-      title={locked ? 'Branch transactions are LOCKED' : 'Branch transactions are OPEN'}
-      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
-        locked
-          ? 'bg-red-50 border-red-300 text-red-700'
-          : 'bg-green-50 border-green-300 text-green-700'
-      }`}
-    >
-      {locked
-        ? <LockClosedIcon className="h-3.5 w-3.5" />
-        : <LockOpenIcon className="h-3.5 w-3.5" />
-      }
-      <span className="hidden sm:inline">{locked ? 'Locked' : 'Open'}</span>
-    </div>
+    <>
+      <div
+        title={locked ? 'Branch transactions are LOCKED' : 'Branch transactions are OPEN'}
+        className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
+          locked
+            ? 'bg-red-50 border-red-300 text-red-700'
+            : 'bg-green-50 border-green-300 text-green-700'
+        }`}
+      >
+        {locked
+          ? <LockClosedIcon className="h-3.5 w-3.5" />
+          : <LockOpenIcon className="h-3.5 w-3.5" />
+        }
+        <span className="hidden sm:inline">{locked ? 'Locked' : 'Open'}</span>
+      </div>
+      {offlineMode && (
+        <div
+          title={`Offline mode: client face verification is skipped at loan approval; client photos are uploaded instead.${offlineUntil ? ` Ends ${new Date(offlineUntil).toLocaleString()}.` : ''}`}
+          className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border bg-amber-50 border-amber-300 text-amber-700"
+        >
+          <SignalSlashIcon className="h-3.5 w-3.5" />
+          <span className="hidden lg:inline">Offline mode</span>
+        </div>
+      )}
+    </>
   );
 };
 

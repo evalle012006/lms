@@ -379,6 +379,7 @@ const FaceVerifyStep = ({
                     photoKey,
                     livenessScore: detection.detection?.score ?? null,
                 });
+                setCapturing(false);
                 return;
             }
 
@@ -387,6 +388,7 @@ const FaceVerifyStep = ({
             const confidence = Math.max(0, Math.min(100, ((MATCH_THRESHOLD - distance) / MATCH_THRESHOLD) * 100));
             const matched    = distance < MATCH_THRESHOLD;
             setResult({ matched, score: confidence / 100, distance });
+            setCapturing(false);
             if (!matched) onMismatch?.();
 
             uploadDebugThumbnail(thumbnailBlob, clientId).then((photoKey) => {
@@ -457,6 +459,7 @@ const FaceVerifyStep = ({
 
     const handleStart = useCallback(async () => {
         setResult(null);
+        setCapturing(false);   // a previous scan leaves this true; a re-start on the same instance would hang on "Matching face…"
         setChallengeIdx(0);
         setCompleted([]);
         setFaceDetected(false);

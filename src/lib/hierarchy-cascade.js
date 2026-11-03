@@ -156,15 +156,30 @@ export function syncBranchLinks(newBranchIds, oldBranchIds, areaId, regionId, di
     }
 }
 
-export function cascadeRegionDivisionChange(regionId, divisionId, addToMutationList) {
-    addToMutationList(alias => updateQl(createGraphType('areas',    '_id')(alias), {
+export async function cascadeRegionDivisionChange(regionId, divisionId, addToMutationList) {
+    // Resolve children through areas.regionId, not through the denormalized branches.regionId
+    const areaIds = await graph.query(
+        queryQl(createGraphType('areas', '_id')('areas'), { where: { regionId: { _eq: regionId } } })
+    ).then(r => (r.data.areas ?? []).map(a => a._id));
+
+    addToMutationList(alias => updateQl(createGraphType('areas', '_id')(alias), {
         set: { divisionId: nullify(divisionId) }, where: { regionId: { _eq: regionId } }
     }));
-    addToMutationList(alias => updateQl(createGraphType('branches', '_id')(alias), {
-        set: { divisionId: nullify(divisionId) }, where: { regionId: { _eq: regionId } }
-    }));
-    addToMutationList(alias => updateQl(createGraphType('users',    '_id')(alias), {
-        set: { divisionId: nullify(divisionId) }, where: { regionId: { _eq: regionId } }
+
+    if (areaIds.length > 0) {
+        addToMutationList(alias => updateQl(createGraphType('branches', '_id')(alias), {
+            set: { regionId: nullify(regionId), divisionId: nullify(divisionId) },
+            where: { areaId: { _in: areaIds } }
+        }));
+        addToMutationList(alias => updateQl(createGraphType('users', '_id')(alias), {
+            set: { regionId: nullify(regionId), divisionId: nullify(divisionId) },
+            where: { areaId: { _in: areaIds } }
+        }));
+    }
+    // Regional managers / deputy directors attach by regionId only
+    addToMutationList(alias => updateQl(createGraphType('users', '_id')(alias), {
+        set: { divisionId: nullify(divisionId) },
+        where: { regionId: { _eq: regionId }, areaId: { _is_null: true } }
     }));
 }
 

@@ -92,7 +92,10 @@ async function getActivity(req, res) {
             actor: a.userName || null, actorRole: a.userRole || null, branchName: a.branchName || null,
             success: a.success !== false, failReason: a.failReason || null,
             meta: pick(a.metadata, META_WHITELIST),
-            photoKey: null,
+            // Offline-mode client photo: show it as the event thumbnail (photo keys are not biometric data).
+            photoKey: a.action === 'CLIENT_DISBURSEMENT_PHOTO_FALLBACK' && typeof a.metadata?.photoKey === 'string'
+                ? a.metadata.photoKey
+                : null,
         })),
         ...attemptRows.map(a => {
             const pct = a.confidence != null ? `${Math.round(Number(a.confidence))}%` : null;
