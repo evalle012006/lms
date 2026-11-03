@@ -63,7 +63,8 @@ function EventRow({ event, photoUrl }) {
             </div>
             {photoUrl && (
                 <button type="button" onClick={() => window.open(photoUrl, '_blank', 'noopener')} className="flex-shrink-0">
-                    <img src={photoUrl} alt="Captured" className="w-10 h-10 rounded border object-cover" />
+                    <img src={photoUrl} alt="Captured" className="w-10 h-10 rounded border object-cover"
+                        onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} />
                 </button>
             )}
             <div className="flex-shrink-0 text-right text-xs text-gray-400 whitespace-nowrap">

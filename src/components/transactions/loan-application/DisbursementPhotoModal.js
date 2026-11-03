@@ -27,6 +27,7 @@ import FaceVerifyStep from '@/components/transactions/loan-application/FaceVerif
 import PhotoCapture from '@/components/clients/PhotoCapture';
 import LafCiGallery from '@/components/transactions/loan-application/LafCiGallery';
 import FaceVerifyComparisonPanel from '@/components/transactions/loan-application/FaceVerifyComparisonPanel';
+import DisbursementClientPhotoStep from '@/components/transactions/loan-application/DisbursementClientPhotoStep';
 import { canApproveFaceRecapture, MIN_RECAPTURE_REASON_LENGTH } from '@/lib/face-recapture-utils';
 import { isSystemAdmin } from '@/lib/ci-roles'; // used by canSkip below — skip this line if it's already imported
 
@@ -81,6 +82,11 @@ const DisbursementPhotoModal = ({
     // FIX issue 4: key to force full remount of FaceVerifyStep on retry
     const [faceVerifyKey,   setFaceVerifyKey]   = useState(0);
 
+    // Offline mode (branches.skipClientFaceVerify): a saved client photo replaces face verification.
+    // Resolved from the server per branch, never from the logged-in user's cached branch.
+    const [photoModeBranches, setPhotoModeBranches] = useState({}); // branchId -> true/false
+    const [clientPhotoKeys,   setClientPhotoKeys]   = useState({}); // clientId -> saved photo key
+
     const [confirming, setConfirming] = useState(false);
 
     const roleMap = {
@@ -112,15 +118,11 @@ const DisbursementPhotoModal = ({
         setOverrideAsk(false);
         setOverrideReason('');
         setFaceVerifyKey(0);
+        setPhotoModeBranches({});
+        setClientPhotoKeys({});
     }, [show, currentUser]);
 
-    // ── Load client flow-status + faceTemplate for ALL selected loans ──────
-    // Two batch calls instead of N sequential lookups:
-    //   1. clients/flow-status — tells us skip/no-skip per client (batch)
-    //   2. clients?clientId=  — still per-client for faceTemplate, since
-    //      that endpoint has no batch form. If batch sizes grow beyond a
-    //      handful, consider reusing clients/by-ids (already used in
-    //      CIDuplicatePanel) instead of this loop.
+    // ── Load flow-status + branch offline-mode flag (+ faceTemplates, only when verifying faces) ──
     useEffect(() => {
         if (!show || !loans?.length) return;
 
@@ -138,84 +140,106 @@ const DisbursementPhotoModal = ({
             setVerificationQueue([]);
             return;
         }
+        const branchIds = [...new Set(loans.map(l => l.branchId).filter(Boolean))];
 
-        Promise.all([
-            fetchWrapper.get(
-                getApiBaseUrl() + 'clients/flow-status?' +
-                new URLSearchParams({ clientIds: clientIds.join(',') })
-            ),
-            Promise.all(
-                clientIds.map(id =>
-                    fetchWrapper.get(getApiBaseUrl() + `clients/face-template?clientId=${encodeURIComponent(id)}`)
-                        .then(res => ({ id, record: res.success ? { faceTemplate: res.faceTemplate } : null }))
-                        .catch(() => ({ id, record: null }))
-                )
-            ),
-        ]).then(([flowStatusRes, clientRecords]) => {
-            const statusMap = flowStatusRes?.success ? (flowStatusRes.statusMap || {}) : {};
+        let cancelled = false;
 
-            const map = {};
-            clientRecords.forEach(({ id, record }) => {
-                let faceTemplate = null;
-                const raw = record?.faceTemplate;
-                if (raw) {
-                    try {
-                        const parsed = JSON.parse(raw);
-                        if (Array.isArray(parsed) && parsed.length === 128) faceTemplate = parsed;
-                    } catch { /* leave null */ }
-                }
-
-                const isV2Branch = currentBranch?.clientFlowVersion === 'v2';
-                // statusMap[id] === true  → client went through the new LAF flow
-                //                            (promoted temp application found)
-                // statusMap[id] === false → no matching promoted record found
-                // Fail-safe: if statusMap has no entry for this id at all
-                // (flow-status call failed / partial response), never skip —
-                // treat as "went through flow" so verification still runs.
-                const wentThroughNewFlow = statusMap.hasOwnProperty(id) ? statusMap[id] : true;
-                const skip = !wentThroughNewFlow;
-
-                map[id] = {
-                    faceTemplate,
-                    needsVerification: !skip,
-                    reason: skip ? 'legacy_flow' : null,
-                };
-            });
-
-            setClientStatusMap(map);
-
+        const buildQueue = (map) => {
             const seen = new Set();
-            const queue = loans.filter(l => {
+            return loans.filter(l => {
                 const cid = getClientId(l);
                 if (!cid || seen.has(cid)) return false;
                 if (!map[cid]?.needsVerification) return false;
                 seen.add(cid);
                 return true;
             });
+        };
 
-            setVerificationQueue(queue);
-            setVerifyIndex(0);
-            setStatusLoaded(true);
-        }).catch(() => {
-            // Total failure — fail safe: require verification for everyone,
-            // don't silently skip a biometric control because a fetch broke.
-            const map = {};
-            clientIds.forEach(id => {
-                map[id] = { faceTemplate: null, needsVerification: true, reason: null };
-            });
-            setClientStatusMap(map);
+        (async () => {
+            try {
+                // Stage 1 — both calls are tiny. If the offline-mode lookup fails we fall back to the
+                // stricter, current behaviour (normal face verification); the server decides anyway.
+                const [flowStatusRes, modeRes] = await Promise.all([
+                    fetchWrapper.get(
+                        getApiBaseUrl() + 'clients/flow-status?' +
+                        new URLSearchParams({ clientIds: clientIds.join(',') })
+                    ),
+                    branchIds.length
+                        ? fetchWrapper.get(
+                            getApiBaseUrl() + 'branches/face-verify-mode?' +
+                            new URLSearchParams({ branchIds: branchIds.join(',') })
+                          ).catch(() => null)
+                        : Promise.resolve(null),
+                ]);
+                const modeMap   = modeRes?.success ? (modeRes.modeMap || {}) : {};
+                const photoMode = loans.every(l => modeMap[l.branchId] === true);
 
-            const seen = new Set();
-            const queue = loans.filter(l => {
-                const cid = getClientId(l);
-                if (!cid || seen.has(cid)) return false;
-                seen.add(cid);
-                return true;
-            });
-            setVerificationQueue(queue);
-            setVerifyIndex(0);
-            setStatusLoaded(true);
-        });
+                // Stage 2 — face templates are only needed for real face verification.
+                const clientRecords = photoMode
+                    ? clientIds.map(id => ({ id, record: null }))
+                    : await Promise.all(
+                        clientIds.map(id =>
+                            fetchWrapper.get(getApiBaseUrl() + `clients/face-template?clientId=${encodeURIComponent(id)}`)
+                                .then(res => ({ id, record: res.success ? { faceTemplate: res.faceTemplate } : null }))
+                                .catch(() => ({ id, record: null }))
+                        )
+                      );
+
+                const statusMap = flowStatusRes?.success ? (flowStatusRes.statusMap || {}) : {};
+
+                const map = {};
+                clientRecords.forEach(({ id, record }) => {
+                    let faceTemplate = null;
+                    const raw = record?.faceTemplate;
+                    if (raw) {
+                        try {
+                            const parsed = JSON.parse(raw);
+                            if (Array.isArray(parsed) && parsed.length === 128) faceTemplate = parsed;
+                        } catch { /* leave null */ }
+                    }
+
+                    // statusMap[id] === true  → client went through the new LAF flow (promoted temp application found)
+                    // statusMap[id] === false → no matching promoted record found
+                    // Fail-safe: no entry at all → treat as "went through flow" so verification still runs.
+                    const wentThroughNewFlow = statusMap.hasOwnProperty(id) ? statusMap[id] : true;
+                    const skip = !wentThroughNewFlow;
+
+                    map[id] = {
+                        faceTemplate,
+                        needsVerification: !skip,
+                        reason: skip ? 'legacy_flow' : null,
+                    };
+                });
+
+                if (cancelled) return;
+                setPhotoModeBranches(modeMap);
+                setClientStatusMap(map);
+                setVerificationQueue(buildQueue(map));
+                setVerifyIndex(0);
+                setStatusLoaded(true);
+            } catch {
+                // Total failure — fail safe: require verification for everyone (normal face flow),
+                // don't silently skip a biometric control because a fetch broke.
+                if (cancelled) return;
+                const map = {};
+                clientIds.forEach(id => {
+                    map[id] = { faceTemplate: null, needsVerification: true, reason: null };
+                });
+                setPhotoModeBranches({});
+                setClientStatusMap(map);
+                const seen = new Set();
+                setVerificationQueue(loans.filter(l => {
+                    const cid = getClientId(l);
+                    if (!cid || seen.has(cid)) return false;
+                    seen.add(cid);
+                    return true;
+                }));
+                setVerifyIndex(0);
+                setStatusLoaded(true);
+            }
+        })();
+
+        return () => { cancelled = true; };
     }, [show, loans, requireClientBiometric, currentBranch]);
 
     // ── Load approvers ───────────────────────────────────────────────────
@@ -282,9 +306,21 @@ const DisbursementPhotoModal = ({
 
     // ── Client face verification handlers ─────────────────────────────────
     const currentVerifyLoan = verificationQueue[verifyIndex];
+
+    // Offline mode applies only when EVERY loan is on a flagged branch. A mixed batch uses the normal
+    // face flow (the server accepts either proof for flagged branches).
+    const isPhotoMode = loans.length > 0 && loans.every(l => photoModeBranches[l.branchId] === true);
+    const currentPhotoLoan = isPhotoMode
+        ? verificationQueue.find(l => !clientPhotoKeys[getClientId(l)])
+        : null;
     const clientFaceDone = requireClientBiometric
-        ? verifyIndex >= verificationQueue.length
+        ? (isPhotoMode
+            ? verificationQueue.every(l => !!clientPhotoKeys[getClientId(l)])
+            : verifyIndex >= verificationQueue.length)
         : true;
+
+    const handleClientPhotoSaved = (clientId, key) =>
+        setClientPhotoKeys(prev => ({ ...prev, [clientId]: key }));
 
     const handleClientEnrolled = async ({ faceTemplate, faceEnrolledAt, photoKey, livenessScore }) => {
         const cid = getClientId(currentVerifyLoan);
@@ -397,7 +433,9 @@ const DisbursementPhotoModal = ({
             return;
         }
         if (requireClientBiometric && !clientFaceDone) {
-            toast.error('Please complete face verification for all clients before approving.');
+            toast.error(isPhotoMode
+                ? 'Please save a photo for every client before approving.'
+                : 'Please complete face verification for all clients before approving.');
             return;
         }
         setConfirming(true);
@@ -604,8 +642,86 @@ const DisbursementPhotoModal = ({
                         </div>
                     )}
 
+                    {/* ── Step 4 (offline mode): Client Photo replaces face verification ─ */}
+                    {requireClientBiometric && isPhotoMode && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center
+                                    text-xs font-bold ${stepDone(clientFaceDone)}`}>
+                                    {clientFaceDone ? '✓' : clientFaceStep}
+                                </div>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    Client Photo <span className="text-xs font-normal text-amber-600">(offline mode)</span>
+                                </p>
+                            </div>
+
+                            <div className="ml-7 space-y-3">
+                                {!statusLoaded ? (
+                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                        <Spinner /> Checking client requirements…
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-[11px] text-amber-700 leading-snug">
+                                            This branch is in offline mode: real-time face verification is skipped.
+                                            Save a photo of each client instead. It is recorded in the audit log.
+                                        </p>
+
+                                        <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 overflow-hidden">
+                                            {loans.map((l, idx) => {
+                                                const cid = getClientId(l);
+                                                const isSkipped = clientStatusMap[cid]?.reason === 'legacy_flow';
+                                                const isSaved   = !!clientPhotoKeys[cid];
+                                                const isCurrent = !!currentPhotoLoan && getClientId(currentPhotoLoan) === cid;
+                                                return (
+                                                    <div key={l._id || idx} className={isCurrent ? 'bg-blue-50' : 'bg-white'}>
+                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                            <span className="font-medium text-gray-700">{getClientName(l)}</span>
+                                                            {isSkipped ? (
+                                                                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                                                    <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                                                                    Skipped — legacy client, no new-flow record
+                                                                </span>
+                                                            ) : isSaved ? (
+                                                                <span className="flex items-center gap-1 text-green-600 font-medium">
+                                                                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                                                                    Photo saved
+                                                                </span>
+                                                            ) : isCurrent ? (
+                                                                <span className="text-blue-600 font-medium">In progress</span>
+                                                            ) : (
+                                                                <span className="text-gray-400">Pending</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {currentPhotoLoan && (
+                                            <DisbursementClientPhotoStep
+                                                key={getClientId(currentPhotoLoan)}
+                                                loan={currentPhotoLoan}
+                                                clientId={getClientId(currentPhotoLoan)}
+                                                clientName={getClientName(currentPhotoLoan)}
+                                                onSaved={(key) => handleClientPhotoSaved(getClientId(currentPhotoLoan), key)}
+                                            />
+                                        )}
+
+                                        {clientFaceDone && verificationQueue.length > 0 && (
+                                            <div className="flex items-center gap-2 text-green-700 text-sm">
+                                                <CheckCircleIcon className="w-4 h-4" />
+                                                All client photos saved
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* ── Step 4: Client Face Verification (per-client queue) ─ */}
-                    {requireClientBiometric && (
+                    {requireClientBiometric && !isPhotoMode && (
                         <div>
                             <div className="flex items-center gap-2 mb-3">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center

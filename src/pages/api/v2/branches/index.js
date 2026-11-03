@@ -105,6 +105,10 @@ async function updateBranch(req, res) {
     // csfEnabled changes only through branches/set-csf-enabled (permission-checked and audited).
     // The branches table posts whole rows, so a stale row must not be able to overwrite it.
     delete branch.csfEnabled;
+    // skipClientFaceVerify changes only through branches/set-skip-client-face-verify
+    // (root/admin only, audited). A stale table row must not overwrite it.
+    delete branch.skipClientFaceVerify;
+    delete branch.skipClientFaceVerifyUntil;
 
     const branchlock = branch.forLock ?? false;
     delete branch.forLock;

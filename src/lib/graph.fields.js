@@ -48,6 +48,8 @@ export const BRANCH_FIELDS = `
   lockTransaction
   clientFlowVersion
   csfEnabled
+  skipClientFaceVerify
+  skipClientFaceVerifyUntil
   `;
 
 export const CLIENT_FIELDS = `
@@ -1107,4 +1109,14 @@ export const CLIENT_FACE_ENROLLMENT_FIELDS = `
   approved_by
   created_at
   superseded_at
+`;
+
+export const DISBURSEMENT_CLIENT_PHOTO_FIELDS = `
+  _id
+  loan_id
+  client_id
+  branch_id
+  photo_key
+  captured_by
+  captured_at
 `;
