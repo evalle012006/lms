@@ -1,25 +1,45 @@
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findUserById } from "@/lib/graph.functions";
-import {
-    createGraphType,
-    queryQl,
-    insertQl,
-    updateQl,
-    deleteQl,
-} from "@/lib/graph/graph.util";
-import {
-    BRANCH_PAYROLL_FIELDS,
-    BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP,
-} from "@/lib/graph.fields";
+import { createGraphType, queryQl, insertQl, } from "@/lib/graph/graph.util";
+import { BRANCH_PAYROLL_FIELDS } from "@/lib/graph.fields";
 
 const graph = new GraphProvider();
 
-// Update an existing payroll and replace its employee rows
-// within one Hasura GraphQL mutation.
-//
-// Hasura executes multiple mutation root fields in one
-// transaction against the same Postgres source.
+const BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP = {
+    familyName: "family_name",
+    firstName: "first_name",
+    middleName: "middle_name",
+    employeeId: "employee_id",
+    position: "position",
+    dateRegularized: "date_regularized",
+
+    basicSalary: "basic_salary",
+    ecola: "ecola",
+
+    employerHDMF: "employer_hdmf",
+    employerSSS: "employer_sss",
+    employerPH: "employer_ph",
+
+    employeeHDMF: "employee_hdmf",
+    employeeSSS: "employee_sss",
+    employeePH: "employee_ph",
+
+    withholdingTax: "withholding_tax",
+    utilityCharge: "utility_charge",
+    cbu: "cbu",
+    cashBond: "cash_bond",
+
+    salaryAdvance: "salary_advance",
+    specialAdvance: "special_advance",
+    cashAdvance: "cash_advance",
+    otherReceivables: "other_receivables",
+
+    pagibigMPL: "pagibig_mpl",
+    sssLoan: "sss_loan",
+    staffAccountsPayable: "staff_accounts_payable",
+};
+
 async function updateExistingPayroll({
     payrollId,
     preparedEmployees,
@@ -97,10 +117,6 @@ export default apiHandler({
     put: savePayroll,
 });
 
-// -----------------------------------------------------
-// AUTHORIZATION
-// -----------------------------------------------------
-
 async function authorizePayroll(req) {
     if (!req.auth?.sub) {
         return {
@@ -125,12 +141,10 @@ async function authorizePayroll(req) {
         user?.role?.shortCode || ""
     ).toLowerCase();
 
-    // ADMIN
     const isAdmin =
         roleRep === 1 ||
         roleShortCode === "admin";
 
-    // BRANCH MANAGER
     const isBranchManager =
         roleRep === 3 ||
         roleShortCode === "branch_manager";
@@ -146,13 +160,11 @@ async function authorizePayroll(req) {
     let branchId;
 
     if (isAdmin) {
-        // Admin can select any branch.
         branchId =
             req.method === "GET"
                 ? req.query.branchId
                 : req.body?.branchId;
     } else {
-        // Branch Manager can only access assigned branch.
         branchId = user.designatedBranchId;
     }
 
@@ -172,10 +184,6 @@ async function authorizePayroll(req) {
         isBranchManager,
     };
 }
-
-// -----------------------------------------------------
-// VALIDATION
-// -----------------------------------------------------
 
 function validatePeriod(month, year) {
     const m = Number(month);
@@ -217,8 +225,6 @@ function prepareEmployee(employee, index) {
             continue;
         }
 
-        // Reject invalid numeric values rather than silently
-        // saving incorrect payroll amounts.
         if (value === "" || value === null || value === undefined) {
             result[databaseKey] = 0;
             continue;
@@ -246,10 +252,6 @@ function prepareEmployee(employee, index) {
 
     return result;
 }
-
-// -----------------------------------------------------
-// LOAD PAYROLL
-// -----------------------------------------------------
 
 async function getPayroll(req, res) {
     try {
@@ -320,10 +322,6 @@ async function getPayroll(req, res) {
         }
 }
 
-// -----------------------------------------------------
-// SAVE / UPDATE PAYROLL
-// -----------------------------------------------------
-
 async function savePayroll(req, res) {
     try {
         const auth = await authorizePayroll(req);
@@ -373,21 +371,6 @@ async function savePayroll(req, res) {
                 message: error.message,
             });
         }
-
-        /*
-         * One Hasura GraphQL mutation:
-         *
-         * 1. Insert the monthly payroll header.
-         * 2. If the header already exists, update updated_at/by.
-         * 3. Insert the submitted employee rows.
-         *
-         * This first version supports NEW payroll records only.
-         *
-         * IMPORTANT:
-         * Updating an existing payroll requires replacing its
-         * employee rows transactionally. We intentionally reject
-         * existing records below until that operation is implemented.
-         */
 
         const PAYROLL_CHECK_TYPE = createGraphType(
             "branch_payroll",

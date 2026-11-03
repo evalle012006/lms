@@ -11,6 +11,7 @@ import { GraphProvider }                      from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS }               from '@/lib/graph.fields';
 import { findUserById }                       from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope }       from '@/lib/ci-scope';
 import { logAudit }                           from '@/lib/audit';
 import moment from 'moment';
 
@@ -21,18 +22,28 @@ export default apiHandler({ post: enrollFace });
 
 async function enrollFace(req, res) {
     const { ciReferenceCode, faceTemplate, faceEnrolledAt, livenessScore } = req.body;
-    if (!ciReferenceCode || !faceTemplate) {
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim() || !faceTemplate) {
         return res.status(200).json({ success: false, message: 'ciReferenceCode and faceTemplate required.' });
+    }
+    // A face descriptor is 128 numbers; anything else is garbage or an oversized payload
+    if (!Array.isArray(faceTemplate) || faceTemplate.length !== 128 || !faceTemplate.every(Number.isFinite)) {
+        return res.status(200).json({ success: false, message: 'Invalid face template.' });
     }
 
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) return res.status(200).json({ success: false, message: 'User not found.' });
+    if (!canDecideCI(currentUser)) {
+        return res.status(200).json({ success: false, message: 'You are not allowed to enroll a face template.' });
+    }
 
     const [application] = await graph.query(
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) return res.status(200).json({ success: false, message: 'Application not found.' });
+    // Out-of-scope looks identical to not-found
+    if (!application || !(await isBranchInScope(currentUser, application.branchId))) {
+        return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
     if (application.faceTemplate) {
         return res.status(200).json({ success: false, message: 'This application already has a face template on record.' });
     }

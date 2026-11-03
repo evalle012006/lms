@@ -6,8 +6,8 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
-import { LOAN_CLOSING_REVIEW_FIELDS, CI_INVESTIGATION_FIELDS, FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
-import { findBranches, resolveClientFlowStatus } from '@/lib/graph.functions';
+import { LOAN_CLOSING_REVIEW_FIELDS, CI_INVESTIGATION_FIELDS, FACE_VERIFY_ATTEMPT_FIELDS, CLIENT_FACE_ENROLLMENT_FIELDS } from '@/lib/graph.fields';
+import { findBranches, resolveClientFlowStatus, findUserById } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 
@@ -27,6 +27,7 @@ const CLIENT_TYPE = createGraphType('client', `
 const CI_TYPE = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS)('attempts');
 const REVIEW_TYPE = createGraphType('loan_closing_reviews', LOAN_CLOSING_REVIEW_FIELDS)('reviews');
+const RECAPTURE_TYPE = createGraphType('client_face_enrollments', CLIENT_FACE_ENROLLMENT_FIELDS)('recaptures');
 
 export default apiHandler({ get: listLoanVerification });
 
@@ -100,6 +101,20 @@ async function listLoanVerification(req, res) {
                 : [],
         ]);
 
+        // Supervisor-approved face re-enrollments for these loans (latest per loan)
+        const recaptureRows = loanIds.length
+            ? await graph.query(queryQl(RECAPTURE_TYPE, {
+                where: { loan_id: { _in: loanIds }, source: { _eq: 'disbursement_recapture' } },
+                order_by: [{ created_at: 'desc' }],
+            })).then(r => r.data?.recaptures ?? [])
+            : [];
+        const recaptureByLoan = {};
+        recaptureRows.forEach(r => { if (!recaptureByLoan[r.loan_id]) recaptureByLoan[r.loan_id] = r; });
+        const approverIds = [...new Set(Object.values(recaptureByLoan).map(r => r.approved_by).filter(Boolean))];
+        const approverUsers = await Promise.all(approverIds.map(id => findUserById(id).catch(() => null)));
+        const approverName = Object.fromEntries(approverIds.map((id, i) =>
+            [id, approverUsers[i] ? `${approverUsers[i].firstName} ${approverUsers[i].lastName}` : null]));
+
         const clientMap = Object.fromEntries(clients.map(c => [c._id, c]));
         const ciMap = Object.fromEntries(ciInvestigations.map(ci => [ci.ciReferenceCode, ci]));
         const reviewMap = Object.fromEntries(myReviews.map(r => [r.loan_id, r]));
@@ -122,6 +137,10 @@ async function listLoanVerification(req, res) {
             let faceVerifyStatus, faceVerifyAttempt = null;
             if (!requireClientBiometric || !wentThroughNewFlow) {
                 faceVerifyStatus = 'not_required';
+            } else if (recaptureByLoan[loan._id]) {
+                // reference was replaced by a supervisor — a "mismatch" row here is expected, not a failure
+                faceVerifyStatus = 're_enrolled';
+                faceVerifyAttempt = loanAttempts?.latest ?? null;
             } else if (loanAttempts?.matched) {
                 faceVerifyStatus = 'matched';
                 faceVerifyAttempt = loanAttempts.matched;
@@ -159,7 +178,13 @@ async function listLoanVerification(req, res) {
                     ? { ciReferenceCode: loan.ciReferenceCode, found: !!ci, selfieKey: ci?.selfieKey || null, decision: ci?.decision || null, investigatedAt: ci?.investigatedAt || null, picUserName: ci?.picUserName || null }
                     : { ciReferenceCode: null, found: false },
                 faceVerify: {
-                    status: faceVerifyStatus, // matched | unmatched | missing | not_required
+                    status: faceVerifyStatus, // matched | unmatched | missing | not_required | re_enrolled
+                    recapture: recaptureByLoan[loan._id] ? {
+                        version: recaptureByLoan[loan._id].version,
+                        reason: recaptureByLoan[loan._id].reason,
+                        createdAt: recaptureByLoan[loan._id].created_at,
+                        approvedByName: approverName[recaptureByLoan[loan._id].approved_by] || null,
+                    } : null,
                     attempt: faceVerifyAttempt ? {
                         matched: faceVerifyAttempt.matched,
                         confidence: faceVerifyAttempt.confidence,

@@ -1,36 +1,27 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
-    experimental: {
-        instrumentationHook: true,
-    },
-    reactStrictMode: false,
-    serverRuntimeConfig: {
-        secret: 'A39518F3263ABF7687DC89697A21A',
-        // Separate secret for client (mobile app) tokens — see
-        // src/services/client-jwt-middleware.js for why this is kept apart
-        // from the staff `secret` above. Sourced from env, not hardcoded:
-        // that existing hardcoded staff secret is a live leak now that this
-        // repo is public — don't add a second one.
-        clientSecret: process.env.CLIENT_JWT_SECRET,
-    },
-    publicRuntimeConfig: {
-        apiUrl: process.env.NEXT_PUBLIC_API_URL
-    },
-    images: {
-        domains: ['ambercashph.sgp1.digitaloceanspaces.com'],
-    },
-    // FIX: face-api.js uses Node.js 'fs' module internally for file system access.
-    // This is only needed server-side — tell webpack to provide empty stubs
-    // for Node built-ins when bundling for the browser so the warning disappears.
-    webpack: (config, { isServer }) => {
-        if (!isServer) {
-            config.resolve.fallback = {
-                ...config.resolve.fallback,
-                fs:   false,
-                path: false,
-                os:   false,
-            };
-        }
-        return config;
-    },
+const required = ['STAFF_JWT_SECRET', 'CLIENT_JWT_SECRET'];
+for (const k of required) {
+  if (!process.env[k]) throw new Error(`Missing env var: ${k}`);
 }
+
+module.exports = {
+  reactStrictMode: false,
+  serverRuntimeConfig: {
+    secret: process.env.STAFF_JWT_SECRET,
+    clientSecret: process.env.CLIENT_JWT_SECRET,
+  },
+  publicRuntimeConfig: {
+    apiUrl: process.env.NEXT_PUBLIC_API_URL,
+  },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'ambercashph.sgp1.digitaloceanspaces.com' },
+    ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false, path: false, os: false };
+    }
+    return config;
+  },
+};

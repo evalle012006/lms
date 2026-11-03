@@ -4,72 +4,195 @@
 // FIX 3: Slot No. and Loan Cycle row added to table
 // FIX 4: Conditional promissory-note / T&C / CSF content for accelerated
 //        weekly loans (occurence === 'weekly' && weeklyScheduleType === 'accelerated').
-//        Verified against graph.fields.js — weeklyScheduleType lives directly on
-//        LOAN_FIELDS, so loanData.weeklyScheduleType should already be populated
-//        for confirmed loans. NOTE: TempLAFModal.js (public/CI prospect flow)
-//        hardcodes occurence: 'daily' and never sets weeklyScheduleType — this
-//        branch will not fire for prospect LAFs until that's wired through.
+//        NOTE: TempLAFModal.js (public/CI prospect flow) hardcodes occurence: 'daily'
+//        and never sets weeklyScheduleType — this branch will not fire for prospect
+//        LAFs until that's wired through.
+// FIX 5: Borrower photo — client.profile is a Spaces storage KEY, not a URL. It is resolved
+//        through useSignedUrl. If the value is already a presigned URL (CI endpoint), it is
+//        used as-is. Print / Download PDF are disabled while the photo URL is resolving.
+// FIX 6: Print CSS — no font-size / spacing overrides in @media print, no @page rule here.
+// FIX 8: Download PDF — render at the modal's content width (renderWidth: 752).
+// FIX 10: SignatureLine — one structure for every "printed name over a line" slot.
+// FIX 11: Print uses an isolated hidden iframe (no react-to-print): page CSS copied without
+//         @page rules, LAF_PAGE_CSS written last.
+// FIX 12: ONE PAGE. Print and PDF both use a compact layout (COMPACT_CSS, scoped to
+//         .laf-fit-compact so the on-screen modal is unchanged) and then scale to fit a single
+//         8.5in x 13in (folio) page. Terms & Conditions no longer force a page break.
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
 import moment from 'moment';
+import { numberToWords } from '@/lib/utils';
+import { downloadElementAsPdf } from '@/lib/pdf-download';
+import { useSignedUrl } from 'hooks/useSignedUrl';
+
+// Folio / long bond paper: 8.5in x 13in.
+const LAF_PAGE_CSS = `
+  @page { size: 8.5in 13in; margin: 0.4in; }
+  html, body { margin: 0; padding: 0; background: #fff; height: auto; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+`;
+
+// Printable area of the 13in folio page minus the 0.4in margins, in CSS px (96px/in).
+const PRINT_W = (8.5 - 0.8) * 96; // 739.2
+const PRINT_H = (13 - 0.8) * 96;  // 1171.2
+
+// Compact layout used ONLY for the one-page print / PDF. Every selector is scoped to
+// .laf-fit-compact, which exists only in the print frame and on the PDF clone.
+const COMPACT_CSS = `
+  .laf-fit-compact > .printable-content { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+  .laf-fit-compact .printable-content table { table-layout: fixed; width: 100%; }
+  .laf-fit-compact .mb-8 { margin-bottom: 0.5rem !important; }
+  .laf-fit-compact .mb-6 { margin-bottom: 0.4rem !important; }
+  .laf-fit-compact .mb-4 { margin-bottom: 0.3rem !important; }
+  .laf-fit-compact .mb-3 { margin-bottom: 0.2rem !important; }
+  .laf-fit-compact .mt-12, .laf-fit-compact .mt-10, .laf-fit-compact .mt-8, .laf-fit-compact .mt-6 { margin-top: 0.3rem !important; }
+  .laf-fit-compact .mt-16 { margin-top: 1.5rem !important; }
+  .laf-fit-compact .laf-sig-space { height: 2.25rem !important; }
+  .laf-fit-compact .laf-photo { width: 14rem !important; height: 8.5rem !important; }
+  .laf-fit-compact .laf-thumb { width: 6rem !important; height: 6rem !important; }
+  .laf-fit-compact .space-y-2 > * + * { margin-top: 0.15rem !important; }
+  .laf-fit-compact .laf-terms { column-count: 2; column-gap: 1.5rem; font-size: 12px; }
+  .laf-fit-compact .laf-terms > * { break-inside: avoid; }
+  .laf-fit-compact .leading-relaxed { line-height: 1.35 !important; }
+`;
+
+// One structure for every "printed name over a signature line" slot.
+//   space: blank height above the name for the actual signature ('' = none)
+const SignatureLine = ({ children, className = 'w-56', uppercase = false, space = 'h-16' }) => (
+  <div className={`mx-auto ${className}`}>
+    {space ? <div className={`${space} laf-sig-space`}></div> : null}
+    <div className="min-h-[1.5rem] flex items-end justify-center text-center pb-1.5">
+      <span className={`text-xs font-semibold leading-tight ${uppercase ? 'uppercase' : ''}`}>{children}</span>
+    </div>
+    <div className="border-t-2 border-gray-800"></div>
+  </div>
+);
 
 const LAFModal = ({ isOpen, onClose, loanData }) => {
   const componentRef = useRef();
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  // FIX 5: resolve the photo storage key to a signed URL.
+  // These hooks must stay ABOVE the `if (!isOpen || !loanData) return null;` below.
+  const rawPhoto = loanData?.client?.profile || loanData?.profile || null;
+
+  // The CI endpoint (/laf/ci/[refCode]) already returns a presigned URL — don't re-sign it.
+  const alreadySigned = typeof rawPhoto === 'string' && /X-Amz-Signature=/i.test(rawPhoto);
+  const { signedUrl, loading: photoLoading } = useSignedUrl(alreadySigned ? null : rawPhoto);
+  const profilePicture = alreadySigned ? rawPhoto : signedUrl;
+
+  const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [profilePicture]);
 
   const isCIPrint = String(
     loanData?.pnNumber || loanData?.ciReferenceCode || ''
   ).startsWith('CI-');
 
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`,
-    pageStyle: `
-      @page {
-        size: legal portrait;
-        margin: 0.4in;
+  // FIX 11 + FIX 12: print through our own hidden iframe, compacted and scaled to ONE page.
+  const handlePrint = async () => {
+    const node = componentRef.current;
+    if (!node) return;
+
+    let css = '';
+    let links = '';
+    Array.from(document.styleSheets).forEach((sheet) => {
+      try {
+        css += Array.from(sheet.cssRules)
+          .filter((rule) => !(typeof CSSPageRule !== 'undefined' && rule instanceof CSSPageRule))
+          .map((rule) => rule.cssText)
+          .join('\n') + '\n';
+      } catch (e) {
+        // cross-origin stylesheet: its rules can't be read, link it instead
+        if (sheet.href) links += `<link rel="stylesheet" href="${sheet.href}">`;
       }
+    });
 
-      @media print {
-        html,
-        body {
-          margin: 0 !important;
-          padding: 0 !important;
-        }
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+    const cleanup = () => setTimeout(() => iframe.remove(), 500);
 
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-      }
-    `,
-  });
-
-  const handleDownloadPDF = async () => {
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = componentRef.current;
-      const opt = {
-        margin: 10,
-        filename: `LAF-${loanData.pnNumber || loanData.id || 'document'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2, useCORS: false, allowTaint: true,
-          letterRendering: true, logging: false, imageTimeout: 0, removeContainer: true
-        },
-        jsPDF: {
-            unit: 'in',
-            format: [8.5, 13],
-            orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await html2pdf().set(opt).from(element).save();
+      const win = iframe.contentWindow;
+      const doc = iframe.contentDocument;
+      const loaded = new Promise((resolve) => {
+        win.addEventListener('load', resolve, { once: true });
+        setTimeout(resolve, 5000); // never hang on a stylesheet that won't load
+      });
+      doc.open();
+      doc.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${document.baseURI}"><title></title>` +
+        `${links}<style>${css}</style><style>${COMPACT_CSS}</style><style>${LAF_PAGE_CSS}</style></head>` +
+        `<body><div id="laf-fit-wrap" class="laf-fit-compact">${node.outerHTML}</div></body></html>`
+      );
+      doc.close();
+      doc.title = `LAF-${loanData?.pnNumber || loanData?.id || 'document'}`;
+      await loaded;
+
+      await Promise.all(
+        Array.from(doc.images).map((img) => (img.decode ? img.decode().catch(() => {}) : null))
+      );
+      if (doc.fonts?.ready) await doc.fonts.ready;
+
+      // ---- fit to ONE page ----
+      // Lay the form out at width PRINT_W / s, find the largest s whose height fits the page,
+      // then scale it back down to PRINT_W. A wider layout wraps less, so the scale needed
+      // is gentler than a plain zoom.
+      const wrap = doc.getElementById('laf-fit-wrap');
+      const content = wrap?.firstElementChild;
+      if (content) {
+        content.style.transformOrigin = 'top left';
+        let s = 1;
+        for (; s > 0.4; s -= 0.01) {
+          content.style.setProperty('width', `${PRINT_W / s}px`, 'important');
+          if (content.scrollHeight * s <= PRINT_H - 6) break;
+        }
+        // The wrapper reserves only the scaled height; otherwise the unscaled layout box
+        // would still spill onto a 2nd (blank) page.
+        wrap.style.cssText = `width:${PRINT_W}px;height:${Math.floor(content.scrollHeight * s)}px;overflow:hidden;`;
+        // !important is required: @media print sets `transform: none !important` on
+        // .printable-content, which would otherwise cancel the scale during printing.
+        content.style.setProperty('transform', `scale(${s})`, 'important');
+      }
+
+      win.addEventListener('afterprint', cleanup, { once: true });
+      win.focus();
+      win.print();
+      setTimeout(cleanup, 60000); // fallback if afterprint never fires
+    } catch (error) {
+      console.error('Error printing the LAF:', error);
+      cleanup();
+      alert('Failed to open the print preview.');
+    }
+  };
+
+  // Used for the loan LAF and, through TempLAFModal, the CI (prospect) LAF.
+  const handleDownloadPDF = async () => {
+    if (pdfBusy || !componentRef.current) return;
+    setPdfBusy(true);
+    try {
+      const ref = loanData.pnNumber || loanData.ciReferenceCode || loanData.id || loanData.client?.lastName || 'document';
+      const { skippedImages } = await downloadElementAsPdf(componentRef.current, {
+        filename: `LAF-${ref}`,
+        orientation: 'portrait',
+        margin: 10, // mm
+        format: [215.9, 330.2], // 8.5in x 13in (folio), same as print
+        fitOnePage: true,
+        cloneClass: 'laf-fit-compact',
+        renderWidth: 752,
+      });
+      if (skippedImages > 0) {
+        alert('The PDF was created without some images (the photo could not be loaded for export).');
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. The document will be generated without some images.');
+      alert('Failed to generate the PDF. Use Print and choose "Save as PDF" instead.');
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -95,9 +218,6 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
   const csfAmount    = isAccelerated ? 25 : 5;
   const csfFrequency = isAccelerated ? 'weekly basis' : 'daily basis';
 
-  // FIX 1: client photo — use client.profile first, then loanData.profile
-  const profilePicture = client.profile || loanData.profile;
-
   const guarantorFullName = [
     loanData.guarantorFirstName,
     loanData.guarantorMiddleName,
@@ -111,8 +231,22 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center no-print z-10">
             <h2 className="text-xl font-semibold">Loan Agreement Form</h2>
             <div className="flex gap-2">
-              <button onClick={handlePrint} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Print">
+              {/* FIX 5: disabled until the photo URL has resolved */}
+              <button
+                onClick={handlePrint}
+                disabled={photoLoading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                title={photoLoading ? 'Loading photo…' : 'Print'}
+              >
                 <Printer className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={pdfBusy || photoLoading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                title={pdfBusy ? 'Preparing PDF…' : photoLoading ? 'Loading photo…' : 'Download PDF'}
+              >
+                <Download className="w-5 h-5" />
               </button>
               <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Close">
                 <X className="w-5 h-5" />
@@ -153,24 +287,14 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 </div>
               </div>
 
-              {/* FIX 1: object-contain so faces are not cropped — bg-gray-50 fills whitespace */}
-              <div className="border-2 border-gray-400 w-64 h-44 flex items-center justify-center text-xs text-gray-500 overflow-hidden bg-gray-50">
-                {profilePicture ? (
+              {/* FIX 1 + FIX 5: signed URL, object-contain, state-driven fallback */}
+              <div className="laf-photo border-2 border-gray-400 w-64 h-44 flex items-center justify-center text-xs text-gray-500 overflow-hidden bg-gray-50">
+                {profilePicture && !photoFailed ? (
                   <img
                     src={profilePicture}
                     alt="Borrower"
                     className="w-full h-full object-contain bg-gray-50"
-                    onError={e => {
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-center p-2">
-                          <svg class="w-16 h-16 text-gray-300 mb-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                          </svg>
-                          <span class="text-gray-400">Borrower Photo<br />(1.5X3)</span>
-                        </div>
-                      `;
-                    }}
+                    onError={() => setPhotoFailed(true)}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-2">
@@ -332,70 +456,96 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             </div>
 
             {/* Promissory Note */}
-            <div className="mb-6">
+            <div className="mb-6 avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">PROMISSORY NOTE</h3>
               <p className="text-sm text-justify leading-relaxed">
                 I, the undersigned promise to pay the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> indicated above loan approval{programLabelText} together with the <span className="font-semibold">service charge of 20%</span> with the sum of <span className="font-semibold underline">{totalAmountWords}</span> Pesos (Php.<span className="font-semibold underline">{totalAmount.toLocaleString()}</span>){paymentTermText} In case of my default payment, I allow <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> to take any legal necessary action from my assets to serve as my payment. And I agree with my full knowledge and ability that until the principal and service charge owed under this note are paid in full.
               </p>
             </div>
 
-            {/* Terms & Conditions */}
+            {/* Terms & Conditions — flows on the same page (FIX 12: one-page LAF) */}
             <div className="mb-6">
               <h3 className="text-center font-bold text-lg mb-3">TERMS & CONDITIONS</h3>
-              <ol className="text-sm space-y-2 list-decimal list-inside">
-                <li>As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</li>
-                <li>Promise to pay the loan in full without fail{isAccelerated ? ' according to the 12-week accelerated term.' : '.'}</li>
-                <li>All clients can avail their succeeding loan depending on their performance in <span className="font-semibold">AmberCash PH Micro Lending Corp.</span></li>
-                <li>No objection shall be raised on this regard by its successors or by member itself, and if the Lender/company prevails in a lawsuit to collect on this note, borrower will pay Lender's court cost, collection agency cost and attorney fees in an amount the court finds to be reasonable.</li>
-                <li>Must also agree that no delay or omission on part of the holder of this note in exercising any right hereunder shall operate as a waiver of any such right or of any other right of such holder, nor shall any delay.</li>
-                <li>The rights and remedies of the payee shall be cumulative and may be pursued singly, successively, or together, in the sole discretion of the payee.</li>
-                <li>The undersigned and all other parties to this note, whether the guarantors and the co-maker will hereby agree to remain fully liable and clearly understood hereunder until this note shall be fully paid and waive presentment, protest and further agree to remain bound, notwithstanding any extension, renewal or modification.</li>
-                <li>Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP {csfAmount} at every group meeting or on a {csfFrequency}. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</li>
-                <li>As a member, you agree to abide by the terms and conditions set by AmberCash PH Micro Lending Corp.</li>
-              </ol>
-              <p className="text-sm mt-4 text-justify">
+              <div className="text-sm space-y-2 laf-terms">
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">1.</span>
+                  <div className="flex-1">As member of <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> you must obey all rules and regulations related hereto and to the {isAccelerated ? '12-Week Accelerated Loan ' : ''}provided by the Corporation.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">2.</span>
+                  <div className="flex-1">Promise to pay the loan in full without fail{isAccelerated ? ' according to the 12-week accelerated term.' : '.'}</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">3.</span>
+                  <div className="flex-1">All clients can avail their succeeding loan depending on their performance in <span className="font-semibold">AmberCash PH Micro Lending Corp.</span></div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">4.</span>
+                  <div className="flex-1">No objection shall be raised on this regard by its successors or by member itself, and if the Lender/company prevails in a lawsuit to collect on this note, borrower will pay Lender's court cost, collection agency cost and attorney fees in an amount the court finds to be reasonable.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">5.</span>
+                  <div className="flex-1">Must also agree that no delay or omission on part of the holder of this note in exercising any right hereunder shall operate as a waiver of any such right or of any other right of such holder, nor shall any delay.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">6.</span>
+                  <div className="flex-1">The rights and remedies of the payee shall be cumulative and may be pursued singly, successively, or together, in the sole discretion of the payee.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">7.</span>
+                  <div className="flex-1">The undersigned and all other parties to this note, whether the guarantors and the co-maker will hereby agree to remain fully liable and clearly understood hereunder until this note shall be fully paid and waive presentment, protest and further agree to remain bound, notwithstanding any extension, renewal or modification.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">8.</span>
+                  <div className="flex-1">Upon application, the member agrees to pay a Center Service Fee (CSF) of PHP {csfAmount} at every group meeting or on a {csfFrequency}. This CSF is non-refundable and is intended to cover group meeting expenses like electricity cost, maintenance of the place and support the time and effort provided by the group leader in facilitating the collection process.</div>
+                </div>
+                <div className="avoid-break flex gap-2">
+                  <span className="flex-none w-5 text-right">9.</span>
+                  <div className="flex-1">As a member, you agree to abide by the terms and conditions set by AmberCash PH Micro Lending Corp.</div>
+                </div>
+              </div>
+              <p className="text-sm mt-4 text-justify avoid-break">
                 This promissory note was made to govern and imposed in accordance with the policy of the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> and hereby execute this note as primary guarantee.
               </p>
             </div>
 
             {/* Signature Section */}
             <div className="mb-6">
-              <div className="flex justify-between items-end mb-8">
+              <div className="flex justify-between items-end mb-8 avoid-break">
                 <div className="text-center">
-                  <p className="text-xs font-semibold uppercase mb-1">{loanData.fullName || client.fullName}</p>
-                  <div className="border-t-2 border-gray-800 w-64 mb-1"></div>
-                  <p className="text-sm font-semibold">Borrower</p>
+                  <SignatureLine className="w-64" uppercase space="">{loanData.fullName || client.fullName}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Borrower</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
                 <div className="text-center">
-                  <div className="border-2 border-gray-800 w-32 h-32 flex items-center justify-center mb-1">
+                  <div className="laf-thumb border-2 border-gray-800 w-32 h-32 flex items-center justify-center mb-1">
                     <span className="text-xs text-gray-500">Thumb Mark</span>
                   </div>
                   <p className="text-sm font-semibold">Right Thumb Mark</p>
                 </div>
               </div>
 
+              <div className="avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">Co-maker and Guarantor's Contract of Agreement</h3>
               <p className="text-sm text-justify mb-6 leading-relaxed">
                 We, the Co-maker and Guarantor confirm that the borrower (Ms./Mrs./Mr.)<span className="underline">{loanData.fullName || client.fullName}</span>, a residence of <span className="underline">{client.address || ''}</span>, received the exact amount <span className="underline font-semibold">₱{totalAmount.toLocaleString()}</span> (loan w/ s/c) pesos from <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> representing as her loan proceeds. On the event of default payment, We, as co-maker and guarantor agreed to be completely liable and promise to pay the exact amount received by the borrower until the outstanding balance will be fully paid. In case we fail to fulfill our obligations and responsibilities, the <span className="font-semibold">AmberCash PH Micro Lending Corp.</span> has the right to take any legal action against us to recover the loan balances.
               </p>
+              </div>
 
-              <div className="flex justify-around mb-8">
+              <div className="flex justify-around mb-8 avoid-break">
                 <div className="text-center">
-                  <div className="h-[5.5rem]"></div>
-                  <div className="border-t-2 border-gray-800 w-56 mb-1"></div>
-                  <p className="text-sm font-semibold">Co-Maker</p>
+                  <SignatureLine className="w-56" uppercase>{''}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Co-Maker</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
                 <div className="text-center">
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-2 font-semibold uppercase">{guarantorFullName}</p>
-                  <div className="border-t-2 border-gray-800 w-56 mb-1"></div>
-                  <p className="text-sm font-semibold">Guarantor</p>
+                  <SignatureLine className="w-56" uppercase>{guarantorFullName}</SignatureLine>
+                  <p className="text-sm font-semibold mt-1">Guarantor</p>
                   <p className="text-xs">(Signature over printed name)</p>
                 </div>
               </div>
 
+              <div className="avoid-break">
               <h3 className="text-center font-bold text-lg mb-3">Group Leader's Promissory Note</h3>
               <p className="text-sm text-justify mb-4 leading-relaxed">
                 I, <span className="underline">{client.groupLeaderName || '__________________'}</span>, hereby recommend (Ms./Mrs./Mr.) <span className="underline">{client.fullName || loanData.fullName}</span> for loan approval and affirm that I am endorsing this application in good faith. By signing this document, I acknowledge my role in supporting the applicant's compliance with AmberCash PH's policies and repayment obligations.
@@ -405,31 +555,26 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
                 <div className="border-t-2 border-gray-800 w-64 mx-auto mb-1 mt-16"></div>
                 <p className="text-sm font-semibold">GL Signature over printed name</p>
               </div>
+              </div>
 
-              <div className="flex justify-between mt-12">
+              <div className="flex justify-between mt-12 avoid-break">
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">Recommended By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">
+                  <SignatureLine className="w-48">
                     {loanData.loanOfficerName || (loanOfficer.firstName && loanOfficer.lastName
                       ? loanOfficer.firstName + ' ' + loanOfficer.lastName : '')}
-                  </p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Loan Officer's name and signature</p>
+                  </SignatureLine>
+                  <p className="text-xs mt-1">Loan Officer's name and signature</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">CI&BI By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">{loanData.ciName || client.ciName || ''}</p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Branch Manager/Supervisor</p>
+                  <SignatureLine className="w-48">{loanData.ciName || client.ciName || ''}</SignatureLine>
+                  <p className="text-xs mt-1">Branch Manager/Supervisor</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold mb-8">Approved By:</p>
-                  <div className="h-16"></div>
-                  <p className="text-xs mt-1 font-semibold">{branch.name ? 'BM - ' + branch.name : ''}</p>
-                  <div className="border-t-2 border-gray-800 w-48 mb-1"></div>
-                  <p className="text-xs">Branch Manager/Area Manager</p>
+                  <SignatureLine className="w-48">{branch.name ? 'BM - ' + branch.name : ''}</SignatureLine>
+                  <p className="text-xs mt-1">Branch Manager/Area Manager</p>
                 </div>
               </div>
             </div>
@@ -441,25 +586,32 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
         </div>
       </div>
 
+      {/* FIX 12: compact layout rules, scoped to .laf-fit-compact (print frame + PDF clone only).
+          The print iframe copies document.styleSheets, so this one tag serves Print and PDF. */}
+      <style>{COMPACT_CSS}</style>
+
+      {/*
+        FIX 6: print CSS.
+        - No @page here (LAF_PAGE_CSS, written last into the print frame, is the single source of truth).
+        - No font-size / margin overrides.
+        - padding: 0 is intentional — the @page margin is the only margin.
+        NOTE: `transform: none !important` below is why handlePrint sets the fit scale with
+        setProperty(..., 'important').
+      */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: 8.5in 13in;
-            margin: 0.35in;
-          }
-
           html,
           body {
             margin: 0 !important;
             padding: 0 !important;
           }
 
-          .loan-approval-laf-print {
-            width: 7.8in !important;
-            max-width: 7.8in !important;
+          .printable-content {
+            width: 100% !important;
+            max-width: none !important;
             min-width: 0 !important;
 
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
 
             box-sizing: border-box !important;
@@ -468,13 +620,26 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
             zoom: 1 !important;
           }
 
-          .loan-approval-laf-print table {
+          .printable-content table {
             width: 100% !important;
             table-layout: fixed !important;
           }
 
-          .loan-approval-laf-print * {
+          .printable-content * {
             box-sizing: border-box !important;
+          }
+
+          /* keep rows, signature blocks and headings from splitting across pages */
+          .printable-content tr,
+          .printable-content .flex.justify-around,
+          .printable-content .flex.justify-between {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .printable-content h3 {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
 
           .no-print {
@@ -500,87 +665,10 @@ const LAFModal = ({ isOpen, onClose, loanData }) => {
           .no-print .sticky {
             display: none !important;
           }
-          
-          .printable-content .text-xs {
-              font-size: 10px !important;
-              line-height: 1.2 !important;
-          }
-
-          .printable-content .text-sm {
-              font-size: 11px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-lg {
-              font-size: 14px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-xl {
-              font-size: 17px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .text-2xl {
-              font-size: 20px !important;
-              line-height: 1.25 !important;
-          }
-
-          .printable-content .mb-6 {
-              margin-bottom: 10px !important;
-          }
-
-          .printable-content .mb-8 {
-              margin-bottom: 12px !important;
-          }
-
-          .printable-content .mt-8 {
-              margin-top: 12px !important;
-          }
-
-          .printable-content .mt-10 {
-              margin-top: 12px !important;
-          }
-
-          .printable-content .mt-12 {
-              margin-top: 16px !important;
-          }
-
-          .printable-content .mt-16 {
-              margin-top: 20px !important;
-          }
-
-          .printable-content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
-              margin-top: 4px !important;
-          }
-
-            tr {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
         }
       `}</style>
     </div>
   );
 };
-
-function numberToWords(num) {
-  if (num === 0) return "Zero";
-  const ones  = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"];
-  const tens  = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
-  const teens = ["Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
-  function convertHundreds(n) {
-    let str = "";
-    if (n >= 100) { str += ones[Math.floor(n/100)] + " Hundred "; n %= 100; }
-    if (n >= 10 && n < 20) { str += teens[n-10] + " "; }
-    else { if (n >= 20) { str += tens[Math.floor(n/10)] + " "; n %= 10; } if (n > 0) str += ones[n] + " "; }
-    return str.trim();
-  }
-  let result = "";
-  if (num >= 1000000) { result += convertHundreds(Math.floor(num/1000000)) + " Million "; num %= 1000000; }
-  if (num >= 1000)    { result += convertHundreds(Math.floor(num/1000)) + " Thousand "; num %= 1000; }
-  if (num > 0)        { result += convertHundreds(num); }
-  return result.trim();
-}
 
 export default LAFModal;

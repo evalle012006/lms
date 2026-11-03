@@ -9,6 +9,10 @@ import moment from 'moment';
 import crypto from 'crypto';
 // CHANGED: shared with check-duplicate.js so the two endpoints can't drift apart
 import { compareMiddle, compareBirthdate } from '@/lib/laf/name-match';
+// FIX: whitespace-only values are blank — "   " is truthy so `x || null` and
+// `.filter(Boolean)` let it through. Server is the real enforcement point.
+import { isBlank, trimText, orNull, escapeLike } from '@/lib/validation-utils';
+import { maskGovernmentId, isMaskedId } from '@/lib/laf/id-mask';
 
 const graph = new GraphProvider();
 
@@ -43,6 +47,8 @@ const TEMP_NAME_TYPE = createGraphType('temporaryLoanApplications', `
 `)('temporaryLoanApplications');
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
+const CLIENT_VERIFY_TYPE = createGraphType('client', '_id branchId status')('clients');
+const CLIENT_ID_OWNER_TYPE = createGraphType('client', '_id governmentIdNumber')('clients');
 
 export default publicApiHandler({ post: submitLAF });
 
@@ -158,6 +164,10 @@ async function submitLAF(req, res) {
     }
 
     const resolvedLoId = group.loanOfficerId;
+    // The group (found by qrToken) is the source of truth for the branch. The client-sent
+    // `branchId` is ignored: every CI scope check keys off branchId, so accepting it would
+    // let a public submitter place an application in any branch's or area's queue.
+    const appBranchId = group.branchId;
 
     if (!lafPhotoKey) {
         return res.status(200).json({
@@ -166,11 +176,73 @@ async function submitLAF(req, res) {
         });
     }
 
+    // ── FIX: server-side required-field validation ────────────────────────
+    // The client schemas are UX only. Reloan / pending members come from their
+    // existing record (the Personal and Address steps are skipped for them), so
+    // only the loan + guarantor fields are required for those types.
+    const isExistingType = clientType === 'reloan' || clientType === 'pending';
+    const requiredFields = isExistingType
+        ? { loanPurpose, guarantorFirstName, guarantorLastName, guarantorRelationship, guarantorContactNumber }
+        : {
+            firstName, lastName, middleName, birthdate, contactNumber, civilStatus,
+            addressStreetNo, addressBarangayDistrict, addressMunicipalityCity, addressProvince,
+            loanPurpose, guarantorFirstName, guarantorLastName, guarantorRelationship, guarantorContactNumber,
+        };
+    const missingFields = Object.entries(requiredFields)
+        .filter(([, value]) => isBlank(value))
+        .map(([key]) => key);
+    if (missingFields.length > 0) {
+        return res.status(200).json({
+            success: false,
+            message: `Missing required fields: ${missingFields.join(', ')}.`,
+        });
+    }
+
+    // ── existingClientId must be real, and only valid for existing-client types ──
+    const EXISTING_CLIENT_TYPES = ['reloan', 'pending', 'balik'];
+    if (existingClientId) {
+        if (typeof existingClientId !== 'string' || !EXISTING_CLIENT_TYPES.includes(clientType)) {
+            return res.status(200).json({ success: false, message: 'Invalid application type.' });
+        }
+        const [existing] = await graph.query(
+            queryQl(CLIENT_VERIFY_TYPE, { where: { _id: { _eq: existingClientId } }, limit: 1 })
+        ).then(r => r.data?.clients ?? []);
+
+        if (!existing || ['archived', 'merged'].includes(existing.status)) {
+            return res.status(200).json({
+                success: false,
+                message: 'Member record not found. Please ask your Loan Officer for help.',
+            });
+        }
+        // Reloan / pending members stay in their branch; balik members may have moved
+        if (clientType !== 'balik' && existing.branchId !== appBranchId) {
+            return res.status(200).json({
+                success: false,
+                message: 'This member record does not belong to this branch.',
+            });
+        }
+    }
+
     // ── Server-side Government ID uniqueness check ────────────────────────
     // Runs for ALL client types that capture an ID.
     // existingClientId excludes self so reloan/pending/balik don't block on their own ID.
-    if (governmentIdType && governmentIdNumber?.trim()) {
-        const cleanId   = governmentIdNumber.trim();
+    // Existing members get a MASKED ID from lookup-client; resolve it back to the real number
+    // from their own record. Any other value containing the mask is rejected.
+    let realIdNumber = governmentIdNumber;
+    if (isMaskedId(governmentIdNumber)) {
+        const [owner] = existingClientId
+            ? await graph.query(
+                queryQl(CLIENT_ID_OWNER_TYPE, { where: { _id: { _eq: existingClientId } }, limit: 1 })
+              ).then(r => r.data?.clients ?? [])
+            : [];
+        if (!owner || maskGovernmentId(owner.governmentIdNumber) !== String(governmentIdNumber).trim()) {
+            return res.status(200).json({ success: false, message: 'Government ID is invalid. Please re-enter it.' });
+        }
+        realIdNumber = owner.governmentIdNumber;
+    }
+
+    if (governmentIdType && realIdNumber?.trim()) {
+        const cleanId   = escapeLike(realIdNumber.trim());
         const excludeId = existingClientId || '__none__';
 
         const [dupeClients, dupeLAFs] = await Promise.all([
@@ -300,7 +372,7 @@ async function submitLAF(req, res) {
 
             // Hard block: same branch + same birthdate + middle name not contradicting
             const hardBlock = lafMatches.find(m =>
-                m.a.branchId === branchId && m.bd === 'same' && m.mid !== 'conflict'
+                m.a.branchId === appBranchId && m.bd === 'same' && m.mid !== 'conflict'
             );
             if (hardBlock) {
                 // Log the blocking record server-side so support can trace it
@@ -389,8 +461,11 @@ async function submitLAF(req, res) {
     // ── Generate CI reference code ────────────────────────────────────────
     const dateStr         = moment().format('YYYYMMDD');
     const suffix          = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const branchCode      = group.branch?.code || branchId.slice(-4).toUpperCase();
+    const branchCode      = group.branch?.code || String(appBranchId).slice(-4).toUpperCase();
     const ciReferenceCode = `CI-${branchCode}-${dateStr}-${suffix}`;
+
+    // FIX: normalize once, reuse for the stored address and the SMS
+    const cleanContactNumber = trimText(contactNumber);
 
     // ── Insert into temporaryLoanApplications ─────────────────────────────
     const [application] = await graph.mutation(
@@ -398,35 +473,35 @@ async function submitLAF(req, res) {
             objects: [{
                 _id: generateUUID(),
                 ciReferenceCode,
-                branchId,
+                branchId: appBranchId,
                 groupId: group._id,
                 loId:    resolvedLoId,
                 firstName:  firstName?.trim().toUpperCase(),
                 lastName:   lastName?.trim().toUpperCase(),
                 middleName: middleName?.trim().toUpperCase() || '',
                 birthdate,
-                contactNumber,
-                addressStreetNo,
-                addressBarangayDistrict,
-                addressMunicipalityCity,
-                addressProvince,
-                addressZipCode,
+                contactNumber: cleanContactNumber,
+                addressStreetNo:         trimText(addressStreetNo),
+                addressBarangayDistrict: trimText(addressBarangayDistrict),
+                addressMunicipalityCity: trimText(addressMunicipalityCity),
+                addressProvince:         trimText(addressProvince),
+                addressZipCode:          trimText(addressZipCode),
                 address: [
                     addressStreetNo, addressBarangayDistrict,
                     addressMunicipalityCity, addressProvince, addressZipCode,
-                ].filter(Boolean).join(', '),
+                ].map(trimText).filter(Boolean).join(', '),
                 loanAmount:             loanAmount ? parseFloat(loanAmount) : null,
-                loanPurpose,
+                loanPurpose:            trimText(loanPurpose),
                 guarantorFirstName:     guarantorFirstName?.trim().toUpperCase(),
                 guarantorLastName:      guarantorLastName?.trim().toUpperCase(),
-                guarantorRelationship,
-                guarantorContactNumber,
+                guarantorRelationship:  trimText(guarantorRelationship),
+                guarantorContactNumber: trimText(guarantorContactNumber),
                 guarantorAddress:         guarantorAddress?.trim() || null,
                 // Guarantor extended fields
-                guarantorBirthDate:    guarantorBirthDate    || null,
-                guarantorCivilStatus:  guarantorCivilStatus  || null,
-                guarantorBusiness:     guarantorBusiness     || null,
-                guarantorDailyIncome:  guarantorDailyIncome  || null,
+                guarantorBirthDate:    orNull(guarantorBirthDate),
+                guarantorCivilStatus:  orNull(guarantorCivilStatus),
+                guarantorBusiness:     orNull(guarantorBusiness),
+                guarantorDailyIncome:  orNull(guarantorDailyIncome),
                 lafPhotoKey,
                 // FIX: status starts as 'pending' by default.
                 // Overridden to 'pending_validation' below if server detected a name match.
@@ -435,8 +510,8 @@ async function submitLAF(req, res) {
                 submittedAt: new Date().toISOString(),
                 expiresAt:   moment().add(30, 'days').toISOString(),
                 // Address extras
-                landmark:              landmark           || null,
-                distanceFromBranch:    distanceFromBranch || null,
+                landmark:              orNull(landmark),
+                distanceFromBranch:    orNull(distanceFromBranch),
                 // Biometric
                 biometricCredentialId: biometricCredentialId || null,
                 biometricPublicKey:    biometricPublicKey    || null,
@@ -445,7 +520,7 @@ async function submitLAF(req, res) {
                 biometricDeviceName:   biometricDeviceName   || null,
                 // Government ID
                 governmentIdType:      governmentIdType     || null,
-                governmentIdNumber:    governmentIdNumber   || null,
+                governmentIdNumber:    orNull(realIdNumber),
                 governmentIdPhotoKey:  governmentIdPhotoKey || null,
                 selfieWithIdPhotoKey:  selfieWithIdPhotoKey || null,
                 // Client type metadata
@@ -472,10 +547,10 @@ async function submitLAF(req, res) {
                 livenessScore:  livenessScore  != null ? livenessScore : null,
                 faceEnrollPhotoKey: faceEnrollPhotoKey || null,
                 // Borrower personal info
-                civilStatus:  civilStatus  || null,
-                yearsOfStay:  yearsOfStay  || null,
-                business:     business     || null,
-                dailyIncome:  dailyIncome  || null,
+                civilStatus:  orNull(civilStatus),
+                yearsOfStay:  orNull(yearsOfStay),
+                business:     orNull(business),
+                dailyIncome:  orNull(dailyIncome),
                 // FIX: server-derived flag → override status to pending_validation
                 ...(isDuplicateFlagged ? { status: 'pending_validation' } : {}),
             }]
@@ -491,7 +566,7 @@ async function submitLAF(req, res) {
 
     // Send SMS — non-blocking, never fails the request
     sendLAFSubmittedSMS({
-        contactNumber:   contactNumber,
+        contactNumber:   cleanContactNumber || undefined,
         firstName:       firstName,
         ciReferenceCode: ciReferenceCode,
         branchName:      group?.branch?.name || 'our branch',

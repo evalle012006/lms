@@ -48,6 +48,9 @@ import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
 import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
+import { resolveMispayment } from '@/lib/mispayment-utils';
+import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
+import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
@@ -100,6 +103,7 @@ const CashCollectionDetailsPage = () => {
 
     const [hasDraft, setHasDraft] = useState(false);
     const [draftsCollection, setDraftsCollection] = useState([]);
+    const [pristineSig, setPristineSig] = useState(null);   // fingerprint of the rows right after a load
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
     const [selectedNewRemarks, setSelectedNewRemarks] = useState();
@@ -959,8 +963,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
                                 collection.paymentCollection = current.paymentCollection;
                                 collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
-                                collection.mispayment = current.mispayment;
-                                collection.mispaymentStr = current.mispayment ? 'Yes' : 'No';
+                                collection.mispayment = resolveMispayment(current);
+                                collection.mispaymentStr = collection.mispayment ? 'Yes' : 'No';
                                 collection.remarks = current.remarks;
                                 collection.delinquent = current.delinquent ? current.delinquent : false;
                                 collection._id = current._id;
@@ -992,6 +996,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.csfInStr = current.csfIn > 0 ? formatPricePhp(current.csfIn) : '-';
 
                                 if (current.draft) {
+                                    collection.origin = current.origin ?? null; // keeps 'offline' across draft re-saves
+                                    collection.closeRemarks = current.closeRemarks;
                                     collection.error = current.error;
                                     collection.mcbu = current.mcbu;
                                     collection.mcbuStr = current.mcbu > 0 ? formatPricePhp(current.mcbu) : '-',
@@ -1602,6 +1608,7 @@ const CashCollectionDetailsPage = () => {
             }
 
             dispatch(setCashCollectionGroup(cashCollection));
+            setPristineSig(rowsSignature(cashCollection));
             // RESET
             setTimeout(() => {
                 if (currentTime) {
@@ -1964,8 +1971,8 @@ const CashCollectionDetailsPage = () => {
 
                         if (!temp.paymentCollection || temp.paymentCollection <= 0) {
                             temp.mispayment = true;
-                            // temp.mispaymentStr = 'Yes';
                         }
+                        temp.mispayment = resolveMispayment(temp);
 
                         if (temp.remarks && temp.remarks.value === 'excused advance payment') {
                             temp.activeLoan = 0;
@@ -2806,6 +2813,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.pastDue = temp.pastDue !== '-' ? temp.pastDue + temp.activeLoan : temp.activeLoan;
                                 temp.pastDueStr = formatPricePhp(temp.pastDue);
                                 temp.mispayment = false;
+                                temp.mispaymentStr = 'No';
                                 temp.error = false;
                                 temp.excused = true;
                                 temp.mcbuError = false;
@@ -4020,6 +4028,8 @@ const CashCollectionDetailsPage = () => {
     }, [currentGroup]);
 
     const [dropDownActions, setDropDownActions] = useState();
+    if (isStaging && typeof window !== 'undefined') window.__lorDump = () => JSON.stringify(
+        data.filter(r => r.clientId).map(({ client, fullName, guarantorFirstName, guarantorMiddleName, guarantorLastName, ...r }) => r), null, 2);
 
     useEffect(() => {
         setDropDownActions([
@@ -4130,13 +4140,42 @@ const CashCollectionDetailsPage = () => {
                         branchLock={currentBranch?.lockTransaction && !isStaging}
                         allowMcbuInterest={allowMcbuInterest}
                         exportComponent={
-                            <CashCollectionDetailsExcelExport
-                                data={groupClients}
-                                groupInfo={currentGroup}
-                                dateFilter={dateFilter}
-                                occurence="daily"
-                                currentUser={currentUser}
-                            />
+                            <div className="flex items-center gap-2">
+                                <CashCollectionDetailsExcelExport
+                                    data={groupClients}
+                                    groupInfo={currentGroup}
+                                    dateFilter={dateFilter}
+                                    occurence="daily"
+                                    currentUser={currentUser}
+                                />
+                                <OfflineUploadControls
+                                    mode="daily"
+                                    rows={data}
+                                    group={currentGroup}
+                                    branchName={currentBranch?.name}
+                                    currentUser={currentUser}
+                                    currentDate={currentDate}
+                                    autoDownload={router.query.downloadTemplate === '1'}
+                                    blockers={{
+                                        isFilterMode: filter,
+                                        isWeekend,
+                                        isHoliday,
+                                        branchLocked: !!(currentBranch?.lockTransaction && !isStaging),
+                                        groupClosed: groupSummaryIsClose,
+                                        prevDraft,
+                                        hasUnsavedEdits: pristineSig !== null && rowsSignature(data) !== pristineSig,
+                                    }}
+                                    engineDeps={{
+                                        getMinMcbu: (row, n, remarks) => getDailyMinMcbu(n, remarks),
+                                        isCsfCollectionAllowed: (cc) => !!(csfEnabled && cc.groupLeader
+                                            && ((cc.mcbu >= transactionSettings.minDailyMcbuWithdrawalGL && cc.loanCycle == 1)
+                                                || (cc.mcbu >= 2000 && cc.loanCycle > 1))),
+                                        csfEnabled,
+                                        hasGroupLeader,
+                                        minCsfCollection: transactionSettings.minCsfCollection,
+                                    }}
+                                />
+                            </div>
                         }
                     />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">

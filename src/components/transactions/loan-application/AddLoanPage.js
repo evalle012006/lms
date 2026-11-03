@@ -12,6 +12,8 @@ import { compressImage } from '@/lib/image-compress';
 import { UppercaseFirstLetter, formatPricePhp } from '@/lib/utils';
 import { getEarliestDateOfRelease, getNextValidDate, validateDateOfRelease, ENFORCE_CI_DOR_VALIDATION } from '@/lib/date-utils';
 import { resolveLoanCycle } from '@/lib/loan-cycle';
+import { resolveWeeklyScheduleType } from '@/lib/weekly-schedule';
+import { isAboveBranchLevel } from '@/lib/ci-roles';
 import { setGroupList } from '@/redux/actions/groupActions';
 import { setClientList, setComakerList } from '@/redux/actions/clientActions';
 
@@ -72,7 +74,7 @@ const AddLoanPage = ({
     const groupList           = useSelector(s => s.group.list);
     const clientList          = useSelector(s => s.client.list);
     const comakerList         = useSelector(s => s.client.comakerList);
-    const currentBranch       = useSelector(s => s.branch.data);
+    const storeBranch         = useSelector(s => s.branch.data);
 
     const rep = currentUser?.role?.rep;
 
@@ -148,6 +150,52 @@ const AddLoanPage = ({
     // LO, Group, and client type are locked — user must not change them.
     const fromCI = !!(initialClientId && initialGroupId && initialLoId);
 
+    // Group-derived schedule type. Never use loWeeklyScheduleType directly for logic.
+    const selectedGroupObj = useMemo(
+        () => (Array.isArray(groupList) ? groupList : []).find(g => g._id === selectedGroup) || null,
+        [groupList, selectedGroup]
+    );
+    // Admin/supervisors arrive only from the CI banner and have no designated branch;
+    // state.branch.data may be unset or stale from another page. Use the branch of the
+    // group being loaned into. BM/LO keep the store branch, unchanged.
+    const isSupervisorFlow = isAboveBranchLevel(currentUser);
+    const [groupBranch, setGroupBranch] = useState(null);
+    useEffect(() => {
+        if (!isSupervisorFlow || !selectedGroupObj?.branchId || !currentDate) return;
+        let cancelled = false;
+        fetchWrapper.get(
+            getApiBaseUrl() + 'branches?' +
+            new URLSearchParams({ _id: selectedGroupObj.branchId, date: currentDate })
+        ).then(res => {
+            if (!cancelled && res.success) setGroupBranch(res.branch);
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, [isSupervisorFlow, selectedGroupObj?.branchId, currentDate]);
+
+    const currentBranch  = isSupervisorFlow ? groupBranch : storeBranch;
+    const loanBranchId   = isSupervisorFlow ? groupBranch?._id  : currentUser?.designatedBranchId;
+    const loanBranchCode = isSupervisorFlow ? groupBranch?.code : currentUser?.designatedBranch;
+
+    const effectiveOccurence    = selectedGroupObj?.occurence || groupOccurence;
+    const effectiveScheduleType = effectiveOccurence === 'weekly'
+        ? resolveWeeklyScheduleType(selectedGroupObj, loWeeklyScheduleType)
+        : null;
+
+    // initialValues is memoized once, so re-derive the default MCBU when the
+    // group/schedule changes. Add mode only, skips group leaders, and never
+    // overrides a field the user already touched.
+    // Standard weekly -> prefill the minimum. Accelerated/daily -> 0 (no minimum).
+    useEffect(() => {
+        if (mode === 'edit' || groupLeader) return;
+        const form = formikRef.current;
+        if (!form || form.touched?.mcbu) return;
+        const next = (effectiveOccurence === 'weekly' && effectiveScheduleType === 'standard')
+            ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+            : 0;
+        form.setFieldValue('mcbu', next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, groupLeader, effectiveOccurence, effectiveScheduleType, transactionSettings]);
+
     const [hasPreFilled, setHasPreFilled] = useState(false);
 
     // Resolve client profile photo in edit mode via the signed-url hook
@@ -222,7 +270,7 @@ const AddLoanPage = ({
             if (res.success) setLoStatus(res.status);
         };
         if (rep === 4) check(currentUser._id);
-        else if (rep === 3 && selectedLo) check(selectedLo);
+        else if (selectedLo) check(selectedLo);
     }, [rep, selectedLo, currentDate]);
 
     // ── Initial date of release ────────────────────────────────
@@ -420,7 +468,8 @@ const AddLoanPage = ({
                     setClientId(l.clientId);
                     setSlotNo(l.slotNo);
                     setLoanTerms(l.loanTerms || 60);
-                    if (l.weeklyScheduleType) setLoWeeklyScheduleType(l.weeklyScheduleType);
+                    // Group wins over the loan's stored value (which may be null/wrong)
+                    setLoWeeklyScheduleType(resolveWeeklyScheduleType(l.group, l.weeklyScheduleType) || 'standard');
                     if (l.loId) setSelectedLo(l.loId);
                     if (l.occurence) setGroupOccurence(l.occurence);
 
@@ -496,7 +545,7 @@ const AddLoanPage = ({
     // Auto-generate PN number on mount (add mode only)
     // Guard with mode prop directly — isEdit may be stale on first render
     useEffect(() => {
-        if (mode !== 'add' || !currentDate || !currentUser?.designatedBranchId) return;
+        if (mode !== 'add' || !currentDate || !loanBranchId) return;
         const timer = setTimeout(() => {
             if (formikRef.current) {
                 getLastPNNumber(formikRef.current.setFieldValue);
@@ -504,7 +553,7 @@ const AddLoanPage = ({
         }, 150);
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentDate, mode]);
+    }, [currentDate, mode, loanBranchId]);
 
     useEffect(() => {
         if (!initialClientId || !initialGroupId || hasPreFilled) return;
@@ -768,22 +817,15 @@ const AddLoanPage = ({
     };
 
     const getLastPNNumber = async (setFieldValue) => {
+        if (!loanBranchId) return;
         const res = await fetchWrapper.get(
             getApiBaseUrl() + 'transactions/loans/get-last-pn-number-by-branch?' +
-            new URLSearchParams({ branchId: currentUser.designatedBranchId, currentDate })
+            new URLSearchParams({ branchId: loanBranchId, currentDate })
         );
         if (res.success) {
-            if (res.data?.length > 0) {
-                // Existing PNs today — increment the max number
-                const lastPN   = res.data[0];
-                const nextNum  = lastPN.maxNumber + 1;
-                const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-${nextNum.toString().padStart(3, '0')}`;
-                setFieldValue('pnNumber', pnNumber);
-            } else {
-                // No PNs today — start at 001
-                const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-001`;
-                setFieldValue('pnNumber', pnNumber);
-            }
+            const nextNum  = res.data?.length > 0 ? res.data[0].maxNumber + 1 : 1;
+            const pnNumber = `${loanBranchCode}-${moment(currentDate).format('MM-DD')}-${nextNum.toString().padStart(3, '0')}`;
+            setFieldValue('pnNumber', pnNumber);
         }
     };
 
@@ -846,6 +888,22 @@ const AddLoanPage = ({
         if (group) {
             form?.setFieldValue('loId', group.loanOfficerId);
             setGroupOccurence(group.occurence || 'daily');
+
+            // Reset MCBU to the new group's default. Without this, a value typed
+            // for a standard group survives a switch to an accelerated/daily group,
+            // where the MCBU field is hidden but the value would still be submitted.
+            // Add mode only; edit mode keeps the loan's stored MCBU.
+            // Group leaders are handled when the client is selected (handleClientIdChange).
+            if (!isEdit) {
+                const nextScheduleType = group.occurence === 'weekly'
+                    ? resolveWeeklyScheduleType(group, loWeeklyScheduleType)
+                    : null;
+                const defaultMcbu = (group.occurence === 'weekly' && nextScheduleType === 'standard')
+                    ? (transactionSettings?.minWeeklyMcbuCollection || 0)
+                    : 0;
+                form?.setFieldValue('mcbu', defaultMcbu);
+                form?.setFieldTouched('mcbu', false, false);
+            }
         }
         form?.setFieldValue(field, value);
         resetClient(form);
@@ -1111,6 +1169,11 @@ const AddLoanPage = ({
             toast.error('Please wait — still loading co-maker information before saving.');
             return;
         }
+        // Supervisor flow: the v2 rules read the group's branch, so wait until it has loaded
+        if (isSupervisorFlow && !currentBranch) {
+            toast.error('Still loading branch details. Please try again in a moment.');
+            return;
+        }
 
         const needsCICheck = clientType !== 'pending' && !fromCI && currentBranch?.clientFlowVersion === 'v2';
         if (needsCICheck) {
@@ -1172,6 +1235,13 @@ const AddLoanPage = ({
         values.loId       = group?.loanOfficerId;
         values.occurence  = group?.occurence;
 
+        // Group is authoritative (matches the server). One value drives terms,
+        // payload and validation below.
+        const scheduleType = group.occurence === 'weekly'
+            ? resolveWeeklyScheduleType(group, loWeeklyScheduleType)
+            : null;
+        values.weeklyScheduleType = scheduleType;
+
         // ── v2 Date of Release validation ───────────────────────────────
         // fromCI path (new client, just came out of CI approval): use the
         // date forwarded from CIPromotedClientBanner.
@@ -1210,9 +1280,10 @@ const AddLoanPage = ({
 
         // group.branchId may be absent from list-by-group-occurence response.
         // Always fall back to currentUser.designatedBranchId for rep 3/4.
-        const branch      = (Array.isArray(branchList) ? branchList : []).find(b => b._id === group?.branchId);
-        values.branchId   = branch?._id   || currentUser.designatedBranchId || null;
-        values.branchName = branch?.name  || currentUser.designatedBranch   || '';
+        const branch      = (Array.isArray(branchList) ? branchList : []).find(b => b._id === group?.branchId)
+            || (currentBranch?._id === group?.branchId ? currentBranch : null);
+        values.branchId   = branch?._id  || group?.branchId   || currentUser.designatedBranchId || null;
+        values.branchName = branch?.name || group?.branchName || currentUser.designatedBranch   || '';
 
         // 'pending' in the LAF vocabulary = completed-loan member; the page's own 'pending' = prospect.
         // So don't enumerate LAF types: anything that isn't a brand-new or returning client is existing.
@@ -1276,16 +1347,12 @@ const AddLoanPage = ({
         if (values.status !== 'active') {
             const serviceChargeRate = transactionSettings.serviceChargeRate;
             if (values.occurence === 'weekly') {
-                // values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
-                // values.loanTerms  = 24;
-                const weeklyTermDays = loWeeklyScheduleType === 'accelerated' ? 12 : 24;
+                const weeklyTermDays = scheduleType === 'accelerated' ? 12 : 24;
                 values.activeLoan       = (values.principalLoan * serviceChargeRate) / weeklyTermDays;
                 values.loanTerms        = weeklyTermDays;
-                values.weeklyScheduleType = loWeeklyScheduleType;
             } else {
                 values.loanTerms  = loanTerms;
                 values.activeLoan = (values.principalLoan * serviceChargeRate) / (loanTerms === 60 ? 60 : 100);
-                values.weeklyScheduleType = null;
             }
             values.loanBalance          = values.principalLoan * serviceChargeRate;
             values.amountRelease        = values.loanBalance;
@@ -1355,12 +1422,14 @@ const AddLoanPage = ({
             toast.error('Principal loan must be divisible by 1,000.');
             return;
         }
-        if (values.occurence === 'weekly' && values.weeklyScheduleType === 'standard' 
+        // Minimum MCBU applies to STANDARD weekly only. Accelerated has no minimum.
+        if (values.occurence === 'weekly' && scheduleType === 'standard'
                 && (!values.mcbu || parseFloat(values.mcbu) < transactionSettings.minWeeklyMcbuCollection)) {
             setLoading(false);
             toast.error(`Invalid MCBU. Please enter at least ${transactionSettings.minWeeklyMcbuCollection}.`);
             return;
         }
+
         if (loanTerms === 100 && values.principalLoan < 10000) {
             setLoading(false);
             toast.error('For 100-day loan term, principal must be ≥ 10,000.');
@@ -1875,7 +1944,7 @@ const AddLoanPage = ({
                                 errors={errors}
                                 setFieldTouched={setFieldTouched}
                                 fromCI={fromCI}
-                                initialLoName={initialLoName}
+                                initialLoName={initialLoName || selectedGroupObj?.loanOfficerName || null}
                                 initialGroupName={initialGroupName}
                             />
 
@@ -1897,7 +1966,7 @@ const AddLoanPage = ({
                                 loanTerms={loanTerms}
                                 setLoanTerms={setLoanTerms}
                                 groupOccurence={groupOccurence}
-                                weeklyScheduleType={loWeeklyScheduleType}
+                                weeklyScheduleType={effectiveScheduleType || 'standard'}
                                 groupLeader={groupLeader}
                                 clientId={clientId}
                                 clientType={clientType}
@@ -1905,7 +1974,7 @@ const AddLoanPage = ({
                                 offsetClient={offsetClient}
                                 onPNFocus={() => getLastPNNumber(setFieldValue)}
                                 onPNBlur={e => handlePNNumber(e, setFieldValue)}
-                                branchId={currentUser.designatedBranchId}
+                                branchId={loanBranchId}
                                 clientFlowVersionV2={currentBranch?.clientFlowVersion === 'v2'}
                                 onBack={onBack}
                                 loading={loading}

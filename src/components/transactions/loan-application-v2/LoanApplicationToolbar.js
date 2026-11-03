@@ -2,6 +2,10 @@
 // Compact filters for the v2 Loan Application page.
 //
 //   Always visible : client name, CI reference, branch
+//                    Both text fields also take a QR scan: a camera button in each
+//                    field, and a hardware scanner "typing" into it. Either field
+//                    accepts either kind of code: a CI QR fills the CI reference, a
+//                    client QR filters to that client (shown as a chip).
 //   Appear inline  : loan officer + group, once a branch is chosen (they are
 //                    meaningless before that — the LO list is fetched by branch
 //                    code and groups by branch id, same as the classic page)
@@ -16,11 +20,14 @@
 // `lg`, so sm:/md:/xl: classes do not exist. Responsiveness here comes from
 // flex-wrap + flex-basis and an auto-fit grid (inline styles), not breakpoints.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, FileText, SlidersHorizontal, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, FileText, QrCode, SlidersHorizontal, X } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { UppercaseFirstLetter } from '@/lib/utils';
+import { looksLikeUrl, parseScannedCode } from '@/lib/qr-scan';
+import QrScanDialog from '@/components/transactions/loan-application-v2/QrScanDialog';
 
 const BASE =
     'w-full rounded-lg border border-gray-200 bg-white py-2 text-sm text-gray-900 ' +
@@ -28,7 +35,14 @@ const BASE =
     'disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed';
 // @tailwindcss/forms draws the <select> chevron in the right padding; an
 // explicit pr-10 keeps text clear of it (a bare px-3 would overlap it).
-const INPUT = `${BASE} pl-9 pr-3`;
+// text inputs with a left icon and, on the right, room for the scan button
+const INPUT_SCAN = `${BASE} pl-9 pr-10`;
+
+// Everything typed into the two text fields waits for this long without a keystroke
+// before it is acted on. That is the search debounce for people, and it is what keeps
+// a hardware scanner's burst of characters ("h", "ht", "htt" ...) from ever being
+// searched as if someone had typed it: the scan is read once, after the last one.
+const TYPING_IDLE_MS = 250;
 const SELECT = `${BASE} pl-3 pr-10 cursor-pointer`;
 
 const CYCLE_OPTIONS = [
@@ -87,6 +101,8 @@ export default function LoanApplicationToolbar({
     const [searchInput, setSearchInput] = useState(filters.search);
     const [ciInput, setCiInput] = useState(filters.ciReference);
     const [panelOpen, setPanelOpen] = useState(false);
+    const [scanField, setScanField] = useState(null); // 'name' | 'ci' | null (camera dialog)
+    const scanTimerRef = useRef(null);
 
     // allowedBranches === null      -> root / admin: every branch, fetch the list
     // allowedBranches === array     -> supervisors: server already scoped it
@@ -151,14 +167,94 @@ export default function LoanApplicationToolbar({
         fetchGroups(effectiveBranchId, lockedLoId || filters.loId);
     }, [effectiveBranchId, filters.loId, lockedLoId, fetchGroups]);
 
-    const handleSearch = (e) => {
-        setSearchInput(e.target.value);
-        updateFilters({ search: e.target.value }, { debounce: true });
+    useEffect(() => () => clearTimeout(scanTimerRef.current), []);
+
+    // ── QR scans ─────────────────────────────────────────────────────────
+    const setFieldText = (field, value) => (field === 'ci' ? setCiInput(value) : setSearchInput(value));
+
+    // `raw` is whatever the scan produced; `field` is where it landed (it may be a
+    // URL a hardware scanner typed into that field, which then has to be cleared).
+    const applyScan = useCallback(async (raw, field) => {
+        const parsed = parseScannedCode(raw);
+
+        if (parsed.type === 'ci') {
+            setCiInput(parsed.value);
+            if (field === 'name') setSearchInput('');
+            updateFilters({ ciReference: parsed.value, ...(field === 'name' ? { search: '' } : {}) });
+            return;
+        }
+
+        if (parsed.type === 'client') {
+            try {
+                const res = await fetchWrapper.post(
+                    `${getApiBaseUrl()}transactions/loans/resolve-client-qr`,
+                    { token: parsed.value }
+                );
+                if (res.success) {
+                    setSearchInput('');
+                    if (field === 'ci') setCiInput('');
+                    updateFilters({
+                        clientId: res.client._id,
+                        clientLabel: res.client.fullName,
+                        search: '',
+                        ...(field === 'ci' ? { ciReference: '' } : {}),
+                    });
+                    return;
+                }
+                toast.error(res.message || 'This QR code could not be read.');
+            } catch (e) {
+                console.error('[LoanApplicationToolbar] client QR failed', e);
+                toast.error('This QR code could not be read.');
+            }
+            setFieldText(field, ''); // do not leave the typed URL in the field
+            return;
+        }
+
+        // not one of our QR codes: plain text for whichever field it was typed in
+        setFieldText(field, parsed.value);
+        updateFilters(field === 'ci' ? { ciReference: parsed.value } : { search: parsed.value });
+    }, [updateFilters]);
+
+    // One idle timer per component: a new keystroke restarts it, whichever field it
+    // is in. When it fires, the settled text is either a QR scan or ordinary text.
+    const handleFieldChange = (field) => (e) => {
+        const value = e.target.value;
+        setFieldText(field, value);
+        clearTimeout(scanTimerRef.current);
+        scanTimerRef.current = setTimeout(() => applyScan(value, field), TYPING_IDLE_MS);
     };
-    const handleCi = (e) => {
-        setCiInput(e.target.value);
-        updateFilters({ ciReference: e.target.value }, { debounce: true });
+
+    // Scanners usually end with Enter; pasting a copied QR link works too.
+    const handleFieldKeyDown = (field) => (e) => {
+        if (e.key !== 'Enter') return;
+        const value = e.currentTarget.value;
+        if (parseScannedCode(value).type !== 'unknown' || looksLikeUrl(value)) {
+            e.preventDefault();
+            clearTimeout(scanTimerRef.current);
+            applyScan(value, field);
+        }
     };
+
+    const handleFieldPaste = (field) => (e) => {
+        const text = e.clipboardData?.getData('text') ?? '';
+        if (parseScannedCode(text).type !== 'unknown') {
+            e.preventDefault();
+            clearTimeout(scanTimerRef.current);
+            applyScan(text, field);
+        }
+    };
+
+    const scanButton = (field) => (
+        <button
+            type="button"
+            onClick={() => setScanField(field)}
+            aria-label="Scan a QR code"
+            title="Scan a client or CI QR code"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-teal-600 hover:bg-teal-50"
+        >
+            <QrCode className="w-4 h-4" />
+        </button>
+    );
 
     // Secondary filters live in the collapsible panel; each active one is
     // mirrored as a removable chip while the panel is closed.
@@ -175,9 +271,10 @@ export default function LoanApplicationToolbar({
 
     const anyActive =
         chips.length > 0 || filters.coMakerPending || !!filters.branchId || !!filters.loId || !!filters.groupId ||
-        !!filters.search.trim() || !!filters.ciReference.trim();
+        !!filters.search.trim() || !!filters.ciReference.trim() || !!filters.clientId;
 
     const handleClear = () => {
+        clearTimeout(scanTimerRef.current);
         setSearchInput('');
         setCiInput('');
         resetFilters();
@@ -191,11 +288,14 @@ export default function LoanApplicationToolbar({
                     <input
                         type="text"
                         aria-label="Client name"
-                        className={INPUT}
-                        placeholder="Search client name"
+                        className={INPUT_SCAN}
+                        placeholder="Search client name or scan QR"
                         value={searchInput}
-                        onChange={handleSearch}
+                        onChange={handleFieldChange('name')}
+                        onKeyDown={handleFieldKeyDown('name')}
+                        onPaste={handleFieldPaste('name')}
                     />
+                    {scanButton('name')}
                 </div>
 
                 <div className="relative" style={{ flex: '1 1 180px' }}>
@@ -203,11 +303,14 @@ export default function LoanApplicationToolbar({
                     <input
                         type="text"
                         aria-label="CI reference"
-                        className={INPUT}
-                        placeholder="CI reference"
+                        className={INPUT_SCAN}
+                        placeholder="CI reference or scan QR"
                         value={ciInput}
-                        onChange={handleCi}
+                        onChange={handleFieldChange('ci')}
+                        onKeyDown={handleFieldKeyDown('ci')}
+                        onPaste={handleFieldPaste('ci')}
                     />
+                    {scanButton('ci')}
                 </div>
 
                 {branchSource.length > 1 ? (
@@ -319,6 +422,20 @@ export default function LoanApplicationToolbar({
             )}
 
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {filters.clientId && (
+                    <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-xs font-medium text-teal-800">
+                        <QrCode className="w-3.5 h-3.5" />
+                        Client: {filters.clientLabel || 'scanned QR'}
+                        <button
+                            type="button"
+                            onClick={() => updateFilters({ clientId: null, clientLabel: null })}
+                            aria-label="Remove the scanned client filter"
+                            className="p-0.5 rounded-full hover:bg-teal-100"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </span>
+                )}
                 <button
                     type="button"
                     onClick={() => updateFilters({ coMakerPending: !filters.coMakerPending })}
@@ -358,6 +475,18 @@ export default function LoanApplicationToolbar({
                     </span>
                 ))}
             </div>
+
+            <QrScanDialog
+                open={!!scanField}
+                title={scanField === 'ci' ? 'Scan CI QR code' : 'Scan client QR code'}
+                hint="Scan a client's collection QR or a CI reference QR. Either one works in either field."
+                onClose={() => setScanField(null)}
+                onScan={(text) => {
+                    const field = scanField;
+                    setScanField(null);
+                    applyScan(text, field);
+                }}
+            />
         </div>
     );
 }
