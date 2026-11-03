@@ -1049,3 +1049,80 @@ export const LOAN_CLOSING_REVIEW_FIELDS = `
   acknowledged
   acknowledged_at
 `;
+
+// =====================================================
+// LMS BRANCH PAYROLL
+// =====================================================
+
+export const BRANCH_PAYROLL_EMPLOYEE_FIELDS = `
+    id
+    row_order
+    family_name
+    first_name
+    middle_name
+    employee_id
+    position
+    date_regularized
+    basic_salary
+    ecola
+    employer_hdmf
+    employer_sss
+    employer_ph
+    employee_hdmf
+    employee_sss
+    employee_ph
+    withholding_tax
+    utility_charge
+    cbu
+    cash_bond
+    salary_advance
+    special_advance
+    cash_advance
+    other_receivables
+    pagibig_mpl
+    sss_loan
+    staff_accounts_payable
+`;
+
+export const BRANCH_PAYROLL_FIELDS = `
+    id
+    branch_id
+    payroll_month
+    payroll_year
+    created_at
+    updated_at
+
+    branch_payroll_employees(
+        order_by: { row_order: asc }
+    ) {
+        ${BRANCH_PAYROLL_EMPLOYEE_FIELDS}
+    }
+`;
+
+export const BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP = {
+    familyName: "family_name",
+    firstName: "first_name",
+    middleName: "middle_name",
+    employeeId: "employee_id",
+    position: "position",
+    dateRegularized: "date_regularized",
+    basicSalary: "basic_salary",
+    ecola: "ecola",
+    employerHDMF: "employer_hdmf",
+    employerSSS: "employer_sss",
+    employerPH: "employer_ph",
+    employeeHDMF: "employee_hdmf",
+    employeeSSS: "employee_sss",
+    employeePH: "employee_ph",
+    withholdingTax: "withholding_tax",
+    utilityCharge: "utility_charge",
+    cbu: "cbu",
+    cashBond: "cash_bond",
+    salaryAdvance: "salary_advance",
+    specialAdvance: "special_advance",
+    cashAdvance: "cash_advance",
+    otherReceivables: "other_receivables",
+    pagibigMPL: "pagibig_mpl",
+    sssLoan: "sss_loan",
+    staffAccountsPayable: "staff_accounts_payable",
+};

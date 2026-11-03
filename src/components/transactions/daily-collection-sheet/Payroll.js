@@ -119,10 +119,11 @@ const calculateEmployee = (employee) => {
 
   const totalDeduction = totalEE + otherDeductions;
   const totalNetPay = totalCompensation - totalDeduction;
-  const payment10th = Math.round(totalNetPay * 50) / 100;
-
-  const payment25th =
-    Math.round(totalNetPay * 100) / 100 - payment10th;
+  const totalNetPayCents = Math.round(totalNetPay * 100);
+  const payment10thCents = Math.round(totalNetPayCents / 2);
+  const payment25thCents = totalNetPayCents - payment10thCents;
+  const payment10th = payment10thCents / 100;
+  const payment25th = payment25thCents / 100;
 
   return {
     totalCompensation,
@@ -337,13 +338,6 @@ const Payroll = ({
         return;
     }
 
-    if (payrollExists) {
-        setError(
-            "Updating existing payroll is not enabled in the backend yet."
-        );
-        return;
-    }
-
     if (
         !window.confirm(
             `Save payroll for ${branchName || "selected branch"}?`
@@ -357,15 +351,19 @@ const Payroll = ({
     setMessage("");
 
     try {
-        const result = await fetchWrapper.post("/api/v2/payroll", {
-            branchId,
-            month: Number(payrollMonth),
-            year: Number(payrollYear),
-            employees: employees.map((employee) => {
-                const { id, ...fields } = employee;
-                return fields;
-            }),
-        });
+        const payrollData = {
+          branchId,
+          month: Number(payrollMonth),
+          year: Number(payrollYear),
+          employees: employees.map((employee) => {
+              const { id, ...fields } = employee;
+              return fields;
+          }),
+      };
+
+      const result = payrollExists
+          ? await fetchWrapper.put("/api/v2/payroll", payrollData)
+          : await fetchWrapper.post("/api/v2/payroll", payrollData);
 
         if (result?.error) {
             throw new Error(
@@ -374,7 +372,12 @@ const Payroll = ({
         }
 
         setPayrollExists(true);
-        setMessage("Payroll saved successfully.");
+
+      setMessage(
+          payrollExists
+              ? "Payroll changes saved successfully."
+              : "Payroll saved successfully."
+      );
     } catch (err) {
         setError(
             typeof err === "string"
@@ -406,13 +409,23 @@ const Payroll = ({
   };
 
   const removeEmployee = (id) => {
-    if (!window.confirm("Remove this payroll row?")) {
-      return;
-    }
+      if (employees.length <= 1) {
+          setError(
+              "Payroll must contain at least one employee."
+          );
+          return;
+      }
 
-    setEmployees((previous) =>
-      previous.filter((employee) => employee.id !== id)
-    );
+      if (!window.confirm("Remove this payroll row?")) {
+          return;
+      }
+
+      setEmployees((previous) =>
+          previous.filter((employee) => employee.id !== id)
+      );
+
+      setMessage("");
+      setError("");
   };
 
   const calculatedEmployees = useMemo(
@@ -507,15 +520,14 @@ const Payroll = ({
               disabled={
                   loading ||
                   saving ||
-                  payrollExists ||
                   !branchId ||
                   !payrollLoaded
               }
               className={`rounded px-4 py-2 text-sm text-white ${
-                  loading || saving || payrollExists || !branchId || !payrollLoaded
-                      ? "cursor-not-allowed bg-gray-400"
-                      : "bg-blue-600 hover:bg-blue-700"
-              }`}
+                loading || saving || !branchId || !payrollLoaded
+                    ? "cursor-not-allowed bg-gray-400"
+                    : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
               + Add Staff
           </button>
@@ -526,23 +538,22 @@ const Payroll = ({
             disabled={
                 loading ||
                 saving ||
-                payrollExists ||
                 !branchId ||
                 !payrollLoaded
             }
             className={`rounded px-4 py-2 text-sm text-white ${
-                loading || saving || payrollExists || !branchId || !payrollLoaded
-                    ? "cursor-not-allowed bg-gray-400"
-                    : "bg-green-600 hover:bg-green-700"
-            }`}
+              loading || saving || !branchId || !payrollLoaded
+                  ? "cursor-not-allowed bg-gray-400"
+                  : "bg-green-600 hover:bg-green-700"
+          }`}
         >
             {saving
-                ? "Saving..."
-                : loading
-                ? "Loading..."
-                : payrollExists
-                ? "Payroll Already Saved"
-                : "Save Payroll"}
+              ? "Saving..."
+              : loading
+              ? "Loading..."
+              : payrollExists
+              ? "Save Changes"
+              : "Save Payroll"}
         </button>
         </div>
       </div>
@@ -599,7 +610,7 @@ const Payroll = ({
         </div>
       </div>
 
-      <fieldset disabled={loading || saving || payrollExists}>
+      <fieldset disabled={loading || saving || !payrollLoaded}>
       <div className="overflow-x-auto rounded border bg-white">
         <table className="w-max min-w-full border-collapse text-xs">
           <thead>
@@ -729,9 +740,9 @@ const Payroll = ({
       <div className="mt-4 flex flex-wrap gap-2"></div>
 
       <p className="mt-3 text-xs text-gray-500">
-          Payroll records are loaded from and saved to the LMS database.
-          Existing payroll records are currently read-only until
-          the update functionality is completed.
+          Payroll records are saved to the LMS database.
+          Authorized users can add staff, edit existing payroll
+          information, remove staff, and save changes at any time.
       </p>
     </div>
   );

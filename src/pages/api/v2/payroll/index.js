@@ -1,44 +1,86 @@
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findUserById } from "@/lib/graph.functions";
-import { createGraphType, queryQl, insertQl, } from "@/lib/graph/graph.util";
+import {
+    createGraphType,
+    queryQl,
+    insertQl,
+    updateQl,
+    deleteQl,
+} from "@/lib/graph/graph.util";
+import {
+    BRANCH_PAYROLL_FIELDS,
+    BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP,
+} from "@/lib/graph.fields";
 
 const graph = new GraphProvider();
 
-// Database fields that Branch Managers may enter manually.
-const EMPLOYEE_FIELDS = {
-    familyName: "family_name",
-    firstName: "first_name",
-    middleName: "middle_name",
-    employeeId: "employee_id",
-    position: "position",
-    dateRegularized: "date_regularized",
+// Update an existing payroll and replace its employee rows
+// within one Hasura GraphQL mutation.
+//
+// Hasura executes multiple mutation root fields in one
+// transaction against the same Postgres source.
+async function updateExistingPayroll({
+    payrollId,
+    preparedEmployees,
+    userId,
+}) {
+    const employeeObjects = preparedEmployees.map((employee) => ({
+        ...employee,
+        payroll_id: payrollId,
+    }));
 
-    basicSalary: "basic_salary",
-    ecola: "ecola",
+    const UPDATE_EXISTING_PAYROLL = (i) => ({
+        gql: `
+            update_branch_payroll(
+                where: {
+                    id: { _eq: $payrollId_${i} }
+                }
+                _set: {
+                    updated_by: $updatedBy_${i}
+                }
+            ) {
+                affected_rows
+            }
 
-    employerHDMF: "employer_hdmf",
-    employerSSS: "employer_sss",
-    employerPH: "employer_ph",
+            delete_branch_payroll_employees(
+                where: {
+                    payroll_id: { _eq: $payrollId_${i} }
+                }
+            ) {
+                affected_rows
+            }
 
-    employeeHDMF: "employee_hdmf",
-    employeeSSS: "employee_sss",
-    employeePH: "employee_ph",
+            insert_branch_payroll_employees(
+                objects: $employees_${i}
+            ) {
+                affected_rows
+            }
+        `,
 
-    withholdingTax: "withholding_tax",
-    utilityCharge: "utility_charge",
-    cbu: "cbu",
-    cashBond: "cash_bond",
+        parameters: [
+            `$payrollId_${i}: uuid!`,
+            `$updatedBy_${i}: uuid!`,
+            `$employees_${i}: [branch_payroll_employees_insert_input!]!`,
+        ],
 
-    salaryAdvance: "salary_advance",
-    specialAdvance: "special_advance",
-    cashAdvance: "cash_advance",
-    otherReceivables: "other_receivables",
+        variables: {
+            [`payrollId_${i}`]: payrollId,
+            [`updatedBy_${i}`]: userId,
+            [`employees_${i}`]: employeeObjects,
+        },
+    });
 
-    pagibigMPL: "pagibig_mpl",
-    sssLoan: "sss_loan",
-    staffAccountsPayable: "staff_accounts_payable",
-};
+    const result = await graph.mutation(
+        UPDATE_EXISTING_PAYROLL
+    );
+
+    if (result.errors?.length) {
+        throw new Error(result.errors[0].message);
+    }
+
+    return result;
+}
 
 const TEXT_FIELDS = new Set([
     "familyName",
@@ -48,12 +90,6 @@ const TEXT_FIELDS = new Set([
     "position",
     "dateRegularized",
 ]);
-
-const EMPLOYEE_SELECTION = `
-    id
-    row_order
-    ${Object.values(EMPLOYEE_FIELDS).join("\n")}
-`;
 
 export default apiHandler({
     get: getPayroll,
@@ -167,7 +203,9 @@ function prepareEmployee(employee, index) {
         row_order: index + 1,
     };
 
-    for (const [frontendKey, databaseKey] of Object.entries(EMPLOYEE_FIELDS)) {
+    for (const [frontendKey, databaseKey] of Object.entries(
+        BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP
+    )) {
         const value = employee[frontendKey];
 
         if (TEXT_FIELDS.has(frontendKey)) {
@@ -238,20 +276,7 @@ async function getPayroll(req, res) {
 
         const PAYROLL_TYPE = createGraphType(
             "branch_payroll",
-            `
-                id
-                branch_id
-                payroll_month
-                payroll_year
-                created_at
-                updated_at
-
-                branch_payroll_employees(
-                    order_by: { row_order: asc }
-                ) {
-                    ${EMPLOYEE_SELECTION}
-                }
-            `
+            BRANCH_PAYROLL_FIELDS
         )("branch_payroll");
 
         const result = await graph.query(
@@ -392,12 +417,25 @@ async function savePayroll(req, res) {
             throw new Error(existingResult.errors[0].message);
         }
 
-        if (existingResult.data?.branch_payroll?.length) {
-            return res.status(409).json({
-                error: true,
-                message:
-                    "Payroll already exists for this month. " +
-                    "Editing existing payroll is not enabled yet.",
+        const existingPayroll =
+            existingResult.data?.branch_payroll?.[0] || null;
+
+        if (existingPayroll) {
+            await updateExistingPayroll({
+                payrollId: existingPayroll.id,
+                preparedEmployees,
+                userId: auth.user._id,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Payroll updated successfully.",
+                payroll: {
+                    id: existingPayroll.id,
+                    branch_id: auth.branchId,
+                    payroll_month: period.month,
+                    payroll_year: period.year,
+                },
             });
         }
 

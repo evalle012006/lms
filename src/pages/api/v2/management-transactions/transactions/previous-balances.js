@@ -26,7 +26,14 @@ export default apiHandler({
 });
 
 async function getPreviousBalances(req, res) {
-    const { transactionType, branchId } = req.query;
+    const { transactionType, branchId, date } = req.query;
+
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({
+            error: true,
+            message: 'Invalid date format. Expected YYYY-MM-DD'
+        });
+    }
 
     if (!transactionType || !branchId) {
         return res.status(400).json({
@@ -91,10 +98,23 @@ async function getPreviousBalances(req, res) {
 
         const graphRes = await graph.query(
             queryQl(managementTransactionsType(), {
-                where: { 
+                where: {
                     transaction_type: { _eq: transactionTypeSlug },
                     branch_id: { _eq: branchId },
-                    account: { is_active: { _eq: true } }
+
+                    ...(date
+                        ? {
+                            date_added: {
+                                _lte: date
+                            }
+                        }
+                        : {}),
+
+                    account: {
+                        is_active: {
+                            _eq: true
+                        }
+                    }
                 },
                 order_by: [
                     { account_id: 'asc' },
