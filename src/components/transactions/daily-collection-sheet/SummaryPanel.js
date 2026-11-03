@@ -5,10 +5,6 @@ import { BookOpen } from 'lucide-react';
 import { formatPricePhp } from '@/lib/utils';
 import { SUMMARY_RECEIPTS, SUMMARY_PAYMENTS, mapSummaryData } from '@/lib/constants';
 
-// ── Row component ────────────────────────────────────────────
-// When `no` is provided the table has 3 columns: no | label | value
-// When `no` is null (totals row) the label spans the first 2 columns so the
-// value always lands in the rightmost (3rd) column.
 const SummaryRow = ({ label, value, bold = false, highlight = false, no = null }) => (
     <tr className={`${highlight ? 'bg-amber-50 font-bold' : ''} ${bold ? 'font-semibold' : ''}`}>
         {no !== null ? (
@@ -40,44 +36,42 @@ const SummaryPanel = ({ summaryData: rawData }) => {
     );
 
     const amounts = {
-        rcptMcbu:                d.rcptMcbu,
-        rcptCsf:                 d.rcptCsf,
-        rcptRegularLoan:         d.rcptRegularLoan,
-        rcptOtherLoan:           d.rcptOtherLoan,
-        rcptStaffCbu:            d.rcptStaffCbu,
-        rcptStaffPrincipal:      d.rcptStaffPrincipal,
-        rcptAdminFees:           d.rcptAdminFees,
-        rcptLrf:                 d.rcptLrf,
-        rcptCbhb:                d.rcptCbhb,
-        rcptAddHospi:            d.rcptAddHospi,
-        rcptWtax:                d.rcptWtax,
-        rcptMcbuUnclaimedIn:     d.rcptMcbuUnclaimedIn,
+        rcptMcbu: d.rcptMcbu,
+        rcptCsf: d.rcptCsf,
+        rcptRegularLoan: d.rcptRegularLoan,
+        rcptOtherLoan: d.rcptOtherLoan,
+        rcptStaffCbu: d.rcptStaffCbu,
+        rcptStaffPrincipal: d.rcptStaffPrincipal,
+        rcptAdminFees: d.rcptAdminFees,
+        rcptLrf: d.rcptLrf,
+        rcptCbhb: d.rcptCbhb,
+        rcptAddHospi: d.rcptAddHospi,
+        rcptWtax: d.rcptWtax,
+        rcptMcbuUnclaimedIn: d.rcptMcbuUnclaimedIn,
         rcptOtherIncomePassbook: d.rcptOtherIncomePassbook,
-        rcptOtherIncome:         d.rcptOtherIncome,
-        rcptOtherIncomeCsf:      d.rcptOtherIncomeCsf,
-        rcptOtherReceiptsPicture:d.rcptOtherReceiptsPicture,
-        rcptOtherReceiptsGl:     d.rcptOtherReceiptsGl,
-        rcptFundTransferIn:      d.rcptFundTransferIn,
-        rcptBankWithdrawal:      d.rcptBankWithdrawal,
-        // Payments
-        payLoanRelease:          d.payLoanRelease,
-        payMcbuWithdrawal:       d.payMcbuWithdrawal,
-        payCsfWithdrawal:        d.payCsfWithdrawal,
-        payMcbuReturn:           d.payMcbuReturn,
-        payCsfReturn:            d.payCsfReturn,
-        payStaffLoanRelease:     d.payStaffLoanRelease,
-        payMngtExpenses:         d.payMngtExpenses,
-        payCbhbDisbursed:        d.payCbhbDisbursed,
-        payMcbuUnclaimedOut:     d.payMcbuUnclaimedOut,
-        payRebates:              d.payRebates,
-        payOtherPayments:        d.payOtherPayments,
-        payFundTransferOut:      d.payFundTransferOut,
-        payBankDeposits:         d.payBankDeposits,
+        rcptOtherIncome: d.rcptOtherIncome,
+        rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
+        rcptOtherReceiptsPicture: d.rcptOtherReceiptsPicture,
+        rcptOtherReceiptsGl: d.rcptOtherReceiptsGl,
+        rcptFundTransferIn: d.rcptFundTransferIn,
+        rcptBankWithdrawal: d.rcptBankWithdrawal,
+        payLoanRelease: d.payLoanRelease,
+        payMcbuWithdrawal: d.payMcbuWithdrawal,
+        payCsfWithdrawal: d.payCsfWithdrawal,
+        payMcbuReturn: d.payMcbuReturn,
+        payCsfReturn: d.payCsfReturn,
+        payStaffLoanRelease: d.payStaffLoanRelease,
+        payMngtExpenses: d.payMngtExpenses,
+        payCbhbDisbursed: d.payCbhbDisbursed,
+        payMcbuUnclaimedOut: d.payMcbuUnclaimedOut,
+        payRebates: d.payRebates,
+        payOtherPayments: d.payOtherPayments,
+        payFundTransferOut: d.payFundTransferOut,
+        payBankDeposits: d.payBankDeposits,
     };
 
     return (
         <div className="space-y-4">
-            {/* ── Beginning Balance ── */}
             <div className="border border-orange-300 rounded-lg overflow-hidden">
                 <table className="w-full border-collapse text-sm">
                     <tbody>
@@ -93,7 +87,6 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                 </table>
             </div>
 
-            {/* ── RECEIPTS ── */}
             <div className="border border-green-300 rounded-lg overflow-hidden">
                 <div className="bg-green-600 px-3 py-1.5">
                     <span className="text-white font-bold text-xs tracking-wide">RECEIPTS</span>
@@ -113,7 +106,6 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                 </table>
             </div>
 
-            {/* ── PAYMENTS ── */}
             <div className="border border-red-300 rounded-lg overflow-hidden">
                 <div className="bg-red-600 px-3 py-1.5">
                     <span className="text-white font-bold text-xs tracking-wide">PAYMENTS</span>
@@ -139,7 +131,6 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                 </table>
             </div>
 
-            {/* ── Closing Balance ── */}
             <div className="border border-blue-400 rounded-lg overflow-hidden">
                 <table className="w-full border-collapse text-sm">
                     <tbody>
@@ -157,7 +148,6 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                 </table>
             </div>
 
-            {/* ── Loan Release per LO ── */}
             {d.loanReleasePerLo.length > 0 && (
                 <div className="border border-purple-300 rounded-lg overflow-hidden">
                     <div className="bg-purple-600 px-3 py-1.5">

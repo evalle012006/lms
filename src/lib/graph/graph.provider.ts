@@ -12,23 +12,10 @@ export class GraphProvider {
         const link = new HttpLink({
             uri: process.env.HASURA_URL + '/v1/graphql',
             fetch: (reqInfo, init: any) => {
-                const headers = new Headers(init?.headers || {});
-
-                if (!headers.has('Authorization')) {
-                    if (!process.env.HASURA_ADMIN_SECRET) {
-                        throw new Error('HASURA_ADMIN_SECRET is not configured');
-                    }
-
-                    headers.set(
-                        'x-hasura-admin-secret',
-                        process.env.HASURA_ADMIN_SECRET
-                    );
+                if(!init.headers['Authorization']) {
+                    init.headers['x-hasura-admin-secret'] = process.env.HASURA_ADMIN_SECRET;
                 }
-
-                return fetch(reqInfo, {
-                    ...init,
-                    headers,
-                });
+                return fetch(reqInfo, init);
             },
         });
 

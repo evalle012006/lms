@@ -430,6 +430,8 @@ const DailyCollectionSheet = () => {
                         getApiBaseUrl() + 'data/get_daily_collection_sheet_v2?' + params.toString()
                     );
 
+                    fetchSummary(branchId, selectedDate, loId);
+
                     if (response.data?.length > 0) {
                         const processed = response.data.map(parseRow);
                         const loMap = {};
@@ -447,7 +449,6 @@ const DailyCollectionSheet = () => {
                         setBranchData([]);
                         setData(flat);
                         setTotals(calculateTotals(flat));
-                        fetchSummary(branchId, selectedDate, loId);
                     } else {
                         setData([]); setBranchData([]); setTotals(null);
                     }
