@@ -6,6 +6,7 @@
 import { GraphProvider }              from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl }  from '@/lib/graph/graph.util';
 import { generateUUID }               from '@/lib/utils';
+import { redactBiometrics }           from '@/lib/audit-redact';
 import moment                         from 'moment';
 
 const graph = new GraphProvider();
@@ -13,7 +14,7 @@ const graph = new GraphProvider();
 const AUDIT_TYPE = createGraphType('audit_logs', `
     _id timestamp userId userName userRole
     branchId branchName action category severity
-    entityType entityId description
+    entityType entityId clientId description
     beforeData afterData metadata
     success failReason ipAddress userAgent
 `)('audit_logs');
@@ -62,10 +63,15 @@ export async function logAudit(req, params) {
             severity:    params.severity  || 'INFO',
             entityType:  params.entityType|| null,
             entityId:    params.entityId  || null,
+            // Explicit > client-entity > metadata. The DB trigger covers loan/LAF entities.
+            clientId:    params.clientId
+                || (params.entityType === 'client' ? params.entityId : null)
+                || params.metadata?.clientId
+                || null,
             description: params.description || null,
-            beforeData:  params.beforeData  || null,
-            afterData:   params.afterData   || null,
-            metadata:    params.metadata    || null,
+            beforeData:  redactBiometrics(params.beforeData) || null,
+            afterData:   redactBiometrics(params.afterData)  || null,
+            metadata:    redactBiometrics(params.metadata)   || null,
             success:     params.success  !== undefined ? params.success : true,
             failReason:  params.failReason  || null,
             ipAddress,

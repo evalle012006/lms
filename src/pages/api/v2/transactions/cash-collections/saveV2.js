@@ -406,7 +406,7 @@ async function executeSave(req, user_id, transactionId, user) {
                     const isDelinquent = remarksValue.startsWith('delinquent');
                     const isReloaner   = remarksValue.startsWith('reloaner');
 
-                    if (isDelinquent || isReloaner) {
+                    if ((isDelinquent || isReloaner) && !collection.draft) {
                         console.log('Collection is delinquent or reloaner, checking alerts...', { collectionId: collection._id, loanId: collection.loanId, clientId: collection.clientId });
                         // Use unique alias per client to avoid collision in concurrent Promise.all
                         const clientAlias = `clientAlert_${collection.clientId.replace(/-/g, '_')}`;
@@ -668,7 +668,7 @@ async function updateCollection(mutationQL, collections) {
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
                 set: {
                     ... cleanUpCollection(c),
-                    origin: null,
+                    origin: c.origin === 'offline' ? 'offline' : null,
                     reverted: null,
                 },
                 where: { _id: { _eq: collectionId } }

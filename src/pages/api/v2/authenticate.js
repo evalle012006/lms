@@ -63,7 +63,7 @@ mustChangePassword
 `)('users');
 
 const SETTINGS_TYPE = createGraphType('settings', `
-_id superPwd companyName companyEmail companyAddress
+_id companyName companyEmail companyAddress
 companyPhoneNumber branchCode branchName branchAddress branchPhoneNumber allowLoCI
 `)('settings');
 

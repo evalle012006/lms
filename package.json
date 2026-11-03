@@ -7,8 +7,10 @@
     "test": "jest --watch",
     "lint": "next lint",
     "test:ci": "jest __tests__/ci --watchAll=false",
+    "test:face": "jest __tests__/face --watchAll=false",
     "verify:api": "node scripts/tests/ci/verify-ci-api.mjs",
-    "verify": "npm run test:ci && npm run verify:api",
+    "verify:face": "node scripts/tests/face/verify-face-api.mjs",
+    "verify": "npm run test:ci && npm run test:face && npm run verify:api && npm run verify:face",
     "test:offline-upload": "node --no-warnings --experimental-detect-module --test scripts/tests/offline-upload/lor-row-engine.test.mjs scripts/tests/offline-upload/lor-upload-template.test.mjs"
   },
   "dependencies": {
