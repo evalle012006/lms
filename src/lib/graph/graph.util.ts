@@ -12,7 +12,7 @@ export interface GraphType {
     alias: string;
     name: string;
     fields: string;
-    functionName?: string;
+    functionName: string;
 }
 
 export type GraphTypeCreator = (alias?: string) => GraphType;
@@ -33,22 +33,11 @@ export interface GraphQLStatement {
 export type QueryQLStatementFunction = (i: any) => GraphQLStatement;
 export type MutationQLStatementFunction = (i: any) => GraphQLStatement;
 export type GraphRequestContext = {
-    headers?: Record<string, any>;
-    [key: string]: any;
-} | null;
-
-const retainUndefined = (data: any): any => {
-    if (!data) {
-        return undefined;
-    }
-
-    const serialized = JSON.stringify(
-        data,
-        (key, value) => value === undefined ? null : value
-    );
-
-    return serialized ? JSON.parse(serialized) : undefined;
+  headers?: Record<string, any>,
+  [key: string]: any,
 };
+
+const retainUndefined = (data) => data ? ((o) => !!o ? JSON.parse(o) : undefined)(JSON.stringify(data, (k, v) => v === undefined ? null : v)) : undefined;
 
 export function queryQl(type: GraphType,  condition: QueryCondition = {}, context: GraphRequestContext = null): QueryQLStatementFunction  {
     const alias = type.alias ? `${type.alias}:` : '';

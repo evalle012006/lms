@@ -716,7 +716,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                     .voucher {
                         width: 100%;
-                        max-width: 1050px;
+                        max-width: 186mm;
                         margin: 0 auto;
                     }
 
@@ -885,14 +885,60 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         font-style: italic;
                     }
 
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm;
+                    }
+
                     @media print {
+                        html,
                         body {
+                            width: 100%;
+                            margin: 0;
                             padding: 0;
                         }
 
-                        @page {
-                            size: landscape;
-                            margin: 12mm;
+                        .voucher {
+                            width: 100%;
+                            max-width: 100%;
+                            margin: 0 auto;
+                        }
+
+                        .info-grid {
+                            grid-template-columns: 1fr 180px;
+                            gap: 12px;
+                        }
+
+                        .words-section {
+                            grid-template-columns: 1fr 170px;
+                            gap: 12px;
+                        }
+
+                        .signatures {
+                            gap: 20px;
+                        }
+
+                        table {
+                            width: 100%;
+                            table-layout: fixed;
+                        }
+
+                        th,
+                        td {
+                            padding: 6px 5px;
+                            font-size: 11px;
+                            overflow-wrap: anywhere;
+                        }
+
+                        .info-row,
+                        .words,
+                        .received,
+                        .signature-box {
+                            font-size: 12px;
+                        }
+
+                        .voucher {
+                            break-inside: avoid;
                         }
                     }
 
