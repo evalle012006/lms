@@ -80,143 +80,151 @@ async function approveReject(req, res) {
                     if (validateLoan.error) {
                         errorMsg.add(validateLoan.errorMsg);
                     } else {
-                        if (selectedSlotNo !== '-') {
-                            if (!targetGroup.availableSlots.includes(selectedSlotNo)) {
-                                selectedSlotNo = targetGroup.availableSlots[0];
-                            }
-
-                            targetGroup.availableSlots = targetGroup.availableSlots.filter(s => s !== selectedSlotNo);
-                            targetGroup.noOfClients = targetGroup.noOfClients + 1;
-
-                            if (targetGroup.noOfClients === targetGroup.capacity) {
-                                targetGroup.status = 'full';
-                            }
-
-                            if (!sourceGroup.availableSlots.includes(transfer.currentSlotNo)) {
-                                sourceGroup.availableSlots.push(transfer.currentSlotNo);
-                                sourceGroup.availableSlots.sort((a, b) => { return a - b; });
-                            }
-                            sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
-
-                            addToMutationList(alias => updateQl(groupsType(alias), {
-                                where: { _id: { _eq: sourceGroupId } },
-                                set: { ...sourceGroup }
-                            }));
-
-                            addToMutationList(alias => updateQl(groupsType(alias), {
-                                where: { _id: { _eq: targetGroupId } },
-                                set: { ...targetGroup }
-                            }));
-
-                            if (loan) {
-                                const loanId = loan._id;
-                                delete loan._id;
-                                delete loan.transferId;
-                                delete loan.transferDate;
-                                delete loan.transfer;
-                                delete loan.transferredDate;
-                                delete loan.transferred;
-
-                                updatedLoan = {...loan};
-                                updatedLoan.branchId = transfer.targetBranchId;
-                                updatedLoan.loId = transfer.targetUserId;
-                                updatedLoan.groupId = transfer.targetGroupId;
-                                updatedLoan.groupName = targetGroup.name;
-                                updatedLoan.groupDay = targetGroup.day;
-                                updatedLoan.occurence = targetGroup.occurence;
-                                updatedLoan.slotNo = selectedSlotNo;
-                                updatedLoan.mcbuCollection = loan.mcbu;
-                                updatedLoan.transferId = transfer._id;
-                                updatedLoan.transfer = true;
-                                if (updatedLoan.status == 'active') {
-                                    updatedLoan.startDate = moment(currentDate).add(1, 'days').format("YYYY-MM-DD");
-                                }
-                                updatedLoan.transferDate = currentDate;
-                                updatedLoan.insertedDateTime = new Date();
-
-                                if (updatedLoan.status == 'completed' && updatedLoan.fullPaymentDate == currentDate) {
-                                    updatedLoan.fullPaymentDate = null;
-                                }
-
-                                // PRE-EXISTING GAP (not caused by the occurence-transfer feature, but load-bearing
-                                // for it): loans landing in a weekly group need `groupDay` set to the target
-                                // group's meeting day so weekly collection-sheet queries (which filter loans by
-                                // groupDay) actually pick them up. This was never set for ANY weekly transfer
-                                // before now — fixing here since it directly affects the feature under test.
-                                if (targetGroup.occurence === 'weekly') {
-                                    updatedLoan.groupDay = targetGroup.day;
-                                }
-
-                                // Occurence-change recalculation. loan.activeLoan / loan.loanTerms /
-                                // loan.noOfPayments are NEVER mutated here — only updatedLoan's copies —
-                                // so the source group's closing cash_collection record (built from
-                                // `loan` in saveCashCollection below) keeps its original daily/weekly
-                                // figures untouched, per the "source stays intact" decision.
-                                if (sourceGroup.occurence !== targetGroup.occurence && parseFloat(updatedLoan.loanBalance) > 0) {
-                                    const recalculated = recalculateLoanForTransfer({
-                                        amountRelease: parseFloat(updatedLoan.amountRelease),
-                                        loanBalance: parseFloat(updatedLoan.loanBalance),
-                                        targetOccurence: targetGroup.occurence,
-                                        targetWeeklyScheduleType: targetGroup.weeklyScheduleType,
-                                        targetLoanTerms: transfer.targetLoanTerms,
-                                    });
-
-                                    updatedLoan.activeLoan = recalculated.activeLoan;
-                                    updatedLoan.loanTerms = recalculated.loanTerms;
-                                    updatedLoan.noOfPayments = recalculated.noOfPayments;
-                                    updatedLoan.weeklyScheduleType = recalculated.weeklyScheduleType;
-
-                                    logger.debug({
-                                        user_id,
-                                        page: `Transfer occurence recalculation: ${transfer.selectedClientId}`,
-                                        data: { from: sourceGroup.occurence, to: targetGroup.occurence, ...recalculated }
-                                    });
-                                }
-
-                                if (existingCashCollection.length > 0) {
-                                    const prevLoanId = existingCashCollection[0].loanId;
-                                    let prevLoan = await findLoans({ _id: { _eq: prevLoanId } });
-                                    if (prevLoan.length > 0) {
-                                        prevLoan = prevLoan[0];
-
-                                        if (existingCashCollection[0].status == 'tomorrow' || existingCashCollection[0].status == 'pending') {
-                                            prevLoan.transferredReleased = true;
-                                        }
-
-                                        if (existingCashCollection[0].status == 'completed') {
-                                            updatedLoan.status = 'completed';
-                                        }
-                                    }
-                                    delete prevLoan._id;
-                                    logger.debug({user_id, page: `Previous Loan: ${prevLoanId}`, data: prevLoan});
-                                    addToMutationList(alias => updateQl(loansType(alias), {
-                                        where: { _id: { _eq: prevLoanId } },
-                                        set: { ...prevLoan },
-                                    }));
-                                }
-
-                                const newLoanId = generateUUID();
-                                addToMutationList(alias => insertQl(loansType(alias), { 
-                                    objects: [{ ...updatedLoan, _id: newLoanId }]
-                                }));
-
-                                loan.status = "closed";
-                                loan.transferred = true;
-                                loan.transferId = transfer._id;
-                                loan.transferredDate = currentDate;
-                                loan.modifiedDateTime = new Date();
-
-                                addToMutationList(alias => updateQl(loansType(alias), {
-                                    where: { _id: { _eq: loanId } },
-                                    set: { ...loan }
-                                }));
-
-                                loan._id = newLoanId;
-                                loan.oldId = loanId + "";
-                            }
+                        if (selectedSlotNo === '-') {
+                            errorMsg.add("Some clients were not transferred because no target slot was selected.");
+                            return;
                         }
 
-                        await saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList);
+                        if (!targetGroup.availableSlots.includes(selectedSlotNo)) {
+                            selectedSlotNo = targetGroup.availableSlots[0];
+                        }
+
+                        if (selectedSlotNo == null) {
+                            errorMsg.add("Some clients were not transferred because the target group has no available slot.");
+                            return;
+                        }
+
+                        targetGroup.availableSlots = targetGroup.availableSlots.filter(s => s !== selectedSlotNo);
+                        targetGroup.noOfClients = targetGroup.noOfClients + 1;
+
+                        if (targetGroup.noOfClients === targetGroup.capacity) {
+                            targetGroup.status = 'full';
+                        }
+
+                        if (!sourceGroup.availableSlots.includes(transfer.currentSlotNo)) {
+                            sourceGroup.availableSlots.push(transfer.currentSlotNo);
+                            sourceGroup.availableSlots.sort((a, b) => { return a - b; });
+                        }
+                        sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
+
+                        addToMutationList(alias => updateQl(groupsType(alias), {
+                            where: { _id: { _eq: sourceGroupId } },
+                            set: { ...sourceGroup }
+                        }));
+
+                        addToMutationList(alias => updateQl(groupsType(alias), {
+                            where: { _id: { _eq: targetGroupId } },
+                            set: { ...targetGroup }
+                        }));
+
+                        if (loan) {
+                            const loanId = loan._id;
+                            delete loan._id;
+                            delete loan.transferId;
+                            delete loan.transferDate;
+                            delete loan.transfer;
+                            delete loan.transferredDate;
+                            delete loan.transferred;
+
+                            updatedLoan = {...loan};
+                            updatedLoan.branchId = transfer.targetBranchId;
+                            updatedLoan.loId = transfer.targetUserId;
+                            updatedLoan.groupId = transfer.targetGroupId;
+                            updatedLoan.groupName = targetGroup.name;
+                            updatedLoan.groupDay = targetGroup.day;
+                            updatedLoan.occurence = targetGroup.occurence;
+                            updatedLoan.slotNo = selectedSlotNo;
+                            updatedLoan.mcbuCollection = loan.mcbu;
+                            updatedLoan.transferId = transfer._id;
+                            updatedLoan.transfer = true;
+                            if (updatedLoan.status == 'active') {
+                                updatedLoan.startDate = moment(currentDate).add(1, 'days').format("YYYY-MM-DD");
+                            }
+                            updatedLoan.transferDate = currentDate;
+                            updatedLoan.insertedDateTime = new Date();
+
+                            if (updatedLoan.status == 'completed' && updatedLoan.fullPaymentDate == currentDate) {
+                                updatedLoan.fullPaymentDate = null;
+                            }
+
+                            // PRE-EXISTING GAP (not caused by the occurence-transfer feature, but load-bearing
+                            // for it): loans landing in a weekly group need `groupDay` set to the target
+                            // group's meeting day so weekly collection-sheet queries (which filter loans by
+                            // groupDay) actually pick them up. This was never set for ANY weekly transfer
+                            // before now — fixing here since it directly affects the feature under test.
+                            if (targetGroup.occurence === 'weekly') {
+                                updatedLoan.groupDay = targetGroup.day;
+                            }
+
+                            // Occurence-change recalculation. loan.activeLoan / loan.loanTerms /
+                            // loan.noOfPayments are NEVER mutated here — only updatedLoan's copies —
+                            // so the source group's closing cash_collection record (built from
+                            // `loan` in saveCashCollection below) keeps its original daily/weekly
+                            // figures untouched, per the "source stays intact" decision.
+                            if (sourceGroup.occurence !== targetGroup.occurence && parseFloat(updatedLoan.loanBalance) > 0) {
+                                const recalculated = recalculateLoanForTransfer({
+                                    amountRelease: parseFloat(updatedLoan.amountRelease),
+                                    loanBalance: parseFloat(updatedLoan.loanBalance),
+                                    targetOccurence: targetGroup.occurence,
+                                    targetWeeklyScheduleType: targetGroup.weeklyScheduleType,
+                                    targetLoanTerms: transfer.targetLoanTerms,
+                                });
+
+                                updatedLoan.activeLoan = recalculated.activeLoan;
+                                updatedLoan.loanTerms = recalculated.loanTerms;
+                                updatedLoan.noOfPayments = recalculated.noOfPayments;
+                                updatedLoan.weeklyScheduleType = recalculated.weeklyScheduleType;
+
+                                logger.debug({
+                                    user_id,
+                                    page: `Transfer occurence recalculation: ${transfer.selectedClientId}`,
+                                    data: { from: sourceGroup.occurence, to: targetGroup.occurence, ...recalculated }
+                                });
+                            }
+
+                            if (existingCashCollection.length > 0) {
+                                const prevLoanId = existingCashCollection[0].loanId;
+                                let prevLoan = await findLoans({ _id: { _eq: prevLoanId } });
+                                if (prevLoan.length > 0) {
+                                    prevLoan = prevLoan[0];
+
+                                    if (existingCashCollection[0].status == 'tomorrow' || existingCashCollection[0].status == 'pending') {
+                                        prevLoan.transferredReleased = true;
+                                    }
+
+                                    if (existingCashCollection[0].status == 'completed') {
+                                        updatedLoan.status = 'completed';
+                                    }
+                                }
+                                delete prevLoan._id;
+                                logger.debug({user_id, page: `Previous Loan: ${prevLoanId}`, data: prevLoan});
+                                addToMutationList(alias => updateQl(loansType(alias), {
+                                    where: { _id: { _eq: prevLoanId } },
+                                    set: { ...prevLoan },
+                                }));
+                            }
+
+                            const newLoanId = generateUUID();
+                            addToMutationList(alias => insertQl(loansType(alias), { 
+                                objects: [{ ...updatedLoan, _id: newLoanId }]
+                            }));
+
+                            loan.status = "closed";
+                            loan.transferred = true;
+                            loan.transferId = transfer._id;
+                            loan.transferredDate = currentDate;
+                            loan.modifiedDateTime = new Date();
+
+                            addToMutationList(alias => updateQl(loansType(alias), {
+                                where: { _id: { _eq: loanId } },
+                                set: { ...loan }
+                            }));
+
+                            loan._id = newLoanId;
+                            loan.oldId = loanId + "";
+                        }
+
+                        await saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList);
 
                         logger.debug({user_id, page: `Updating Client: ${transfer.selectedClientId}`});
 
@@ -306,7 +314,7 @@ async function approveReject(req, res) {
     }
 }
 
-async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
+async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, mcbuTargetConfig, addToMutationList) {
     const cashCollection = await findCashCollections({
       clientId: { _eq: transfer.selectedClientId },
       groupId: { _eq: transfer.targetGroupId },
@@ -366,6 +374,7 @@ async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targ
             data.loanCycle = updatedLoan.loanCycle;
             data.noOfPayments = updatedLoan.noOfPayments;
             data.mcbu = updatedLoan.mcbu;
+            data.csf = updatedLoan.csf ?? 0;
             data.pastDue = updatedLoan.pastDue;
             data.noPastDue = updatedLoan.noPastDue;
             data.loanTerms = updatedLoan.loanTerms + "";
@@ -401,7 +410,7 @@ async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targ
             }
 
             if (data.occurence === 'weekly') {
-                // data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, targetGroup.weeklyScheduleType);
+                data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, targetGroup.weeklyScheduleType);
                 // FIX (pre-existing bug): groups don't have a `groupDay` field — they have `day`.
                 // This was always writing `undefined` before. Also switched to targetGroup, since
                 // this record belongs to the target group, not the source.
@@ -428,9 +437,9 @@ async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targ
     // add or update client data on cash collection
     if (existingCashCollection.length === 0) {
         let data = {
-            branchId: transfer.oldBranchId,
-            groupId: transfer.oldGroupId,
-            loId: transfer.oldLoId,
+            branchId: transfer.sourceBranchId,
+            groupId: transfer.sourceGroupId,
+            loId: transfer.sourceUserId,
             clientId: transfer.selectedClientId,
             mispayment: false,
             // collection: 0,
@@ -476,12 +485,13 @@ async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targ
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
             data.mcbu = loan.mcbu;
+            data.csf = loan.csf ?? 0;
             data.loanTerms = loan.loanTerms + "";
             data.remarks = loan?.history?.remarks;
         }
 
         if (data.occurence === 'weekly') {
-            data.mcbuTarget = 50;
+            data.mcbuTarget = resolveWeeklyMcbuMinimum(mcbuTargetConfig, sourceGroup.weeklyScheduleType);
             // FIX (pre-existing bug): same `groupDay` -> `day` fix as above.
             data.groupDay = sourceGroup.day;
         }

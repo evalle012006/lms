@@ -23,6 +23,8 @@ import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
+import { NON_MISPAY_REMARKS } from '@/lib/constants';
+import { resolveMispayment } from '@/lib/mispayment-utils';
 
 // ============================================
 // CONFIGURATION
@@ -369,7 +371,21 @@ async function executeSave(req, user_id, transactionId, user) {
                 delete collection.reverted;
                 // cashCollections.mispayment is a boolean; loans.mispayment is a counter.
                 // Never let a counter (or '-') from the client reach the boolean column or the counter increment.
-                collection.mispayment = collection.mispayment === true;
+                const mispaymentSent = collection.mispayment === true;
+                collection.mispayment = resolveMispayment(collection);
+
+                if (mispaymentSent && !collection.mispayment) {
+                    logger.warn({
+                        user_id, transactionId, page: 'Cash Collection SaveV2',
+                        message: 'mispayment=true overridden to false',
+                        clientId: collection.clientId, loanId: collection.loanId,
+                        paymentCollection: collection.paymentCollection,
+                        remarks: collection.remarks?.value, qrEntryId: collection.qrEntryId
+                    });
+                }
+                if (NON_MISPAY_REMARKS.includes(collection.remarks?.value)) {
+                    collection.mispayment = false;
+                }
 
                 // get loan snapshot 
                 let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
@@ -390,7 +406,7 @@ async function executeSave(req, user_id, transactionId, user) {
                     const isDelinquent = remarksValue.startsWith('delinquent');
                     const isReloaner   = remarksValue.startsWith('reloaner');
 
-                    if (isDelinquent || isReloaner) {
+                    if ((isDelinquent || isReloaner) && !collection.draft) {
                         console.log('Collection is delinquent or reloaner, checking alerts...', { collectionId: collection._id, loanId: collection.loanId, clientId: collection.clientId });
                         // Use unique alias per client to avoid collision in concurrent Promise.all
                         const clientAlias = `clientAlert_${collection.clientId.replace(/-/g, '_')}`;
@@ -652,7 +668,7 @@ async function updateCollection(mutationQL, collections) {
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
                 set: {
                     ... cleanUpCollection(c),
-                    origin: null,
+                    origin: c.origin === 'offline' ? 'offline' : null,
                     reverted: null,
                 },
                 where: { _id: { _eq: collectionId } }

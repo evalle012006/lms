@@ -48,7 +48,7 @@ const FaceVerifyComparisonPanel = ({ clientId, loanId, clientName }) => {
     return (
         <div className="border border-gray-100 rounded-lg p-2.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-                <PhotoThumb url={enrollUrl} label="Enrolled" onClick={() => setZoomOpen(true)} />
+                <PhotoThumb url={enrollUrl} label={attempt.recapture ? 'Previous ref.' : 'Enrolled'} onClick={() => setZoomOpen(true)} />
                 <span className="text-gray-300 text-xs">vs</span>
                 <PhotoThumb url={captureUrl} label="Captured" onClick={() => setZoomOpen(true)} />
             </div>

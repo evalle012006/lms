@@ -288,7 +288,6 @@ export const SETTINGS_FIELDS = `
   companyEmail
   companyName
   companyPhoneNumber
-  superPwd
   enableNotifications
   allowLoCI
   requireClientBiometric
@@ -306,6 +305,8 @@ export const SETTINGS_FIELDS = `
   qrAllowedStartTime
   qrAllowedEndTime
   passwordLoginEnabled
+  allowFaceRecapture
+  allowOfflineUpload
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
@@ -453,6 +454,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   otherIncome
   addHospitalization
   bmRevertCount
+  uploadBatchId
   `;
 
 export const LOS_TOTALS_FIELDS = `
@@ -919,6 +921,7 @@ export const AUDIT_LOG_FIELDS = `
   severity
   entityType
   entityId
+  clientId
   description
   beforeData
   afterData
@@ -1013,6 +1016,7 @@ export const FACE_VERIFY_ATTEMPT_FIELDS = `
     user_agent
     inserted_by
     captured_at
+    enrollment_id
 `;
 
 export const QR_CASH_COLLECTION_ENTRY_FIELDS = `
@@ -1126,3 +1130,57 @@ export const BRANCH_PAYROLL_EMPLOYEE_FIELD_MAP = {
     sssLoan: "sss_loan",
     staffAccountsPayable: "staff_accounts_payable",
 };
+export const CASH_COLLECTION_UPLOAD_FIELDS = `
+  _id
+  group_id
+  branch_id
+  lo_id
+  occurence
+  date_added
+  uploaded_by
+  uploaded_by_name
+  uploaded_at
+  file_name
+  file_hash
+  template_version
+  reason
+  row_count
+  applied_count
+  skipped_count
+  status
+  totals
+`;
+
+export const CASH_COLLECTION_UPLOAD_ROW_FIELDS = `
+  _id
+  upload_id
+  cash_collection_id
+  loan_id
+  client_id
+  slot_no
+  action
+  skip_reason
+  before_data
+  after_data
+  inserted_date
+`;
+
+export const CLIENT_FACE_ENROLLMENT_FIELDS = `
+  _id
+  client_id
+  version
+  status
+  source
+  face_template
+  photo_key
+  liveness_score
+  enrolled_at
+  reason
+  trigger_attempt_id
+  loan_id
+  branch_id
+  captured_by
+  approved_by
+  created_at
+  superseded_at
+`;

@@ -41,6 +41,7 @@ import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { resolveLoanBranchScope } from '@/lib/api/resolveLoanBranchScope';
 import { approvalMode } from '@/lib/loan-application-v2-gate';
+import { collectFaceProofDenials, finalApprovalRows } from '@/lib/api/faceApprovalProof';
 import {
     collectBlockers,
     computeGates,
@@ -204,6 +205,13 @@ async function evaluateApproval(req, { loanData, origin, skippedClientIds }) {
         // keep the order the user selected them in
         const order = new Map(ids.map((id, i) => [id, i]));
         rebuilt.sort((a, b) => order.get(a._id) - order.get(b._id));
+    }
+
+    // Face verification must be PROVEN on the server for every v2 final approval. The browser's
+    // skippedClientIds / "verified" state is never trusted. A thrown error here is handled by
+    // guardApproval: enforce → denied ("could not be verified"), log → allowed and logged.
+    if (origin === 'application') {
+        denied.push(...(await collectFaceProofDenials(finalApprovalRows(rows, rebuilt))));
     }
 
     const clientIds = new Set(rows.map((r) => r.clientId));

@@ -5,12 +5,13 @@
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
-import { FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
+import { FACE_VERIFY_ATTEMPT_FIELDS, CLIENT_FACE_ENROLLMENT_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS);
 const CLIENT_TYPE = createGraphType('client', `_id firstName lastName profile faceEnrollPhotoKey`)('clients');
+const ENROLLMENT_TYPE = createGraphType('client_face_enrollments', CLIENT_FACE_ENROLLMENT_FIELDS);
 
 export default apiHandler({ get: list });
 
@@ -71,13 +72,27 @@ async function list(req, res) {
         clientMap = Object.fromEntries(clients.map(c => [c._id, c]));
     }
 
-    const enriched = attempts.map(a => ({
-        ...a,
-        clientName: clientMap[a.client_id]
-            ? `${clientMap[a.client_id].firstName} ${clientMap[a.client_id].lastName}`
-            : null,
-        clientEnrollmentPhotoKey: clientMap[a.client_id]?.faceEnrollPhotoKey ?? clientMap[a.client_id]?.profile ?? null,
-    }));
+    const enrollmentIds = [...new Set(attempts.map(a => a.enrollment_id).filter(Boolean))];
+    let enrollmentMap = {};
+    if (enrollmentIds.length) {
+        const rows = await graph.query(
+            queryQl(ENROLLMENT_TYPE('enrollments'), { where: { _id: { _in: enrollmentIds } } })
+        ).then(r => r.data?.enrollments ?? []);
+        enrollmentMap = Object.fromEntries(rows.map(r => [r._id, r]));
+    }
+
+    const enriched = attempts.map(a => {
+        const c = clientMap[a.client_id];
+        const row = a.enrollment_id ? enrollmentMap[a.enrollment_id] : null;
+        return {
+            ...a,
+            clientName: c ? `${c.firstName} ${c.lastName}` : null,
+            // version-aware: the reference this attempt was checked against
+            clientEnrollmentPhotoKey: row
+                ? (row.photo_key ?? c?.profile ?? null)
+                : (c?.faceEnrollPhotoKey ?? c?.profile ?? null),
+        };
+    });
 
     return res.status(200).json({ success: true, attempts: enriched, total: countAgg.aggregate.count, page, limit });
 }

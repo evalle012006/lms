@@ -6,20 +6,27 @@
 //   claimed the row and created a client — leaving contradictory records where
 //   status says "ci_declined" but promotedClientId/promotedAt are still populated
 //   from the earlier approval. Now rejected outright before any write happens.
+// FIX: server-side validation of decision, verification flags, decline reason
+//   and required CI answers (whitespace-only no longer passes). Previously only
+//   the client enforced these.
 
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
-import { findUserById } from '@/lib/graph.functions'; // ← ADD THIS
+import { findUserById } from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope } from '@/lib/ci-scope';
 import moment from 'moment';
 import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
+import { validateCIPayload, normalizeCIAnswers } from '@/lib/laf/ci-validation';
+import { trimText } from '@/lib/validation-utils';
 
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
+const CI_SETTINGS_TYPE = createGraphType('settings', 'ciQuestions')('settings');
 
 export default apiHandler({ post: saveInvestigation });
 
@@ -31,6 +38,12 @@ async function saveInvestigation(req, res) {
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
+    if (!canDecideCI(user)) {
+        return res.status(200).json({
+            success: false,
+            message: 'You are not allowed to approve or reject a CI investigation.',
+        });
+    }
 
     const {
         ciReferenceCode, tempApplicationId,
@@ -39,6 +52,10 @@ async function saveInvestigation(req, res) {
         groupLeader,
     } = req.body;
 
+    if (typeof ciReferenceCode !== 'string' || !ciReferenceCode.trim()) {
+        return res.status(200).json({ success: false, message: 'ciReferenceCode is required.' });
+    }
+
     if (decision === 'approved' && !selfieKey) {
         return res.status(200).json({
             success: false,
@@ -46,13 +63,35 @@ async function saveInvestigation(req, res) {
         });
     }
 
+    // ── FIX: validate payload server-side (client checks are UX only) ──────
+    // `required` comes from settings.ciQuestions, not from the client payload.
+    const [ciSettings] = await graph.query(
+        queryQl(CI_SETTINGS_TYPE, { limit: 1 })
+    ).then(r => r.data?.settings ?? []);
+
+    const ciError = validateCIPayload(
+        { decision, declineReason, businessVerified, addressVerified, ciAnswers },
+        Array.isArray(ciSettings?.ciQuestions) ? ciSettings.ciQuestions : []
+    );
+    if (ciError) {
+        return res.status(200).json({ success: false, message: ciError });
+    }
+
     // ── FIX: block re-investigation of an already-promoted application ─────
     const [application] = await graph.query(
         queryQl(TEMP_TYPE, { where: { ciReferenceCode: { _eq: ciReferenceCode } } })
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-    if (!application) {
+    // Out-of-scope is reported exactly like not-found so CI codes can't be probed
+    if (!application || !(await isBranchInScope(user, application.branchId))) {
         return res.status(200).json({ success: false, message: 'Application not found.' });
+    }
+
+    if (application.status === 'pending_validation') {
+        return res.status(200).json({
+            success: false,
+            message: 'This application is flagged as a possible duplicate. Validate it in the "Flagged as Duplicate" tab before recording a CI decision.',
+        });
     }
 
     if (application.status === 'promoted') {
@@ -65,6 +104,7 @@ async function saveInvestigation(req, res) {
     }
 
     const picUserName = `${user.firstName} ${user.lastName}`;
+    const cleanDeclineReason = trimText(declineReason);
 
     const [saved] = await graph.mutation(
         insertQl(CI_TYPE, {
@@ -76,12 +116,12 @@ async function saveInvestigation(req, res) {
                 businessVerified: !!businessVerified,
                 addressVerified:  !!addressVerified,
                 decision,
-                declineReason: decision === 'declined' ? declineReason : null,
+                declineReason: decision === 'declined' ? cleanDeclineReason : null,
                 selfieKey:     decision === 'approved' ? selfieKey : null,
                 picUserId:     decision === 'approved' ? userId : null,
                 picUserName:   decision === 'approved' ? picUserName : null, // ← real name
                 investigatedAt: getSystemDate().toISOString(),
-                ciAnswers: Array.isArray(req.body.ciAnswers) ? req.body.ciAnswers : [],
+                ciAnswers: normalizeCIAnswers(ciAnswers),
                 dateAdded:      getCurrentDateV2(),
                 insertedBy:     userId,
             }],
@@ -120,7 +160,7 @@ async function saveInvestigation(req, res) {
                 firstName:       appData.firstName,
                 ciReferenceCode: ciReferenceCode,
                 branchName:      appData.branchName || 'our branch',
-                reason:          decision === 'declined' ? declineReason : undefined,
+                reason:          decision === 'declined' ? cleanDeclineReason : undefined,
             });
         }
     } catch (smsErr) {

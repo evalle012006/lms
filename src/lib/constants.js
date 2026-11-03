@@ -104,6 +104,11 @@ export const LOR_NO_CSF_IN_REMARKS = [
     'offset-matured-pd'
 ]
 
+export const NON_MISPAY_REMARKS = [
+    'past due', 'matured-past due', 'matured_past_due_collection',
+    'excused advance payment', 'delinquent-offset'
+];
+
 export const WEEKLY_GROUPS = [
     "APPLE", "BANANA", "CHERRY", "MANGO", "PINEAPPLE", "WATERMELON", "GRAPES", "KIWI", "PEAR", "PEACH", "STRAWBERRY", "BLUEBERRY", "RASPBERRY", "LEMON", "LIME"
 ];

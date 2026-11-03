@@ -47,10 +47,13 @@ import ClientQRIconPopover from "./ClientQRIconPopover";
 import MobileAccessIconPopover from './MobileAccessIconPopover.js';
 import PhotoCard from "./PhotoCard";
 import LafCiHistoryTab from "./LafCiHistoryTab";
+import ClientActivityTab from "./ClientActivityTab";
+import { canDecideCI } from "@/lib/ci-roles";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
     const client = useSelector(state => state.client.data);
+    const currentUser = useSelector(state => state.user.data);
     
     const [loanList, setLoanList] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -253,6 +256,8 @@ const ClientDetailPage = () => {
         { id: 'laf-ci',     label: 'LAF / CI History', icon: IdentificationIcon },
         { id: 'documents',  label: 'Documents',     icon: DocumentTextIcon },
         { id: 'programs',   label: 'Programs',      icon: GraduationCap },
+        // Same roles the activity endpoint allows; the server is the real gate
+        ...(canDecideCI(currentUser) ? [{ id: 'activity', label: 'Activity', icon: ClockIcon }] : []),
     ];
 
     useEffect(() => {
@@ -828,6 +833,10 @@ const ClientDetailPage = () => {
 
                 {activeTab === 'laf-ci' && (
                     <LafCiHistoryTab client={client} />
+                )}
+
+                {activeTab === 'activity' && (
+                    <ClientActivityTab client={client} />
                 )}
 
                 {/* ── FIX: Documents Tab — now shows all client photos ──────────────── */}

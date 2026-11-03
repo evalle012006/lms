@@ -15,6 +15,7 @@ const FACE_STATUS_LABEL = {
     unmatched: { text: 'Face mismatch', className: 'text-red-700 bg-red-50 border-red-200' },
     missing: { text: 'No verification attempt', className: 'text-red-700 bg-red-50 border-red-200' },
     not_required: { text: 'Not required', className: 'text-gray-500 bg-gray-50 border-gray-200' },
+    re_enrolled: { text: 'Face re-enrolled', className: 'text-amber-700 bg-amber-50 border-amber-200' },
 };
 
 export default function LoanVerificationSection({ branchId, dateFor, canFinalize, branchClosed }) {
@@ -136,6 +137,13 @@ export default function LoanVerificationSection({ branchId, dateFor, canFinalize
                                     )}
                                 </div>
 
+                                {loan.faceVerify.recapture && (
+                                    <p className="text-[11px] text-amber-700 mt-2">
+                                        Reference face re-enrolled (v{loan.faceVerify.recapture.version})
+                                        {loan.faceVerify.recapture.approvedByName ? ` by ${loan.faceVerify.recapture.approvedByName}` : ''}
+                                        {loan.faceVerify.recapture.reason ? ` — ${loan.faceVerify.recapture.reason}` : ''}
+                                    </p>
+                                )}
                                 {loan.ci?.ciReferenceCode === null && <p className="text-[11px] text-gray-400 mt-2">No CI reference on this loan.</p>}
                                 {loan.ci?.ciReferenceCode && !loan.ci?.found && (
                                     <p className="text-[11px] text-amber-600 mt-2">⚠ CI reference {loan.ci.ciReferenceCode} — investigation record not found.</p>

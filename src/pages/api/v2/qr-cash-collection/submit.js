@@ -131,6 +131,13 @@ async function submitQrCollection(req, res) {
     const csfVal     = parseFloat(csfCollection) || 0;
     const paymentVal = parseFloat(paymentCollection) || 0;
 
+    // Amounts must be finite and non-negative (the minimum checks below only run for values > 0)
+    if (![mcbuVal, csfVal, paymentVal].every(v => Number.isFinite(v) && v >= 0)) {
+        return res.status(200).json({
+            success: false, code: 'INVALID_AMOUNT', message: 'Amounts must be zero or greater.',
+        });
+    }
+
     // Required: a QR submission exists to confirm a real collection happened.
     // A $0 payment (a genuine missed payment) is a real, valid outcome in
     // this system, but recording "nothing was collected" isn't something

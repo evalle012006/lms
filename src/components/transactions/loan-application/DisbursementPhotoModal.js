@@ -27,6 +27,8 @@ import FaceVerifyStep from '@/components/transactions/loan-application/FaceVerif
 import PhotoCapture from '@/components/clients/PhotoCapture';
 import LafCiGallery from '@/components/transactions/loan-application/LafCiGallery';
 import FaceVerifyComparisonPanel from '@/components/transactions/loan-application/FaceVerifyComparisonPanel';
+import { canApproveFaceRecapture, MIN_RECAPTURE_REASON_LENGTH } from '@/lib/face-recapture-utils';
+import { isSystemAdmin } from '@/lib/ci-roles'; // used by canSkip below — skip this line if it's already imported
 
 const DisbursementPhotoModal = ({
     show,
@@ -41,6 +43,10 @@ const DisbursementPhotoModal = ({
     );
     const requireStaffBiometric  = useSelector(
         s => s.systemSettings?.data?.requireStaffBiometric ?? true
+    );
+    // Off unless root enabled it in System Settings (the server enforces this too)
+    const faceRecaptureEnabled   = useSelector(
+        s => s.systemSettings?.data?.allowFaceRecapture ?? false
     );
     const { authenticateWithBiometric, loading: biometricLoading } = useBiometric();
 
@@ -67,6 +73,11 @@ const DisbursementPhotoModal = ({
     const [verificationQueue, setVerificationQueue] = useState([]); // loans needing a check, in order
     const [verifyIndex,     setVerifyIndex]     = useState(0);
     const [faceMatchScores, setFaceMatchScores] = useState({}); // clientId -> score
+    const [mismatchCounts,  setMismatchCounts]  = useState({}); // clientId -> failed attempts this session (UX only; server re-checks)
+    const [recapturedClients, setRecapturedClients] = useState({}); // clientId -> new reference version
+    const [overrideAsk,    setOverrideAsk]    = useState(false);
+    const [overrideReason, setOverrideReason] = useState('');
+    const [overrideBusy,   setOverrideBusy]   = useState(false);
     // FIX issue 4: key to force full remount of FaceVerifyStep on retry
     const [faceVerifyKey,   setFaceVerifyKey]   = useState(0);
 
@@ -96,6 +107,10 @@ const DisbursementPhotoModal = ({
         setVerificationQueue([]);
         setVerifyIndex(0);
         setFaceMatchScores({});
+        setMismatchCounts({});
+        setRecapturedClients({});
+        setOverrideAsk(false);
+        setOverrideReason('');
         setFaceVerifyKey(0);
     }, [show, currentUser]);
 
@@ -131,8 +146,8 @@ const DisbursementPhotoModal = ({
             ),
             Promise.all(
                 clientIds.map(id =>
-                    fetchWrapper.get(getApiBaseUrl() + `clients?clientId=${id}`)
-                        .then(res => ({ id, record: res.client || null }))
+                    fetchWrapper.get(getApiBaseUrl() + `clients/face-template?clientId=${encodeURIComponent(id)}`)
+                        .then(res => ({ id, record: res.success ? { faceTemplate: res.faceTemplate } : null }))
                         .catch(() => ({ id, record: null }))
                 )
             ),
@@ -271,13 +286,19 @@ const DisbursementPhotoModal = ({
         ? verifyIndex >= verificationQueue.length
         : true;
 
-    const handleClientEnrolled = async ({ faceTemplate, faceEnrolledAt }) => {
+    const handleClientEnrolled = async ({ faceTemplate, faceEnrolledAt, photoKey, livenessScore }) => {
         const cid = getClientId(currentVerifyLoan);
         if (cid) {
             try {
-                await fetchWrapper.post(getApiBaseUrl() + 'clients/enroll-face', {
-                    clientId: cid, faceTemplate, faceEnrolledAt,
+                const enrollRes = await fetchWrapper.post(getApiBaseUrl() + 'clients/enroll-face', {
+                    clientId: cid, faceTemplate, faceEnrolledAt, photoKey, livenessScore,
+                    loanId: currentVerifyLoan?._id,
                 });
+                // These endpoints answer 200 + success:false (never 403), so check the flag
+                if (!enrollRes?.success) {
+                    toast.error(enrollRes?.message || 'Failed to save face enrollment.');
+                    return; // don't advance the queue
+                }
                 toast.success(`Face enrolled for ${getClientName(currentVerifyLoan)}.`);
             } catch {
                 toast.error('Failed to save face enrollment. Please try again.');
@@ -305,6 +326,65 @@ const DisbursementPhotoModal = ({
         }
         setVerifyIndex(i => i + 1);
         setFaceVerifyKey(k => k + 1);
+    };
+
+    const handleClientMismatch = () => {
+        const cid = getClientId(currentVerifyLoan);
+        if (!cid) return;
+        setMismatchCounts(prev => ({ ...prev, [cid]: (prev[cid] || 0) + 1 }));
+    };
+
+    const handleClientRecaptured = async ({ faceTemplate, photoKey, livenessScore, reason }) => {
+        const cid = getClientId(currentVerifyLoan);
+        if (!cid) return;
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/recapture-face', {
+                clientId: cid,
+                loanId: currentVerifyLoan?._id,
+                ciReferenceCode: currentVerifyLoan?.ciReferenceCode ?? null,
+                faceTemplate, photoKey, livenessScore, reason,
+            });
+            if (!res?.success) {
+                toast.error(res?.message || 'Face re-enrollment failed.');
+                if (res?.code === 'ALREADY_MATCHES') setFaceVerifyKey(k => k + 1); // back to a fresh verify
+                return; // don't advance the queue
+            }
+            toast.success(`Reference face re-enrolled for ${getClientName(currentVerifyLoan)} (v${res.version}).`);
+            setRecapturedClients(prev => ({ ...prev, [cid]: res.version }));
+        } catch {
+            toast.error('Failed to save re-enrollment. Please try again.');
+            return;
+        }
+        setFaceMatchScores(prev => ({ ...prev, [cid]: null }));
+        setVerifyIndex(i => i + 1);
+        setFaceVerifyKey(k => k + 1);
+    };
+
+    // Admin override: recorded server-side (with a reason) BEFORE the queue advances
+    const confirmOverride = async () => {
+        const cid = getClientId(currentVerifyLoan);
+        if (!cid || overrideBusy) return;
+        setOverrideBusy(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'face-verify-attempts/override', {
+                clientId: cid,
+                loanId: currentVerifyLoan?._id,
+                ciReferenceCode: currentVerifyLoan?.ciReferenceCode ?? null,
+                reason: overrideReason.trim(),
+            });
+            if (!res?.success) {
+                toast.error(res?.message || 'The override was not recorded.');
+                return;
+            }
+        } catch {
+            toast.error('The override was not recorded. Please try again.');
+            return;
+        } finally {
+            setOverrideBusy(false);
+        }
+        setOverrideAsk(false);
+        setOverrideReason('');
+        handleClientSkipped();
     };
 
     // ── Confirm ──────────────────────────────────────────────────────────
@@ -567,7 +647,7 @@ const DisbursementPhotoModal = ({
                                                             ) : isDone ? (
                                                                 <span className="flex items-center gap-1 text-green-600 font-medium">
                                                                     <CheckCircleIcon className="w-3.5 h-3.5" />
-                                                                    Verified
+                                                                    {recapturedClients[cid] ? `Face re-enrolled (v${recapturedClients[cid]})` : 'Verified'}
                                                                 </span>
                                                             ) : isCurrent ? (
                                                                 <span className="text-blue-600 font-medium">In progress</span>
@@ -608,19 +688,57 @@ const DisbursementPhotoModal = ({
                                                 <p className="text-xs text-gray-400 mb-2">
                                                     Verifying: <span className="font-medium text-gray-600">{getClientName(currentVerifyLoan)}</span>
                                                 </p>
-                                                <FaceVerifyStep
-                                                    key={`${getClientId(currentVerifyLoan)}-${faceVerifyKey}`}
-                                                    faceTemplate={clientStatusMap[getClientId(currentVerifyLoan)]?.faceTemplate}
-                                                    clientId={getClientId(currentVerifyLoan)}
-                                                    loanId={currentVerifyLoan?._id}
-                                                    branchId={currentBranch?._id}
-                                                    ciReferenceCode={currentVerifyLoan?.ciReferenceCode} 
-                                                    onVerified={handleClientVerified}
-                                                    onEnroll={handleClientEnrolled}
-                                                    onSkip={handleClientSkipped}
-                                                    onRetry={() => setFaceVerifyKey(k => k + 1)}
-                                                    canSkip={currentUser?.role?.rep === 1 || currentUser?.root === true}
-                                                />
+                                                {overrideAsk ? (
+                                                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-3">
+                                                        <p className="text-sm font-semibold text-red-800">Override face verification</p>
+                                                        <p className="text-xs text-red-700 leading-relaxed">
+                                                            This lets the loan proceed without a confirmed face match. It is recorded on the
+                                                            client's history with your name and this reason.
+                                                        </p>
+                                                        <textarea
+                                                            value={overrideReason}
+                                                            onChange={(e) => setOverrideReason(e.target.value)}
+                                                            rows={3}
+                                                            placeholder="Why is verification being overridden? (required)"
+                                                            className="w-full border border-red-300 rounded-lg text-sm px-3 py-2
+                                                                focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
+                                                        />
+                                                        <p className="text-[11px] text-red-600">
+                                                            {overrideReason.trim().length}/{MIN_RECAPTURE_REASON_LENGTH} characters minimum
+                                                        </p>
+                                                        <div className="flex gap-2">
+                                                            <button type="button" disabled={overrideBusy}
+                                                                onClick={() => { setOverrideAsk(false); setOverrideReason(''); }}
+                                                                className="flex-1 py-2 border border-gray-300 text-gray-600 text-sm rounded-xl hover:bg-gray-50">
+                                                                Back
+                                                            </button>
+                                                            <button type="button" onClick={confirmOverride}
+                                                                disabled={overrideBusy || overrideReason.trim().length < MIN_RECAPTURE_REASON_LENGTH}
+                                                                className="flex-1 py-2 bg-red-600 text-white text-sm font-semibold rounded-xl
+                                                                    hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                                                                {overrideBusy ? 'Recording…' : 'Confirm Override'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <FaceVerifyStep
+                                                        key={`${getClientId(currentVerifyLoan)}-${faceVerifyKey}`}
+                                                        faceTemplate={clientStatusMap[getClientId(currentVerifyLoan)]?.faceTemplate}
+                                                        clientId={getClientId(currentVerifyLoan)}
+                                                        loanId={currentVerifyLoan?._id}
+                                                        branchId={currentBranch?._id}
+                                                        ciReferenceCode={currentVerifyLoan?.ciReferenceCode}
+                                                        onVerified={handleClientVerified}
+                                                        onEnroll={handleClientEnrolled}
+                                                        onSkip={() => setOverrideAsk(true)}
+                                                        onRetry={() => setFaceVerifyKey(k => k + 1)}
+                                                        onMismatch={handleClientMismatch}
+                                                        onRecapture={faceRecaptureEnabled ? handleClientRecaptured : undefined}
+                                                        mismatchCount={mismatchCounts[getClientId(currentVerifyLoan)] || 0}
+                                                        canRecapture={canApproveFaceRecapture(currentUser)}
+                                                        canSkip={isSystemAdmin(currentUser)}
+                                                    />
+                                                )}
                                             </div>
                                         )}
 

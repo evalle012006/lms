@@ -5,19 +5,26 @@ import { useSelector } from 'react-redux';
 import Layout from '@/components/Layout';
 import AddLoanPage from '@/components/transactions/loan-application/AddLoanPage';
 import { loanApplicationHomePath } from '@/lib/loan-application-v2-gate';
+import { canDecideCI, getShortCode } from '@/lib/ci-roles';
 
 const AddLoanApplicationPage = () => {
     const router      = useRouter();
     const currentUser = useSelector(state => state.user.data);
 
-    if (currentUser && currentUser.role?.rep !== 3 && currentUser.role?.rep !== 4) {
-        router.replace('/transactions/loan-applications');
-        return null;
-    }
-
     if (!router.isReady) return null;
 
     const q = router.query;
+    const rep = currentUser?.role?.rep;
+    const fromCI = !!(q.clientId && q.groupId && q.loId);
+    // LO and branch manager can use the page directly; admin/supervisors only from the CI banner
+    const allowed = rep === 4
+        || getShortCode(currentUser) === 'branch_manager'
+        || (canDecideCI(currentUser) && fromCI);
+
+    if (currentUser && !allowed) {
+        router.replace('/transactions/loan-applications');
+        return null;
+    }
 
     return (
         <Layout header={false} noPad={true}>

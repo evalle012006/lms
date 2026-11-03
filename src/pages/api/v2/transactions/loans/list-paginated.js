@@ -7,10 +7,10 @@
 // loans/list-history.js trusts that param, so any user can read another
 // user's scope by passing their id).
 //
-// Tabs mirror the classic page's client-side predicates exactly:
+// Tabs mirror the classic page's client-side predicates, except that the classic
+// "forecast" tab is folded into "tomorrow":
 //   ldf               status=pending AND dateOfRelease <= today
-//   tomorrow          status=pending AND dateOfRelease  = today+1
-//   forecast          status=pending AND dateOfRelease >= today+2
+//   tomorrow          status=pending AND dateOfRelease >= today+1   (all future loans)
 //   application       status=pending AND ldfApproved
 //   duplicate         status=pending AND client.duplicate        (rep 1 / root only)
 //   guarantor-review  status=pending AND guarantorDuplicate      (rep 1 / root only)
@@ -69,7 +69,7 @@ const IDS_CAP = 500;
 
 const AGG = 'aggregate { count sum { amountRelease } }';
 
-const PENDING_TABS = ['ldf', 'tomorrow', 'forecast', 'application'];
+const PENDING_TABS = ['ldf', 'tomorrow', 'application'];
 // Classic visibility: the duplicate-clients tab was `rep < 2` (admin only); the
 // guarantor-review tab's Review/View button was `rep <= 3` (admin, supervisors,
 // branch managers — loan officers do not get it).
@@ -104,6 +104,7 @@ async function listPaginated(req, res) {
             branchId:       first(req.query.branchId) || null,
             loId:           first(req.query.loId) || null,
             groupId:        first(req.query.groupId) || null,
+            clientId:       first(req.query.clientId) || null,
             loanCycle:      first(req.query.loanCycle) || 'all',
             occurence:      first(req.query.occurence) || 'all',
             loType:         first(req.query.loType) || 'all',
@@ -168,7 +169,6 @@ async function listPaginated(req, res) {
         const systemDate = await loadSettingsSystemDate();
         const today    = momentTz(systemDate).tz(TZ).format('YYYY-MM-DD');
         const tomorrow = momentTz.tz(today, TZ).add(1, 'day').format('YYYY-MM-DD');
-        const dayAfter = momentTz.tz(today, TZ).add(2, 'day').format('YYYY-MM-DD');
 
         // ── Filters shared by every tab ──────────────────────────────────
         const common = [];
@@ -180,6 +180,14 @@ async function listPaginated(req, res) {
         else if (q.loId)                common.push({ loId: { _eq: q.loId } });
 
         if (q.groupId) common.push({ groupId: { _eq: q.groupId } });
+
+        // One client (set after a client QR is scanned and resolved to an id by
+        // resolve-client-qr.js). Applied on top of the scope above, so another
+        // scope's client simply matches nothing.
+        if (q.clientId) {
+            if (typeof q.clientId !== 'string' || q.clientId.length > 64) return emptyResponse();
+            common.push({ clientId: { _eq: q.clientId } });
+        }
 
         if (q.loanCycle === 'new_member')    common.push({ loanCycle: { _eq: 1 } });
         else if (q.loanCycle === 'reloaner') common.push({ loanCycle: { _gt: 1 } });
@@ -241,8 +249,8 @@ async function listPaginated(req, res) {
         // ── Per-tab predicate ────────────────────────────────────────────
         const TAB_COND = {
             ldf:                { dateOfRelease: { _gte: DATE_FLOOR, _lte: today } },
-            tomorrow:           { dateOfRelease: { _eq: tomorrow } },
-            forecast:           { dateOfRelease: { _gte: dayAfter } },
+            // Every loan releasing from tomorrow on (the old "forecasted" tab is folded in).
+            tomorrow:           { dateOfRelease: { _gte: tomorrow } },
             application:        { ldfApproved: { _eq: true } },
             duplicate:          { client: { duplicate: { _eq: true } } },
             'guarantor-review': { guarantorDuplicate: { _eq: true } },

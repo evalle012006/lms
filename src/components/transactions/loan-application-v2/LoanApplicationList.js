@@ -333,6 +333,58 @@ function LoanCard({ loan, photoUrl, today, onView, onOpenClient, openingId, view
     );
 }
 
+// Shown instead of the generic empty message when a QR scan is driving the filters.
+// A scanned CI code only matches a loan once the application has been through CI
+// investigation, been promoted and had its loan added; before that it lives on the CI
+// Investigation page. An approved loan sits on History, which is not counted per tab.
+function ScanEmptyHint({ hint, activeTab }) {
+    const { kind, label, elsewhere = [], onSwitchTab, onOpenCi } = hint;
+    const chip =
+        'px-2.5 py-1 rounded-full border border-teal-200 bg-white text-xs font-medium text-teal-800 hover:bg-teal-100';
+    const canCheckHistory = activeTab !== 'history';
+
+    return (
+        <div className="mt-4 mx-auto max-w-md text-left bg-teal-50 border border-teal-100 rounded-lg p-3 text-sm text-teal-900">
+            <p className="font-medium">
+                {kind === 'ci' ? `No loan on this tab has CI reference ${label}.` : `${label} has no loans on this tab.`}
+            </p>
+
+            {elsewhere.length > 0 && (
+                <div className="mt-2">
+                    <p className="text-teal-800">It is on:</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                        {elsewhere.map((t) => (
+                            <button key={t.key} type="button" className={chip} onClick={() => onSwitchTab(t.key)}>
+                                {t.label} ({t.count})
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {elsewhere.length === 0 && kind === 'ci' && (
+                <p className="mt-2 text-teal-800">
+                    No pending loan carries this code. If the application was only just submitted, it is probably
+                    still in CI investigation, or waiting for its loan to be added.
+                </p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {canCheckHistory && (
+                    <button type="button" className={chip} onClick={() => onSwitchTab('history')}>
+                        Check History (one month at a time)
+                    </button>
+                )}
+                {kind === 'ci' && (
+                    <button type="button" className={chip} onClick={() => onOpenCi(label)}>
+                        Open in CI Investigation
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function Pagination({ pagination, goToPage }) {
     if (pagination.totalPages <= 1) return null;
     const btn =
@@ -378,7 +430,7 @@ function Pagination({ pagination, goToPage }) {
 
 export default function LoanApplicationList({
     loans, loading, error, pagination, goToPage, currentDate, onView, onOpenClient, openingId = null,
-    viewingId, actions = {}, selection = null,
+    viewingId, actions = {}, selection = null, emptyHint = null, activeTab = null,
 }) {
     const [containerRef, width] = useContainerWidth();
     const actionWidth = actionWidthFor(actions);
@@ -415,7 +467,9 @@ export default function LoanApplicationList({
         body = (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 text-center py-16">
                 <p className="text-sm font-medium text-gray-700">No applications match these filters.</p>
-                <p className="text-xs text-gray-400 mt-1">Try another tab or clear a filter.</p>
+                {emptyHint
+                    ? <ScanEmptyHint hint={emptyHint} activeTab={activeTab} />
+                    : <p className="text-xs text-gray-400 mt-1">Try another tab or clear a filter.</p>}
             </div>
         );
     } else {
