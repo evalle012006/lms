@@ -94,5 +94,4 @@ export class GraphProvider {
             variables: resp.variables,
         })
     }
-
 }

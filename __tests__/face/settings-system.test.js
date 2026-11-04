@@ -32,9 +32,11 @@ beforeEach(() => {
 
 describe('contract', () => {
     it('the root-only list includes the new switch and the existing biometric / verification ones', () => {
-        expect(ROOT_ONLY_SETTINGS).toEqual([
+        // other features add their own root-only switches (e.g. allowOfflineUpload); only require that these stay protected
+        expect(ROOT_ONLY_SETTINGS).toEqual(expect.arrayContaining([
             'allowFaceRecapture', 'requireClientBiometric', 'requireStaffBiometric', 'requireLoanVerificationAtClosing',
-        ]);
+        ]));
+        expect(ROOT_ONLY_SETTINGS).not.toContain('superPwd');
     });
 });
 

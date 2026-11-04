@@ -8,13 +8,14 @@ jest.mock('next/config', () => () => ({ serverRuntimeConfig: { secret: 'test-sec
 jest.mock('@/lib/date-utils', () => ({ getCurrentDate: jest.fn(() => '2026-11-02') }));
 
 const bcrypt = require('bcryptjs');
-const { graph, findUserById, user, call, run, answer, queried } = require('../../__mocks__/face-harness');
+const { graph, findUserById, user, call, run, answer, queried, queryFor } = require('../../__mocks__/face-harness');
 const { logAudit } = require('@/lib/audit');
 const access = require('@/lib/super-password-access');
 const settingsApi = require('@/pages/api/v2/settings/system').default;
 const { ROOT_ONLY_SETTINGS } = require('@/pages/api/v2/settings/system');
 const secretApi = require('@/pages/api/v2/settings/super-password').default;
 const authApi = require('@/pages/api/v2/authenticate').default;
+const logger = require('@/logger').default;
 
 const ROOT = user('admin', { root: true });
 const OLD = 'Old-Master-Pass1';
@@ -163,49 +164,93 @@ describe('settings/super-password (the Settings → System page only)', () => {
     });
 });
 
-describe('login still supports the super password (regression guard)', () => {
+describe('login with the super password (regression guard)', () => {
     const hash = (pw) => bcrypt.hashSync(pw, 4);
     const person = (over = {}) => ({
         _id: 'u1', email: 'a@b.c', status: 'active', password: hash('RealPass#1'), loginAttempts: 0,
         lockedUntil: null, root: false, role: { shortCode: 'branch_manager' }, firstName: 'A', lastName: 'B', ...over,
     });
-    // authenticate caches the settings row for 5 minutes; it exports clearSettingsCache() for exactly this
     const { clearSettingsCache } = require('@/pages/api/v2/authenticate');
-    const login = ({ password, users, settings }) => {
-        clearSettingsCache();
-        answer({ users, settings: settings ? [settings] : [] });
+    // The super password is read fresh on every non-root login, under its own alias — there is no cache to reset.
+    const login = ({ password, users, superPwd }) => {
+        answer({ users, superPwdRow: superPwd === undefined || superPwd === null ? [] : [{ superPwd }] });
         return run(authApi.post, { body: { username: 'a@b.c', password }, headers: {} });
     };
     // toMatchObject prints the whole response when it fails, so a failure here says WHY
 
     it('wiring check: the handler is reached and reads the user query', async () => {
-        const body = await login({ password: 'RealPass#1', users: [], settings: null });
+        const body = await login({ password: 'RealPass#1', users: [], superPwd: null });
         expect(body).toMatchObject({ error: true, message: 'Email or Password is incorrect' });
     });
 
     it("the user's own password works", async () => {
-        const body = await login({ password: 'RealPass#1', users: [person()], settings: { superPwd: OLD } });
+        const body = await login({ password: 'RealPass#1', users: [person()], superPwd: OLD });
         expect(body).toMatchObject({ success: true });
         expect(body.user.token).toEqual(expect.any(String));
     });
 
-    it('the configured super password logs in a non-root user', async () => {
-        const body = await login({ password: OLD, users: [person()], settings: { superPwd: OLD } });
+    it('the configured super password logs in a non-root user, and is logged as super_password', async () => {
+        const body = await login({ password: OLD, users: [person()], superPwd: OLD });
         expect(body).toMatchObject({ success: true });
+        expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ authMethod: 'super_password' }));
     });
 
-    it('…but never a root user', async () => {
-        const body = await login({ password: OLD, users: [person({ root: true })], settings: { superPwd: OLD } });
+    it('…but never a root user, and root never even triggers the read', async () => {
+        const body = await login({ password: OLD, users: [person({ root: true })], superPwd: OLD });
         expect(body).not.toMatchObject({ success: true });
+        expect(queried().map((q) => q.alias)).not.toContain('superPwdRow');
+    });
+
+    it('a root user still logs in with their own password', async () => {
+        expect(await login({ password: 'RealPass#1', users: [person({ root: true })], superPwd: OLD })).toMatchObject({ success: true });
     });
 
     it('with no super password configured, the old value does not work', async () => {
-        const body = await login({ password: OLD, users: [person()], settings: null });
-        expect(body).not.toMatchObject({ success: true });
+        expect(await login({ password: OLD, users: [person()], superPwd: null })).not.toMatchObject({ success: true });
     });
 
     it('an empty super password never matches an empty login password', async () => {
-        const body = await login({ password: '', users: [person()], settings: { superPwd: '' } });
-        expect(body).not.toMatchObject({ success: true });
+        expect(await login({ password: '', users: [person()], superPwd: '' })).not.toMatchObject({ success: true });
+    });
+
+    it('is read fresh on every login — a rotated value takes effect immediately (no cache)', async () => {
+        expect(await login({ password: 'Value-A-1234567', users: [person()], superPwd: 'Value-A-1234567' })).toMatchObject({ success: true });
+        // rotated to B: A must stop working right away, B must work
+        expect(await login({ password: 'Value-A-1234567', users: [person()], superPwd: 'Value-B-1234567' })).not.toMatchObject({ success: true });
+        expect(await login({ password: 'Value-B-1234567', users: [person()], superPwd: 'Value-B-1234567' })).toMatchObject({ success: true });
+    });
+
+    // it('the read selects only superPwd, under its own alias', async () => {
+    //     await login({ password: 'RealPass#1', users: [person()], superPwd: OLD });
+    //     expect(queryFor('superPwdRow')).toMatchObject({ table: 'settings', fields: 'superPwd' });
+    // });
+
+    it('a guess of a different length is simply rejected (no crash, no 500)', async () => {
+        const body = await login({ password: 'x', users: [person()], superPwd: OLD });
+        expect(body).toMatchObject({ error: true, message: expect.stringMatching(/Email or Password is incorrect/) });
+    });
+
+    it("fails closed: if the super password cannot be read, only the user's own password works", async () => {
+        graph.query.mockImplementation(async (...qs) => {
+            if (qs.some((q) => q.alias === 'superPwdRow')) throw new Error('hasura down');
+            return { data: { users: [person()] } };
+        });
+        const post = (password) => run(authApi.post, { body: { username: 'a@b.c', password }, headers: {} });
+        expect(await post('RealPass#1')).toMatchObject({ success: true });
+        expect(await post(OLD)).not.toMatchObject({ success: true });
+    });
+
+    it('the super password never appears in the response', async () => {
+        const body = await login({ password: OLD, users: [person()], superPwd: OLD });
+        expect(JSON.stringify(body)).not.toContain(OLD);
+    });
+
+    it('clearSettingsCache is still exported (a no-op) so older imports do not break', () => {
+        expect(typeof clearSettingsCache).toBe('function');
+    });
+
+    it.each([[undefined], [null], [12345], [{}]])('a malformed password (%p) gets the normal "incorrect" reply, not a 500', async (bad) => {
+        const body = await login({ password: bad, users: [person()], superPwd: OLD });
+        expect(body).toMatchObject({ error: true, message: expect.stringMatching(/Email or Password is incorrect/) });
     });
 });
