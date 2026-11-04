@@ -83,6 +83,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
     { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },
     { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
+    { id: 'OP-045', category: 'Other Payments', code: '045 - Rebates', accountTitle: 'Rebates' },
     { id: 'OP-078', category: 'Other Payments', code: '078 - Client Death Benefits (Burial Financial Assistance)', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
     { id: 'OP-083', category: 'Other Payments', code: '083 - Loan Loss Provision', accountTitle: 'Loan Loss Provision' },
     { id: 'OP-085', category: 'Other Payments', code: '085 - Grants and Donation', accountTitle: 'Grants and Donation' },
@@ -706,17 +707,22 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         box-sizing: border-box;
                     }
 
+                    html,
                     body {
                         margin: 0;
-                        padding: 25px;
+                        padding: 0;
                         font-family: Arial, Helvetica, sans-serif;
                         color: #000;
                         background: #fff;
                     }
 
+                    body {
+                        padding: 15mm;
+                    }
+
                     .voucher {
                         width: 100%;
-                        max-width: 186mm;
+                        max-width: 180mm;
                         margin: 0 auto;
                     }
 
@@ -887,21 +893,57 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                     @page {
                         size: A4 portrait;
-                        margin: 12mm;
+                        margin: 20mm;
                     }
 
                     @media print {
+
                         html,
                         body {
                             width: 100%;
-                            margin: 0;
-                            padding: 0;
+                            margin: 0 !important;
+                            padding: 0 !important;
                         }
 
                         .voucher {
                             width: 100%;
                             max-width: 100%;
                             margin: 0 auto;
+                            padding: 0 5mm;
+                            box-sizing: border-box;
+                            break-inside: avoid;
+                        }
+
+                        .voucher-header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 10px;
+                            margin-bottom: 20px;
+                        }
+
+                        .voucher-logo {
+                            width: 45px;
+                            height: 45px;
+                            object-fit: contain;
+                        }
+
+                        .voucher-heading {
+                            text-align: center;
+                        }
+
+                        .company-name {
+                            font-size: 16px;
+                            font-weight: 800;
+                            line-height: 1.4;
+                        }
+
+                        .voucher-title {
+                            margin-top: 5px;
+                            font-size: 15px;
+                            font-weight: 900;
+                            line-height: 1.4;
+                            letter-spacing: 0.5px;
                         }
 
                         .info-grid {
@@ -920,7 +962,9 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                         table {
                             width: 100%;
+                            max-width: 100%;
                             table-layout: fixed;
+                            border-collapse: collapse;
                         }
 
                         th,
@@ -935,10 +979,6 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         .received,
                         .signature-box {
                             font-size: 12px;
-                        }
-
-                        .voucher {
-                            break-inside: avoid;
                         }
                     }
 

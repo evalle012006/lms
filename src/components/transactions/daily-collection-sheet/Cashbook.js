@@ -295,16 +295,14 @@ const emptyRow = (day) => ({
 
       const summary = cashbookData[dateKey];
 
-      // =====================================================
-      // TRANSACTION -> CASHBOOK RECEIPT COLLECTIONS
-      // =====================================================
       let staffCbuCollection = 0;
       let cashbondCollection = 0;
       let salaryAdvanceCollection = 0;
       let clientsMcbuIn = 0;
       let receiptFundTransfer = 0;
+      let paymentFundTransfer = 0;
       let otherReceiptsTotal = 0;
-      let withholdingTax =0;
+      let withholdingTax = 0;
 
 
       transactions.forEach((transaction) => {
@@ -393,20 +391,26 @@ const emptyRow = (day) => ({
             clientsMcbuIn += amount;
           }
 
-          // Fund Transfer (Giver)
-          // -> Cashbook RECEIPTS / DEBIT Fund Transfer
+          // FUND TRANSFER (GIVER)
+          // Other Receipts -> Cashbook RECEIPTS / DEBIT
           if (
-            category === "other receipts" &&
-            code === "036" &&
-            accountTitle === "fund transfer (giver)"
+              category === "other receipts" &&
+              code === "036" &&
+              accountTitle === "fund transfer (giver)"
           ) {
-            receiptFundTransfer += amount;
+              receiptFundTransfer += amount;
           }
 
-          // =====================================================
-          // MANAGEMENT EXPENSES CODE 055
-          // -> Cashbook RECEIPTS / DEBIT Withholding Tax
-          // =====================================================
+          // FUND TRANSFER (RECEIVER)
+          // Other Payments -> Cashbook PAYMENTS / CREDIT
+          if (
+              category === "other payments" &&
+              code === "036" &&
+              accountTitle === "fund transfer (receiver)"
+          ) {
+              paymentFundTransfer += amount;
+          }
+
           if (
             category === "management expenses" &&
             code === "055" &&
@@ -432,72 +436,27 @@ const emptyRow = (day) => ({
           weekday: "long",
         }),
 
-        // DCS SUMMARY
         beginningBalance: summary?.beginningBalance ?? 0,
-
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
-
-        // DCS "Other Loan Collection (Weekly)"
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
-
-        // Transaction Other Receipts Code 028
-        // -> Cashbook Staff CBU Collection
         staffCbuCollection,
-
-        // Transaction Other Receipts Code 029
-        // -> Cashbook Cashbond Collection
         cashbondCollection,
-
-        // Transaction Other Receipts Code 012
-        // -> Cashbook Staff Principal Loan Collection
         salaryAdvanceCollection,
-
-        // DCS "Admin Fees #" -> Cashbook "Membership Fee"
         membershipFee: summary?.rcptAdminFees ?? 0,
-
-        // DCS "LRF Collection"
         lrfCollection: summary?.rcptLrf ?? 0,
-
-        // DCS "C B H B Collection"
         cbhbCollection: summary?.rcptCbhb ?? 0,
-
-        // DCS "ADD-Hospi #" -> Cashbook "Add. Hospitalization Collection"
         cbhbAdditional: summary?.rcptAddHospi ?? 0,
-
-        // DCS "Other Income (Passbook)" -> Cashbook "Other (Passbook / Picture / etc.)"
         cbhbOther: summary?.rcptOtherIncomePassbook ?? 0,
-
-        // Transaction Management Expenses Code 055
-        // Employers Contribution (ER)
-        // Employers Contribution (EE)
-        // Witheld Tax
-        // -> Cashbook RECEIPTS / DEBIT Withholding Tax
         withholdingTax,
-
-        // Transaction Other Receipts Code 019
-        // -> Cashbook Client's MCBU (IN)
         mcbuUnclaimReturn: clientsMcbuIn,
-
-        // Transaction Other Receipts Code 036
-        // -> Cashbook RECEIPTS / DEBIT Fund Transfer
         receiptFundTransfer,
-
-        // ALL Transaction Other Receipts
-        // -> Cashbook RECEIPTS / DEBIT Other Receipts
+        paymentFundTransfer,
         otherReceipts: otherReceiptsTotal,
-
-        // DCS "Rebates" -> Cashbook Payments/Credit "Rebates / Loan"
         rebatesLoan: summary?.payRebates ?? 0,
-
-        // DCS "Bank Withdrawal" -> Cashbook Receipts "Bank Withdrawal"
         bankWithdrawal: summary?.rcptBankWithdrawal ?? 0,
-
-        // DCS "Bank Deposits" -> Cashbook Payments "Bank Deposit"
         bankDeposit: summary?.payBankDeposits ?? 0,
-
-        // DCS "Other payments" -> Cashbook Payments/Credit "Other Payment"
         otherPayment: summary?.payOtherPayments ?? 0,
 
       });
@@ -511,10 +470,6 @@ const emptyRow = (day) => ({
     cashbookData,
     transactions,
   ]);
-
-  /* =======================================================
-     CALCULATIONS
-  ======================================================= */
 
   const calculateTotalReceipts = (row) => {
     return (
@@ -561,29 +516,19 @@ const emptyRow = (day) => ({
     );
   };
 
-  /* =======================================================
-     WEEK GROUPS
-  ======================================================= */
-
   const isWeekEnd = (row, index) => {
     const nextRow = rows[index + 1];
 
-    // Friday = end of normal work week
     if (row.date.getDay() === 5) {
       return true;
     }
 
-    // Last working day of the month
     if (!nextRow) {
       return true;
     }
 
     return false;
   };
-
-  /* =======================================================
-     TOTAL HELPER
-  ======================================================= */
 
   const sumField = (sourceRows, field) =>
     sourceRows.reduce(

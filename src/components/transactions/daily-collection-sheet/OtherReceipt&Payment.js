@@ -105,7 +105,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       title: "LOANS / ADVANCES",
       columns: [
         {
-          name: "Motor Loan Principal Collection",
+          name: "Motor Loan (Collection)",
           transactionCode: "013",
           aliases: [
             "Motorcycle Advance",
@@ -113,7 +113,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Special Advance Collection",
+          name: "Special Advance (Collection)",
           transactionCode: "014",
           aliases: [
             "Special Advance",
@@ -121,7 +121,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Cash Advance Collection",
+          name: "Cash Advance (Collection)",
           transactionCode: "015",
           aliases: [
             "Cash Advance to Staff",
@@ -255,7 +255,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       title: "LOANS / ADVANCES",
       columns: [
         {
-          name: "Motor Loan Principal",
+          name: "Motor Loan (Disbursement)",
           transactionCode: "013",
           aliases: [
             "Motorcycle Advance",
@@ -263,7 +263,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Special Advance Collection",
+          name: "Special Advance (Disbursement)",
           transactionCode: "014",
           aliases: [
             "Special Advance",
@@ -271,11 +271,19 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Cash Advance Collection",
+          name: "Cash Advance (Disbursement)",
           transactionCode: "015",
           aliases: [
             "Cash Advance to Staff",
             "Cash Advance Collection",
+          ],
+        },
+        {
+          name: "Salary Advance (Disbursement)",
+          aliases: [
+            "Salary Advance",
+            "Salary Advance to Staff",
+            "Salary Advance (Disbursement)",
           ],
         },
       ],

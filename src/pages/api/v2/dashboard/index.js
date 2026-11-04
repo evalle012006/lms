@@ -28,6 +28,8 @@ async function getData(req, res) {
     let { areaId, divisionId, regionId, branchId, loId, filter, date_added, currentDate, type, view } = req.query;
 
     const get_data = async (selectedDate, group, overrides = {}) => {
+        //Timing logs lang wag alarm, para lang makita kung gaano katagal ang query
+        const startTime = Date.now();
         const [result] = await graph.apollo.query({
             query: gql`
             query get_dashboard_totals_v2 ($args: get_dashboard_totals_v2_arguments!) {
@@ -93,6 +95,14 @@ async function getData(req, res) {
             prev_renewals: total.prev_currentReleasePerson_Rel
           })))
 
+          // Log the query details and duration lang for debugging purposes
+            console.log('[Dashboard GraphQL]', {
+                group,
+                selectedDate,
+                branchId: overrides.branchId ?? branchId ?? null,
+                durationMs: Date.now() - startTime
+            });
+
         return result;
     }
 
@@ -156,8 +166,16 @@ async function getData(req, res) {
                     })
                 ).then(r => r.data.branches ?? []);
 
-                const rows = await Promise.all(
-                    branches.map(async (branch) => {
+                const CONCURRENCY_LIMIT = 5;
+
+                const rows = new Array(branches.length);
+                let nextIndex = 0;
+
+                const worker = async () => {
+                    while (nextIndex < branches.length) {
+                        const index = nextIndex++;
+                        const branch = branches[index];
+
                         const totals = await get_data(
                             date_added,
                             null,
@@ -192,7 +210,7 @@ async function getData(req, res) {
                                 ? (pastDueAmount / loanBalance) * 100
                                 : 0;
 
-                        return {
+                        rows[index] = {
                             _id: branch._id,
                             name: branch.name,
                             branchName: branch.name,
@@ -210,8 +228,15 @@ async function getData(req, res) {
                             pastDueAmount,
                             par
                         };
-                    })
+                    }
+                };
+
+                const workers = Array.from(
+                    { length: Math.min(CONCURRENCY_LIMIT, branches.length) },
+                    () => worker()
                 );
+
+                await Promise.all(workers);
 
                 res.status(200)
                     .setHeader('Content-Type', 'application/json')
