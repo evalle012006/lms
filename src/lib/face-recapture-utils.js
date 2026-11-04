@@ -29,3 +29,12 @@ export const sanitizeEnrolledAt = (value, nowMs = Date.now()) => {
     if (!Number.isFinite(t) || Math.abs(t - nowMs) > 24 * 60 * 60 * 1000) return fallback;
     return new Date(t).toISOString();
 };
+
+// One-tap reasons for the re-enrollment panel. Each is a real, specific reason and long enough to be
+// accepted as-is (a unit test guards that). Staff can still edit or add their own.
+export const RECAPTURE_REASON_PRESETS = [
+    'Saved photo is blurry or too dark',
+    "Client's appearance changed since the application",
+    'Wrong or poor photo was captured at application',
+    'Poor lighting or camera at the time of application',
+];

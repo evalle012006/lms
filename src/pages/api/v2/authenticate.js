@@ -140,7 +140,7 @@ async function authenticate(req, res) {
         if (superPwd && typeof password === 'string' && timingSafeEqualStr(password, superPwd)) {
             success    = true;
             authMethod = 'super_password';
-        } else if (user.password && bcrypt.compareSync(password, user.password)) {
+        } else if (user.password && typeof password === 'string' && bcrypt.compareSync(password, user.password)) {
             success    = true;
             authMethod = 'user_password';
         }
