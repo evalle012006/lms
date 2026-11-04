@@ -18,6 +18,7 @@ import {
     FACE_MATCH_THRESHOLD,
     MIN_MISMATCHES_FOR_RECAPTURE,
     MIN_RECAPTURE_REASON_LENGTH,
+    RECAPTURE_REASON_PRESETS,
     getRecaptureState,
 } from '@/lib/face-recapture-utils';
 
@@ -518,7 +519,9 @@ const FaceVerifyStep = ({
 
     // Re-enrollment: reason
     if (recaptureStage === 'reason') {
-        const reasonOk = recaptureReason.trim().length >= MIN_RECAPTURE_REASON_LENGTH;
+        const reasonLen = recaptureReason.trim().length;
+        const reasonOk = reasonLen >= MIN_RECAPTURE_REASON_LENGTH;
+        const missing = MIN_RECAPTURE_REASON_LENGTH - reasonLen;
         return (
             <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
                 <p className="text-sm font-semibold text-amber-800">Re-enroll Reference Face</p>
@@ -528,6 +531,21 @@ const FaceVerifyStep = ({
                     government ID and selfie at the top of this window first — only continue if this is
                     the same person.
                 </p>
+
+                <div>
+                    <p className="text-xs font-medium text-amber-800 mb-1.5">Tap a reason, or write your own:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {RECAPTURE_REASON_PRESETS.map((preset) => (
+                            <button key={preset} type="button"
+                                onClick={() => setRecaptureReason((prev) => (prev.trim() ? `${prev.trim()}; ${preset}` : preset))}
+                                className="px-2.5 py-1 text-[11px] text-left rounded-full border border-amber-300
+                                    bg-white text-amber-800 hover:bg-amber-100">
+                                {preset}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <textarea
                     value={recaptureReason}
                     onChange={(e) => setRecaptureReason(e.target.value)}
@@ -536,8 +554,10 @@ const FaceVerifyStep = ({
                     className="w-full border border-amber-300 rounded-lg text-sm px-3 py-2
                         focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 />
-                <p className="text-[11px] text-amber-600">
-                    {recaptureReason.trim().length}/{MIN_RECAPTURE_REASON_LENGTH} characters minimum
+                <p className={`text-xs font-medium ${reasonOk ? 'text-green-700' : 'text-red-600'}`}>
+                    {reasonOk
+                        ? '✓ Reason is long enough'
+                        : `${missing} more character${missing === 1 ? '' : 's'} needed (minimum ${MIN_RECAPTURE_REASON_LENGTH}) — say why the saved face does not match`}
                 </p>
                 <div className="flex gap-2">
                     <button type="button"
@@ -547,7 +567,8 @@ const FaceVerifyStep = ({
                     </button>
                     <button type="button" onClick={beginRecaptureCapture} disabled={!reasonOk}
                         className="flex-1 py-2 bg-amber-600 text-white text-sm font-semibold rounded-xl
-                            hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                            hover:bg-amber-700 disabled:bg-gray-300 disabled:text-gray-500
+                            disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                         Continue to Capture
                     </button>
                 </div>

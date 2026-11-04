@@ -176,3 +176,14 @@ describe('camera stream edge cases', () => {
         expect(b.stop).toHaveBeenCalled();
     });
 });
+
+describe('recapture reason presets', () => {
+    it('every preset is long enough to be accepted as-is', () => {
+        utils.RECAPTURE_REASON_PRESETS.forEach((p) =>
+            expect(p.trim().length).toBeGreaterThanOrEqual(utils.MIN_RECAPTURE_REASON_LENGTH));
+    });
+    it('has presets, all different', () => {
+        expect(utils.RECAPTURE_REASON_PRESETS.length).toBeGreaterThan(0);
+        expect(new Set(utils.RECAPTURE_REASON_PRESETS).size).toBe(utils.RECAPTURE_REASON_PRESETS.length);
+    });
+});
