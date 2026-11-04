@@ -48,8 +48,8 @@ async function overrideFaceVerification(req, res) {
     const loan   = loans?.[0];
     if (!client) return fail(res, 'Client not found.');
     if (!loan || loan.clientId !== clientId) return fail(res, 'Loan does not belong to this client.');
-    if (loan.status !== 'pending' || loan.ldfApproved === true) {
-        return fail(res, 'Overrides are only allowed while the loan is pending approval.');
+    if (loan.status !== 'pending') {
+        return fail(res, `Overrides are only allowed while the loan is pending approval (this loan is "${loan.status}").`);
     }
 
     const kind = client.faceTemplate ? 'mismatch_override' : 'no_template_override';

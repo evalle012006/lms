@@ -43,8 +43,9 @@ async function saveDisbursementClientPhoto(req, res) {
     if (!loan || loan.clientId !== clientId || (branchIds && !branchIds.includes(loan.branchId))) {
         return fail(res, 'Loan not found.');
     }
-    if (loan.status !== 'pending' || loan.ldfApproved === true) {
-        return fail(res, 'The photo can only be recorded while the loan is pending approval.');
+    // Status only: the disbursement modal opens for loans whose ldfApproved is already true.
+    if (loan.status !== 'pending') {
+        return fail(res, `The photo can only be recorded while the loan is pending approval (this loan is "${loan.status}").`);
     }
 
     const [branch] = await findBranches({ _id: { _eq: loan.branchId } }, '_id name skipClientFaceVerify skipClientFaceVerifyUntil');
