@@ -998,11 +998,13 @@ const CashCollectionDetailsPage = () => {
     
                                 if (current?.origin && !current.draft) {
                                     collection.origin = current.origin;
-                                    if (collection.origin !== 'pre-save') {
-                                        setEditMode(false);
-                                    } else {
+                                    if (collection.origin === 'pre-save') {
                                         // pre-save rows are always editable — mark dirty so they're included on save
                                         collection._dirty = true;
+                                    } else if (collection.origin === 'automation-ar-loan' || collection.origin === 'automation-trf') {
+                                        // system-seeded rows (loan released today / transfer) must not lock the rest of the group
+                                    } else {
+                                        setEditMode(false);
                                     }
                                 } else if (current.draft) {
                                     collection.origin = current.origin ?? null; // keeps 'offline' across draft re-saves
@@ -1183,7 +1185,7 @@ const CashCollectionDetailsPage = () => {
                     // New loan released today: active row that is only the auto-draft "release" row
                     const isReleaseTodayDraft = currentLoan.status === 'active'
                         && currentLoan.loanId === loan._id
-                        && currentLoan.draft
+                        && (currentLoan.draft || currentLoan.origin === 'automation-ar-loan')
                         && dateOfRelease === currentDate
                         && !currentLoan.fullPaymentDate
                         && safeNumber(currentLoan.noOfPayments) === 0;
