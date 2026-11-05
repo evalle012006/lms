@@ -195,7 +195,6 @@ describe('clients/recapture-face', () => {
     it('only while the loan is pending', async () => {
         answer(fx({ loans: [{ _id: 'l1', clientId: 'c1', status: 'active', ldfApproved: false }] }));
         expect((await run(recaptureFace.post, req())).message).toMatch(/only allowed while the loan is pending/);
-        answer(fx({ loans: [{ _id: 'l1', clientId: 'c1', status: 'pending', ldfApproved: true }] }));
         expect((await run(recaptureFace.post, req())).message).toMatch(/only allowed while the loan is pending/);
         expect(graph.mutation).not.toHaveBeenCalled();
     });

@@ -85,9 +85,10 @@ async function recaptureFace(req, res) {
 
     if (!client) return fail(res, 'Client not found.');
     if (!loan || loan.clientId !== clientId) return fail(res, 'Loan does not belong to this client.');
-    // The disbursement modal only handles pending loans; approval flips them to 'active'.
-    if (loan.status !== 'pending' || loan.ldfApproved === true) {
-        return fail(res, 'Re-enrollment is only allowed while the loan is pending approval.');
+    // The disbursement window lists loans that are already LDF-approved (ldfApproved = true) but still
+    // 'pending'; the final approval flips them to 'active'. So the only rule is "not disbursed yet".
+    if (loan.status !== 'pending') {
+        return fail(res, 'Re-enrollment is only allowed while the loan is pending final approval.');
     }
     const prevTemplate = parseTemplate(client.faceTemplate);
     if (!prevTemplate) return fail(res, 'This client has no face on record. Use the first-time enrollment instead.');
