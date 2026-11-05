@@ -1913,7 +1913,10 @@ const CashCollectionDetailsPage = () => {
                         && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
-            } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+            } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-')
+                    // a loan released today has no payoff yet, so it needs no remarks
+                    && !(cc.status === 'tomorrow' && !cc.fullPaymentDate)
+                    && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
