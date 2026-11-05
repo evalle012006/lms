@@ -15,6 +15,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from "@/lib/constants";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setAreaList } from "@/redux/actions/areaActions";
+import { isOfflineModeActive, OFFLINE_MODE_DEFAULT_DAYS, OFFLINE_MODE_MAX_DAYS } from "@/lib/offline-mode";
 
 const BranchesPage = () => {
     const dispatch = useDispatch();
@@ -73,6 +74,39 @@ const BranchesPage = () => {
     }
 
     const canToggleCsf = !!(currentUser.root || currentUser.role?.rep === 1);
+    const canToggleOfflineMode = canToggleCsf; // same rule: root / admin (rep 1)
+
+    const handleToggleOfflineMode = (branchRow) => {
+        const next = !isOfflineModeActive(branchRow); // active -> turn off; off OR expired -> turn on
+        let days;
+        if (next) {
+            const input = window.prompt(
+                `Turn OFFLINE MODE ON for ${branchRow.name}?\n\nReal-time client face verification will be SKIPPED at loan approval; the branch uploads each client's photo instead. It turns itself off after the number of days you enter.\n\nDays (1-${OFFLINE_MODE_MAX_DAYS}):`,
+                String(OFFLINE_MODE_DEFAULT_DAYS)
+            );
+            if (input === null) return;
+            days = parseInt(input, 10);
+            if (!Number.isInteger(days) || days < 1 || days > OFFLINE_MODE_MAX_DAYS) {
+                toast.error(`Enter a whole number from 1 to ${OFFLINE_MODE_MAX_DAYS}.`);
+                return;
+            }
+        } else if (!window.confirm(`Turn offline mode OFF for ${branchRow.name}?\n\nClient face verification is required again at loan approval.`)) {
+            return;
+        }
+
+        fetchWrapper.post(getApiBaseUrl() + 'branches/set-skip-client-face-verify', {
+            branchId: branchRow._id, skipClientFaceVerify: next, ...(next ? { days } : {}),
+        })
+            .then(response => {
+                if (response.success) {
+                    toast.success(`Offline mode ${next ? 'enabled' : 'disabled'} for ${branchRow.name}.`);
+                    getListBranch();
+                } else {
+                    toast.error(response.message || 'Failed to update offline mode.');
+                }
+            })
+            .catch(() => toast.error('Failed to update offline mode.'));
+    };
 
     const handleToggleCsf = (branchRow) => {
         const next = branchRow.csfEnabled === false; // currently off -> turn on
@@ -191,6 +225,35 @@ const BranchesPage = () => {
                                 : 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'
                         }`}>
                         {enabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                );
+            },
+        }] : []),
+        ...(canToggleOfflineMode ? [{
+            Header: "Offline Mode",
+            accessor: 'skipClientFaceVerify',
+            Cell: ({ row }) => {
+                                const flag = row.original.skipClientFaceVerify;
+                if (flag === undefined || flag === null) return <span className="text-gray-400">—</span>;
+                const active  = isOfflineModeActive(row.original);
+                const expired = flag === true && !active;
+                const until   = row.original.skipClientFaceVerifyUntil;
+                const label   = active
+                    ? `On · until ${new Date(until).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`
+                    : expired ? 'Expired' : 'Off';
+                return (
+                    <button type="button" onClick={() => handleToggleOfflineMode(row.original)}
+                        title={active
+                            ? `Face verification skipped; client photo upload required. Ends ${new Date(until).toLocaleString()}`
+                            : expired ? 'Offline mode expired — click to enable again' : 'Normal face verification'}
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                            active
+                                ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200'
+                                : expired
+                                    ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                        }`}>
+                        {label}
                     </button>
                 );
             },

@@ -364,18 +364,6 @@ const MenuItems = [
                 roles: ["cashier", "loan_officer"]
             },
             {
-                label: "Daily Collection Sheet",
-                url: "/transactions/daily-collection-sheet",
-                icon: {
-                    active: (props) => <FileSpreadsheet {...props} />,
-                    notActive: (props) => <FileSpreadsheet {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["loan_officer"]
-            },
-            {
               label: "Denomination",
               url: '/transactions/denomination',
               icon: {
@@ -721,6 +709,30 @@ const MenuItems = [
         hidden: false,
         roles: [],
         subMenuItems: [
+            {
+                label: "FIS & MIS Report",
+                url: "/reports/fis-mis",
+                icon: {
+                    active: (props) => <FileBarChart {...props} />,
+                    notActive: (props) => <FileBarChart {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: []
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet",
+                icon: {
+                    active: (props) => <FileSpreadsheet {...props} />,
+                    notActive: (props) => <FileSpreadsheet {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["loan_officer"]
+            },
             {
                 label: "Transaction by Remarks",
                 url: "/reports/transaction-remarks",

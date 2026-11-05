@@ -210,6 +210,42 @@ const emptyRow = (day) => ({
     loading = false,
   }) => {
   const [transactions, setTransactions] = useState([]);
+  const [descriptions, setDescriptions] = useState({});
+  const [savingDescription, setSavingDescription] = useState(null);
+  const [descriptionMessage, setDescriptionMessage] = useState("");
+
+  useEffect(() => {
+    if (!branchId) {
+      setDescriptions({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadDescriptions = async () => {
+      try {
+        const response = await fetchWrapper.get(
+          `${getApiBaseUrl()}cashbook/descriptions?branchId=${encodeURIComponent(branchId)}`
+        );
+
+        if (!cancelled) {
+          setDescriptions(response?.descriptions || {});
+        }
+      } catch (error) {
+        console.error("Failed to load Cashbook descriptions:", error);
+
+        if (!cancelled) {
+          setDescriptions({});
+        }
+      }
+    };
+
+    loadDescriptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [branchId]);
 
   useEffect(() => {
     if (!branchId) {
@@ -295,16 +331,15 @@ const emptyRow = (day) => ({
 
       const summary = cashbookData[dateKey];
 
-      // =====================================================
-      // TRANSACTION -> CASHBOOK RECEIPT COLLECTIONS
-      // =====================================================
       let staffCbuCollection = 0;
       let cashbondCollection = 0;
       let salaryAdvanceCollection = 0;
       let clientsMcbuIn = 0;
       let receiptFundTransfer = 0;
+      let paymentFundTransfer = 0;
       let otherReceiptsTotal = 0;
-      let withholdingTax =0;
+      let withholdingTax = 0;
+      let managementExpensesTotal = 0;
 
 
       transactions.forEach((transaction) => {
@@ -348,16 +383,14 @@ const emptyRow = (day) => ({
             return;
           }
 
-          // =====================================================
-          // OTHER RECEIPT REPORT TOTAL
-          // Uses the SAME enabled/matching rules as
-          // Other Receipts & Payments Summary
-          // =====================================================
+          if (category === "management expenses") {
+            managementExpensesTotal += amount;
+          }
+
           if (isIncludedOtherReceipt(item)) {
             otherReceiptsTotal += amount;
           }
 
-          // Staff CBU Collection
           if (
             category === "other receipts" &&
             code === "028" &&
@@ -366,7 +399,6 @@ const emptyRow = (day) => ({
             staffCbuCollection += amount;
           }
 
-          // Staff Cashbond Collection
           if (
             category === "other receipts" &&
             code === "029" &&
@@ -375,7 +407,6 @@ const emptyRow = (day) => ({
             cashbondCollection += amount;
           }
 
-          // Staff Principal Loan Collection
           if (
             category === "other receipts" &&
             code === "012" &&
@@ -384,7 +415,6 @@ const emptyRow = (day) => ({
             salaryAdvanceCollection += amount;
           }
 
-          // Client's MCBU (IN)
           if (
             category === "other receipts" &&
             code === "019" &&
@@ -393,20 +423,22 @@ const emptyRow = (day) => ({
             clientsMcbuIn += amount;
           }
 
-          // Fund Transfer (Giver)
-          // -> Cashbook RECEIPTS / DEBIT Fund Transfer
           if (
-            category === "other receipts" &&
-            code === "036" &&
-            accountTitle === "fund transfer (giver)"
+              category === "other receipts" &&
+              code === "036" &&
+              accountTitle === "fund transfer (giver)"
           ) {
-            receiptFundTransfer += amount;
+              receiptFundTransfer += amount;
           }
 
-          // =====================================================
-          // MANAGEMENT EXPENSES CODE 055
-          // -> Cashbook RECEIPTS / DEBIT Withholding Tax
-          // =====================================================
+          if (
+              category === "other payments" &&
+              code === "036" &&
+              accountTitle === "fund transfer (receiver)"
+          ) {
+              paymentFundTransfer += amount;
+          }
+
           if (
             category === "management expenses" &&
             code === "055" &&
@@ -432,72 +464,28 @@ const emptyRow = (day) => ({
           weekday: "long",
         }),
 
-        // DCS SUMMARY
         beginningBalance: summary?.beginningBalance ?? 0,
-
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
+        managementCostExpenses: managementExpensesTotal,
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
-
-        // DCS "Other Loan Collection (Weekly)"
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
-
-        // Transaction Other Receipts Code 028
-        // -> Cashbook Staff CBU Collection
         staffCbuCollection,
-
-        // Transaction Other Receipts Code 029
-        // -> Cashbook Cashbond Collection
         cashbondCollection,
-
-        // Transaction Other Receipts Code 012
-        // -> Cashbook Staff Principal Loan Collection
         salaryAdvanceCollection,
-
-        // DCS "Admin Fees #" -> Cashbook "Membership Fee"
         membershipFee: summary?.rcptAdminFees ?? 0,
-
-        // DCS "LRF Collection"
         lrfCollection: summary?.rcptLrf ?? 0,
-
-        // DCS "C B H B Collection"
         cbhbCollection: summary?.rcptCbhb ?? 0,
-
-        // DCS "ADD-Hospi #" -> Cashbook "Add. Hospitalization Collection"
         cbhbAdditional: summary?.rcptAddHospi ?? 0,
-
-        // DCS "Other Income (Passbook)" -> Cashbook "Other (Passbook / Picture / etc.)"
         cbhbOther: summary?.rcptOtherIncomePassbook ?? 0,
-
-        // Transaction Management Expenses Code 055
-        // Employers Contribution (ER)
-        // Employers Contribution (EE)
-        // Witheld Tax
-        // -> Cashbook RECEIPTS / DEBIT Withholding Tax
         withholdingTax,
-
-        // Transaction Other Receipts Code 019
-        // -> Cashbook Client's MCBU (IN)
         mcbuUnclaimReturn: clientsMcbuIn,
-
-        // Transaction Other Receipts Code 036
-        // -> Cashbook RECEIPTS / DEBIT Fund Transfer
         receiptFundTransfer,
-
-        // ALL Transaction Other Receipts
-        // -> Cashbook RECEIPTS / DEBIT Other Receipts
+        paymentFundTransfer,
         otherReceipts: otherReceiptsTotal,
-
-        // DCS "Rebates" -> Cashbook Payments/Credit "Rebates / Loan"
         rebatesLoan: summary?.payRebates ?? 0,
-
-        // DCS "Bank Withdrawal" -> Cashbook Receipts "Bank Withdrawal"
         bankWithdrawal: summary?.rcptBankWithdrawal ?? 0,
-
-        // DCS "Bank Deposits" -> Cashbook Payments "Bank Deposit"
         bankDeposit: summary?.payBankDeposits ?? 0,
-
-        // DCS "Other payments" -> Cashbook Payments/Credit "Other Payment"
         otherPayment: summary?.payOtherPayments ?? 0,
 
       });
@@ -512,9 +500,33 @@ const emptyRow = (day) => ({
     transactions,
   ]);
 
-  /* =======================================================
-     CALCULATIONS
-  ======================================================= */
+  const saveDescription = async (dateKey) => {
+    if (!branchId) {
+      alert("Please select a branch.");
+      return;
+    }
+
+    try {
+      setSavingDescription(dateKey);
+      setDescriptionMessage("");
+
+      await fetchWrapper.post(
+        `${getApiBaseUrl()}cashbook/descriptions`,
+        {
+          branchId,
+          date: dateKey,
+          description: descriptions[dateKey] || "",
+        }
+      );
+
+      setDescriptionMessage(`Saved description for ${dateKey}`);
+    } catch (error) {
+      console.error("Failed to save description:", error);
+      alert(error?.message || "Failed to save description.");
+    } finally {
+      setSavingDescription(null);
+    }
+  };
 
   const calculateTotalReceipts = (row) => {
     return (
@@ -541,7 +553,6 @@ const emptyRow = (day) => ({
 
   const calculateTotalPayments = (row) => {
     return (
-      Number(row.managementExpenses || 0) +
       Number(row.regularLoanReleasePrincipal || 0) +
       Number(row.otherLoanReleasePrincipal || 0) +
       Number(row.mcbuWithdrawal || 0) +
@@ -561,29 +572,19 @@ const emptyRow = (day) => ({
     );
   };
 
-  /* =======================================================
-     WEEK GROUPS
-  ======================================================= */
-
   const isWeekEnd = (row, index) => {
     const nextRow = rows[index + 1];
 
-    // Friday = end of normal work week
     if (row.date.getDay() === 5) {
       return true;
     }
 
-    // Last working day of the month
     if (!nextRow) {
       return true;
     }
 
     return false;
   };
-
-  /* =======================================================
-     TOTAL HELPER
-  ======================================================= */
 
   const sumField = (sourceRows, field) =>
     sourceRows.reduce(
@@ -638,7 +639,7 @@ const emptyRow = (day) => ({
           {money(totalReceipts)}
         </td>
 
-        <td>{money(sumField(sourceRows, "managementExpenses"))}</td>
+        <td className="cb-expense"></td>
 
         <td>{sumField(sourceRows, "regularLoanReleasePersons")}</td>
         <td>{money(sumField(sourceRows, "regularLoanReleasePrincipal"))}</td>
@@ -949,6 +950,11 @@ const emptyRow = (day) => ({
       {/* ===================================================
           ONE CONTINUOUS CASHBOOK
       =================================================== */}
+      {descriptionMessage && (
+        <div className="mx-4 my-2 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+          {descriptionMessage}
+        </div>
+      )}
 
       <div className="cashbook-scroll">
         <table className="cashbook-table">
@@ -1356,7 +1362,29 @@ const emptyRow = (day) => ({
                     {/* PAYMENTS */}
 
                     <td className="cb-expense">
-                      {money(row.managementExpenses)}
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={descriptions[row.dateKey] || ""}
+                          onChange={(e) =>
+                            setDescriptions((prev) => ({
+                              ...prev,
+                              [row.dateKey]: e.target.value,
+                            }))
+                          }
+                          placeholder="Enter description"
+                          className="w-44 border border-gray-300 rounded px-2 py-1 text-xs bg-white text-gray-900"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => saveDescription(row.dateKey)}
+                          disabled={savingDescription === row.dateKey}
+                          className="bg-blue-600 text-white px-2 py-1 rounded text-xs disabled:opacity-50"
+                        >
+                          {savingDescription === row.dateKey ? "Saving..." : "Save"}
+                        </button>
+                      </div>
                     </td>
 
                     <td className="cb-collection">
