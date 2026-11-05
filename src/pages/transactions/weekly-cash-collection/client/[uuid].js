@@ -1179,7 +1179,45 @@ const CashCollectionDetailsPage = () => {
 
                 if (currentLoan && currentLoan.status !== 'pending' && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                     const index = cashCollection.indexOf(currentLoan);
-                    if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
+
+                    // New loan released today: active row that is only the auto-draft "release" row
+                    const isReleaseTodayDraft = currentLoan.status === 'active'
+                        && currentLoan.loanId === loan._id
+                        && currentLoan.draft
+                        && dateOfRelease === currentDate
+                        && !currentLoan.fullPaymentDate
+                        && safeNumber(currentLoan.noOfPayments) === 0;
+
+                    if (isReleaseTodayDraft) {
+                        cashCollection[index] = {
+                            ...cashCollection[index],
+                            status: 'tomorrow',
+                            tomorrow: true,
+                            pending: false,
+                            draft: false,
+                            _dirty: false,
+                            amountRelease: 0, amountReleaseStr: '-',
+                            loanBalance: 0, loanBalanceStr: '-',
+                            currentReleaseAmount: loan.amountRelease,
+                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
+                            noOfPayments: '-', noOfPaymentStr: '-',
+                            mispayment: false, mispaymentStr: '-', noMispaymentStr: '-',
+                            targetCollection: 0, targetCollectionStr: '-',
+                            paymentCollection: 0, paymentCollectionStr: '-',
+                            mcbuCol: 0, mcbuColStr: '-',
+                            csfCollection: 0, csfCollectionStr: '-',
+                            remarks: '-',
+                            admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                        };
+                    } else if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         // The payoff figures live on today's cash-collection row. loan.history is a
                         // snapshot that some write paths (QR merge / pre-save) never refresh, so
                         // prefer the row and fall back to history only when no row exists.
