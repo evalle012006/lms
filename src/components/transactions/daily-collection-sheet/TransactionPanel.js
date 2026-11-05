@@ -1,3 +1,4 @@
+//src/components/transactions/daily-collection-sheet/TransactionPanel.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -62,7 +63,8 @@ const INITIAL_TRANSACTION_TYPES = [
     // OTHER PAYMENTS
     // =====================================================
 
-    { id: 'OP-010', category: 'Other Payments', code: '010 - Furniture and Fixtures', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-010-01', category: 'Other Payments', code: '010 - Furniture and Fixtures', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-010-02', category: 'Other Payments', code: '010 - Equipments & Vehicles', accountTitle: 'Equipments & Vehicles' },
     { id: 'OP-012', category: 'Other Payments', code: '012 - Salary Advance', accountTitle: 'Salary Advance' },
     { id: 'OP-013', category: 'Other Payments', code: '013 - Motorcycle Advance', accountTitle: 'Motorcycle Advance' },
     { id: 'OP-014', category: 'Other Payments', code: '014 - Special Advance', accountTitle: 'Special Advance' },
@@ -70,9 +72,12 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-016', category: 'Other Payments', code: '016 - Others/Account Receivables', accountTitle: 'Others/Account Receivables' },
     { id: 'OP-017', category: 'Other Payments', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
     { id: 'OP-018', category: 'Other Payments', code: '018 - STAFF ACCOUNTS PAYABLE', accountTitle: 'STAFF ACCOUNTS PAYABLE' },
+    { id: 'OP-019', category: 'Other Payments', code: '019 - Clients MCBU (Out)', accountTitle: "Client's MCBU (Out)" },
     { id: 'OP-023', category: 'Other Payments', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B)', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B)' },
     { id: 'OP-024-01', category: 'Other Payments', code: '024 - ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)', accountTitle: 'ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)' },
     { id: 'OP-024-02', category: 'Other Payments', code: '024 - Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)', accountTitle: 'Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)' },
+    { id: 'OP-024-03', category: 'Other Payments', code: '024 - Financial Assistance (Animal Bite)', accountTitle: 'Financial Assistance (Animal Bite)',},
+    { id: 'OP-024-04', category: 'Other Payments', code: '024 - Financial Assistance (Dental)', accountTitle: 'Financial Assistance (Dental)',},
     { id: 'OP-025-01', category: 'Other Payments', code: '025 - Calamity Benefits: (Relief & Disaster Assistance)', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance)' },
     { id: 'OP-025-02', category: 'Other Payments', code: '025 - Financial Assistance for Calamity/Disaster Victim', accountTitle: 'Financial Assistance for Calamity/Disaster Victim' },
     { id: 'OP-025-03', category: 'Other Payments', code: '025 - Scholarship Grant Program', accountTitle: 'Scholarship Grant Program' },
@@ -82,7 +87,9 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-030', category: 'Other Payments', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
     { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
     { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },
+    { id: 'OP-035', category: 'Other Payments', code: '035 - Taxes Payable to BIR', accountTitle: 'Taxes Payable to BIR' },
     { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
+    { id: 'OP-045', category: 'Other Payments', code: '045 - Rebates', accountTitle: 'Rebates' },
     { id: 'OP-078', category: 'Other Payments', code: '078 - Client Death Benefits (Burial Financial Assistance)', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
     { id: 'OP-083', category: 'Other Payments', code: '083 - Loan Loss Provision', accountTitle: 'Loan Loss Provision' },
     { id: 'OP-085', category: 'Other Payments', code: '085 - Grants and Donation', accountTitle: 'Grants and Donation' },
@@ -706,17 +713,22 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         box-sizing: border-box;
                     }
 
+                    html,
                     body {
                         margin: 0;
-                        padding: 25px;
+                        padding: 0;
                         font-family: Arial, Helvetica, sans-serif;
                         color: #000;
                         background: #fff;
                     }
 
+                    body {
+                        padding: 15mm;
+                    }
+
                     .voucher {
                         width: 100%;
-                        max-width: 186mm;
+                        max-width: 180mm;
                         margin: 0 auto;
                     }
 
@@ -887,21 +899,57 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                     @page {
                         size: A4 portrait;
-                        margin: 12mm;
+                        margin: 20mm;
                     }
 
                     @media print {
+
                         html,
                         body {
                             width: 100%;
-                            margin: 0;
-                            padding: 0;
+                            margin: 0 !important;
+                            padding: 0 !important;
                         }
 
                         .voucher {
                             width: 100%;
                             max-width: 100%;
                             margin: 0 auto;
+                            padding: 0 5mm;
+                            box-sizing: border-box;
+                            break-inside: avoid;
+                        }
+
+                        .voucher-header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 10px;
+                            margin-bottom: 20px;
+                        }
+
+                        .voucher-logo {
+                            width: 45px;
+                            height: 45px;
+                            object-fit: contain;
+                        }
+
+                        .voucher-heading {
+                            text-align: center;
+                        }
+
+                        .company-name {
+                            font-size: 16px;
+                            font-weight: 800;
+                            line-height: 1.4;
+                        }
+
+                        .voucher-title {
+                            margin-top: 5px;
+                            font-size: 15px;
+                            font-weight: 900;
+                            line-height: 1.4;
+                            letter-spacing: 0.5px;
                         }
 
                         .info-grid {
@@ -920,7 +968,9 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                         table {
                             width: 100%;
+                            max-width: 100%;
                             table-layout: fixed;
+                            border-collapse: collapse;
                         }
 
                         th,
@@ -935,10 +985,6 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         .received,
                         .signature-box {
                             font-size: 12px;
-                        }
-
-                        .voucher {
-                            break-inside: avoid;
                         }
                     }
 

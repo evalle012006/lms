@@ -105,7 +105,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       title: "LOANS / ADVANCES",
       columns: [
         {
-          name: "Motor Loan Principal Collection",
+          name: "Motor Loan (Collection)",
           transactionCode: "013",
           aliases: [
             "Motorcycle Advance",
@@ -113,7 +113,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Special Advance Collection",
+          name: "Special Advance (Collection)",
           transactionCode: "014",
           aliases: [
             "Special Advance",
@@ -121,7 +121,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Cash Advance Collection",
+          name: "Cash Advance (Collection)",
           transactionCode: "015",
           aliases: [
             "Cash Advance to Staff",
@@ -255,7 +255,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       title: "LOANS / ADVANCES",
       columns: [
         {
-          name: "Motor Loan Principal",
+          name: "Motor Loan (Disbursement)",
           transactionCode: "013",
           aliases: [
             "Motorcycle Advance",
@@ -263,7 +263,7 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Special Advance Collection",
+          name: "Special Advance (Disbursement)",
           transactionCode: "014",
           aliases: [
             "Special Advance",
@@ -271,11 +271,19 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
           ],
         },
         {
-          name: "Cash Advance Collection",
+          name: "Cash Advance (Disbursement)",
           transactionCode: "015",
           aliases: [
             "Cash Advance to Staff",
             "Cash Advance Collection",
+          ],
+        },
+        {
+          name: "Salary Advance (Disbursement)",
+          aliases: [
+            "Salary Advance",
+            "Salary Advance to Staff",
+            "Salary Advance (Disbursement)",
           ],
         },
       ],
@@ -324,8 +332,8 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       columns: [
         "Staff Benevolent Fund",
         "Reserve Fund",
-        "Accounts",
-        "Accounts",
+        "Staff Accounts Payable",
+        "Accounts Payable",
       ],
     },
     {
@@ -368,9 +376,25 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
     {
       title: "REBATES",
       columns: [
-        "Group Leader",
-        "Secretary",
-        "Others (Staff Loan, etc..)",
+        {
+          name: "Group Leader",
+          transactionCode: "045",
+          aliases: [
+            "Rebates",
+            "045 - Rebates",
+            "Group Leader",
+            "Group Leader Rebates",
+            "Rebates - Group Leader",
+          ],
+        },
+        {
+          name: "Secretary",
+          disabled: true,
+        },
+        {
+          name: "Others (Staff Loan, etc..)",
+          disabled: true,
+        },
       ],
     },
     {
@@ -453,9 +477,11 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
     );
 
     // First priority: transaction code
+    const normalizedItemCode = itemCode.match(/^\d+/)?.[0] || "";
+
     if (
       column.transactionCode &&
-      itemCode === String(column.transactionCode).trim()
+      normalizedItemCode === String(column.transactionCode).trim()
     ) {
       return true;
     }
