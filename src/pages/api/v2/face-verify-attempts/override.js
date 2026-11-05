@@ -48,8 +48,10 @@ async function overrideFaceVerification(req, res) {
     const loan   = loans?.[0];
     if (!client) return fail(res, 'Client not found.');
     if (!loan || loan.clientId !== clientId) return fail(res, 'Loan does not belong to this client.');
+    // LDF-approved loans (ldfApproved = true) are exactly the ones in the disbursement window; only a loan that
+    // has already been disbursed (status 'active') is out of bounds.
     if (loan.status !== 'pending') {
-        return fail(res, `Overrides are only allowed while the loan is pending approval (this loan is "${loan.status}").`);
+        return fail(res, 'Overrides are only allowed while the loan is pending final approval.');
     }
 
     const kind = client.faceTemplate ? 'mismatch_override' : 'no_template_override';

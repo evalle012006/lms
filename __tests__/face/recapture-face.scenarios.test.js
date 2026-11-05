@@ -152,6 +152,11 @@ describe('what is looked up', () => {
         expect(res.message).toMatch(/only allowed while the loan is pending/);
         expect(graph.mutation).not.toHaveBeenCalled();
     });
+
+    it('an LDF-approved loan that is still pending IS allowed — that is the state of every loan in the disbursement window', async () => {
+        const res = await go({}, fx({ loans: [{ _id: 'l1', clientId: 'c1', status: 'pending', ldfApproved: true, ciReferenceCode: 'CI1', branchId: 'b1' }] }));
+        expect(res.success).toBe(true);
+    });
 });
 
 describe('gate boundaries', () => {

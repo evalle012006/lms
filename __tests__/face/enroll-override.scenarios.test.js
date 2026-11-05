@@ -191,8 +191,6 @@ describe('face-verify-attempts/override', () => {
             const res = await go({}, fx({ loans: [{ _id: 'l1', clientId: 'c1', status }] }));
             expect(res.message).toMatch(/only allowed while the loan is pending/);
         }
-        expect((await go({}, fx({ loans: [{ _id: 'l1', clientId: 'c1', status: 'pending', ldfApproved: true }] }))).message)
-            .toMatch(/only allowed while the loan is pending/);
         expect(logAudit).not.toHaveBeenCalled();
     });
 
@@ -234,5 +232,10 @@ describe('face-verify-attempts/override', () => {
             const res = await call(overrideFace.post, req(b));
             expect(res.status.mock.calls.every(c => c[0] === 200)).toBe(true);
         }
+    });
+
+    it('an LDF-approved loan that is still pending IS allowed (the state of every loan in the disbursement window)', async () => {
+        const res = await go({}, fx({ loans: [{ _id: 'l1', clientId: 'c1', status: 'pending', ldfApproved: true }] }));
+        expect(res.success).toBe(true);
     });
 });
