@@ -1,3 +1,4 @@
+//src/components/transactions/daily-collection-sheet/TransactionPanel.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -62,7 +63,8 @@ const INITIAL_TRANSACTION_TYPES = [
     // OTHER PAYMENTS
     // =====================================================
 
-    { id: 'OP-010', category: 'Other Payments', code: '010 - Furniture and Fixtures', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-010-01', category: 'Other Payments', code: '010 - Furniture and Fixtures', accountTitle: 'Furniture and Fixtures' },
+    { id: 'OP-010-02', category: 'Other Payments', code: '010 - Equipments & Vehicles', accountTitle: 'Equipments & Vehicles' },
     { id: 'OP-012', category: 'Other Payments', code: '012 - Salary Advance', accountTitle: 'Salary Advance' },
     { id: 'OP-013', category: 'Other Payments', code: '013 - Motorcycle Advance', accountTitle: 'Motorcycle Advance' },
     { id: 'OP-014', category: 'Other Payments', code: '014 - Special Advance', accountTitle: 'Special Advance' },
@@ -70,9 +72,12 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-016', category: 'Other Payments', code: '016 - Others/Account Receivables', accountTitle: 'Others/Account Receivables' },
     { id: 'OP-017', category: 'Other Payments', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
     { id: 'OP-018', category: 'Other Payments', code: '018 - STAFF ACCOUNTS PAYABLE', accountTitle: 'STAFF ACCOUNTS PAYABLE' },
+    { id: 'OP-019', category: 'Other Payments', code: '019 - Clients MCBU (Out)', accountTitle: "Client's MCBU (Out)" },
     { id: 'OP-023', category: 'Other Payments', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B)', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B)' },
     { id: 'OP-024-01', category: 'Other Payments', code: '024 - ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)', accountTitle: 'ADD HOSPITALIZATION & Health Benefits (Additional Beneficiaries)' },
     { id: 'OP-024-02', category: 'Other Payments', code: '024 - Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)', accountTitle: 'Offset to CBHB (forgiven S/C & Loan Balance of Demise Client)' },
+    { id: 'OP-024-03', category: 'Other Payments', code: '024 - Financial Assistance (Animal Bite)', accountTitle: 'Financial Assistance (Animal Bite)',},
+    { id: 'OP-024-04', category: 'Other Payments', code: '024 - Financial Assistance (Dental)', accountTitle: 'Financial Assistance (Dental)',},
     { id: 'OP-025-01', category: 'Other Payments', code: '025 - Calamity Benefits: (Relief & Disaster Assistance)', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance)' },
     { id: 'OP-025-02', category: 'Other Payments', code: '025 - Financial Assistance for Calamity/Disaster Victim', accountTitle: 'Financial Assistance for Calamity/Disaster Victim' },
     { id: 'OP-025-03', category: 'Other Payments', code: '025 - Scholarship Grant Program', accountTitle: 'Scholarship Grant Program' },
@@ -82,6 +87,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-030', category: 'Other Payments', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
     { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
     { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },
+    { id: 'OP-035', category: 'Other Payments', code: '035 - Taxes Payable to BIR', accountTitle: 'Taxes Payable to BIR' },
     { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
     { id: 'OP-045', category: 'Other Payments', code: '045 - Rebates', accountTitle: 'Rebates' },
     { id: 'OP-078', category: 'Other Payments', code: '078 - Client Death Benefits (Burial Financial Assistance)', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },

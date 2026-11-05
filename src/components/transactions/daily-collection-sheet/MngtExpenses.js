@@ -451,12 +451,30 @@ const MngtExpenses = ({ branchId, selectedDate }) => {
     const expensesByDate = useMemo(() => {
         const map = {};
 
+        if (!selectedMonth) {
+            return map;
+        }
+
+        const selectedYear = selectedMonth.year;
+        const selectedMonthNumber = selectedMonth.month;
+
         transactions.forEach((transaction) => {
             const dateKey = String(
                 transaction?.transaction_date || ""
             ).slice(0, 10);
 
             if (!dateKey) {
+                return;
+            }
+
+            // Only include transactions from the selected month and year.
+            const transactionYear = Number(dateKey.slice(0, 4));
+            const transactionMonth = Number(dateKey.slice(5, 7));
+
+            if (
+                transactionYear !== selectedYear ||
+                transactionMonth !== selectedMonthNumber
+            ) {
                 return;
             }
 
@@ -513,7 +531,7 @@ const MngtExpenses = ({ branchId, selectedDate }) => {
         });
 
         return map;
-    }, [transactions]);
+    }, [transactions, selectedMonth]);
 
     const monthTotal = useMemo(() => {
         return Object.values(expensesByDate).reduce(

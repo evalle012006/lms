@@ -332,8 +332,8 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
       columns: [
         "Staff Benevolent Fund",
         "Reserve Fund",
-        "Accounts",
-        "Accounts",
+        "Staff Accounts Payable",
+        "Accounts Payable",
       ],
     },
     {
@@ -376,9 +376,25 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
     {
       title: "REBATES",
       columns: [
-        "Group Leader",
-        "Secretary",
-        "Others (Staff Loan, etc..)",
+        {
+          name: "Group Leader",
+          transactionCode: "045",
+          aliases: [
+            "Rebates",
+            "045 - Rebates",
+            "Group Leader",
+            "Group Leader Rebates",
+            "Rebates - Group Leader",
+          ],
+        },
+        {
+          name: "Secretary",
+          disabled: true,
+        },
+        {
+          name: "Others (Staff Loan, etc..)",
+          disabled: true,
+        },
       ],
     },
     {
@@ -461,9 +477,11 @@ const OtherReceiptPayment = ({ branchId, selectedDate }) => {
     );
 
     // First priority: transaction code
+    const normalizedItemCode = itemCode.match(/^\d+/)?.[0] || "";
+
     if (
       column.transactionCode &&
-      itemCode === String(column.transactionCode).trim()
+      normalizedItemCode === String(column.transactionCode).trim()
     ) {
       return true;
     }
