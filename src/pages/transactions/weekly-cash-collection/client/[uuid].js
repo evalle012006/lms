@@ -1026,6 +1026,10 @@ const CashCollectionDetailsPage = () => {
                                     collection.csf = current.csf;
                                     collection.csfStr = formatPricePhp(current.csf);
                                     setEditMode(true);
+                                } else if (current.status === 'tomorrow') {
+                                    // Release-today seed row (origin null, draft false): not collectable today,
+                                    // so it must not lock the rest of the group.
+                                    collection.origin = current.origin ?? null;
                                 } else {
                                     setEditMode(false);
                                 }
@@ -1185,10 +1189,10 @@ const CashCollectionDetailsPage = () => {
                     // New loan released today: active row that is only the auto-draft "release" row
                     const isReleaseTodayDraft = currentLoan.status === 'active'
                         && currentLoan.loanId === loan._id
-                        && (currentLoan.draft || currentLoan.origin === 'automation-ar-loan')
                         && dateOfRelease === currentDate
                         && !currentLoan.fullPaymentDate
-                        && safeNumber(currentLoan.noOfPayments) === 0;
+                        && safeNumber(currentLoan.noOfPayments) === 0
+                        && safeNumber(currentLoan.paymentCollection) === 0;
 
                     if (isReleaseTodayDraft) {
                         cashCollection[index] = {
