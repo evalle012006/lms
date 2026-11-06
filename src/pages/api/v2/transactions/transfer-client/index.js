@@ -149,12 +149,12 @@ async function getPendingTransfer(_id, branchId) {
             }) => ({
                 ...info,
                 client: [client],
-                sourceGroup: [sourceGroup],
-                targetGroup: [targetGroup],
-                sourceBranch: [sourceBranch],
-                targetBranch: [targetBranch],
-                sourceUser: [sourceUser],
-                targetUser: [targetUser],
+                sourceGroup: sourceGroup ? [sourceGroup] : [],
+                targetGroup: targetGroup ? [targetGroup] : [],
+                sourceBranch: sourceBranch ? [sourceBranch] : [],
+                targetBranch: targetBranch ? [targetBranch] : [],
+                sourceUser: sourceUser ? [sourceUser] : [],
+                targetUser: targetUser ? [targetUser] : [],
             })));
     }
     
@@ -237,12 +237,12 @@ async function getApprovedTransfer(_id, branchId, previousLastMonthDate) {
             }) => ({
                 ...info,
                 client: [client],
-                sourceGroup: [sourceGroup],
-                targetGroup: [targetGroup],
-                sourceBranch: [sourceBranch],
-                targetBranch: [targetBranch],
-                sourceUser: [sourceUser],
-                targetUser: [targetUser],
+                sourceGroup: sourceGroup ? [sourceGroup] : [],
+                targetGroup: targetGroup ? [targetGroup] : [],
+                sourceBranch: sourceBranch ? [sourceBranch] : [],
+                targetBranch: targetBranch ? [targetBranch] : [],
+                sourceUser: sourceUser ? [sourceUser] : [],
+                targetUser: targetUser ? [targetUser] : [],
             })));
     }
     
@@ -287,6 +287,16 @@ function processData(data, status) {
         temp.withError = processLoan.error;
         temp.errorMsg = processLoan.errorMsg;
 
+        if (status === 'pending' && !temp.withError) {
+            if (!transfer.targetGroup?.length) {
+                temp.withError = true;
+                temp.errorMsg = 'Target group not found. Please check the transfer before approving.';
+            } else if (!transfer.targetUser?.length) {
+                temp.withError = true;
+                temp.errorMsg = 'Target loan officer not found. Please check the transfer before approving.';
+            }
+        }
+
         if (loan) {
             temp.loanId = loan._id;
             temp.amountRelease = loan.amountRelease;
@@ -302,12 +312,14 @@ function processData(data, status) {
             temp.loanStatus = loan.status;
         }
 
-        temp.sourceBranchName = transfer.sourceBranch.length > 0 ? transfer.sourceBranch[0].name : '';
-        temp.sourceUserName = transfer.sourceUser.length > 0 ? `${transfer.sourceUser[0].firstName} ${transfer.sourceUser[0].lastName}` : '',
-        temp.sourceGroupName = transfer.sourceGroup.length > 0 ? transfer.sourceGroup[0].name : '';
-        temp.targetBranchName = transfer.targetBranch.length > 0 ? transfer.targetBranch[0].name : '';
-        temp.targetUserName = transfer.targetUser.length > 0 ? `${transfer.targetUser[0].firstName} ${transfer.targetUser[0].lastName}` : '',
-        temp.targetGroupName = transfer.targetGroup.length > 0 ? transfer.targetGroup[0].name : '';
+        const fullName = (u) => (u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() : '');
+
+        temp.sourceBranchName = transfer.sourceBranch?.[0]?.name ?? '';
+        temp.sourceUserName = fullName(transfer.sourceUser?.[0]);
+        temp.sourceGroupName = transfer.sourceGroup?.[0]?.name ?? '';
+        temp.targetBranchName = transfer.targetBranch?.[0]?.name ?? '';
+        temp.targetUserName = fullName(transfer.targetUser?.[0]);
+        temp.targetGroupName = transfer.targetGroup?.[0]?.name ?? '';
 
         if (status == 'pending') {
             temp.sourceGroup = transfer.sourceGroup.length > 0 ? transfer.sourceGroup[0] : null;
