@@ -998,11 +998,13 @@ const CashCollectionDetailsPage = () => {
     
                                 if (current?.origin && !current.draft) {
                                     collection.origin = current.origin;
-                                    if (collection.origin !== 'pre-save') {
-                                        setEditMode(false);
-                                    } else {
+                                    if (collection.origin === 'pre-save') {
                                         // pre-save rows are always editable — mark dirty so they're included on save
                                         collection._dirty = true;
+                                    } else if (collection.origin === 'automation-ar-loan' || collection.origin === 'automation-trf') {
+                                        // system-seeded rows (loan released today / transfer) must not lock the rest of the group
+                                    } else {
+                                        setEditMode(false);
                                     }
                                 } else if (current.draft) {
                                     collection.origin = current.origin ?? null; // keeps 'offline' across draft re-saves
@@ -1024,6 +1026,10 @@ const CashCollectionDetailsPage = () => {
                                     collection.csf = current.csf;
                                     collection.csfStr = formatPricePhp(current.csf);
                                     setEditMode(true);
+                                } else if (current.status === 'tomorrow') {
+                                    // Release-today seed row (origin null, draft false): not collectable today,
+                                    // so it must not lock the rest of the group.
+                                    collection.origin = current.origin ?? null;
                                 } else {
                                     setEditMode(false);
                                 }
@@ -1179,7 +1185,45 @@ const CashCollectionDetailsPage = () => {
 
                 if (currentLoan && currentLoan.status !== 'pending' && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                     const index = cashCollection.indexOf(currentLoan);
-                    if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
+
+                    // New loan released today: active row that is only the auto-draft "release" row
+                    const isReleaseTodayDraft = currentLoan.status === 'active'
+                        && currentLoan.loanId === loan._id
+                        && dateOfRelease === currentDate
+                        && !currentLoan.fullPaymentDate
+                        && safeNumber(currentLoan.noOfPayments) === 0
+                        && safeNumber(currentLoan.paymentCollection) === 0;
+
+                    if (isReleaseTodayDraft) {
+                        cashCollection[index] = {
+                            ...cashCollection[index],
+                            status: 'tomorrow',
+                            tomorrow: true,
+                            pending: false,
+                            draft: false,
+                            _dirty: false,
+                            amountRelease: 0, amountReleaseStr: '-',
+                            loanBalance: 0, loanBalanceStr: '-',
+                            currentReleaseAmount: loan.amountRelease,
+                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
+                            noOfPayments: '-', noOfPaymentStr: '-',
+                            mispayment: false, mispaymentStr: '-', noMispaymentStr: '-',
+                            targetCollection: 0, targetCollectionStr: '-',
+                            paymentCollection: 0, paymentCollectionStr: '-',
+                            mcbuCol: 0, mcbuColStr: '-',
+                            csfCollection: 0, csfCollectionStr: '-',
+                            remarks: '-',
+                            admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                        };
+                    } else if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         // The payoff figures live on today's cash-collection row. loan.history is a
                         // snapshot that some write paths (QR merge / pre-save) never refresh, so
                         // prefer the row and fall back to history only when no row exists.
@@ -1873,7 +1917,10 @@ const CashCollectionDetailsPage = () => {
                         && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
-            } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+            } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-')
+                    // a loan released today has no payoff yet, so it needs no remarks
+                    && !(cc.status === 'tomorrow' && !cc.fullPaymentDate)
+                    && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
