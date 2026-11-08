@@ -44,6 +44,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'ME-056-03', category: 'Management Expenses', code: '056 - Other Transportation on Official Travel', accountTitle: 'Other Transportation on Official Travel' },
     { id: 'ME-056-04', category: 'Management Expenses', code: '056 - Reimbursable Transportation', accountTitle: 'Reimbursable Transportation' },
     { id: 'ME-060', category: 'Management Expenses', code: '060 - Office Rental Base', accountTitle: 'Office Rental Base' },
+    { id: 'ME-061', category: 'Management Expenses', code: '061 - Expanded Tax W/held 5%', accountTitle: 'Expanded Tax W/held 5%' },
     { id: 'ME-062', category: 'Management Expenses', code: '062 - Light & Water', accountTitle: 'Light & Water' },
     { id: 'ME-064', category: 'Management Expenses', code: '064 - SSS, HDMF, PH Payment (BM Personnel)', accountTitle: 'SSS, HDMF, PH Payment (BM Personnel)' },
     { id: 'ME-065', category: 'Management Expenses', code: '065 - Repairing & Maintenance', accountTitle: 'Repairing & Maintenance' },
@@ -106,7 +107,6 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OR-015', category: 'Other Receipts', code: '015 - Cash Advance to Staff', accountTitle: 'Cash Advance to Staff' },
     { id: 'OR-016', category: 'Other Receipts', code: '016 - Other Receivable', accountTitle: 'Other Receivable' },
     { id: 'OR-017', category: 'Other Receipts', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
-    { id: 'OR-019', category: 'Other Receipts', code: '019 - Clients MCBU (In)', accountTitle: "Client's MCBU (In)" },
     { id: 'OR-023', category: 'Other Receipts', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B) Refund', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B) Refund' },
     { id: 'OR-024', category: 'Other Receipts', code: '024 - ADD HOSPITALIZATION & Health Benefits Refund', accountTitle: 'ADD HOSPITALIZATION & Health Benefits Refund' },
     { id: 'OR-025-01', category: 'Other Receipts', code: '025 - Calamity Benefits: (Relief & Disaster Assistance) Refund', accountTitle: 'Calamity Benefits: (Relief & Disaster Assistance) Refund' },
@@ -137,8 +137,19 @@ const money = (value) => {
 const TransactionPanel = ({ branchId, selectedDate }) => {
     const currentUser = useSelector((state) => state.user.data);
     const currentDate = useSelector((state) => state.systemSettings.currentDate);
-    const isAdmin = currentUser?.role?.rep === 1;
-    const isTransactionToday = (transaction) => { return transaction?.date === currentDate; };
+    const isAdmin = Number(currentUser?.role?.rep) === 1;
+
+    const isAreaManager =
+        Number(currentUser?.role?.rep) === 2 &&
+        String(currentUser?.role?.shortCode || '')
+            .trim()
+            .toLowerCase() === 'area_admin';
+
+    const canDeleteTransaction = isAdmin || isAreaManager;
+
+    const isTransactionToday = (transaction) => {
+        return transaction?.date === currentDate;
+    };
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -147,6 +158,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     const [transactions, setTransactions] = useState([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [savingTransaction, setSavingTransaction] = useState(false);
+    const [deletingTransactionId, setDeletingTransactionId] = useState(null);
 
     const mapDbTransaction = (row) => ({
         id: row.id,
@@ -180,7 +192,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     });
 
     const loadTransactions = async () => {
-        if (!branchId) {
+        if (!branchId || !selectedDate) {
             setTransactions([]);
             return;
         }
@@ -208,11 +220,18 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                 response?.response ||
                 [];
 
-            setTransactions(
-                Array.isArray(rows)
-                    ? rows.map(mapDbTransaction)
-                    : []
-            );
+            const filteredTransactions = Array.isArray(rows)
+                ? rows
+                    .map(mapDbTransaction)
+                    .filter(
+                        (transaction) =>
+                            String(transaction.date).slice(0, 10) ===
+                            String(selectedDate).slice(0, 10)
+                    )
+                : [];
+
+            setTransactions(filteredTransactions);
+
         } catch (error) {
             console.error('Failed to load DCS transactions:', error);
             setTransactions([]);
@@ -223,7 +242,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
     useEffect(() => {
         loadTransactions();
-    }, [branchId]);
+    }, [branchId, selectedDate]);
 
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [editingTransactionId, setEditingTransactionId] = useState(null);
@@ -257,7 +276,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
         setTransactionForm({
             ...EMPTY_FORM,
-            date: currentDate,
+            date: selectedDate || currentDate,
             items: [{ ...EMPTY_ITEM }],
         });
 
@@ -608,13 +627,22 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     };
 
     const handleDelete = async (transaction) => {
-        if (!isAdmin) {
-            alert('Only Admin can delete transactions.');
+        if (!canDeleteTransaction) {
+            alert('Only Admin and Area Manager can delete transactions.');
+            return;
+        }
+
+        if (deletingTransactionId !== null) {
+            return;
+        }
+
+        if (!transaction?.id || !transaction?.branchId) {
+            alert('Invalid transaction or branch.');
             return;
         }
 
         const confirmed = window.confirm(
-            `Are you sure you want to delete Voucher ${transaction.voucherNo}?`
+            `Are you sure you want to permanently delete Voucher ${transaction.voucherNo}?`
         );
 
         if (!confirmed) {
@@ -622,23 +650,20 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
         }
 
         try {
+            setDeletingTransactionId(transaction.id);
+
             const response = await fetchWrapper.post(
                 `${getApiBaseUrl()}transactions/dcs/delete`,
                 {
                     id: transaction.id,
-                    branch_id:
-                        transaction.branchId ||
-                        currentUser?.branchId ||
-                        currentUser?.branch_id ||
-                        currentUser?.branch?._id ||
-                        currentUser?.branch?.id,
+                    branch_id: transaction.branchId,
                 }
             );
 
-            if (response?.error) {
+            if (response?.error || response?.success !== true) {
                 alert(
                     response?.message ||
-                        'Failed to delete transaction.'
+                    'Failed to delete transaction.'
                 );
                 return;
             }
@@ -651,6 +676,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
             await loadTransactions();
 
             alert('Transaction deleted successfully.');
+
         } catch (error) {
             console.error('Delete transaction error:', error);
 
@@ -659,6 +685,8 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                 error?.message ||
                 'Failed to delete transaction.'
             );
+        } finally {
+            setDeletingTransactionId(null);
         }
     };
 
@@ -669,7 +697,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
             .map(
                 (item) => `
                     <tr>
-                        <td>${item.code || ''}</td>
+                        <td>${String(item.code || '').split(' - ')[0].trim()}</td>
                         <td>${item.accountTitle || ''}</td>
                         <td>${item.description || ''}</td>
                         <td class="amount">₱ ${money(item.amount)}</td>
@@ -677,7 +705,6 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                 `
             )
             .join('');
-
         const blankRowsCount = Math.max(0, 6 - transaction.items.length);
 
         const blankRows = Array.from({ length: blankRowsCount })
@@ -1427,11 +1454,12 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                                         Print
                                                     </button>
 
-                                                    {/* DELETE - ADMIN ONLY */}
-                                                        {isAdmin && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleDelete(transaction)}
+                                                    {/* DELETE - ADMIN AND AREA MANAGER ONLY */}
+                                                    {canDeleteTransaction && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDelete(transaction)}
+                                                            disabled={deletingTransactionId !== null}
                                                                 className="
                                                                     inline-flex
                                                                     items-center
@@ -1447,7 +1475,10 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                                                 "
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
-                                                                Delete
+
+                                                                {deletingTransactionId === transaction.id
+                                                                    ? 'Deleting...'
+                                                                    : 'Delete'}
                                                             </button>
                                                         )}
 
@@ -2262,7 +2293,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                                 <tr key={index}>
 
                                                     <td className="border border-gray-300 p-2 text-sm">
-                                                        {item.code}
+                                                        {String(item.code || '').split(' - ')[0].trim()}
                                                     </td>
 
                                                     <td className="border border-gray-300 p-2 text-sm">
@@ -2376,7 +2407,6 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                             </button>
 
                         </div>
-
                     </div>
                 </div>
             )}
