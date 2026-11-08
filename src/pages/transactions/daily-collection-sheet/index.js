@@ -1,3 +1,4 @@
+//src/pages/transactions/daily-collection-sheet/index.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import moment from 'moment';
@@ -162,17 +163,26 @@ const DailyCollectionSheet = () => {
     const [cashbookLoading, setCashbookLoading] = useState(false);
 
     const [activeTab, setActiveTab] = useState('dcs');
+    const roleRep = Number(currentUser?.role?.rep);
+    const isAdmin = roleRep === 1;
 
-    const isAdmin = currentUser?.role?.rep === 1;
-    const isLoanOfficer = currentUser?.role?.rep === 4;
-    const isBranchManager = currentUser?.role?.rep === 3;
+    const isAreaManager =
+        roleRep === 2 &&
+        String(currentUser?.role?.shortCode || '')
+            .trim()
+            .toLowerCase() === 'area_admin';
+
+    const isLoanOfficer = roleRep === 4;
+    const isBranchManager = roleRep === 3;
+    const canSelectBranch = isAdmin || isAreaManager;
     const isAdminAllBranches = isAdmin && !selectedBranch;
 
-    const transactionBranchId = isLoanOfficer || isBranchManager
-        ? currentUser?.designatedBranchId
-        : isAdmin
-            ? selectedBranch?._id
-            : currentBranch?._id;
+    const transactionBranchId =
+        isLoanOfficer || isBranchManager
+            ? currentUser?.designatedBranchId
+            : canSelectBranch
+                ? selectedBranch?._id
+                : currentBranch?._id;
 
     // ── Branch list ──────────────────────────────────────────────────────────
     const getListBranch = useCallback(async () => {
@@ -190,8 +200,10 @@ const DailyCollectionSheet = () => {
     }, [currentUser, dispatch]);
 
     useEffect(() => {
-        if (isAdmin && (!branchList || branchList.length === 0)) getListBranch();
-    }, [isAdmin, branchList, getListBranch]);
+        if (!canSelectBranch || !currentUser?._id) return;
+
+        getListBranch();
+    }, [canSelectBranch, currentUser?._id, getListBranch]);
 
     // ── Loan officers ────────────────────────────────────────────────────────
     const fetchLoanOfficers = useCallback(async (branchId) => {
@@ -216,12 +228,25 @@ const DailyCollectionSheet = () => {
     useEffect(() => {
         if (isBranchManager && currentUser?.designatedBranchId) {
             fetchLoanOfficers(currentUser.designatedBranchId);
-        } else if (isAdmin && selectedBranch?._id) {
+        } else if (canSelectBranch && selectedBranch?._id) {
             fetchLoanOfficers(selectedBranch._id);
-        } else if (!isAdmin && !isBranchManager && !isLoanOfficer && currentBranch?._id) {
+        } else if (
+            !canSelectBranch &&
+            !isBranchManager &&
+            !isLoanOfficer &&
+            currentBranch?._id
+        ) {
             fetchLoanOfficers(currentBranch._id);
         }
-    }, [isBranchManager, isAdmin, isLoanOfficer, currentUser?.designatedBranchId, selectedBranch?._id, currentBranch?._id, fetchLoanOfficers]);
+    }, [
+        isBranchManager,
+        isLoanOfficer,
+        canSelectBranch,
+        currentUser?.designatedBranchId,
+        selectedBranch?._id,
+        currentBranch?._id,
+        fetchLoanOfficers,
+    ]);
 
     // ── Fetch summary ────────────────────────────────────────────────────────
     const fetchSummary = useCallback(async (branchId, date, loId = null) => {
@@ -337,8 +362,8 @@ const DailyCollectionSheet = () => {
         } else if (isBranchManager) {
             branchId = currentUser?.designatedBranchId;
             loId = selectedLo?._id || null;
-        } else if (isAdmin && selectedBranch) {
-            branchId = selectedBranch._id;
+        } else if (canSelectBranch) {
+            branchId = selectedBranch?._id || null;
             loId = selectedLo?._id || null;
         } else {
             branchId = currentBranch?._id;
@@ -365,7 +390,7 @@ const DailyCollectionSheet = () => {
         currentUser?.designatedBranchId,
         isLoanOfficer,
         isBranchManager,
-        isAdmin,
+        canSelectBranch,
         fetchCashbookMonth,
     ]);
 
@@ -413,15 +438,21 @@ const DailyCollectionSheet = () => {
                     } else if (isBranchManager) {
                         branchId = currentUser.designatedBranchId;
                         loId     = selectedLo?._id || null;
-                    } else if (isAdmin && selectedBranch) {
-                        branchId = selectedBranch._id;
+                    } else if (canSelectBranch) {
+                        branchId = selectedBranch?._id || null;
                         loId     = selectedLo?._id || null;
                     } else {
                         branchId = currentBranch?._id;
                         loId     = selectedLo?._id || null;
                     }
 
-                    if (!branchId) { setLoading(false); setData([]); setBranchData([]); return; }
+                    if (!branchId) {
+                        setData([]);
+                        setBranchData([]);
+                        setTotals(null);
+                        setSummaryData(null);
+                        return;
+                    }
 
                     const params = new URLSearchParams({ branch_id: branchId, selected_date: selectedDate });
                     if (loId) params.append('lo_id', loId);
@@ -463,12 +494,36 @@ const DailyCollectionSheet = () => {
         };
 
         fetchData();
-    }, [currentUser, currentBranch?._id, selectedDate, selectedLo?._id, selectedBranch?._id, isAdmin, branchList]);
+    }, [
+        currentUser,
+        currentBranch?._id,
+        selectedDate,
+        selectedLo?._id,
+        selectedBranch?._id,
+        isAdmin,
+        canSelectBranch,
+        branchList,
+        fetchSummary,
+    ]);
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     const getBranchName = () => {
-        if (isLoanOfficer || isBranchManager) return currentUser?.designatedBranch?.name || currentUser?.designatedBranchName || 'Branch';
-        if (isAdmin) return selectedBranch?.name || 'All Branches';
+        if (isLoanOfficer || isBranchManager) {
+            return (
+                currentUser?.designatedBranch?.name ||
+                currentUser?.designatedBranchName ||
+                'Branch'
+            );
+        }
+
+        if (isAdmin) {
+            return selectedBranch?.name || 'All Branches';
+        }
+
+        if (isAreaManager) {
+            return selectedBranch?.name || 'Select a Branch';
+        }
+
         return currentBranch?.name || 'Branch';
     };
 
@@ -578,7 +633,7 @@ const DailyCollectionSheet = () => {
                                 />
                             </div>
 
-                            {isAdmin && (
+                            {canSelectBranch && (
                                 <div className="flex items-center space-x-2">
                                     <Building2 className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm font-medium text-gray-700">Branch:</span>
@@ -589,8 +644,8 @@ const DailyCollectionSheet = () => {
                                             styles={selectStyles}
                                             components={{ DropdownIndicator }}
                                             onChange={handleBranchChange}
-                                            isClearable
-                                            placeholder="All Branches"
+                                            isClearable={isAdmin}
+                                            placeholder={isAdmin ? "All Branches" : "Select a Branch"}
                                             menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                                             menuPosition="fixed"
                                         />
@@ -598,7 +653,7 @@ const DailyCollectionSheet = () => {
                                 </div>
                             )}
 
-                            {(isBranchManager || (isAdmin && selectedBranch)) && (
+                            {(isBranchManager || (canSelectBranch && selectedBranch)) && (
                                 <div className="flex items-center space-x-2">
                                     <User className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm font-medium text-gray-700">Loan Officer:</span>
@@ -618,7 +673,7 @@ const DailyCollectionSheet = () => {
                                 </div>
                             )}
 
-                            {!isAdmin && (
+                            {!canSelectBranch && (
                                 <div className="flex items-center space-x-2 ml-auto">
                                     <Building2 className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm text-gray-600">
@@ -633,7 +688,7 @@ const DailyCollectionSheet = () => {
                             )}
                         </div>
 
-                        {!isAdminAllBranches && (
+                        {!isAdminAllBranches && (!isAreaManager || selectedBranch) && (
                             <div className="flex space-x-1 mt-3 border-b border-gray-200 overflow-x-auto">
                                 <TabBtn
                                     id="dcs"
