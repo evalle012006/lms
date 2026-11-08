@@ -18,13 +18,31 @@ const TRANSACTION_TYPE = createGraphType(
     `
 )("dcs_transactions");
 
+const USER_TYPE = createGraphType(
+    "users",
+    `
+        _id
+        areaId
+        role
+        root
+    `
+)("users");
+
+const BRANCH_TYPE = createGraphType(
+    "branches",
+    `
+        _id
+        areaId
+    `
+)("branches");
+
 export default apiHandler({
     post: deleteTransaction,
 });
 
 async function deleteTransaction(req, res) {
     const userId = req?.auth?.sub;
-    const { id, branch_id } = req.body;
+    const { id, branch_id } = req.body || {};
 
     if (!userId) {
         return res.status(401).json({
@@ -41,7 +59,59 @@ async function deleteTransaction(req, res) {
     }
 
     try {
-        const result = await graph.query(
+        // ==========================================
+        // STEP 1: GET AUTHENTICATED USER
+        // ==========================================
+
+        const userResult = await graph.query(
+            queryQl(USER_TYPE, {
+                where: {
+                    _id: { _eq: userId },
+                },
+                limit: 1,
+            })
+        );
+
+        const currentUser = userResult.data?.users?.[0];
+
+        if (!currentUser) {
+            return res.status(403).json({
+                error: true,
+                message: "User account not found.",
+            });
+        }
+
+        // ==========================================
+        // STEP 2: CHECK USER ROLE
+        // ==========================================
+
+        const roleRep = Number(currentUser.role?.rep);
+
+        const roleShortCode = String(
+            currentUser.role?.shortCode || ""
+        )
+            .trim()
+            .toLowerCase();
+
+        const isAdmin = roleRep === 1;
+
+        const isAreaManager =
+            roleRep === 2 &&
+            roleShortCode === "area_admin";
+
+        if (!isAdmin && !isAreaManager) {
+            return res.status(403).json({
+                error: true,
+                message:
+                    "Only Admin and Area Manager can delete transactions.",
+            });
+        }
+
+        // ==========================================
+        // STEP 3: VERIFY TRANSACTION EXISTS
+        // ==========================================
+
+        const transactionResult = await graph.query(
             queryQl(TRANSACTION_TYPE, {
                 where: {
                     id: { _eq: id },
@@ -52,7 +122,7 @@ async function deleteTransaction(req, res) {
         );
 
         const transaction =
-            result.data?.dcs_transactions?.[0];
+            transactionResult.data?.dcs_transactions?.[0];
 
         if (!transaction) {
             return res.status(404).json({
@@ -61,28 +131,86 @@ async function deleteTransaction(req, res) {
             });
         }
 
-        await graph.mutation(
+        // ==========================================
+        // STEP 4: AREA MANAGER BRANCH VALIDATION
+        // ==========================================
+
+        if (isAreaManager) {
+            const branchResult = await graph.query(
+                queryQl(BRANCH_TYPE, {
+                    where: {
+                        _id: { _eq: transaction.branch_id },
+                    },
+                    limit: 1,
+                })
+            );
+
+            const branch =
+                branchResult.data?.branches?.[0];
+
+            if (!branch) {
+                return res.status(404).json({
+                    error: true,
+                    message: "Branch not found.",
+                });
+            }
+
+            if (
+                !currentUser.areaId ||
+                !branch.areaId ||
+                String(currentUser.areaId) !==
+                    String(branch.areaId)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only delete transactions from branches assigned to your area.",
+                });
+            }
+        }
+
+        // ==========================================
+        // STEP 5: DELETE TRANSACTION
+        // ==========================================
+
+        const deleteResult = await graph.mutation(
             deleteQl(TRANSACTION_TYPE, {
                 id: { _eq: id },
                 branch_id: { _eq: branch_id },
             })
         );
 
+        const deletedTransactions =
+            deleteResult?.data?.dcs_transactions?.returning || [];
+
+        if (deletedTransactions.length !== 1) {
+            return res.status(409).json({
+                error: true,
+                message:
+                    "Transaction was not deleted. It may have already been removed.",
+            });
+        }
+
         /*
-         * dcs_transaction_items are automatically deleted
-         * because the PostgreSQL FK uses ON DELETE CASCADE.
-         */
+        * Transaction items are deleted automatically
+        * through PostgreSQL ON DELETE CASCADE.
+        */
 
         return res.status(200).json({
             success: true,
             message: "Transaction deleted successfully.",
         });
     } catch (error) {
-        console.error("Delete DCS transaction error:", error);
+        console.error(
+            "Delete DCS transaction error:",
+            error
+        );
 
         return res.status(500).json({
             error: true,
-            message: error.message || "Failed to delete transaction.",
+            message:
+                error.message ||
+                "Failed to delete transaction.",
         });
     }
 }

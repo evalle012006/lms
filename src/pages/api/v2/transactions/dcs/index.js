@@ -1,8 +1,27 @@
+//src/pages/api/v2/transactions/dcs/index.js
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, queryQl } from "@/lib/graph/graph.util";
 
 const graph = new GraphProvider();
+
+const USER_TYPE = createGraphType(
+    "users",
+    `
+        _id
+        areaId
+        designatedBranchId
+        role
+    `
+)("users");
+
+const BRANCH_TYPE = createGraphType(
+    "branches",
+    `
+        _id
+        areaId
+    `
+)("branches");
 
 const TRANSACTION_TYPE = createGraphType(
     "dcs_transactions",
@@ -59,6 +78,97 @@ async function getTransactions(req, res) {
     }
 
     try {
+        // ==========================================
+        // STEP 1: GET AUTHENTICATED USER
+        // ==========================================
+
+        const userResult = await graph.query(
+            queryQl(USER_TYPE, {
+                where: {
+                    _id: { _eq: userId },
+                },
+                limit: 1,
+            })
+        );
+
+        const currentUser = userResult.data?.users?.[0];
+
+        if (!currentUser) {
+            return res.status(403).json({
+                error: true,
+                message: "User account not found.",
+            });
+        }
+
+        // ==========================================
+        // STEP 2: CHECK USER ROLE
+        // ==========================================
+
+        const roleRep = Number(currentUser.role?.rep);
+
+        const isAdmin = roleRep === 1;
+
+        const isAreaManager =
+            roleRep === 2 &&
+            String(currentUser.role?.shortCode || "")
+                .trim()
+                .toLowerCase() === "area_admin";
+
+        const isBranchManager = roleRep === 3;
+        const isLoanOfficer = roleRep === 4;
+
+        // ==========================================
+        // STEP 3: VERIFY BRANCH ACCESS
+        // ==========================================
+
+        if (isAreaManager) {
+            const branchResult = await graph.query(
+                queryQl(BRANCH_TYPE, {
+                    where: {
+                        _id: { _eq: branch_id },
+                    },
+                    limit: 1,
+                })
+            );
+
+            const branch = branchResult.data?.branches?.[0];
+
+            if (
+                !branch ||
+                !currentUser.areaId ||
+                !branch.areaId ||
+                String(currentUser.areaId) !==
+                    String(branch.areaId)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only view transactions from branches assigned to your area.",
+                });
+            }
+        } else if (isBranchManager || isLoanOfficer) {
+            if (
+                !currentUser.designatedBranchId ||
+                String(currentUser.designatedBranchId) !==
+                    String(branch_id)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only view transactions from your designated branch.",
+                });
+            }
+        } else if (!isAdmin) {
+            return res.status(403).json({
+                error: true,
+                message:
+                    "You do not have permission to view DCS transactions.",
+            });
+        }
+
+        // ==========================================
+        // STEP 4: LOAD TRANSACTIONS
+        // ==========================================
         const result = await graph.query(
             queryQl(TRANSACTION_TYPE, {
                 where: {
