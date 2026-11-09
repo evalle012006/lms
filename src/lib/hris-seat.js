@@ -73,12 +73,15 @@ export function seatBranchCode(seat) {
     return raw && !/^[\[{]/.test(raw) ? normalizeCode(raw) : null;
 }
 
-/** Escape LIKE wildcards so a branch code is matched literally. */
-const escapeLike = (s) => String(s).replace(/[\\%_]/g, (c) => `\\${c}`);
+/** Escape regex metacharacters so a branch code is matched literally. */
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Hasura filter: accounts whose designatedBranch equals this branch code (case-insensitive, no wildcards). */
+/**
+ * Hasura filter: accounts whose designatedBranch IS this branch code. Case-insensitive and tolerant of
+ * stray spaces, because some LMS branch codes are stored with a trailing space (e.g. "B144 ").
+ */
 export const branchFilter = (branch) => ({
-    designatedBranch: { _ilike: escapeLike(String(branch.code).trim()) },
+    designatedBranch: { _iregex: `^\\s*${escapeRegex(String(branch.code).trim())}\\s*$` },
 });
 
 // ── loaders ──────────────────────────────────────────────────────────────────
@@ -122,11 +125,30 @@ const CLEARED_BIOMETRIC = {
 };
 const CLEARED_SESSION = { logged: false, lastLogin: null, loginAttempts: 0, lockedUntil: null };
 
-/** What a VACANT seat looks like. Keeps: _id, email, role, branch/area ids, loNo. */
-export function vacantSet({ role, branchCode }) {
+const hasLoNo = (loNo) => loNo !== null && loNo !== undefined && loNo !== '';
+export const squash = (v) => String(v ?? '').trim().replace(/\s+/g, ' ');
+
+/**
+ * Names as the LMS shows them. LMS convention for loan officers: firstName = "LO{n} - FIRST NAMES",
+ * lastName = surname (e.g. "LO3 - JEFFREY" / "ABABON"). That is kept for loan-officer seats; other roles
+ * use the plain HRIS names.
+ */
+export function personNames(staff, seat) {
+    const first = squash(staff.first_name);
+    const last = squash(staff.last_name);
+    if (seat?.role?.shortCode !== 'loan_officer' || !hasLoNo(seat.loNo)) return { firstName: first, lastName: last };
+    return { firstName: `LO${Number(seat.loNo)} - ${first}`.trim(), lastName: last };
+}
+
+/**
+ * What a VACANT seat looks like. Keeps: _id, email, role, branch/area ids, loNo.
+ * Loan officers get the LMS placeholder convention "LO {n} {branch name}" (e.g. "LO 6 Zamboanga I").
+ */
+export function vacantSet({ role, branchCode, branchName, loNo }) {
+    const lo = role === 'loan_officer' && hasLoNo(loNo);
     return {
-        firstName: 'Vacant',
-        lastName: `${roleLabel(role)}${branchCode ? ` ${branchCode}` : ''}`,
+        firstName: lo ? `LO ${Number(loNo)} ${branchName ?? branchCode ?? ''}`.trim() : 'Vacant',
+        lastName: lo ? '' : `${roleLabel(role)}${branchCode ? ` ${branchCode}` : ''}`,
         number: null,
         profile: null,
         position: roleLabel(role),
@@ -142,10 +164,9 @@ export function vacantSet({ role, branchCode }) {
 }
 
 /** What an OCCUPIED seat looks like right after assignment. */
-export function assignSet({ staff, passwordHash }) {
+export function assignSet({ staff, passwordHash, seat }) {
     return {
-        firstName: nz(staff.first_name) ?? '',
-        lastName: nz(staff.last_name) ?? '',
+        ...personNames(staff, seat),
         number: nz(staff.contact),
         position: nz(staff.position),
         employee_no: normalizeEmployeeNo(staff.employee_no),
@@ -160,9 +181,8 @@ export function assignSet({ staff, passwordHash }) {
 }
 
 /** Person fields kept in step with HRIS on an already-occupied seat. */
-export const refreshSet = (staff) => ({
-    firstName: nz(staff.first_name) ?? '',
-    lastName: nz(staff.last_name) ?? '',
+export const refreshSet = (staff, seat) => ({
+    ...personNames(staff, seat),
     number: nz(staff.contact),
     position: nz(staff.position),
     dateModified: today(),
@@ -170,12 +190,14 @@ export const refreshSet = (staff) => ({
 
 // ── statements ───────────────────────────────────────────────────────────────
 /** Reset a seat + close its history row + clear the HRIS block flag. One mutation, one transaction. */
-export function vacateStatements({ seat, reason, actor, branchCode, alias }) {
+export function vacateStatements({ seat, reason, actor, branches, alias }) {
     const now = new Date().toISOString();
+    const branchCode = seatBranchCode(seat);
+    const branchName = branchCode ? branches?.byCode?.get(branchCode)?.name : undefined;
     return [
         updateQl(USER_REF(`${alias}_user`), {
             where: { _id: { _eq: seat._id } },
-            set: vacantSet({ role: seat.role?.shortCode, branchCode }),
+            set: vacantSet({ role: seat.role?.shortCode, branchCode, branchName, loNo: seat.loNo }),
         }),
         updateQl(HISTORY_REF(`${alias}_hist`), {
             where: { seat_id: { _eq: seat._id }, vacated_at: { _is_null: true } },

@@ -158,7 +158,7 @@ async function linkImport(req, res) {
                         seat: p.user,
                         reason: 'import_open',
                         actor,
-                        branchCode: seatBranchCode(p.user),
+                        branches,
                         alias: 'op',
                     }));
                     removeProfileFile(p.user.profile);

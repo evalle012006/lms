@@ -35,7 +35,7 @@ import { resolveLmsRole, MANAGED_ROLES, BRANCH_SCOPED_ROLES } from '@/lib/hris-r
 import {
     USER_REF, MIRROR_REF, loadBranches, loadSeatsByEmployeeNos, vacateStatements, mirrorRowFor,
     mirrorUpsert, refreshSet, removeProfileFile, sendJson, normalizeEmployeeNo, normalizeCode, nz, stableHash,
-    mirrorBase, seatBranchCode,
+    mirrorBase, seatBranchCode, personNames, squash,
 } from '@/lib/hris-seat';
 
 const graph = new GraphProvider();
@@ -93,14 +93,13 @@ function evaluate(row, seat, mirror, ctx) {
 
     if (ctx.refreshProfile) {
         const want = {
-            firstName: nz(row.first_name) ?? '',
-            lastName: nz(row.last_name) ?? '',
+            ...personNames(row, seat),
             number: nz(row.contact),
             position: nz(row.position),
         };
         const have = {
-            firstName: nz(seat.firstName) ?? '',
-            lastName: nz(seat.lastName) ?? '',
+            firstName: squash(seat.firstName),
+            lastName: squash(seat.lastName),
             number: nz(seat.number),
             position: nz(seat.position),
         };
@@ -211,7 +210,7 @@ async function syncStaff(req, res) {
                     seat: p.seat,
                     reason: p.reason,
                     actor,
-                    branchCode: seatBranchCode(p.seat),
+                    branches,
                     alias: 'v',
                 }));
                 removeProfileFile(p.seat.profile);
@@ -238,7 +237,7 @@ async function syncStaff(req, res) {
                 summary.unblocked += 1;
             } else if (p.type === 'refresh') {
                 await graph.mutation(
-                    updateQl(USER_REF('ref_user'), { where: { _id: { _eq: p.seat._id } }, set: refreshSet(p.row) }),
+                    updateQl(USER_REF('ref_user'), { where: { _id: { _eq: p.seat._id } }, set: refreshSet(p.row, p.seat) }),
                 );
                 summary.refreshed += 1;
             }

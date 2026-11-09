@@ -121,7 +121,7 @@ async function assignSeat(req, res) {
             seat: current,
             reason: 'reassigned',
             actor,
-            branchCode: seatBranchCode(current),
+            branches,
             alias: 'old',
         }));
     }
@@ -138,8 +138,8 @@ async function assignSeat(req, res) {
                 ? { _id: { _eq: seat._id }, isVacant: { _eq: true } }
                 : { _id: { _eq: seat._id }, isVacant: { _eq: false }, employee_no: { _is_null: true } },
             set: mode === 'assign'
-                ? assignSet({ staff: normalizedStaff, passwordHash })
-                : { ...refreshSet(normalizedStaff), employee_no: employeeNo },
+                ? assignSet({ staff: normalizedStaff, passwordHash, seat })
+                : { ...refreshSet(normalizedStaff, seat), employee_no: employeeNo },
         }),
         historyInsert('hist_new', {
             _id: generateUUID(),
