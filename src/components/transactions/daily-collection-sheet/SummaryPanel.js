@@ -25,7 +25,11 @@ const SummaryRow = ({ label, value, bold = false, highlight = false, no = null }
 );
 
 // ── Main component ───────────────────────────────────────────
-const SummaryPanel = ({ summaryData: rawData }) => {
+const SummaryPanel = ({
+    summaryData: rawData,
+    dcsTotals,
+    cashbookMcbuIn
+}) => {
     const d = mapSummaryData(rawData);
 
     if (!d) return (
@@ -36,10 +40,22 @@ const SummaryPanel = ({ summaryData: rawData }) => {
     );
 
     const amounts = {
-        rcptMcbu: d.rcptMcbu,
-        rcptCsf: d.rcptCsf,
-        rcptRegularLoan: d.rcptRegularLoan,
-        rcptOtherLoan: d.rcptOtherLoan,
+        rcptMcbu: dcsTotals
+            ? Number(dcsTotals.mcbuActual) || 0
+            : d.rcptMcbu,
+
+        rcptCsf: dcsTotals
+            ? Number(dcsTotals.csfCollection) || 0
+            : d.rcptCsf,
+
+        rcptRegularLoan: dcsTotals
+            ? Number(dcsTotals.regularLoanActual) || 0
+            : d.rcptRegularLoan,
+
+        rcptOtherLoan: dcsTotals
+            ? Number(dcsTotals.otherLoanActual) || 0
+            : d.rcptOtherLoan,
+
         rcptStaffCbu: d.rcptStaffCbu,
         rcptStaffPrincipal: d.rcptStaffPrincipal,
         rcptAdminFees: d.rcptAdminFees,
@@ -47,7 +63,10 @@ const SummaryPanel = ({ summaryData: rawData }) => {
         rcptCbhb: d.rcptCbhb,
         rcptAddHospi: d.rcptAddHospi,
         rcptWtax: d.rcptWtax,
-        rcptMcbuUnclaimedIn: d.rcptMcbuUnclaimedIn,
+        rcptMcbuUnclaimedIn:
+        cashbookMcbuIn !== null && cashbookMcbuIn !== undefined
+            ? Number(cashbookMcbuIn) || 0
+            : d.rcptMcbuUnclaimedIn,
         rcptOtherIncomePassbook: d.rcptOtherIncomePassbook,
         rcptOtherIncome: d.rcptOtherIncome,
         rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
@@ -58,8 +77,13 @@ const SummaryPanel = ({ summaryData: rawData }) => {
         payLoanRelease: d.payLoanRelease,
         payMcbuWithdrawal: d.payMcbuWithdrawal,
         payCsfWithdrawal: d.payCsfWithdrawal,
-        payMcbuReturn: d.payMcbuReturn,
-        payCsfReturn: d.payCsfReturn,
+        payMcbuReturn: dcsTotals
+            ? Number(dcsTotals.mcbuReturnAmount) || 0
+            : d.payMcbuReturn,
+
+        payCsfReturn: dcsTotals
+            ? Number(dcsTotals.csfReturnAmount) || 0
+            : d.payCsfReturn,
         payStaffLoanRelease: d.payStaffLoanRelease,
         payMngtExpenses: d.payMngtExpenses,
         payCbhbDisbursed: d.payCbhbDisbursed,
@@ -69,6 +93,40 @@ const SummaryPanel = ({ summaryData: rawData }) => {
         payFundTransferOut: d.payFundTransferOut,
         payBankDeposits: d.payBankDeposits,
     };
+
+    // ── RECEIPTS DIFFERENCES ─────────────────────────────
+
+    const mcbuDifference = amounts.rcptMcbu - d.rcptMcbu;
+    const csfDifference = amounts.rcptCsf - d.rcptCsf;
+    const regularLoanDifference = amounts.rcptRegularLoan - d.rcptRegularLoan;
+    const otherLoanDifference = amounts.rcptOtherLoan - d.rcptOtherLoan;
+    const mcbuUnclaimedInDifference =
+        amounts.rcptMcbuUnclaimedIn -
+        d.rcptMcbuUnclaimedIn;
+
+    const totalCollectionDifference =
+        mcbuDifference +
+        csfDifference +
+        regularLoanDifference +
+        otherLoanDifference +
+        mcbuUnclaimedInDifference;
+
+    // ── PAYMENTS DIFFERENCES ─────────────────────────────
+
+    const mcbuReturnDifference = amounts.payMcbuReturn - d.payMcbuReturn;
+    const csfReturnDifference = amounts.payCsfReturn - d.payCsfReturn;
+    const totalPaymentDifference =
+        mcbuReturnDifference +
+        csfReturnDifference;
+
+    // ── UPDATED TOTALS ───────────────────────────────────
+
+    const updatedTotalReceipts = d.totalReceipts + totalCollectionDifference;
+    const updatedTotalPayments = d.totalPayments + totalPaymentDifference;
+    const updatedClosingBalance =
+        d.closingBalance +
+        totalCollectionDifference -
+        totalPaymentDifference;
 
     return (
         <div className="space-y-4">
@@ -101,7 +159,11 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                                 value={amounts[item.key] || 0}
                             />
                         ))}
-                        <SummaryRow label="Total Receipts" value={d.totalReceipts} highlight />
+                        <SummaryRow
+                            label="Total Receipts"
+                            value={updatedTotalReceipts}
+                            highlight
+                        />
                     </tbody>
                 </table>
             </div>
@@ -126,7 +188,11 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                                 />
                             );
                         })}
-                        <SummaryRow label="Total Payments" value={d.totalPayments} highlight />
+                        <SummaryRow
+                            label="Total Payments"
+                            value={updatedTotalPayments}
+                            highlight
+                        />
                     </tbody>
                 </table>
             </div>
@@ -139,9 +205,9 @@ const SummaryPanel = ({ summaryData: rawData }) => {
                                 Closing Balance
                             </td>
                             <td className={`border border-blue-300 px-3 py-2 text-right font-bold text-sm min-w-[110px] ${
-                                d.closingBalance < 0 ? 'text-red-600' : 'text-blue-700'
+                                updatedClosingBalance < 0 ? 'text-red-600' : 'text-blue-700'
                             }`}>
-                                {formatPricePhp(d.closingBalance)}
+                                {formatPricePhp(updatedClosingBalance)}
                             </td>
                         </tr>
                     </tbody>

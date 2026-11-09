@@ -80,7 +80,7 @@ async function updateExistingPayroll({
 
         parameters: [
             `$payrollId_${i}: uuid!`,
-            `$updatedBy_${i}: uuid!`,
+            `$updatedBy_${i}: String!`,
             `$employees_${i}: [branch_payroll_employees_insert_input!]!`,
         ],
 
@@ -473,9 +473,20 @@ async function savePayroll(req, res) {
             });
         }
 
+        console.error("========== PAYROLL SAVE ERROR ==========");
+        console.error("Message:", error?.message);
+        console.error("GraphQL errors:", error?.graphQLErrors);
+        console.error("Network error:", error?.networkError);
+        console.error("========================================");
+
         return res.status(500).json({
             error: true,
-            message: "Unable to save payroll.",
+            message:
+                process.env.NODE_ENV === "production"
+                    ? "Unable to save payroll. Please contact the administrator."
+                    : error?.graphQLErrors?.[0]?.message ||
+                    error?.message ||
+                    "Unable to save payroll.",
         });
     }
 }

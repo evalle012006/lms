@@ -17,11 +17,41 @@ const money = (value) => {
   });
 };
 
+// =========================================================
+// CASHBOOK TRANSACTION CODE FORMATTER
+// =========================================================
+
+const formatTransactionCodes = (codes) => {
+  if (!Array.isArray(codes) || codes.length === 0) {
+    return "";
+  }
+
+  const uniqueCodes = [
+    ...new Set(
+      codes
+        .map((value) => {
+          const text = String(value ?? "").trim();
+          const match = text.match(/^(\d{1,3})(?=\D|$)/);
+
+          return match
+            ? match[1].padStart(3, "0")
+            : "";
+        })
+        .filter(Boolean)
+    ),
+  ];
+
+  return uniqueCodes.join(" / ");
+};
+
 const emptyRow = (day) => ({
   day,
 
   /* RECEIPTS / DEBIT */
   description: "",
+  receiptTransactionCodes: "",
+  paymentTransactionCodes: "",
+
   beginningBalance: 0,
   mcbuCollection: 0,
   csfCollection: 0,
@@ -210,42 +240,10 @@ const emptyRow = (day) => ({
     loading = false,
   }) => {
   const [transactions, setTransactions] = useState([]);
-  const [descriptions, setDescriptions] = useState({});
-  const [savingDescription, setSavingDescription] = useState(null);
-  const [descriptionMessage, setDescriptionMessage] = useState("");
 
-  useEffect(() => {
-    if (!branchId) {
-      setDescriptions({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadDescriptions = async () => {
-      try {
-        const response = await fetchWrapper.get(
-          `${getApiBaseUrl()}cashbook/descriptions?branchId=${encodeURIComponent(branchId)}`
-        );
-
-        if (!cancelled) {
-          setDescriptions(response?.descriptions || {});
-        }
-      } catch (error) {
-        console.error("Failed to load Cashbook descriptions:", error);
-
-        if (!cancelled) {
-          setDescriptions({});
-        }
-      }
-    };
-
-    loadDescriptions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [branchId]);
+  // =========================================================
+  // LOAD DCS TRANSACTIONS FOR CASHBOOK
+  // =========================================================
 
   useEffect(() => {
     if (!branchId) {
@@ -341,6 +339,9 @@ const emptyRow = (day) => ({
       let withholdingTax = 0;
       let managementExpensesTotal = 0;
 
+      const receiptCodes = [];
+      const paymentCodes = [];
+
 
       transactions.forEach((transaction) => {
         const transactionDate = String(
@@ -383,6 +384,35 @@ const emptyRow = (day) => ({
             return;
           }
 
+          // =========================================================
+          // AUTOMATIC RECEIPT TRANSACTION CODES
+          // =========================================================
+
+          if (
+            code &&
+            (
+              category === "other receipts" ||
+              category === "other income"
+            )
+          ) {
+            receiptCodes.push(code);
+          }
+
+          // =========================================================
+          // AUTOMATIC PAYMENT TRANSACTION CODES
+          // =========================================================
+
+          if (
+            code &&
+            (
+              category === "management expenses" ||
+              category === "other payments"
+            )
+          ) {
+            paymentCodes.push(code);
+          }
+
+          // Existing Management Expenses calculation
           if (category === "management expenses") {
             managementExpensesTotal += amount;
           }
@@ -464,9 +494,19 @@ const emptyRow = (day) => ({
           weekday: "long",
         }),
 
+        receiptTransactionCodes: formatTransactionCodes(receiptCodes),
+        paymentTransactionCodes: formatTransactionCodes(paymentCodes),
+
         beginningBalance: summary?.beginningBalance ?? 0,
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
+
+        regularLoanReleasePersons: Number(summary?.payLoanReleaseNo) || 0,
+        regularLoanReleasePrincipal: Number(summary?.payLoanRelease) || 0,
+
+        otherLoanReleasePersons: 0,
+        otherLoanReleasePrincipal: 0,
+
         managementCostExpenses: managementExpensesTotal,
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
@@ -499,34 +539,6 @@ const emptyRow = (day) => ({
     cashbookData,
     transactions,
   ]);
-
-  const saveDescription = async (dateKey) => {
-    if (!branchId) {
-      alert("Please select a branch.");
-      return;
-    }
-
-    try {
-      setSavingDescription(dateKey);
-      setDescriptionMessage("");
-
-      await fetchWrapper.post(
-        `${getApiBaseUrl()}cashbook/descriptions`,
-        {
-          branchId,
-          date: dateKey,
-          description: descriptions[dateKey] || "",
-        }
-      );
-
-      setDescriptionMessage(`Saved description for ${dateKey}`);
-    } catch (error) {
-      console.error("Failed to save description:", error);
-      alert(error?.message || "Failed to save description.");
-    } finally {
-      setSavingDescription(null);
-    }
-  };
 
   const calculateTotalReceipts = (row) => {
     return (
@@ -857,8 +869,17 @@ const emptyRow = (day) => ({
         }
 
         .cb-description-cell {
-          text-align: left !important;
+          text-align: center !important;
           background: #fffca8;
+          font-weight: 700;
+          min-width: 180px !important;
+        }
+
+        .cb-expense {
+          background: #fffca8;
+          text-align: center !important;
+          font-weight: 700;
+          min-width: 180px !important;
         }
 
         .cb-zero {
@@ -950,11 +971,6 @@ const emptyRow = (day) => ({
       {/* ===================================================
           ONE CONTINUOUS CASHBOOK
       =================================================== */}
-      {descriptionMessage && (
-        <div className="mx-4 my-2 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
-          {descriptionMessage}
-        </div>
-      )}
 
       <div className="cashbook-scroll">
         <table className="cashbook-table">
@@ -1275,8 +1291,11 @@ const emptyRow = (day) => ({
                         {row.day}
                       </td>
 
-                    <td className="cb-description-cell">
-                      {row.description || ""}
+                    <td
+                      className="cb-description-cell"
+                      title={row.receiptTransactionCodes || ""}
+                    >
+                      {row.receiptTransactionCodes || ""}
                     </td>
 
                     <td className="cb-beginning">
@@ -1361,30 +1380,11 @@ const emptyRow = (day) => ({
 
                     {/* PAYMENTS */}
 
-                    <td className="cb-expense">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={descriptions[row.dateKey] || ""}
-                          onChange={(e) =>
-                            setDescriptions((prev) => ({
-                              ...prev,
-                              [row.dateKey]: e.target.value,
-                            }))
-                          }
-                          placeholder="Enter description"
-                          className="w-44 border border-gray-300 rounded px-2 py-1 text-xs bg-white text-gray-900"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => saveDescription(row.dateKey)}
-                          disabled={savingDescription === row.dateKey}
-                          className="bg-blue-600 text-white px-2 py-1 rounded text-xs disabled:opacity-50"
-                        >
-                          {savingDescription === row.dateKey ? "Saving..." : "Save"}
-                        </button>
-                      </div>
+                    <td
+                      className="cb-expense"
+                      title={row.paymentTransactionCodes || ""}
+                    >
+                      {row.paymentTransactionCodes || ""}
                     </td>
 
                     <td className="cb-collection">
