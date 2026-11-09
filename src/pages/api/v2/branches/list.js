@@ -1,6 +1,5 @@
 import { getCurrentDateV2 } from '@/lib/date-utils';
 import { BRANCH_COH_FIELDS, BRANCH_FIELDS } from '@/lib/graph.fields';
-import { findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -8,7 +7,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _eq: "${date}" }`;
+const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _eq: "${date}" }`; 
 
 const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
@@ -21,7 +20,7 @@ const BRANCH_TYPE = (date) => createGraphType('branches', `
     }) {
         aggregate {  count }
     }
-
+    
     cashOnHand: branchCOHs (where: { dateAdded: ${addDatedAddedCondition(date) } }){
         ${BRANCH_COH_FIELDS}
     }
@@ -36,124 +35,16 @@ async function list(req, res) {
     let response = {};
 
     const { branchCode = null, branchCodes = null, date } = req.query;
-
-    const userId = req?.auth?.sub;
-
-    if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: "Unauthorized.",
-        });
-    }
-
-    // Get authenticated user
-    const currentUser = await findUserById(userId);
-
-    if (!currentUser) {
-        return res.status(403).json({
-            success: false,
-            message: "User account not found.",
-        });
-    }
-
-    const roleRep = Number(currentUser.role?.rep);
-
-    const isAdmin = roleRep === 1;
-    const isDeputyManager = 
-        roleRep === 2 &&
-        String(currentUser.role?.shortCode || "")
-            .trim()
-            .toLowerCase() === "deputy_director";
-    const isRegionalManager =
-        roleRep === 2 &&
-        String(currentUser.role?.shortCode || "")
-            .trim()
-            .toLowerCase() === "regional_manager";
-    const isFinanceManager =
-        roleRep === 2 &&
-        String(currentUser.role?.shortCode || "")
-            .trim()
-            .toLowerCase() === "finance";
-    const isAreaManager =
-        roleRep === 2 &&
-        String(currentUser.role?.shortCode || "")
-            .trim()
-            .toLowerCase() === "area_admin";
-
-    const isBranchManager = roleRep === 3;
-    const isLoanOfficer = roleRep === 4;
-
-    // Existing branch code filters
-    const codes = [
-        branchCode,
-        ...(branchCodes?.split(",") ?? []),
-    ].filter(Boolean);
-
-    const where = {
-        code: codes.length
-            ? { _in: codes }
-            : { _is_null: false },
-    };
-
-    // Apply role-based restrictions
-    if (isDeputyManager) {
-        if (!currentUser.divisionId) {
-            return res.status(403).json({
-                success: false,
-                message: "Deputy Director has no assigned division.",
-            });
-        }
-
-        where.divisionId = {
-            _eq: currentUser.divisionId,
-        };
-    } else if (isRegionalManager) {
-        if (!currentUser.regionId) {
-            return res.status(403).json({
-                success: false,
-                message: "Regional Manager has no assigned region.",
-            });
-        }
-
-        where.regionId = {
-            _eq: currentUser.regionId,
-        };
-    } else if (isAreaManager) {
-        if (!currentUser.areaId) {
-            return res.status(403).json({
-                success: false,
-                message: "Area Manager has no assigned area.",
-            });
-        }
-
-        where.areaId = {
-            _eq: currentUser.areaId,
-        };
-    } else if (isBranchManager || isLoanOfficer) {
-        if (!currentUser.designatedBranchId) {
-            return res.status(403).json({
-                success: false,
-                message: "User has no designated branch.",
-            });
-        }
-
-        where._id = {
-            _eq: currentUser.designatedBranchId,
-        };
-    } else if (!isAdmin && !isFinanceManager) {
-        return res.status(403).json({
-            success: false,
-            message: "You do not have permission to access branches.",
-        });
-    }
+    const codes = [branchCode, ... (branchCodes?.split(',') ?? [])].filter(code => !!code);
+    const where = codes.length ? { code: { _in: codes } } : { code: { _is_null: false } };
 
     const branches = await graph.query(
-        queryQl(BRANCH_TYPE(date ?? getCurrentDateV2()), {
+        queryQl(BRANCH_TYPE(date ?? getCurrentDateV2()), { 
             where,
             order_by: [{ code: 'asc' }]
         }, )
     ).then(res => res.data.branches)
-      .then(branches =>
+      .then(branches => 
         branches.map(branch => ({
             ... branch,
             noOfLO: {
@@ -162,7 +53,7 @@ async function list(req, res) {
         }))
         // .filter(branch => branch.code !== 'B000')
     );
-
+    
     response = {
         success: true,
         branches
