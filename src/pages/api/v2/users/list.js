@@ -1,4 +1,5 @@
 import { USER_FIELDS } from '@/lib/graph.fields';
+import { findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -51,16 +52,7 @@ async function list(req, res) {
         });
     }
 
-    const authResult = await graph.query(
-        queryQl(AUTH_USER_TYPE, {
-            where: {
-                _id: { _eq: userId },
-            },
-            limit: 1,
-        })
-    );
-
-    const currentUser = authResult.data?.users?.[0];
+    const currentUser = await findUserById(userId);
 
     if (!currentUser) {
         return res.status(403).json({
@@ -72,6 +64,22 @@ async function list(req, res) {
     const roleRep = Number(currentUser.role?.rep);
 
     const isAdmin = roleRep === 1;
+
+    const isDeputyManager = 
+        roleRep === 2 &&
+        String(currentUser.role?.shortCode || "")
+            .trim()
+            .toLowerCase() === "deputy_director";
+    const isRegionalManager =
+        roleRep === 2 &&
+        String(currentUser.role?.shortCode || "")
+            .trim()
+            .toLowerCase() === "regional_manager";
+    const isFinanceManager =
+        roleRep === 2 &&
+        String(currentUser.role?.shortCode || "")
+            .trim()
+            .toLowerCase() === "finance";
 
     const isAreaManager =
         roleRep === 2 &&
@@ -86,7 +94,7 @@ async function list(req, res) {
     // BRANCH ACCESS VALIDATION
     // ==========================================
 
-    if (!isAdmin) {
+    if (!isAdmin && !isFinanceManager) {
         if (!branchId && !branchCode) {
             return res.status(403).json({
                 success: false,
@@ -114,7 +122,21 @@ async function list(req, res) {
             });
         }
 
-        if (isAreaManager) {
+        if (isDeputyManager) {
+            if (currentUser.divisionId && requestedBranch.divisionId && String(currentUser.divisionId) !== String(requestedBranch.divisionId)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You can only view users from branches assigned to your division.',
+                });
+            }
+        } else if (isRegionalManager) {
+            if (currentUser.regionId && requestedBranch.regionId && String(currentUser.regionId) !== String(requestedBranch.regionId)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You can only view users from branches assigned to your region.',
+                });
+            }
+        } else if (isAreaManager) {
             if (
                 !currentUser.areaId ||
                 !requestedBranch.areaId ||
