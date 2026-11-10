@@ -1,3 +1,4 @@
+//src/pages/api/v2/transactions/dcs/index.js
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -366,9 +367,15 @@ const emptyRow = (day) => ({
             .trim()
             .toLowerCase();
 
-          const code = String(
+          const rawCode = String(
             item?.code || ""
           ).trim();
+
+          const codeMatch = rawCode.match(/^(\d{1,3})(?=\D|$)/);
+
+          const code = codeMatch
+            ? codeMatch[1].padStart(3, "0")
+            : rawCode;
 
           const accountTitle = String(
             item?.account_title ||
@@ -456,7 +463,7 @@ const emptyRow = (day) => ({
           if (
               category === "other receipts" &&
               code === "036" &&
-              accountTitle === "fund transfer (giver)"
+              accountTitle === "fund transfer (receiver)"
           ) {
               receiptFundTransfer += amount;
           }
@@ -464,7 +471,7 @@ const emptyRow = (day) => ({
           if (
               category === "other payments" &&
               code === "036" &&
-              accountTitle === "fund transfer (receiver)"
+              accountTitle === "fund transfer (giver)"
           ) {
               paymentFundTransfer += amount;
           }
@@ -503,6 +510,12 @@ const emptyRow = (day) => ({
 
         regularLoanReleasePersons: Number(summary?.payLoanReleaseNo) || 0,
         regularLoanReleasePrincipal: Number(summary?.payLoanRelease) || 0,
+
+        mcbuWithdrawal: Number(summary?.payMcbuWithdrawal) || 0,
+        csfWithdrawal: Number(summary?.payCsfWithdrawal) || 0,
+
+        mcbuReturnAmount: Number(summary?.payMcbuReturn) || 0,
+        csfReturnAmount: Number(summary?.payCsfReturn) || 0,
 
         otherLoanReleasePersons: 0,
         otherLoanReleasePrincipal: 0,
@@ -559,6 +572,7 @@ const emptyRow = (day) => ({
       Number(row.mcbuUnclaimReturn || 0) +
       Number(row.receiptFundTransfer || 0) +
       Number(row.otherIncome || 0) +
+      Number(row.otherReceipts || 0) +
       Number(row.bankWithdrawal || 0)
     );
   };
@@ -605,17 +619,33 @@ const emptyRow = (day) => ({
     );
 
   const renderTotalRow = (sourceRows, label, className = "") => {
-    const totalReceipts = sourceRows.reduce(
-      (sum, row) => sum + calculateTotalReceipts(row),
-      0
+    const firstRow = sourceRows[0];
+    const lastRow = sourceRows[sourceRows.length - 1];
+
+    const beginningBalance = Number(
+        firstRow?.beginningBalance || 0
     );
+
+    const operatingReceipts = sourceRows.reduce(
+        (sum, row) =>
+            sum +
+            calculateTotalReceipts(row) -
+            Number(row.beginningBalance || 0),
+        0
+    );
+
+    const totalReceipts =
+        beginningBalance + operatingReceipts;
 
     const totalPayments = sourceRows.reduce(
-      (sum, row) => sum + calculateTotalPayments(row),
-      0
+        (sum, row) => sum + calculateTotalPayments(row),
+        0
     );
 
-    const closingBalance = totalReceipts - totalPayments;
+    const closingBalance = lastRow
+        ? calculateTotalReceipts(lastRow) -
+          calculateTotalPayments(lastRow)
+        : 0;
 
     return (
       <tr className={`cb-total-row ${className}`}>
@@ -623,7 +653,7 @@ const emptyRow = (day) => ({
           {label}
         </td>
 
-        <td>{money(sumField(sourceRows, "beginningBalance"))}</td>
+        <td>{money(beginningBalance)}</td>
         <td>{money(sumField(sourceRows, "mcbuCollection"))}</td>
         <td>{money(sumField(sourceRows, "csfCollection"))}</td>
 
@@ -1298,8 +1328,17 @@ const emptyRow = (day) => ({
                       {row.receiptTransactionCodes || ""}
                     </td>
 
-                    <td className="cb-beginning">
-                      {money(row.beginningBalance)}
+                    <td
+                        className="cb-beginning"
+                        title={
+                            cashbookData[row.dateKey]?.beginningBalanceSource === 'manual'
+                                ? 'Manual Beginning Balance'
+                                : cashbookData[row.dateKey]?.beginningBalanceSource === 'carried_forward'
+                                    ? 'Automatic Carry-Forward'
+                                    : 'Historical Beginning Balance'
+                        }
+                    >
+                        {money(row.beginningBalance)}
                     </td>
 
                     <td className="cb-collection">

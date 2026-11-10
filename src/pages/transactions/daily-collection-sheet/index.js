@@ -255,8 +255,10 @@ const DailyCollectionSheet = () => {
         try {
             const params = new URLSearchParams({ branch_id: branchId, selected_date: date });
             if (loId) params.append('lo_id', loId);
+            params.set('_name', 'get_daily_collection_summary');
+
             const response = await fetchWrapper.get(
-                getApiBaseUrl() + 'data/get_daily_collection_summary?' + params.toString()
+                getApiBaseUrl() + 'dcs?' + params.toString()
             );
             const item = Array.isArray(response.data) ? response.data[0] : response.data;
             setSummaryData(item || null);
@@ -309,9 +311,11 @@ const DailyCollectionSheet = () => {
                                 params.append('lo_id', loId);
                             }
 
+                            params.set('_name', 'get_daily_collection_summary');
+
                             const response = await fetchWrapper.get(
                                 getApiBaseUrl() +
-                                    'data/get_daily_collection_summary?' +
+                                    'dcs?' +
                                     params.toString()
                             );
 
@@ -321,14 +325,69 @@ const DailyCollectionSheet = () => {
 
                             const mappedSummary = mapSummaryData(raw);
 
+                            let effectiveBeginningBalance = null;
+                            let beginningBalanceSource = 'historical';
+
+                            if (mappedSummary) {
+                                try {
+                                    const balanceParams = new URLSearchParams({
+                                        branch_id: branchId,
+                                        selected_date: date,
+                                    });
+
+                                    const balanceResponse = await fetchWrapper.get(
+                                        `${getApiBaseUrl()}dcs/beginning-balance?${balanceParams.toString()}`
+                                    );
+
+                                    if (!balanceResponse?.success) {
+                                        throw new Error(
+                                            balanceResponse?.message ||
+                                            `Unable to load Beginning Balance for ${date}`
+                                        );
+                                    }
+
+                                    beginningBalanceSource =
+                                        balanceResponse.source || 'historical';
+
+                                    if (
+                                        balanceResponse.beginningBalance !== null &&
+                                        balanceResponse.beginningBalance !== undefined
+                                    ) {
+                                        const parsedBalance = Number(
+                                            balanceResponse.beginningBalance
+                                        );
+
+                                        if (!Number.isFinite(parsedBalance)) {
+                                            throw new Error(
+                                                `Invalid Beginning Balance for ${date}`
+                                            );
+                                        }
+
+                                        effectiveBeginningBalance = parsedBalance;
+                                    }
+                                } catch (error) {
+                                    console.error(
+                                        `Beginning Balance error for ${date}:`,
+                                        error
+                                    );
+
+                                    return [date, null];
+                                }
+                            }
+
                             return [
                                 date,
                                 mappedSummary
                                     ? {
                                         ...mappedSummary,
 
-                                        // Preserve the original API response
-                                        // for Regular / Other Loan Release mapping.
+                                        beginningBalance:
+                                            effectiveBeginningBalance !== null
+                                                ? effectiveBeginningBalance
+                                                : mappedSummary.beginningBalance,
+
+                                        beginningBalanceSource,
+
                                         rawLoanReleaseData: raw,
                                     }
                                     : null,
@@ -389,7 +448,7 @@ const DailyCollectionSheet = () => {
         fetchCashbookMonth(
             branchId,
             selectedDate,
-            loId
+            null
         );
     }, [
         activeTab,
@@ -516,8 +575,10 @@ const DailyCollectionSheet = () => {
                     for (const branch of branchList) {
                         try {
                             const params = new URLSearchParams({ branch_id: branch._id, selected_date: selectedDate });
+                            params.set('_name', 'get_daily_collection_sheet_v2');
+
                             const response = await fetchWrapper.get(
-                                getApiBaseUrl() + 'data/get_daily_collection_sheet_v2?' + params.toString()
+                                getApiBaseUrl() + 'dcs?' + params.toString()
                             );
                             if (response.data?.length > 0) {
                                 const t = calculateTotals(response.data.map(parseRow));
@@ -562,10 +623,11 @@ const DailyCollectionSheet = () => {
                     const params = new URLSearchParams({ branch_id: branchId, selected_date: selectedDate });
                     if (loId) params.append('lo_id', loId);
 
-                    const response = await fetchWrapper.get(
-                        getApiBaseUrl() + 'data/get_daily_collection_sheet_v2?' + params.toString()
-                    );
+                    params.set('_name', 'get_daily_collection_sheet_v2');
 
+                    const response = await fetchWrapper.get(
+                        getApiBaseUrl() + 'dcs?' + params.toString()
+                    );
                     fetchSummary(branchId, selectedDate, loId);
 
                     if (response.data?.length > 0) {
@@ -901,6 +963,28 @@ const DailyCollectionSheet = () => {
                                                 summaryData={summaryData}
                                                 dcsTotals={totals}
                                                 cashbookMcbuIn={cashbookMcbuIn}
+                                                branchId={transactionBranchId}
+                                                selectedDate={selectedDate}
+                                                canEditBeginningBalance={
+                                                    (isAdmin || isBranchManager) &&
+                                                    Boolean(transactionBranchId) &&
+                                                    !selectedLo
+                                                }
+                                                onBeginningBalanceSaved={() => {
+                                                    if (!transactionBranchId) return;
+
+                                                    fetchSummary(
+                                                        transactionBranchId,
+                                                        selectedDate,
+                                                        selectedLo?._id || null
+                                                    );
+
+                                                    fetchCashbookMonth(
+                                                        transactionBranchId,
+                                                        selectedDate,
+                                                        null
+                                                    );
+                                                }}
                                             />
                                         </div>
                                     </div>

@@ -23,6 +23,7 @@ const USER_TYPE = createGraphType(
     `
         _id
         areaId
+        designatedBranchId
         role
         root
     `
@@ -99,11 +100,13 @@ async function deleteTransaction(req, res) {
             roleRep === 2 &&
             roleShortCode === "area_admin";
 
-        if (!isAdmin && !isAreaManager) {
+        const isBranchManager = roleRep === 3;
+
+        if (!isAdmin && !isAreaManager && !isBranchManager) {
             return res.status(403).json({
                 error: true,
                 message:
-                    "Only Admin and Area Manager can delete transactions.",
+                    "You do not have permission to delete transactions.",
             });
         }
 
@@ -165,6 +168,26 @@ async function deleteTransaction(req, res) {
                     error: true,
                     message:
                         "You can only delete transactions from branches assigned to your area.",
+                });
+            }
+        }
+
+        // ==========================================
+        // BRANCH MANAGER BRANCH VALIDATION
+        // ==========================================
+
+        if (isBranchManager) {
+            const assignedBranchId = currentUser.designatedBranchId;
+
+            if (
+                !assignedBranchId ||
+                String(assignedBranchId) !==
+                    String(transaction.branch_id)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only delete transactions from your assigned branch.",
                 });
             }
         }
