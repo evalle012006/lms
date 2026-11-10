@@ -1362,6 +1362,13 @@ const CashCollectionDetailsPage = () => {
                     } else if (currentLoan.status === 'closed' && currentLoan?.advance
                             && (loan.advanceTransaction || currentLoan.loanId === loan._id)
                             && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease))) {
+
+                        // Payoff figures live on today's cash-collection row; history is only a fallback.
+                        const payoffRow = (currentLoan.current || []).find(cur => cur && cur.transfer !== true) || null;
+                        const payoffTarget = payoffRow ? safeNumber(payoffRow.targetCollection) : safeNumber(currentLoan.history?.activeLoan);
+                        const payoffExcess = payoffRow ? safeNumber(payoffRow.excess) : safeNumber(currentLoan.history?.excess);
+                        const payoffCollection = payoffRow ? safeNumber(payoffRow.paymentCollection) : safeNumber(currentLoan.history?.collection);
+                        const payoffMcbuCol = payoffRow ? safeNumber(payoffRow.mcbuCol) : safeNumber(currentLoan.mcbuCol);
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
@@ -1377,17 +1384,13 @@ const CashCollectionDetailsPage = () => {
                             loanCycle: loan.loanCycle,
                             amountReleaseStr: '-',
                             loanBalanceStr: '-',
-                            targetCollectionStr: '-',
                             mispayment: false,
                             mispaymentStr: '-',
                             noMispaymentStr: '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
                             noOfPayments: currentLoan.noOfPayments,
-                            noOfPayments: currentLoan.noOfPaymentStr,
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
+                            noOfPaymentStr: currentLoan.noOfPayments + " / " + currentLoan.loanTerms,
                             mcbu: loan.mcbu,
                             mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             mcbuCol: 0,
@@ -1398,9 +1401,13 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            // mcbuDailyWithdrawal: loan.mcbuDailyWithdrawal,
-                            // mcbuDailyWithdrawalStr: loan.mcbuDailyWithdrawal > 0 ? formatPricePhp(loan.mcbuDailyWithdrawal) : '-',
-                            remarks: currentLoan.remarks,
+                            targetCollection: payoffTarget,
+                            targetCollectionStr: payoffTarget > 0 ? formatPricePhp(payoffTarget) : '-',
+                            excess: payoffExcess,
+                            excessStr: payoffExcess > 0 ? formatPricePhp(payoffExcess) : '-',
+                            paymentCollection: payoffCollection,
+                            paymentCollectionStr: payoffCollection > 0 ? formatPricePhp(payoffCollection) : '-',
+                            remarks: currentLoan.history?.remarks || currentLoan.remarks,
                             fullPaymentStr: '-',
                             loanTerms: loan.loanTerms,
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
@@ -2178,7 +2185,11 @@ const CashCollectionDetailsPage = () => {
                             setLoading(false);
                             
                             // Handle specific error types
-                            if (error.code === ERROR_CODES.DATE_MISMATCH) {
+                            if (error.code === ERROR_CODES.POST_COMMIT_FAILED) {
+                                // Saved. Show the saved data and prevent a second submit.
+                                saveProgress.setError('Your transaction was saved, but a follow-up step failed. Do NOT submit again. The page will reload; please inform support.');
+                                setTimeout(() => window.location.reload(), 4000);
+                            } else if (error.code === ERROR_CODES.DATE_MISMATCH) {
                                 setPageStale(true);
                                 saveProgress.setError('The date has changed. Please refresh the page and try again.');
                             } else if (error.code === ERROR_CODES.CSF_CONFIG_MISMATCH) {
