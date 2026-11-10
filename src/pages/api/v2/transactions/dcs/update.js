@@ -30,6 +30,25 @@ const TRANSACTION_TYPE = createGraphType(
     `
 )("dcs_transactions");
 
+const USER_TYPE = createGraphType(
+    "users",
+    `
+        _id
+        areaId
+        designatedBranchId
+        role
+        root
+    `
+)("users");
+
+const BRANCH_TYPE = createGraphType(
+    "branches",
+    `
+        _id
+        areaId
+    `
+)("branches");
+
 const ITEM_TYPE = createGraphType(
     "dcs_transaction_items",
     `
@@ -128,6 +147,60 @@ async function updateTransaction(req, res) {
     }
 
     try {
+        // ==========================================
+        // STEP 1: GET AUTHENTICATED USER
+        // ==========================================
+
+        const userResult = await graph.query(
+            queryQl(USER_TYPE, {
+                where: {
+                    _id: { _eq: userId },
+                },
+                limit: 1,
+            })
+        );
+
+        const currentUser = userResult.data?.users?.[0];
+
+        if (!currentUser) {
+            return res.status(403).json({
+                error: true,
+                message: "User account not found.",
+            });
+        }
+
+        // ==========================================
+        // STEP 2: CHECK USER ROLE
+        // ==========================================
+
+        const roleRep = Number(currentUser.role?.rep);
+
+        const roleShortCode = String(
+            currentUser.role?.shortCode || ""
+        )
+            .trim()
+            .toLowerCase();
+
+        const isAdmin = roleRep === 1;
+
+        const isAreaManager =
+            roleRep === 2 &&
+            roleShortCode === "area_admin";
+
+        const isBranchManager = roleRep === 3;
+
+        if (!isAdmin && !isAreaManager && !isBranchManager) {
+            return res.status(403).json({
+                error: true,
+                message:
+                    "You do not have permission to edit transactions.",
+            });
+        }
+
+        // ==========================================
+        // STEP 3: VERIFY TRANSACTION EXISTS
+        // ==========================================
+
         const existingResult = await graph.query(
             queryQl(TRANSACTION_TYPE, {
                 where: {
@@ -148,12 +221,69 @@ async function updateTransaction(req, res) {
             });
         }
 
+        // ==========================================
+        // STEP 4: BRANCH MANAGER VALIDATION
+        // ==========================================
+
+        if (isBranchManager) {
+            const assignedBranchId = currentUser.designatedBranchId;
+
+            if (
+                !assignedBranchId ||
+                String(assignedBranchId) !==
+                    String(existing.branch_id)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only edit transactions from your assigned branch.",
+                });
+            }
+        }
+
+        // ==========================================
+        // STEP 5: AREA MANAGER VALIDATION
+        // ==========================================
+
+        if (isAreaManager) {
+            const branchResult = await graph.query(
+                queryQl(BRANCH_TYPE, {
+                    where: {
+                        _id: { _eq: existing.branch_id },
+                    },
+                    limit: 1,
+                })
+            );
+
+            const branch = branchResult.data?.branches?.[0];
+
+            if (!branch) {
+                return res.status(404).json({
+                    error: true,
+                    message: "Branch not found.",
+                });
+            }
+
+            if (
+                !currentUser.areaId ||
+                !branch.areaId ||
+                String(currentUser.areaId) !==
+                    String(branch.areaId)
+            ) {
+                return res.status(403).json({
+                    error: true,
+                    message:
+                        "You can only edit transactions from branches assigned to your area.",
+                });
+            }
+        }
+
         const updateResult = await graph.mutation(
             updateQl(TRANSACTION_TYPE, {
                 set: {
                     paid_to: paid_to.trim(),
                     address: address?.trim() || null,
-                    transaction_date,
+                    transaction_date: existing.transaction_date,
                     voucher_no: voucher_no.trim(),
                     total_amount: Number(total_amount || 0),
                     total_amount_words:
@@ -176,6 +306,17 @@ async function updateTransaction(req, res) {
                 updateResult.errors[0]?.message ||
                     "Failed to update transaction."
             );
+        }
+
+        const updatedTransactions =
+            updateResult.data?.dcs_transactions?.returning || [];
+
+        if (updatedTransactions.length !== 1) {
+            return res.status(409).json({
+                error: true,
+                message:
+                    "Transaction could not be updated. Please refresh and try again.",
+            });
         }
 
         // Replace existing items.

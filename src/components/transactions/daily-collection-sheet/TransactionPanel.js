@@ -89,7 +89,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
     { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },
     { id: 'OP-035', category: 'Other Payments', code: '035 - Taxes Payable to BIR', accountTitle: 'Taxes Payable to BIR' },
-    { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
+    { id: 'OP-036', category: 'Other Payments', code: '036 - Fund Transfer (Giver)', accountTitle: 'Fund Transfer (Giver)' },
     { id: 'OP-045', category: 'Other Payments', code: '045 - Rebates', accountTitle: 'Rebates' },
     { id: 'OP-078', category: 'Other Payments', code: '078 - Client Death Benefits (Burial Financial Assistance)', accountTitle: 'Client Death Benefits (Burial Financial Assistance)' },
     { id: 'OP-083', category: 'Other Payments', code: '083 - Loan Loss Provision', accountTitle: 'Loan Loss Provision' },
@@ -120,7 +120,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OR-033', category: 'Other Receipts', code: '033 - Accrued Expenses (Picture Collection)', accountTitle: 'Accrued Expenses (Picture Collection)' },
     { id: 'OR-034-01', category: 'Other Receipts', code: '034 - Accounts Payable (Payroll A/C)', accountTitle: 'Accounts Payable (Payroll A/C)' },
     { id: 'OR-034-02', category: 'Other Receipts', code: '034 - Accounts Payable (Others)', accountTitle: 'Accounts Payable (Others)' },
-    { id: 'OR-036', category: 'Other Receipts', code: '036 - Fund Transfer (Giver)', accountTitle: 'Fund Transfer (Giver)' },
+    { id: 'OR-036', category: 'Other Receipts', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
     { id: 'OR-048', category: 'Other Receipts', code: '048 - Recovered from Bad debt Accounts Collection', accountTitle: 'Recovered from Bad debt Accounts Collection' },
     { id: 'OR-052', category: 'Other Receipts', code: '052 - Interest on Borrowed Funds / Investment Capital', accountTitle: 'Interest on Borrowed Funds / Investment Capital' },
     ];
@@ -145,10 +145,30 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
             .trim()
             .toLowerCase() === 'area_admin';
 
-    const canDeleteTransaction = isAdmin || isAreaManager;
+    const isBranchManager = Number(currentUser?.role?.rep) === 3;
 
-    const isTransactionToday = (transaction) => {
-        return transaction?.date === currentDate;
+    const canManageTransaction =
+        isAdmin ||
+        isAreaManager ||
+        isBranchManager;
+
+    const canEditTransaction = (transaction) => {
+        if (!canManageTransaction || !transaction) {
+            return false;
+        }
+
+        if (isAdmin || isAreaManager) {
+            return true;
+        }
+
+        return (
+            String(transaction.branchId) ===
+            String(currentUser?.designatedBranchId)
+        );
+    };
+
+    const canDeleteTransaction = (transaction) => {
+        return canEditTransaction(transaction);
     };
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
@@ -526,13 +546,9 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                     return;
                 }
 
-                const canEdit =
-                    isAdmin ||
-                    isTransactionToday(existingTransaction);
-
-                if (!canEdit) {
+                if (!canEditTransaction(existingTransaction)) {
                     alert(
-                        'Past transactions can no longer be edited.'
+                        'You do not have permission to edit this transaction.'
                     );
                     return;
                 }
@@ -599,10 +615,10 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     };
 
     const handleEdit = (transaction) => {
-        const canEdit = isAdmin || isTransactionToday(transaction);
-
-        if (!canEdit) {
-            alert('Past transactions can no longer be edited.');
+        if (!canEditTransaction(transaction)) {
+            alert(
+                'You do not have permission to edit this transaction.'
+            );
             return;
         }
 
@@ -627,8 +643,10 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     };
 
     const handleDelete = async (transaction) => {
-        if (!canDeleteTransaction) {
-            alert('Only Admin and Area Manager can delete transactions.');
+        if (!canDeleteTransaction(transaction)) {
+            alert(
+                'You do not have permission to delete this transaction.'
+            );
             return;
         }
 
@@ -1409,8 +1427,8 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                                         View
                                                     </button>
 
-                                                    {/* EDIT - TODAY ONLY, ADMIN CAN EDIT ANY DATE */}
-                                                        {(isAdmin || isTransactionToday(transaction)) && (
+                                                    {/* EDIT TRANSACTION */}
+                                                        {canEditTransaction(transaction) && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleEdit(transaction)}
@@ -1454,8 +1472,8 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                                         Print
                                                     </button>
 
-                                                    {/* DELETE - ADMIN AND AREA MANAGER ONLY */}
-                                                    {canDeleteTransaction && (
+                                                    {/* DELETE TRANSACTION */}
+                                                    {canDeleteTransaction(transaction) && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDelete(transaction)}

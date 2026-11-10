@@ -10,7 +10,6 @@ export default apiHandler({
 
 async function getData(req, res) {
     const { _name, _limit, _offset,  ... args } = req.query;
-    
     const { status, result } = await graph.apollo.query({
             query: gql`
             query ${_name} ($args: ${_name}_arguments!, $limit: Int, $offset: Int){
@@ -32,7 +31,6 @@ async function getData(req, res) {
                 result: res.errors?.length ? res.errors : res.data.results.map(c => c.data)
             })
         })
-    
         res.status(status)
             .setHeader('Content-Type', 'application/json')
             .end(JSON.stringify({
