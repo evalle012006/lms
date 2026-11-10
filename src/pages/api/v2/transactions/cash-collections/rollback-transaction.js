@@ -128,6 +128,38 @@ async function revert(req, res) {
                     continue;
                 }
 
+                // CHANGE: the snapshot is taken BEFORE a save applies. A snapshot that is already
+                // 'closed' means a save ran twice (retry/duplicate). Restoring it would not undo the close.
+                if (loan_history.data.status === 'closed') {
+                    blockedItems.push({
+                        cashCollectionId: cashCollection._id,
+                        loanId,
+                        clientId: cashCollection.clientId,
+                        reason: 'Latest snapshot is already closed; restoring it would not undo the close. Check loans_history for a duplicate snapshot.'
+                    });
+                    continue;
+                }
+
+                // CHANGE: the slot may have been given to another client since the offset.
+                const restoredSlotNo = loan_history.data.slotNo ?? cashCollection.slotNo;
+                const [slotTaken] = await findLoans({
+                    _id: { _neq: loanId },
+                    groupId: { _eq: group._id },
+                    slotNo: { _eq: restoredSlotNo },
+                    status: { _in: ['active', 'pending'] },
+                    clientId: { _neq: loan_history.data.clientId }
+                });
+
+                if (slotTaken) {
+                    blockedItems.push({
+                        cashCollectionId: cashCollection._id,
+                        loanId,
+                        clientId: cashCollection.clientId,
+                        reason: `Slot ${restoredSlotNo} is now used by another loan (${slotTaken._id}).`
+                    });
+                    continue;
+                }
+
                 if (!groupCache[group._id]) {
                     groupCache[group._id] = { groupId: group._id, slots: [] };
                 }
@@ -205,8 +237,12 @@ async function revert(req, res) {
                         createGraphType('client', `_id`)(`client_${mutationQL.length}`),
                         {
                             set: {
-                                groupId: client.oldGroupId,
-                                loId: client.oldLoId,
+                                // CHANGE: the offset set status = 'offset'; it was never set back.
+                                status: 'active',
+                                // CHANGE: if oldGroupId/oldLoId were lost, the snapshot still knows
+                                // the original group and loan officer. Never write null here.
+                                groupId: client.oldGroupId ?? loan_history.data.groupId,
+                                loId: client.oldLoId ?? loan_history.data.loId,
                                 oldGroupId: null,
                                 oldLoId: null
                             },
@@ -240,7 +276,7 @@ async function revert(req, res) {
             return send(res, 200, {
                 success: false,
                 error: true,
-                message: 'Cannot revert: one or more records have no restorable history.',
+                message: 'Cannot revert: one or more records cannot be safely restored.',
                 details: blockedItems
             });
         }
@@ -278,8 +314,13 @@ async function updateGroup(mutationQl, groupId, slots) {
         throw new Error(`Group ${groupId} not found while restoring slots.`);
     }
 
-    const availableSlots = group.availableSlots.filter(s => !slots.includes(s));
-    const noOfClients = group.noOfClients + slots.length;
+    // Only count slots that were actually free, so the client count stays correct
+    // even if one of them was already re-occupied.
+    const currentlyAvailable = group.availableSlots || [];
+    const slotsToOccupy = slots.filter(s => currentlyAvailable.includes(s));
+
+    const availableSlots = currentlyAvailable.filter(s => !slots.includes(s));
+    const noOfClients = (group.noOfClients || 0) + slotsToOccupy.length;
 
     mutationQl.push(
         updateQl(
