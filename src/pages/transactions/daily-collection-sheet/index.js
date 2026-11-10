@@ -161,6 +161,7 @@ const DailyCollectionSheet = () => {
 
     const [cashbookData, setCashbookData] = useState({});
     const [cashbookLoading, setCashbookLoading] = useState(false);
+    const [cashbookMcbuIn, setCashbookMcbuIn] = useState(null);
 
     const [activeTab, setActiveTab] = useState('dcs');
     const roleRep = Number(currentUser?.role?.rep);
@@ -254,8 +255,10 @@ const DailyCollectionSheet = () => {
         try {
             const params = new URLSearchParams({ branch_id: branchId, selected_date: date });
             if (loId) params.append('lo_id', loId);
+            params.set('_name', 'get_daily_collection_summary');
+
             const response = await fetchWrapper.get(
-                getApiBaseUrl() + 'data/get_daily_collection_summary?' + params.toString()
+                getApiBaseUrl() + 'dcs?' + params.toString()
             );
             const item = Array.isArray(response.data) ? response.data[0] : response.data;
             setSummaryData(item || null);
@@ -308,9 +311,11 @@ const DailyCollectionSheet = () => {
                                 params.append('lo_id', loId);
                             }
 
+                            params.set('_name', 'get_daily_collection_summary');
+
                             const response = await fetchWrapper.get(
                                 getApiBaseUrl() +
-                                    'data/get_daily_collection_summary?' +
+                                    'dcs?' +
                                     params.toString()
                             );
 
@@ -318,9 +323,74 @@ const DailyCollectionSheet = () => {
                                 ? response.data[0]
                                 : response.data;
 
+                            const mappedSummary = mapSummaryData(raw);
+
+                            let effectiveBeginningBalance = null;
+                            let beginningBalanceSource = 'historical';
+
+                            if (mappedSummary) {
+                                try {
+                                    const balanceParams = new URLSearchParams({
+                                        branch_id: branchId,
+                                        selected_date: date,
+                                    });
+
+                                    const balanceResponse = await fetchWrapper.get(
+                                        `${getApiBaseUrl()}dcs/beginning-balance?${balanceParams.toString()}`
+                                    );
+
+                                    if (!balanceResponse?.success) {
+                                        throw new Error(
+                                            balanceResponse?.message ||
+                                            `Unable to load Beginning Balance for ${date}`
+                                        );
+                                    }
+
+                                    beginningBalanceSource =
+                                        balanceResponse.source || 'historical';
+
+                                    if (
+                                        balanceResponse.beginningBalance !== null &&
+                                        balanceResponse.beginningBalance !== undefined
+                                    ) {
+                                        const parsedBalance = Number(
+                                            balanceResponse.beginningBalance
+                                        );
+
+                                        if (!Number.isFinite(parsedBalance)) {
+                                            throw new Error(
+                                                `Invalid Beginning Balance for ${date}`
+                                            );
+                                        }
+
+                                        effectiveBeginningBalance = parsedBalance;
+                                    }
+                                } catch (error) {
+                                    console.error(
+                                        `Beginning Balance error for ${date}:`,
+                                        error
+                                    );
+
+                                    return [date, null];
+                                }
+                            }
+
                             return [
                                 date,
-                                mapSummaryData(raw),
+                                mappedSummary
+                                    ? {
+                                        ...mappedSummary,
+
+                                        beginningBalance:
+                                            effectiveBeginningBalance !== null
+                                                ? effectiveBeginningBalance
+                                                : mappedSummary.beginningBalance,
+
+                                        beginningBalanceSource,
+
+                                        rawLoanReleaseData: raw,
+                                    }
+                                    : null,
                             ];
                         } catch (error) {
                             console.error(
@@ -378,7 +448,7 @@ const DailyCollectionSheet = () => {
         fetchCashbookMonth(
             branchId,
             selectedDate,
-            loId
+            null
         );
     }, [
         activeTab,
@@ -393,6 +463,100 @@ const DailyCollectionSheet = () => {
         canSelectBranch,
         fetchCashbookMonth,
     ]);
+
+    // ── Cashbook Client's MCBU (IN) ──────────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
+
+        const fetchCashbookMcbuIn = async () => {
+            setCashbookMcbuIn(null);
+
+            if (!transactionBranchId || !selectedDate) {
+                return;
+            }
+
+            try {
+                const response = await fetchWrapper.get(
+                    `${getApiBaseUrl()}transactions/dcs?branch_id=${encodeURIComponent(transactionBranchId)}`
+                );
+
+                const transactions =
+                    response?.transactions ||
+                    response?.data ||
+                    response?.response ||
+                    [];
+
+                if (!Array.isArray(transactions)) {
+                    if (!cancelled) setCashbookMcbuIn(null);
+                    return;
+                }
+
+                let totalMcbuIn = 0;
+
+                transactions.forEach((transaction) => {
+                    const transactionDate = String(
+                        transaction?.transaction_date ||
+                        transaction?.date ||
+                        ''
+                    ).slice(0, 10);
+
+                    if (transactionDate !== selectedDate) return;
+
+                    const items =
+                        transaction?.dcs_transaction_items ||
+                        transaction?.items ||
+                        [];
+
+                    items.forEach((item) => {
+                        const category = String(item?.category || '')
+                            .trim()
+                            .toLowerCase();
+
+                        const code = String(item?.code || '').trim();
+
+                        const accountTitle = String(
+                            item?.account_title ||
+                            item?.accountTitle ||
+                            ''
+                        )
+                            .trim()
+                            .toLowerCase();
+
+                        const amount = Number(item?.amount || 0);
+
+                        if (
+                            category === 'other receipts' &&
+                            code === '019' &&
+                            accountTitle === "client's mcbu (in)" &&
+                            Number.isFinite(amount) &&
+                            amount > 0
+                        ) {
+                            totalMcbuIn += amount;
+                        }
+                    });
+                });
+
+                if (!cancelled) {
+                    setCashbookMcbuIn(totalMcbuIn);
+                }
+            } catch (error) {
+                console.error(
+                    "Error fetching Cashbook Client's MCBU (IN):",
+                    error
+                );
+
+                if (!cancelled) {
+                    setCashbookMcbuIn(null);
+                }
+            }
+        };
+
+        fetchCashbookMcbuIn();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [transactionBranchId, selectedDate]);
 
     // ── Main DCS data fetch ──────────────────────────────────────────────────
     useEffect(() => {
@@ -411,8 +575,10 @@ const DailyCollectionSheet = () => {
                     for (const branch of branchList) {
                         try {
                             const params = new URLSearchParams({ branch_id: branch._id, selected_date: selectedDate });
+                            params.set('_name', 'get_daily_collection_sheet_v2');
+
                             const response = await fetchWrapper.get(
-                                getApiBaseUrl() + 'data/get_daily_collection_sheet_v2?' + params.toString()
+                                getApiBaseUrl() + 'dcs?' + params.toString()
                             );
                             if (response.data?.length > 0) {
                                 const t = calculateTotals(response.data.map(parseRow));
@@ -457,10 +623,11 @@ const DailyCollectionSheet = () => {
                     const params = new URLSearchParams({ branch_id: branchId, selected_date: selectedDate });
                     if (loId) params.append('lo_id', loId);
 
-                    const response = await fetchWrapper.get(
-                        getApiBaseUrl() + 'data/get_daily_collection_sheet_v2?' + params.toString()
-                    );
+                    params.set('_name', 'get_daily_collection_sheet_v2');
 
+                    const response = await fetchWrapper.get(
+                        getApiBaseUrl() + 'dcs?' + params.toString()
+                    );
                     fetchSummary(branchId, selectedDate, loId);
 
                     if (response.data?.length > 0) {
@@ -792,7 +959,33 @@ const DailyCollectionSheet = () => {
                                             <div className="text-xs text-gray-500 mb-3">
                                                 {getBranchName()} — {moment(selectedDate).format('MMM D, YYYY')} ({moment(selectedDate).format('ddd')})
                                             </div>
-                                            <SummaryPanel summaryData={summaryData} />
+                                            <SummaryPanel
+                                                summaryData={summaryData}
+                                                dcsTotals={totals}
+                                                cashbookMcbuIn={cashbookMcbuIn}
+                                                branchId={transactionBranchId}
+                                                selectedDate={selectedDate}
+                                                canEditBeginningBalance={
+                                                    (isAdmin || isBranchManager) &&
+                                                    Boolean(transactionBranchId) &&
+                                                    !selectedLo
+                                                }
+                                                onBeginningBalanceSaved={() => {
+                                                    if (!transactionBranchId) return;
+
+                                                    fetchSummary(
+                                                        transactionBranchId,
+                                                        selectedDate,
+                                                        selectedLo?._id || null
+                                                    );
+
+                                                    fetchCashbookMonth(
+                                                        transactionBranchId,
+                                                        selectedDate,
+                                                        null
+                                                    );
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )}
