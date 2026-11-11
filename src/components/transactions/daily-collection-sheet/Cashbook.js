@@ -507,19 +507,6 @@ const emptyRow = (day) => ({
         beginningBalance: summary?.beginningBalance ?? 0,
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
-
-        regularLoanReleasePersons: Number(summary?.payLoanReleaseNo) || 0,
-        regularLoanReleasePrincipal: Number(summary?.payLoanRelease) || 0,
-
-        mcbuWithdrawal: Number(summary?.payMcbuWithdrawal) || 0,
-        csfWithdrawal: Number(summary?.payCsfWithdrawal) || 0,
-
-        mcbuReturnAmount: Number(summary?.payMcbuReturn) || 0,
-        csfReturnAmount: Number(summary?.payCsfReturn) || 0,
-
-        otherLoanReleasePersons: 0,
-        otherLoanReleasePrincipal: 0,
-
         managementCostExpenses: managementExpensesTotal,
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
