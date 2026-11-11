@@ -3,15 +3,11 @@
  * 
  * This is a wrapper around the original save logic that adds:
  * 1. Date validation (prevents midnight crossover issues)
- * 2. Retry mechanism (handles intermittent failures) - NEVER retries once the mutation has committed
+ * 2. Retry mechanism (handles intermittent failures)
  * 3. Better error logging
  * 4. Notifications for offset transactions
  * 
- * The core save logic remains unchanged from the original save.js, except:
- *  - CHANGE 1: retry loop stops once the Hasura mutation has committed (state.committed)
- *  - CHANGE 2: updateClient never overwrites a saved return path (oldGroupId/oldLoId) with null
- *  - CHANGE 3: group slots are released once per group per save (releaseGroupSlots) instead of
- *              one read-modify-write of the whole group row per offset collection
+ * The core save logic remains unchanged from the original save.js
  */
 
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, DENOMINATION_FIELDS, GROUP_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
@@ -217,13 +213,9 @@ async function saveWithProtection(req, res) {
         }
 
         // Step 2: Execute save with retry
-        // CHANGE 1: `state` is shared with executeSave. `state.committed` flips to true as soon as
-        // the Hasura mutation succeeds. Anything that fails after that point (e.g. savePendingLoans)
-        // must NOT trigger a retry: re-running executeSave would insert a second loans_history
-        // snapshot and double-apply every counter (mcbuCollection, csf*, mispayment, noPastDue...).
-        const state = { committed: false, offsetCollections: [] };
         let lastError = null;
         let attempt = 0;
+        let offsetCollections = []; // Track offsets for notifications
 
         while (attempt < MAX_RETRIES) {
             attempt++;
@@ -235,8 +227,8 @@ async function saveWithProtection(req, res) {
                     message: `Save attempt ${attempt}/${MAX_RETRIES}`
                 });
 
-                // Call the actual save logic
-                await executeSave(req, user_id, transactionId, user, state);
+                // Call the actual save logic - returns offsetCollections
+                offsetCollections = await executeSave(req, user_id, transactionId, user);
                 lastError = null; // success: an earlier failed attempt must not trigger the throw below
 
                 // Success!
@@ -246,7 +238,7 @@ async function saveWithProtection(req, res) {
                     page: 'Cash Collection SaveV2',
                     message: 'Save completed successfully',
                     attempts: attempt,
-                    offsetCount: state.offsetCollections.length
+                    offsetCount: offsetCollections.length
                 });
 
                 break; // Exit retry loop on success
@@ -258,22 +250,8 @@ async function saveWithProtection(req, res) {
                     transactionId,
                     page: 'Cash Collection SaveV2',
                     message: `Save attempt ${attempt} failed`,
-                    error: error.message,
-                    committed: state.committed
+                    error: error.message
                 });
-
-                // Already written to the database: never run the save again.
-                if (state.committed) {
-                    logger.error({
-                        user_id,
-                        transactionId,
-                        page: 'Cash Collection SaveV2',
-                        message: 'Failure AFTER the mutation committed. Not retrying.',
-                        error: error.message,
-                        stack: error.stack
-                    });
-                    break;
-                }
 
                 if (attempt < MAX_RETRIES) {
                     await sleep(RETRY_DELAY_MS * attempt);
@@ -281,16 +259,14 @@ async function saveWithProtection(req, res) {
             }
         }
 
-        // Retries exhausted and nothing was written: report the failure.
-        if (lastError && !state.committed) {
+        // If all retries failed, throw the last error
+        if (lastError && attempt >= MAX_RETRIES) {
             throw lastError;
         }
 
-        const offsetCollections = state.offsetCollections;
-
-        // Create notifications for offset transactions (the data is committed at this point)
+        // Create notifications for offset transactions (after successful save)
         // Note: notifyLoanOffset already checks if notifications are enabled internally
-        if (state.committed && offsetCollections.length > 0) {
+        if (offsetCollections.length > 0) {
             for (const offset of offsetCollections) {
                 try {
                     const branches = await findBranches({ _id: { _eq: offset.branchId } });
@@ -333,18 +309,6 @@ async function saveWithProtection(req, res) {
             });
         }
 
-        // The main mutation committed but a follow-up step (e.g. pending loans) failed.
-        // Tell the client plainly and make sure it does NOT resubmit.
-        if (lastError && state.committed) {
-            return res.status(200).json({
-                success: false,
-                error: true,
-                errorCode: 'POST_COMMIT_FAILED',
-                message: 'The transaction was saved, but a follow-up step failed. Do not resubmit. Please refresh the page and contact support.',
-                transactionId
-            });
-        }
-
         return res.status(200).json({
             success: true,
             transactionId,
@@ -377,12 +341,11 @@ async function saveWithProtection(req, res) {
 }
 
 // ============================================
-// ORIGINAL SAVE LOGIC (unchanged from save.js except where marked CHANGE)
-// Fills state.offsetCollections for notification processing and
-// sets state.committed once the mutation has been written.
+// ORIGINAL SAVE LOGIC (unchanged from save.js)
+// Returns: Array of offset collections for notification
 // ============================================
 
-async function executeSave(req, user_id, transactionId, user, state) {
+async function executeSave(req, user_id, transactionId, user) {
     let data = req.body;
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
@@ -391,12 +354,6 @@ async function executeSave(req, user_id, transactionId, user, state) {
 
     const mutationQl = [];
     const offsetCollections = []; // Track offsets for notifications
-    state.offsetCollections = offsetCollections;
-    state.committed = false;
-
-    // CHANGE 3: groupId -> Set(slotNo) of slots freed by offsets in this save.
-    // Applied once per group after all collections are processed.
-    const slotReleases = new Map();
 
     const delinquentAlertThreshold = await getDelinquentAlertThreshold();
 
@@ -569,7 +526,7 @@ async function executeSave(req, user_id, transactionId, user, state) {
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate);
-                    await updateClient(user_id, mutationQl, collection, slotReleases);
+                    await updateClient(user_id, mutationQl, collection);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0 && !collection.hasMcbuWithdrawal) {
@@ -579,11 +536,6 @@ async function executeSave(req, user_id, transactionId, user, state) {
         });
 
         await Promise.all(promiseData);
-
-        // CHANGE 3: one group update per group, after every collection has been processed
-        for (const [groupId, slots] of slotReleases) {
-            await releaseGroupSlots(mutationQl, groupId, [...slots]);
-        }
 
         if (newCC.length > 0) {
             await saveCollection(mutationQl, newCC, currentDate);
@@ -615,9 +567,6 @@ async function executeSave(req, user_id, transactionId, user, state) {
                 const errorMsg = result.errors.map(e => e.message).join(', ');
                 throw new Error(`GraphQL mutation failed: ${errorMsg}`);
             }
-
-            // CHANGE 1: from here on the data is written. A retry would apply it a second time.
-            state.committed = true;
         }
 
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
@@ -629,11 +578,12 @@ async function executeSave(req, user_id, transactionId, user, state) {
         }
     }
 
+    // Return offset collections for notification processing
     return offsetCollections;
 }
 
 // ============================================
-// HELPER FUNCTIONS (same as original save.js unless marked CHANGE)
+// HELPER FUNCTIONS (same as original save.js)
 // ============================================
 
 async function fixCashCollectionReference(cashCollection) {
@@ -915,8 +865,7 @@ async function updateLoanMcbuWithdrawal(user_id, mutationQL, collection) {
     }
 }
 
-// CHANGE 2: takes slotReleases (Map groupId -> Set(slotNo)) and no longer touches the group directly
-async function updateClient(user_id, mutationQl, loan, slotReleases) {
+async function updateClient(user_id, mutationQl, loan) {
     let client = await graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     
     if (client.length > 0) {
@@ -928,10 +877,7 @@ async function updateClient(user_id, mutationQl, loan, slotReleases) {
             ? (() => { try { return JSON.parse(loan.remarks); } catch (e) { return null; } })()
             : loan.remarks;
 
-        // Only save the return path when the client is still attached to a group.
-        // An already-detached client has groupId = null; copying that into oldGroupId would
-        // erase the only record of where the client belongs, and a later revert could not restore it.
-        if (client.status === 'offset' && client.groupId) {
+        if (client.status === 'offset') {
             client.oldLoId = client.loId;
             client.oldGroupId = client.groupId;
             client.groupId = null;
@@ -954,50 +900,54 @@ async function updateClient(user_id, mutationQl, loan, slotReleases) {
         );
         
         if (loanRemarks && loanRemarks.value?.startsWith('offset')) {
-            const slotNo = parseInt(loan.slotNo);
-            if (loan.groupId && Number.isInteger(slotNo)) {
-                if (!slotReleases.has(loan.groupId)) {
-                    slotReleases.set(loan.groupId, new Set());
-                }
-                slotReleases.get(loan.groupId).add(slotNo);
-            }
+            await updateGroup(user_id, mutationQl, loan);
         }
     }
 }
 
-// CHANGE 3: replaces updateGroup.
-// - runs once per group per save, so several offsets in one save no longer overwrite each other
-// - only frees slots that are not already free (the old code toggled: a free slot got re-occupied)
-// - writes only the fields it owns instead of the whole group row
-async function releaseGroupSlots(mutationQl, groupId, slots) {
-    const [group] = await findGroups({ _id: { _eq: groupId } });
+async function updateGroup(user_id, mutationQl, loan) {
+    let group = await graph.query(
+        queryQl(GROUP_TYPE('groups'), {where: { _id: { _eq: loan.groupId } }})
+    ).then(res => res.data.groups);
 
-    if (!group) {
-        logger.warn({ page: 'saveV2', message: 'releaseGroupSlots: group not found', groupId });
-        return;
-    }
+    if (group.length > 0) {
+        group = group[0];
 
-    const available = new Set(group.availableSlots || []);
-    const newlyFreed = slots.filter(s => !available.has(s));
+        if (group.status === 'full') {
+            group.status = 'available';
+        }
 
-    if (newlyFreed.length === 0) {
-        return; // already free: nothing to do
-    }
-
-    newlyFreed.forEach(s => available.add(s));
-
-    mutationQl.push(
-        updateQl(GROUP_TYPE('groups_' + (mutationQl.length + 1)), {
-            set: {
-                availableSlots: [...available].sort((a, b) => a - b),
-                noOfClients: Math.max(0, (group.noOfClients || 0) - newlyFreed.length),
-                status: group.status === 'full' ? 'available' : group.status
-            },
-            where: {
-                _id: { _eq: groupId }
+        const slotNo = parseInt(loan.slotNo);
+        if (!group.availableSlots) {
+            group.availableSlots = [];
+        }
+        
+        if (!group.availableSlots.includes(slotNo)) {
+            group.availableSlots.push(slotNo);
+            group.availableSlots.sort((a, b) => a - b);
+            group.noOfClients = group.noOfClients - 1;
+        } else {
+            const index = group.availableSlots.indexOf(slotNo);
+            if (index > -1) {
+                group.availableSlots.splice(index, 1);
+                group.availableSlots.sort((a, b) => a - b);
+                group.noOfClients = group.noOfClients + 1;
             }
-        })
-    );
+        }
+
+        delete group._id;
+
+        mutationQl.push(
+            updateQl(GROUP_TYPE('groups_' + (mutationQl.length + 1)), {
+                set: {
+                    ... group
+                },
+                where: {
+                    _id: { _eq: loan.groupId }
+                }
+            })
+        );
+    }
 }
 
 async function updateDenomination(mutationQl, groupId, currentDate, overallTotalNetCollection) {
