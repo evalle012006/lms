@@ -1009,7 +1009,7 @@ const DailyCollectionSheet = () => {
                                 />
                             </div>
                         )}
-                            </div>
+                    </div>
 
                     {/* ── Content ── */}
                     <div className="flex-1 overflow-auto min-h-0">
@@ -1068,16 +1068,6 @@ const DailyCollectionSheet = () => {
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        ) : activeTab === 'morning' ? (
-                            <div className="p-6">
-                                <div className="mb-3 flex items-center space-x-2">
-                                    <Sun className="w-5 h-5 text-amber-500" />
-                                    <h2 className="text-base font-bold text-gray-800">
-                                        Morning / Afternoon — {getBranchName()} — {moment(selectedDate).format('MMMM D, YYYY')}
-                                    </h2>
-                                </div>
-                                <MorningAfternoonPanel summaryData={summaryData} data={data} />
                             </div>
                         ) : activeTab === 'other-receipts' ? (
                             <div className="p-6">
