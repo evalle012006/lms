@@ -51,7 +51,6 @@ export class TransactionError extends Error {
 export const ERROR_CODES = {
     DATE_MISMATCH: 'DATE_MISMATCH',
     CSF_CONFIG_MISMATCH: 'CSF_CONFIG_MISMATCH',
-    POST_COMMIT_FAILED: 'POST_COMMIT_FAILED',   // saved on the server, follow-up step failed: never resend
     NETWORK_ERROR: 'NETWORK_ERROR',
     TIMEOUT: 'TIMEOUT',
     SERVER_ERROR: 'SERVER_ERROR',
@@ -253,8 +252,6 @@ export async function saveCashCollectionWithRetry(data, options = {}) {
                 if (error.code === ERROR_CODES.DATE_MISMATCH) return false;
                 if (error.code === ERROR_CODES.VALIDATION_ERROR) return false;
                 if (error.code === ERROR_CODES.CSF_CONFIG_MISMATCH) return false;
-                // The data is already written; resending would apply it a second time.
-                if (error.code === ERROR_CODES.POST_COMMIT_FAILED) return false;
                 return true;
             }
         }

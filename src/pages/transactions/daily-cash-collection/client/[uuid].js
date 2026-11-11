@@ -2185,11 +2185,7 @@ const CashCollectionDetailsPage = () => {
                             setLoading(false);
                             
                             // Handle specific error types
-                            if (error.code === ERROR_CODES.POST_COMMIT_FAILED) {
-                                // Saved. Show the saved data and prevent a second submit.
-                                saveProgress.setError('Your transaction was saved, but a follow-up step failed. Do NOT submit again. The page will reload; please inform support.');
-                                setTimeout(() => window.location.reload(), 4000);
-                            } else if (error.code === ERROR_CODES.DATE_MISMATCH) {
+                            if (error.code === ERROR_CODES.DATE_MISMATCH) {
                                 setPageStale(true);
                                 saveProgress.setError('The date has changed. Please refresh the page and try again.');
                             } else if (error.code === ERROR_CODES.CSF_CONFIG_MISMATCH) {
