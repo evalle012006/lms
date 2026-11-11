@@ -325,6 +325,45 @@ const DailyCollectionSheet = () => {
 
                             const mappedSummary = mapSummaryData(raw);
 
+                            let cashbookCollectionTotals = null;
+
+                            try {
+                                    const dcsParams = new URLSearchParams({
+                                        branch_id: branchId,
+                                        selected_date: date,
+                                    });
+
+                                    if (loId) {
+                                        dcsParams.append('lo_id', loId);
+                                    }
+
+                                    dcsParams.set('_name', 'get_daily_collection_sheet_v2');
+
+                                    const dcsResponse = await fetchWrapper.get(
+                                        getApiBaseUrl() + 'dcs?' + dcsParams.toString()
+                                    );
+
+                                    if (
+                                        dcsResponse?.success === false ||
+                                        !Array.isArray(dcsResponse?.data)
+                                    ) {
+                                        throw new Error(
+                                            dcsResponse?.message ||
+                                            `Unable to retrieve DCS collections for ${date}`
+                                        );
+                                    }
+
+                                    const dcsRows = dcsResponse.data.map(parseRow);
+
+                                    cashbookCollectionTotals = calculateTotals(dcsRows);
+
+                                } catch (error) {
+                                    console.error(
+                                        `Cashbook collection totals error for ${date}:`,
+                                        error
+                                    );
+                                }
+
                             let effectiveBeginningBalance = null;
                             let beginningBalanceSource = 'historical';
 
@@ -380,6 +419,46 @@ const DailyCollectionSheet = () => {
                                 mappedSummary
                                     ? {
                                         ...mappedSummary,
+
+                                        // MCBU Collection
+                                        rcptMcbu:
+                                            cashbookCollectionTotals !== null
+                                                ? cashbookCollectionTotals.mcbuActual
+                                                : mappedSummary.rcptMcbu,
+
+                                        // CSF Collection
+                                        rcptCsf:
+                                            cashbookCollectionTotals !== null
+                                                ? cashbookCollectionTotals.csfCollection
+                                                : mappedSummary.rcptCsf,
+
+                                        // Regular Loan Collection (Daily / 60 Days)
+                                        rcptRegularLoan:
+                                            cashbookCollectionTotals !== null
+                                                ? cashbookCollectionTotals.regularLoanActual
+                                                : mappedSummary.rcptRegularLoan,
+
+                                        // Other Loan Collection (Weekly)
+                                        rcptOtherLoan:
+                                            cashbookCollectionTotals !== null
+                                                ? cashbookCollectionTotals.otherLoanActual
+                                                : mappedSummary.rcptOtherLoan,
+
+                                        payMcbuReturn:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.mcbuReturnAmount) || 0
+                                                : mappedSummary.payMcbuReturn,
+
+                                        // MCBU Return - Number of Persons
+                                        payMcbuReturnNo:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.mcbuReturnNo) || 0
+                                                : Number(mappedSummary.payMcbuReturnNo) || 0,
+
+                                        payCsfReturn:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.csfReturnAmount) || 0
+                                                : mappedSummary.payCsfReturn,
 
                                         beginningBalance:
                                             effectiveBeginningBalance !== null
@@ -966,7 +1045,7 @@ const DailyCollectionSheet = () => {
                                                 branchId={transactionBranchId}
                                                 selectedDate={selectedDate}
                                                 canEditBeginningBalance={
-                                                    (isAdmin || isBranchManager) &&
+                                                    isAdmin &&
                                                     Boolean(transactionBranchId) &&
                                                     !selectedLo
                                                 }

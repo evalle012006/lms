@@ -514,6 +514,7 @@ const emptyRow = (day) => ({
         mcbuWithdrawal: Number(summary?.payMcbuWithdrawal) || 0,
         csfWithdrawal: Number(summary?.payCsfWithdrawal) || 0,
 
+        mcbuReturnPersons: Number(summary?.payMcbuReturnNo) || 0,
         mcbuReturnAmount: Number(summary?.payMcbuReturn) || 0,
         csfReturnAmount: Number(summary?.payCsfReturn) || 0,
 
