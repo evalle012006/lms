@@ -394,16 +394,6 @@ const DailyCollectionSheet = () => {
                                         ) || 0,
                                 };
 
-                                if (date === '2026-11-11') {
-                                    console.log('========== CASHBOOK LOAN RELEASE ==========');
-                                    console.log('Branch ID:', branchId);
-                                    console.log('Selected Date:', date);
-                                    console.log('API Response:', loanReleaseResponse);
-                                    console.log('Raw Loan Releases:', loanReleaseRaw);
-                                    console.log('Mapped Loan Releases:', cashbookLoanReleases);
-                                    console.log('==========================================');
-                                }
-
                             } catch (error) {
                                 console.error(
                                     `Cashbook loan releases error for ${date}:`,
@@ -418,16 +408,6 @@ const DailyCollectionSheet = () => {
                                     loanReleaseError: true,
                                 };
                             }
-
-                            if (date === "2026-11-11") {
-                                console.log("===== NOVEMBER 11 LOAN RELEASE =====");
-                                console.log("Branch ID:", branchId);
-                                console.log("Date:", date);
-                                console.log("Raw Summary:", raw);
-                                console.log("Loan Release Amount:", mappedSummary?.payLoanRelease);
-                                console.log("Loan Release Persons:", mappedSummary?.payLoanReleaseNo);
-                                console.log("Loan Release Per LO:", mappedSummary?.loanReleasePerLo);
-                                }
 
                             let cashbookCollectionTotals = null;
 
