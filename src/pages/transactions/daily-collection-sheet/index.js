@@ -325,6 +325,110 @@ const DailyCollectionSheet = () => {
 
                             const mappedSummary = mapSummaryData(raw);
 
+                            // =========================================================
+                            // CASHBOOK - AUTOMATIC LOAN RELEASES
+                            // =========================================================
+
+                            let cashbookLoanReleases = {
+                                regularLoanReleasePersons: 0,
+                                regularLoanReleasePrincipal: 0,
+                                otherLoanReleasePersons: 0,
+                                otherLoanReleasePrincipal: 0,
+                            };
+
+                            try {
+                                const loanReleaseParams = new URLSearchParams({
+                                    branch_id: branchId,
+                                    selected_date: date,
+                                });
+
+                                loanReleaseParams.set(
+                                    '_name',
+                                    'get_cashbook_loan_releases'
+                                );
+
+                                const loanReleaseResponse = await fetchWrapper.get(
+                                    getApiBaseUrl() +
+                                    'dcs?' +
+                                    loanReleaseParams.toString()
+                                );
+
+                                const loanReleaseRaw = Array.isArray(
+                                    loanReleaseResponse?.data
+                                )
+                                    ? loanReleaseResponse.data[0]
+                                    : loanReleaseResponse?.data;
+
+                                if (loanReleaseResponse?.success === false) {
+                                    throw new Error(
+                                        loanReleaseResponse?.message ||
+                                        'Unable to retrieve Cashbook loan releases'
+                                    );
+                                }
+
+                                if (!loanReleaseRaw) {
+                                    throw new Error(
+                                        `No Cashbook loan-release result for ${date}`
+                                    );
+                                }
+
+                                cashbookLoanReleases = {
+                                    regularLoanReleasePersons:
+                                        Number(
+                                            loanReleaseRaw.regular_loan_release_persons
+                                        ) || 0,
+
+                                    regularLoanReleasePrincipal:
+                                        Number(
+                                            loanReleaseRaw.regular_loan_release_principal
+                                        ) || 0,
+
+                                    otherLoanReleasePersons:
+                                        Number(
+                                            loanReleaseRaw.other_loan_release_persons
+                                        ) || 0,
+
+                                    otherLoanReleasePrincipal:
+                                        Number(
+                                            loanReleaseRaw.other_loan_release_principal
+                                        ) || 0,
+                                };
+
+                                if (date === '2026-11-11') {
+                                    console.log('========== CASHBOOK LOAN RELEASE ==========');
+                                    console.log('Branch ID:', branchId);
+                                    console.log('Selected Date:', date);
+                                    console.log('API Response:', loanReleaseResponse);
+                                    console.log('Raw Loan Releases:', loanReleaseRaw);
+                                    console.log('Mapped Loan Releases:', cashbookLoanReleases);
+                                    console.log('==========================================');
+                                }
+
+                            } catch (error) {
+                                console.error(
+                                    `Cashbook loan releases error for ${date}:`,
+                                    error
+                                );
+
+                                cashbookLoanReleases = {
+                                    regularLoanReleasePersons: null,
+                                    regularLoanReleasePrincipal: null,
+                                    otherLoanReleasePersons: null,
+                                    otherLoanReleasePrincipal: null,
+                                    loanReleaseError: true,
+                                };
+                            }
+
+                            if (date === "2026-11-11") {
+                                console.log("===== NOVEMBER 11 LOAN RELEASE =====");
+                                console.log("Branch ID:", branchId);
+                                console.log("Date:", date);
+                                console.log("Raw Summary:", raw);
+                                console.log("Loan Release Amount:", mappedSummary?.payLoanRelease);
+                                console.log("Loan Release Persons:", mappedSummary?.payLoanReleaseNo);
+                                console.log("Loan Release Per LO:", mappedSummary?.loanReleasePerLo);
+                                }
+
                             let cashbookCollectionTotals = null;
 
                             try {
@@ -420,6 +524,9 @@ const DailyCollectionSheet = () => {
                                     ? {
                                         ...mappedSummary,
 
+                                        // CASHBOOK LOAN RELEASES
+                                        ...cashbookLoanReleases,
+
                                         // MCBU Collection
                                         rcptMcbu:
                                             cashbookCollectionTotals !== null
@@ -443,6 +550,18 @@ const DailyCollectionSheet = () => {
                                             cashbookCollectionTotals !== null
                                                 ? cashbookCollectionTotals.otherLoanActual
                                                 : mappedSummary.rcptOtherLoan,
+
+                                        // MCBU Withdrawal
+                                        payMcbuWithdrawal:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.mcbuWithdrawal) || 0
+                                                : Number(mappedSummary.payMcbuWithdrawal) || 0,
+
+                                        // CSF Withdrawal
+                                        payCsfWithdrawal:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.csfWithdrawal) || 0
+                                                : Number(mappedSummary.payCsfWithdrawal) || 0,
 
                                         payMcbuReturn:
                                             cashbookCollectionTotals !== null

@@ -27,6 +27,7 @@ const BRANCH_TYPE = createGraphType(
 const ALLOWED_DCS_QUERIES = [
     'get_daily_collection_sheet_v2',
     'get_daily_collection_summary',
+    'get_cashbook_loan_releases',
 ];
 
 const isValidDcsDate = (value) => {
@@ -205,6 +206,52 @@ async function getData(req, res) {
                         'The selected Loan Officer does not belong to this branch.',
                 });
             }
+        }
+
+        if (_name === 'get_cashbook_loan_releases') {
+            const loanReleaseResponse = await graph.apollo.query({
+                query: gql`
+                    query GetCashbookLoanReleases(
+                        $branch_id: String!
+                        $selected_date: String!
+                    ) {
+                        get_cashbook_loan_releases(
+                            args: {
+                                branch_id: $branch_id
+                                selected_date: $selected_date
+                            }
+                        ) {
+                            regular_loan_release_persons
+                            regular_loan_release_principal
+                            other_loan_release_persons
+                            other_loan_release_principal
+                        }
+                    }
+                `,
+                variables: {
+                    branch_id,
+                    selected_date,
+                },
+                fetchPolicy: 'no-cache',
+            });
+
+            if (loanReleaseResponse.errors?.length) {
+                console.error(
+                    'Cashbook loan-release GraphQL errors:',
+                    loanReleaseResponse.errors
+                );
+
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to retrieve Cashbook loan releases.',
+                });
+            }
+
+            return res.status(200).json({
+                data:
+                    loanReleaseResponse.data
+                        ?.get_cashbook_loan_releases || [],
+            });
         }
 
         const response = await graph.apollo.query({
