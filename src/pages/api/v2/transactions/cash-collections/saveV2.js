@@ -376,7 +376,7 @@ async function executeSave(req, user_id, transactionId, user) {
 
                 // New loans from the tomorrow tab are release-only rows. They are never
                 // part of a draft group save, so never persist draft=true for them.
-                if (collection.status === 'tomorrow' || collection.status === 'pending' || collection.status === 'completed') {
+                if (collection.status.contains('tomorrow', 'pending', 'completed', 'closed')) {
                     collection.draft = false;
                 }
 
