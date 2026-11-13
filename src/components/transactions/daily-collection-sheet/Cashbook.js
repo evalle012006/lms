@@ -508,8 +508,37 @@ const emptyRow = (day) => ({
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
         managementCostExpenses: managementExpensesTotal,
+
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
+
+        regularLoanReleasePersons:
+          Number(summary?.regularLoanReleasePersons) || 0,
+
+        regularLoanReleasePrincipal:
+          Number(summary?.regularLoanReleasePrincipal) || 0,
+
+        otherLoanReleasePersons:
+          Number(summary?.otherLoanReleasePersons) || 0,
+
+        otherLoanReleasePrincipal:
+          Number(summary?.otherLoanReleasePrincipal) || 0,
+
+        mcbuWithdrawal:
+          Number(summary?.payMcbuWithdrawal) || 0,
+
+        csfWithdrawal:
+          Number(summary?.payCsfWithdrawal) || 0,
+
+        mcbuReturnPersons:
+          Number(summary?.payMcbuReturnNo) || 0,
+
+        mcbuReturnAmount:
+          Number(summary?.payMcbuReturn) || 0,
+
+        csfReturnAmount:
+          Number(summary?.payCsfReturn) || 0,
+
         staffCbuCollection,
         cashbondCollection,
         salaryAdvanceCollection,
