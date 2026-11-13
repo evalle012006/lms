@@ -394,7 +394,6 @@ const CashCollectionDetailsPage = () => {
                     let amountRelease = 0;
                     let loanBalance = 0;
                     let mispayment = false;
-                    // let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
                     let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
@@ -423,7 +422,6 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
                             excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
                             paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
-                            coMaker = '-';
                             csfCollection = current.csfCollection;
                             csfWithdrawal = current.csfWithdrawal;
                             csfReturnAmt = current.csfReturnAmt;
@@ -481,7 +479,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
-                        coMaker: normalizeCoMaker(cc.coMaker),
+                        coMaker: '-',
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
