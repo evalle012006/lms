@@ -258,6 +258,7 @@ const TransferClientPage = () => {
         setMode('add');
         setClient({});
         setShowAddDrawer(false);
+        console.log('handleCloseAddDrawer called, shouldRefresh:', shouldRefresh);
         
         // Only refresh data if something was actually changed
         if (shouldRefresh) {
@@ -494,6 +495,7 @@ const TransferClientPage = () => {
             } else if (currentUser.role.rep === 3) {
                 url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: previousLastMonthDate });
                 const response = await fetchWrapper.get(url);
+                console.log('refetch', url, response?.success, response?.data?.length);
                 if (response.success) {
                     // FIXED: Sort the data before dispatching to Redux
                     const sortedData = sortTransferList([...response.data]);
