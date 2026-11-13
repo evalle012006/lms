@@ -374,6 +374,12 @@ async function executeSave(req, user_id, transactionId, user) {
                 const mispaymentSent = collection.mispayment === true;
                 collection.mispayment = resolveMispayment(collection);
 
+                // New loans from the tomorrow tab are release-only rows. They are never
+                // part of a draft group save, so never persist draft=true for them.
+                if (collection.status === 'tomorrow' || collection.status === 'pending' || collection.status === 'completed') {
+                    collection.draft = false;
+                }
+
                 if (mispaymentSent && !collection.mispayment) {
                     logger.warn({
                         user_id, transactionId, page: 'Cash Collection SaveV2',
