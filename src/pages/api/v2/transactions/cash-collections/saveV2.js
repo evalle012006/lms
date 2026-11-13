@@ -23,7 +23,7 @@ import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
-import { NON_MISPAY_REMARKS } from '@/lib/constants';
+import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
 
 // ============================================
@@ -376,7 +376,7 @@ async function executeSave(req, user_id, transactionId, user) {
 
                 // New loans from the tomorrow tab are release-only rows. They are never
                 // part of a draft group save, so never persist draft=true for them.
-                if (collection.status.contains('tomorrow', 'pending', 'completed', 'closed')) {
+                if (NON_DRAFT_TRANSACTION_STATUSES.includes(collection.status)) {
                     collection.draft = false;
                 }
 
