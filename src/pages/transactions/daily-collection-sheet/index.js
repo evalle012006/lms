@@ -507,6 +507,7 @@ const DailyCollectionSheet = () => {
                                         // CASHBOOK LOAN RELEASES
                                         ...cashbookLoanReleases,
 
+                                        // Cashbook Receipts - Other Income CSF
                                         rcptOtherIncomeCsf:
                                             Number(mappedSummary.rcptOtherIncomeCsf) || 0,
 

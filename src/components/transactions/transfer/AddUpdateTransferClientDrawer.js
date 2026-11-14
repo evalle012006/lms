@@ -372,7 +372,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                         action.setSubmitting = false;
                         action.resetForm({values: ''});
                         reset();
-                        onClose();
+                        onClose(true);
                     }
                 }).catch(error => {
                     console.log(error);

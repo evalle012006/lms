@@ -172,6 +172,7 @@ async function getLoanWithCashCollection(req, res) {
             ... c,
             branch: c.branch?.[0],
             client: c.client?.[0],
+            group: c.group?.[0],
             current: c.current?.[0],
             current: c.current ?? [],
             currentRelease: c.currentRelease ?? [],

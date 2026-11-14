@@ -1511,7 +1511,9 @@ const CashCollectionDetailsPage = () => {
 
                     cashCollection[index] = {...cashCollection[index], loanFor: loan?.loanFor, dateOfRelease: loan?.dateOfRelease};
                 } else if (loan && (currentLoan == null || currentLoan?.status !== 'active')) {
-                    const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
+                    const prevLoan = loan.prevLoanId
+                        ? (loan.prevLoans.find(l => l?._id === loan.prevLoanId) ?? null)
+                        : null;
                     const clientObj = loan.client ? loan.client : null;
                     if (clientObj) {
                         let pendingTomorrow = {
@@ -1520,7 +1522,7 @@ const CashCollectionDetailsPage = () => {
                             coMaker: normalizeCoMaker(loan.coMaker),
                             slotNo: loan.slotNo,
                             loanId: loan._id,
-                            group: prevLoan ? prevLoan.group : loan.group,
+                            group: loan.group,
                             groupId: loan.groupId,
                             branchId: loan.branchId,
                             clientId: loan.clientId,
@@ -1989,7 +1991,7 @@ const CashCollectionDetailsPage = () => {
                 let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     if (cc.status !== 'totals') {
-                        temp.groupDay = temp.group.day;
+                        temp.groupDay = temp.group?.day ?? currentGroup?.day;
                     }
 
                     temp.mcbuCol = temp.mcbuCol ? temp.mcbuCol : 0;

@@ -105,6 +105,10 @@ export const LOR_NO_CSF_IN_REMARKS = [
     'offset-matured-pd'
 ]
 
+export const NON_DRAFT_TRANSACTION_STATUSES = [
+    'tomorrow', 'pending', 'completed', 'closed'
+];
+
 export const NON_MISPAY_REMARKS = [
     'past due', 'matured-past due', 'matured_past_due_collection',
     'excused advance payment', 'delinquent-offset'
