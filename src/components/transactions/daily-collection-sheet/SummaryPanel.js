@@ -32,6 +32,7 @@ const SummaryPanel = ({
     cashbookMcbuIn,
     branchId,
     selectedDate,
+    otherIncomeRefreshKey = 0,
     canEditBeginningBalance = false,
     onBeginningBalanceSaved
 }) => {
@@ -45,6 +46,88 @@ const SummaryPanel = ({
     const [balanceLoading, setBalanceLoading] = useState(false);
     const [balanceSaving, setBalanceSaving] = useState(false);
     const [balanceError, setBalanceError] = useState('');
+    const [otherIncomeBankDeposit, setOtherIncomeBankDeposit] = useState(0);
+    const [otherIncomeReceipts, setOtherIncomeReceipts] = useState(0);
+    const [otherIncomePassbook, setOtherIncomePassbook] = useState(0);
+
+    useEffect(() => {
+        if (!branchId || !selectedDate) {
+            setOtherIncomeBankDeposit(0);
+            setOtherIncomeReceipts(0);
+            setOtherIncomePassbook(0);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadBankDeposits = async () => {
+            try {
+                const params = new URLSearchParams({
+                    branch_id: String(branchId),
+                    transaction_date: selectedDate,
+                });
+
+                const response = await fetchWrapper.get(
+                    `${getApiBaseUrl()}transactions/dcs/other-income?${params.toString()}`
+                );
+
+                if (cancelled) return;
+
+                const transactions = Array.isArray(response?.transactions)
+                    ? response.transactions
+                    : [];
+
+                let bankDepositTotal = 0;
+                let otherIncomeTotal = 0;
+                let passbookTotal = 0;
+
+                transactions.forEach((transaction) => {
+                    const amount = Number(transaction?.amount || 0);
+
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                        return;
+                    }
+
+                    switch (transaction.transaction_type) {
+
+                        case "bank_deposit":
+                            bankDepositTotal += amount;
+                            break;
+
+                        case "penalty":
+                        case "excess_remittance":
+                            otherIncomeTotal += amount;
+                            break;
+
+                        case "passbook":
+                            passbookTotal += amount;
+                            break;
+
+                        default:
+                            break;
+                    }
+                });
+
+                setOtherIncomeBankDeposit(bankDepositTotal);
+                setOtherIncomeReceipts(otherIncomeTotal);
+                setOtherIncomePassbook(passbookTotal);
+            } catch (error) {
+                console.error("Other Income loading error:", error);
+
+                if (!cancelled) {
+                    setOtherIncomeBankDeposit(0);
+                    setOtherIncomeReceipts(0);
+                    setOtherIncomePassbook(0);
+                }
+            }
+        };
+
+        loadBankDeposits();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [branchId, selectedDate, otherIncomeRefreshKey]);
 
     useEffect(() => {
         let cancelled = false;
@@ -187,16 +270,19 @@ const SummaryPanel = ({
         rcptCbhb: d.rcptCbhb,
         rcptAddHospi: d.rcptAddHospi,
         rcptWtax: d.rcptWtax,
-        rcptMcbuUnclaimedIn:
-        cashbookMcbuIn !== null && cashbookMcbuIn !== undefined
-            ? Number(cashbookMcbuIn) || 0
-            : d.rcptMcbuUnclaimedIn,
-        rcptOtherIncomePassbook: d.rcptOtherIncomePassbook,
-        rcptOtherIncome: d.rcptOtherIncome,
+
+        rcptMcbuUnclaimedIn: Number(d.rcptMcbuUnclaimedIn) || 0,
+
+        rcptOtherIncomePassbook:
+            Number(d.rcptOtherIncomePassbook || 0) +
+            otherIncomePassbook,
+        rcptOtherIncome:
+            Number(d.rcptOtherIncome || 0) +
+            otherIncomeReceipts,
         rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
         rcptOtherReceiptsPicture: d.rcptOtherReceiptsPicture,
         rcptOtherReceiptsGl: d.rcptOtherReceiptsGl,
-        rcptFundTransferIn: d.rcptFundTransferIn,
+        rcptFundTransferIn: Number(d.rcptFundTransferIn) || 0,
         rcptBankWithdrawal: d.rcptBankWithdrawal,
         payLoanRelease: d.payLoanRelease,
         payMcbuWithdrawal: d.payMcbuWithdrawal,
@@ -215,7 +301,9 @@ const SummaryPanel = ({
         payRebates: d.payRebates,
         payOtherPayments: d.payOtherPayments,
         payFundTransferOut: d.payFundTransferOut,
-        payBankDeposits: d.payBankDeposits,
+        payBankDeposits:
+            Number(d.payBankDeposits || 0) +
+            otherIncomeBankDeposit,
     };
 
     // ── RECEIPTS DIFFERENCES ─────────────────────────────
@@ -228,12 +316,17 @@ const SummaryPanel = ({
         amounts.rcptMcbuUnclaimedIn -
         d.rcptMcbuUnclaimedIn;
 
+    const fundTransferInDifference =
+        amounts.rcptFundTransferIn -
+        Number(d.rcptFundTransferIn || 0);
+
     const totalCollectionDifference =
         mcbuDifference +
         csfDifference +
         regularLoanDifference +
         otherLoanDifference +
-        mcbuUnclaimedInDifference;
+        mcbuUnclaimedInDifference +
+        fundTransferInDifference;
 
     // ── PAYMENTS DIFFERENCES ─────────────────────────────
 
@@ -246,10 +339,15 @@ const SummaryPanel = ({
     // ── UPDATED TOTALS ───────────────────────────────────
 
     const updatedTotalReceipts =
-        Number(d.totalReceipts || 0) + totalCollectionDifference;
+        Number(d.totalReceipts || 0) +
+        totalCollectionDifference +
+        otherIncomeReceipts +
+        otherIncomePassbook;
 
     const updatedTotalPayments =
-        Number(d.totalPayments || 0) + totalPaymentDifference;
+        Number(d.totalPayments || 0) +
+        totalPaymentDifference +
+        otherIncomeBankDeposit;
 
     const updatedClosingBalance =
         Math.round(

@@ -161,7 +161,7 @@ const DailyCollectionSheet = () => {
 
     const [cashbookData, setCashbookData] = useState({});
     const [cashbookLoading, setCashbookLoading] = useState(false);
-    const [cashbookMcbuIn, setCashbookMcbuIn] = useState(null);
+    const [otherIncomeRefreshKey, setOtherIncomeRefreshKey] = useState(0);
 
     const [activeTab, setActiveTab] = useState('dcs');
     const roleRep = Number(currentUser?.role?.rep);
@@ -507,6 +507,14 @@ const DailyCollectionSheet = () => {
                                         // CASHBOOK LOAN RELEASES
                                         ...cashbookLoanReleases,
 
+                                        rcptOtherIncomeCsf:
+                                            Number(mappedSummary.rcptOtherIncomeCsf) || 0,
+
+                                        // Cashbook Receipts - Fund Transfer
+                                        // Source: DCS Summary Panel Receipts #15
+                                        rcptFundTransferIn:
+                                            Number(mappedSummary.rcptFundTransferIn) || 0,
+
                                         // MCBU Collection
                                         rcptMcbu:
                                             cashbookCollectionTotals !== null
@@ -599,7 +607,7 @@ const DailyCollectionSheet = () => {
     );
 
     useEffect(() => {
-        if (activeTab !== 'cashbook') return;
+        if (activeTab !== 'cashbook' && activeTab !== 'dcs') return;
 
         let branchId = null;
         let loId = null;
@@ -641,100 +649,6 @@ const DailyCollectionSheet = () => {
         canSelectBranch,
         fetchCashbookMonth,
     ]);
-
-    // ── Cashbook Client's MCBU (IN) ──────────────────────────────────────────
-    useEffect(() => {
-        let cancelled = false;
-
-        const fetchCashbookMcbuIn = async () => {
-            setCashbookMcbuIn(null);
-
-            if (!transactionBranchId || !selectedDate) {
-                return;
-            }
-
-            try {
-                const response = await fetchWrapper.get(
-                    `${getApiBaseUrl()}transactions/dcs?branch_id=${encodeURIComponent(transactionBranchId)}`
-                );
-
-                const transactions =
-                    response?.transactions ||
-                    response?.data ||
-                    response?.response ||
-                    [];
-
-                if (!Array.isArray(transactions)) {
-                    if (!cancelled) setCashbookMcbuIn(null);
-                    return;
-                }
-
-                let totalMcbuIn = 0;
-
-                transactions.forEach((transaction) => {
-                    const transactionDate = String(
-                        transaction?.transaction_date ||
-                        transaction?.date ||
-                        ''
-                    ).slice(0, 10);
-
-                    if (transactionDate !== selectedDate) return;
-
-                    const items =
-                        transaction?.dcs_transaction_items ||
-                        transaction?.items ||
-                        [];
-
-                    items.forEach((item) => {
-                        const category = String(item?.category || '')
-                            .trim()
-                            .toLowerCase();
-
-                        const code = String(item?.code || '').trim();
-
-                        const accountTitle = String(
-                            item?.account_title ||
-                            item?.accountTitle ||
-                            ''
-                        )
-                            .trim()
-                            .toLowerCase();
-
-                        const amount = Number(item?.amount || 0);
-
-                        if (
-                            category === 'other receipts' &&
-                            code === '019' &&
-                            accountTitle === "client's mcbu (in)" &&
-                            Number.isFinite(amount) &&
-                            amount > 0
-                        ) {
-                            totalMcbuIn += amount;
-                        }
-                    });
-                });
-
-                if (!cancelled) {
-                    setCashbookMcbuIn(totalMcbuIn);
-                }
-            } catch (error) {
-                console.error(
-                    "Error fetching Cashbook Client's MCBU (IN):",
-                    error
-                );
-
-                if (!cancelled) {
-                    setCashbookMcbuIn(null);
-                }
-            }
-        };
-
-        fetchCashbookMcbuIn();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [transactionBranchId, selectedDate]);
 
     // ── Main DCS data fetch ──────────────────────────────────────────────────
     useEffect(() => {
@@ -1140,9 +1054,9 @@ const DailyCollectionSheet = () => {
                                             <SummaryPanel
                                                 summaryData={summaryData}
                                                 dcsTotals={totals}
-                                                cashbookMcbuIn={cashbookMcbuIn}
                                                 branchId={transactionBranchId}
                                                 selectedDate={selectedDate}
+                                                otherIncomeRefreshKey={otherIncomeRefreshKey}
                                                 canEditBeginningBalance={
                                                     isAdmin &&
                                                     Boolean(transactionBranchId) &&
@@ -1189,6 +1103,23 @@ const DailyCollectionSheet = () => {
                                 <TransactionPanel
                                     branchId={transactionBranchId}
                                     selectedDate={selectedDate}
+                                    onOtherIncomeChanged={() => {
+                                        setOtherIncomeRefreshKey((previous) => previous + 1);
+
+                                        if (!transactionBranchId) return;
+
+                                        fetchSummary(
+                                            transactionBranchId,
+                                            selectedDate,
+                                            selectedLo?._id || null
+                                        );
+
+                                        fetchCashbookMonth(
+                                            transactionBranchId,
+                                            selectedDate,
+                                            null
+                                        );
+                                    }}
                                 />
                             </div>
 
@@ -1199,6 +1130,7 @@ const DailyCollectionSheet = () => {
                                     selectedDate={selectedDate}
                                     cashbookData={cashbookData}
                                     loading={cashbookLoading}
+                                    otherIncomeRefreshKey={otherIncomeRefreshKey}
                                 />
                             </div>
 

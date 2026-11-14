@@ -5,6 +5,19 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import { Receipt, Plus, X, Eye, Printer, Trash2, Pencil, } from 'lucide-react';
 
+const OTHER_INCOME_TYPES = [
+    { value: 'penalty', label: 'Penalty' },
+    { value: 'excess_remittance', label: 'Excess Remittance' },
+    { value: 'passbook', label: 'Passbook' },
+    { value: 'bank_deposit', label: 'Bank Deposit' },
+];
+
+const EMPTY_OTHER_INCOME_FORM = {
+    transactionType: '',
+    description: '',
+    amount: '',
+};
+
 const EMPTY_ITEM = {
     category: '',
     code: '',
@@ -134,7 +147,11 @@ const money = (value) => {
     });
 };
 
-const TransactionPanel = ({ branchId, selectedDate }) => {
+const TransactionPanel = ({
+    branchId,
+    selectedDate,
+    onOtherIncomeChanged,
+}) => {
     const currentUser = useSelector((state) => state.user.data);
     const currentDate = useSelector((state) => state.systemSettings.currentDate);
     const isAdmin = Number(currentUser?.role?.rep) === 1;
@@ -179,6 +196,16 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [savingTransaction, setSavingTransaction] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState(null);
+    const [otherIncomeDate, setOtherIncomeDate] = useState(selectedDate || "");
+    const [otherIncomeTransactions, setOtherIncomeTransactions] = useState([]);
+    const [loadingOtherIncome, setLoadingOtherIncome] = useState(false);
+    const [editingOtherIncomeId, setEditingOtherIncomeId] = useState(null);
+    const [viewingOtherIncome, setViewingOtherIncome] = useState(null);
+    const [deletingOtherIncomeId, setDeletingOtherIncomeId] = useState(null);
+
+    useEffect(() => {
+        setOtherIncomeDate(selectedDate || "");
+    }, [selectedDate]);
 
     const mapDbTransaction = (row) => ({
         id: row.id,
@@ -210,6 +237,43 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
             amount: Number(item.amount || 0),
         })),
     });
+
+    const loadOtherIncomeTransactions = async () => {
+        if (!branchId || !selectedDate) {
+            setOtherIncomeTransactions([]);
+            return;
+        }
+
+        try {
+            setLoadingOtherIncome(true);
+
+            const params = new URLSearchParams({
+                branch_id: String(branchId),
+                transaction_date: String(selectedDate).slice(0, 10),
+            });
+
+            const response = await fetchWrapper.get(
+                `${getApiBaseUrl()}transactions/dcs/other-income?${params.toString()}`
+            );
+
+            if (response?.error) {
+                throw new Error(
+                    response.message || "Failed to load Other Income Transactions."
+                );
+            }
+
+            setOtherIncomeTransactions(
+                Array.isArray(response?.transactions)
+                    ? response.transactions
+                    : []
+            );
+        } catch (error) {
+            console.error("Load Other Income Transactions error:", error);
+            setOtherIncomeTransactions([]);
+        } finally {
+            setLoadingOtherIncome(false);
+        }
+    };
 
     const loadTransactions = async () => {
         if (!branchId || !selectedDate) {
@@ -262,6 +326,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
     useEffect(() => {
         loadTransactions();
+        loadOtherIncomeTransactions();
     }, [branchId, selectedDate]);
 
     const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -271,10 +336,8 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
         items: [{ ...EMPTY_ITEM }],
     });
 
-    const [typeForm, setTypeForm] = useState({
-        category: '',
-        code: '',
-        accountTitle: '',
+   const [typeForm, setTypeForm] = useState({
+        ...EMPTY_OTHER_INCOME_FORM,
     });
 
     const totalAmount = useMemo(() => {
@@ -385,56 +448,165 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
         });
     };
 
-    const handleSaveTransactionType = () => {
-        const category = typeForm.category.trim();
-        const code = typeForm.code.trim();
-        const accountTitle = typeForm.accountTitle.trim();
+    const handleSaveTransactionType = async () => {
+        const transactionType = typeForm.transactionType;
 
-        if (!category) {
-            alert('Please select a category.');
+        const description = String(
+            typeForm.description || ""
+        ).trim();
+
+        const amount = Number(typeForm.amount);
+
+        if (!transactionType) {
+            alert("Please select a transaction type.");
             return;
         }
 
-        if (!code) {
-            alert('Please enter the transaction code.');
+        if (!description) {
+            alert("Please enter a description.");
             return;
         }
 
-        if (!accountTitle) {
-            alert('Please enter the account title.');
+        if (
+            typeForm.amount === "" ||
+            !Number.isFinite(amount) ||
+            amount <= 0
+        ) {
+            alert("Please enter a valid amount greater than zero.");
             return;
         }
 
-        const duplicate = transactionTypes.some(
-            (item) =>
-                item.category?.toLowerCase() === category.toLowerCase() &&
-                item.code?.toLowerCase() === code.toLowerCase() &&
-                item.accountTitle?.toLowerCase() === accountTitle.toLowerCase()
+        if (!branchId) {
+            alert("Please select a branch first.");
+            return;
+        }
+
+        if (!otherIncomeDate) {
+            alert("Please select a transaction date.");
+            return;
+        }
+
+        try {
+            const payload = {
+                branch_id: branchId,
+                transaction_date: otherIncomeDate,
+                transaction_type: transactionType,
+                description,
+                amount,
+            };
+
+            const response = editingOtherIncomeId
+                ? await fetchWrapper.put(
+                    `${getApiBaseUrl()}transactions/dcs/other-income`,
+                    {
+                        ...payload,
+                        id: editingOtherIncomeId,
+                    }
+                )
+                : await fetchWrapper.post(
+                    `${getApiBaseUrl()}transactions/dcs/other-income`,
+                    payload
+                );
+
+            if (response?.error || response?.success === false) {
+                throw new Error(
+                    response?.message ||
+                    "Failed to save transaction."
+                );
+            }
+
+            alert("Other Income Transaction saved successfully.");
+
+            setTypeForm({
+                ...EMPTY_OTHER_INCOME_FORM,
+            });
+
+            setShowTypeModal(false);
+            setEditingOtherIncomeId(null);
+
+            await loadOtherIncomeTransactions();
+
+            if (typeof onOtherIncomeChanged === "function") {
+                onOtherIncomeChanged();
+            }
+
+        } catch (error) {
+            console.error(
+                "Save Other Income Transaction error:",
+                error
+            );
+
+            alert(
+                error?.message ||
+                "Failed to save Other Income Transaction."
+            );
+        }
+    };
+
+    const handleDeleteOtherIncome = async (transaction) => {
+        if (!transaction?.id || !branchId) {
+            alert("Invalid transaction or branch.");
+            return;
+        }
+
+        if (deletingOtherIncomeId !== null) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Are you sure you want to permanently delete this Other Income Transaction?\n\n` +
+            `Type: ${OTHER_INCOME_TYPES.find(
+                (type) => type.value === transaction.transaction_type
+            )?.label || transaction.transaction_type}\n` +
+            `Description: ${transaction.description}\n` +
+            `Amount: ₱ ${money(transaction.amount)}`
         );
 
-        if (duplicate) {
-            alert(
-                'This Category, Code, and Account Title combination already exists.'
+        if (!confirmed) return;
+
+        try {
+            setDeletingOtherIncomeId(transaction.id);
+
+            const params = new URLSearchParams({
+                id: String(transaction.id),
+                branch_id: String(branchId),
+            });
+
+            const response = await fetchWrapper.delete(
+                `${getApiBaseUrl()}transactions/dcs/other-income?${params.toString()}`
             );
-            return;
+
+            if (response?.error || response?.success !== true) {
+                throw new Error(
+                    response?.message ||
+                    "Failed to delete Other Income Transaction."
+                );
+            }
+
+            if (viewingOtherIncome?.id === transaction.id) {
+                setViewingOtherIncome(null);
+            }
+
+            await loadOtherIncomeTransactions();
+
+            if (typeof onOtherIncomeChanged === "function") {
+                onOtherIncomeChanged();
+            }
+
+            alert("Other Income Transaction deleted successfully.");
+
+        } catch (error) {
+            console.error("Delete Other Income error:", error);
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to delete Other Income Transaction."
+            );
+
+        } finally {
+            setDeletingOtherIncomeId(null);
         }
-
-        const newType = {
-            id: Date.now(),
-            category,
-            code,
-            accountTitle,
-        };
-
-        setTransactionTypes((prev) => [...prev, newType]);
-
-        setTypeForm({
-            category: '',
-            code: '',
-            accountTitle: '',
-        });
-
-        setShowTypeModal(false);
     };
 
     const handleSaveTransaction = async () => {
@@ -1247,10 +1419,15 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {isAdmin && (
+                            {(isAdmin || isBranchManager) && (
                                 <button
                                     type="button"
-                                    onClick={() => setShowTypeModal(true)}
+                                    onClick={() => {
+                                        setEditingOtherIncomeId(null);
+                                        setOtherIncomeDate(selectedDate || "");
+                                        setTypeForm({ ...EMPTY_OTHER_INCOME_FORM });
+                                        setShowTypeModal(true);
+                                    }}
                                     className="
                                         inline-flex items-center gap-2
                                         px-4 py-2
@@ -1263,7 +1440,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                                     "
                                 >
                                     <Plus className="w-4 h-4" />
-                                    Add Transaction Type
+                                    Other Income Transaction
                                 </button>
                             )}
 
@@ -1502,6 +1679,159 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                                                 </div>
 
+                                            </td>
+                                        </tr>
+                                    ))}
+
+                                </tbody>
+                            </table>
+
+                        </div>
+                    )}
+
+                </div>
+            </div>
+
+            {/* =========================================================
+                OTHER INCOME TRANSACTIONS LIST
+            ========================================================== */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm mt-5">
+
+                <div className="px-5 py-4 border-b border-gray-200">
+                    <h2 className="text-base font-bold text-gray-800">
+                        Other Income Transactions
+                    </h2>
+
+                    <p className="text-xs text-gray-500 mt-1">
+                        Other income transactions for the selected DCS date
+                    </p>
+                </div>
+
+                <div className="p-5">
+
+                    {loadingOtherIncome ? (
+                        <div className="text-center py-8 text-sm text-gray-500">
+                            Loading Other Income Transactions...
+                        </div>
+                    ) : otherIncomeTransactions.length === 0 ? (
+                        <div className="border border-dashed border-gray-300 rounded-lg py-10 text-center">
+                            <p className="text-sm text-gray-500">
+                                No Other Income Transactions for this date.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+
+                            <table className="w-full min-w-[800px] text-sm">
+
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Transaction Date
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Transaction Type
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Description
+                                        </th>
+
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600">
+                                            Amount
+                                        </th>
+
+                                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-600">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-gray-200">
+
+                                    {otherIncomeTransactions.map((transaction) => (
+                                        <tr
+                                            key={transaction.id}
+                                            className="hover:bg-gray-50"
+                                        >
+                                            <td className="px-4 py-3 text-gray-700">
+                                                {transaction.transaction_date}
+                                            </td>
+
+                                            <td className="px-4 py-3 font-semibold text-gray-800">
+                                                {OTHER_INCOME_TYPES.find(
+                                                    (type) =>
+                                                        type.value === transaction.transaction_type
+                                                )?.label || transaction.transaction_type}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-gray-700">
+                                                {transaction.description}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-right font-bold text-gray-800">
+                                                ₱ {money(transaction.amount)}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-center gap-2">
+
+                                                    {/* VIEW */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setViewingOtherIncome(transaction)}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-md text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        View
+                                                    </button>
+
+                                                    {/* EDIT */}
+                                                    {(isAdmin || isBranchManager) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setEditingOtherIncomeId(transaction.id);
+
+                                                                setOtherIncomeDate(
+                                                                    transaction.transaction_date
+                                                                );
+
+                                                                setTypeForm({
+                                                                    transactionType:
+                                                                        transaction.transaction_type,
+                                                                    description:
+                                                                        transaction.description,
+                                                                    amount:
+                                                                        String(transaction.amount),
+                                                                });
+
+                                                                setShowTypeModal(true);
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-md text-xs font-semibold hover:bg-amber-600"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                            Edit
+                                                        </button>
+                                                    )}
+
+                                                    {/* DELETE */}
+                                                    {(isAdmin || isBranchManager) && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={deletingOtherIncomeId !== null}
+                                                            onClick={() => handleDeleteOtherIncome(transaction)}
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            {deletingOtherIncomeId === transaction.id
+                                                                ? "Deleting..."
+                                                                : "Delete"}
+                                                        </button>
+                                                    )}
+
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -2052,7 +2382,7 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
             )}
 
             {/* =========================================================
-                ADD TRANSACTION TYPE
+                OTHER INCOME TRANSACTION
             ========================================================== */}
             {showTypeModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -2064,15 +2394,16 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                     <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
 
+                        {/* HEADER */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
 
                             <div>
                                 <h2 className="text-lg font-bold text-gray-800">
-                                    Add Transaction Type
+                                    Other Income Transaction
                                 </h2>
 
                                 <p className="text-xs text-gray-500 mt-0.5">
-                                    Add Code and Account Title
+                                    Enter transaction details
                                 </p>
                             </div>
 
@@ -2086,75 +2417,106 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
 
                         </div>
 
+                        {/* BODY */}
                         <div className="p-5 space-y-4">
+
+                            {/* TRANSACTION DATE */}
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                    Category
+                                    Transaction Date
+                                </label>
+
+                                <input
+                                    type="date"
+                                    value={otherIncomeDate}
+                                    onChange={(e) => setOtherIncomeDate(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    required
+                                />
+                            </div>
+
+                            {/* TRANSACTION TYPE */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    Transaction Type
                                 </label>
 
                                 <select
-                                    value={typeForm.category}
+                                    value={typeForm.transactionType}
                                     onChange={(e) =>
                                         setTypeForm((prev) => ({
                                             ...prev,
-                                            category: e.target.value,
+                                            transactionType: e.target.value,
                                         }))
                                     }
                                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                 >
-                                    <option value="">Select category</option>
-                                    <option value="Management Expenses">
-                                        Management Expenses
+                                    <option value="">
+                                        Select transaction type
                                     </option>
-                                    <option value="Other Payments">
-                                        Other Payments
-                                    </option>
-                                    <option value="Other Receipts">
-                                        Other Receipts
-                                    </option>
+
+                                    {OTHER_INCOME_TYPES.map((type) => (
+                                        <option
+                                            key={type.value}
+                                            value={type.value}
+                                        >
+                                            {type.label}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
+                            {/* DESCRIPTION */}
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                    Code
+                                    Description
                                 </label>
 
-                                <input
-                                    type="text"
-                                    value={typeForm.code}
+                                <textarea
+                                    rows={3}
+                                    value={typeForm.description}
                                     onChange={(e) =>
                                         setTypeForm((prev) => ({
                                             ...prev,
-                                            code: e.target.value,
+                                            description: e.target.value,
                                         }))
                                     }
-                                    placeholder="Enter code"
+                                    placeholder="Enter transaction description"
                                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                                 />
                             </div>
 
+                            {/* AMOUNT */}
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                    Account Title
+                                    Amount
                                 </label>
 
-                                <input
-                                    type="text"
-                                    value={typeForm.accountTitle}
-                                    onChange={(e) =>
-                                        setTypeForm((prev) => ({
-                                            ...prev,
-                                            accountTitle: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Enter account title"
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                                        ₱
+                                    </span>
+
+                                    <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        value={typeForm.amount}
+                                        onChange={(e) =>
+                                            setTypeForm((prev) => ({
+                                                ...prev,
+                                                amount: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="0.00"
+                                        className="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    />
+                                </div>
                             </div>
 
                         </div>
 
+                        {/* FOOTER */}
                         <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200">
 
                             <button
@@ -2168,11 +2530,86 @@ const TransactionPanel = ({ branchId, selectedDate }) => {
                             <button
                                 type="button"
                                 onClick={handleSaveTransactionType}
-                                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-md"
+                                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-md transition-colors"
                             >
-                                Save Transaction Type
+                                Save Transaction
                             </button>
 
+                        </div>
+
+                    </div>
+                </div>
+            )}
+
+            {/* =========================================================
+                VIEW OTHER INCOME TRANSACTION
+            ========================================================== */}
+            {viewingOtherIncome && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => setViewingOtherIncome(null)}
+                    />
+
+                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+
+                        <div className="flex items-center justify-between px-5 py-4 border-b">
+                            <h2 className="text-lg font-bold text-gray-800">
+                                Other Income Transaction Details
+                            </h2>
+
+                            <button
+                                type="button"
+                                onClick={() => setViewingOtherIncome(null)}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 text-sm">
+
+                            <div>
+                                <p className="text-gray-500">Transaction Date</p>
+                                <p className="font-semibold">
+                                    {viewingOtherIncome.transaction_date}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">Transaction Type</p>
+                                <p className="font-semibold">
+                                    {OTHER_INCOME_TYPES.find(
+                                        (type) =>
+                                            type.value === viewingOtherIncome.transaction_type
+                                    )?.label || viewingOtherIncome.transaction_type}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">Description</p>
+                                <p className="font-semibold whitespace-pre-wrap">
+                                    {viewingOtherIncome.description}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">Amount</p>
+                                <p className="text-lg font-bold text-teal-700">
+                                    ₱ {money(viewingOtherIncome.amount)}
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div className="flex justify-end px-5 py-4 border-t">
+                            <button
+                                type="button"
+                                onClick={() => setViewingOtherIncome(null)}
+                                className="px-4 py-2 bg-teal-600 text-white rounded-md text-sm font-semibold"
+                            >
+                                Close
+                            </button>
                         </div>
 
                     </div>

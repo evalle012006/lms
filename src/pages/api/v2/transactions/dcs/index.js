@@ -78,9 +78,6 @@ async function getTransactions(req, res) {
     }
 
     try {
-        // ==========================================
-        // STEP 1: GET AUTHENTICATED USER
-        // ==========================================
 
         const userResult = await graph.query(
             queryQl(USER_TYPE, {
@@ -100,14 +97,8 @@ async function getTransactions(req, res) {
             });
         }
 
-        // ==========================================
-        // STEP 2: CHECK USER ROLE
-        // ==========================================
-
         const roleRep = Number(currentUser.role?.rep);
-
         const isAdmin = roleRep === 1;
-
         const isAreaManager =
             roleRep === 2 &&
             String(currentUser.role?.shortCode || "")
@@ -116,10 +107,6 @@ async function getTransactions(req, res) {
 
         const isBranchManager = roleRep === 3;
         const isLoanOfficer = roleRep === 4;
-
-        // ==========================================
-        // STEP 3: VERIFY BRANCH ACCESS
-        // ==========================================
 
         if (isAreaManager) {
             const branchResult = await graph.query(
@@ -166,9 +153,6 @@ async function getTransactions(req, res) {
             });
         }
 
-        // ==========================================
-        // STEP 4: LOAD TRANSACTIONS
-        // ==========================================
         const result = await graph.query(
             queryQl(TRANSACTION_TYPE, {
                 where: {

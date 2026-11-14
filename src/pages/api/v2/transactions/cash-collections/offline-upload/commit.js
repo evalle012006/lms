@@ -61,7 +61,6 @@ const SERVER_OWNED = new Set([
     // fee / release columns belong to release rows, never to an upload row
     'admissionCollection', 'lrfCollection', 'cbhbCollection', 'addHospitalization',
     'otherPassbookCollection', 'otherPictureCollection', 'otherIncome', 'currentReleaseAmount',
-    // withdrawals go through mcbu_withdrawals + approval, not through an upload
     'mcbuWithdrawal', 'csfWithdrawal',
 ]);
 

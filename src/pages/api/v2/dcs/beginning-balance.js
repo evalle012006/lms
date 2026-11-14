@@ -211,81 +211,8 @@ const getBranchDcsTotals = async (branchId, selectedDate) => {
     };
 };
 
-const getBranchMcbuIn = async (branchId, selectedDate) => {
-    const TRANSACTION_TYPE = createGraphType(
-        'dcs_transactions',
-        `
-            id
-            branch_id
-            transaction_date
-
-            dcs_transaction_items {
-                category
-                code
-                account_title
-                amount
-            }
-        `
-    )('dcs_transactions');
-
-    const response = await graph.query(
-        queryQl(TRANSACTION_TYPE, {
-            where: {
-                branch_id: { _eq: branchId },
-                transaction_date: { _eq: selectedDate },
-            },
-        })
-    );
-
-    if (response.errors?.length) {
-        throw new Error(
-            `Failed to retrieve MCBU IN for ${selectedDate}.`
-        );
-    }
-
-    const transactions = response.data?.dcs_transactions;
-
-    if (!Array.isArray(transactions)) {
-        throw new Error(
-            `Invalid MCBU IN transaction data for ${selectedDate}.`
-        );
-    }
-
-    let totalMcbuIn = 0;
-
-    transactions.forEach((transaction) => {
-        const items = transaction.dcs_transaction_items || [];
-
-        items.forEach((item) => {
-            const category = String(item.category || '')
-                .trim()
-                .toLowerCase();
-
-            const code = String(item.code || '').trim();
-
-            const accountTitle = String(item.account_title || '')
-                .trim()
-                .toLowerCase();
-
-            const amount = Number(item.amount || 0);
-
-            if (
-                category === 'other receipts' &&
-                code === '019' &&
-                accountTitle === "client's mcbu (in)" &&
-                Number.isFinite(amount) &&
-                amount > 0
-            ) {
-                totalMcbuIn += amount;
-            }
-        });
-    });
-
-    return roundMoney(totalMcbuIn);
-};
-
 const getBranchDailyCashMovement = async (branchId, selectedDate) => {
-    const [summaryResponse, dcsTotals, mcbuIn] = await Promise.all([
+    const [summaryResponse, dcsTotals] = await Promise.all([
         graph.apollo.query({
             query: gql`
                 query GetBranchDcsCashMovement(
@@ -307,7 +234,6 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
         }),
 
         getBranchDcsTotals(branchId, selectedDate),
-        getBranchMcbuIn(branchId, selectedDate),
     ]);
 
     if (summaryResponse.errors?.length) {
@@ -402,19 +328,11 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
     const csfReturnDifference =
         dcsTotals.csfReturnAmount - originalCsfReturn;
 
-    const originalMcbuIn = getSummaryValue(
-        'rcpt_mcbu_unclaimed_in'
-    );
-
-    const mcbuUnclaimedInDifference =
-        mcbuIn - originalMcbuIn;
-
     const totalCollectionDifference =
         mcbuDifference +
         csfDifference +
         regularLoanDifference +
-        otherLoanDifference +
-        mcbuUnclaimedInDifference;
+        otherLoanDifference;
 
     const totalPaymentDifference =
         mcbuReturnDifference +
