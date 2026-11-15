@@ -51,6 +51,7 @@ import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
 import { resolveMispayment } from '@/lib/mispayment-utils';
+import { normalizeNumberInput } from '@/lib/number-input';
 import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
 import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
@@ -2074,10 +2075,14 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
+                        // Untouched unpaid rows on Save Draft are not a mispay yet (no remark chosen); Submit blocks them without a remark.
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && !draft) {
                             temp.mispayment = true;
                         }
                         temp.mispayment = resolveMispayment(temp);
+                        if (draft && !(temp.paymentCollection > 0) && !temp.remarks?.value) {
+                            temp.mispayment = false; // draft, no payment and no remark chosen yet
+                        }
 
                         if (temp.remarks && temp.remarks.value === 'excused advance payment') {
                             temp.activeLoan = 0;
@@ -4498,7 +4503,7 @@ const CashCollectionDetailsPage = () => {
                                                       ) ? (
                                                         <React.Fragment>
                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} 
-                                                                onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')} 
+                                                                onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'mcbuCol')} 
                                                                 disabled={cc.disableMcbuCol}
                                                                 onClick={(e) => e.stopPropagation()} 
                                                                 onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} 
@@ -4521,7 +4526,7 @@ const CashCollectionDetailsPage = () => {
                                                       ) ? (
                                                             <React.Fragment>
                                                                 <input type="number" name={`${cc.clientId}-csfCol`} min={0} step={5} 
-                                                                    onChange={(e) => handlePaymentCollectionChange(e, index, 'csfCol')} 
+                                                                    onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'csfCol')} 
                                                                     disabled={cc.disableCsfCol}
                                                                     onClick={(e) => e.stopPropagation()} 
                                                                     onBlur={(e) => handlePaymentValidation(e, cc, index, 'csfCol')} 
@@ -4544,7 +4549,7 @@ const CashCollectionDetailsPage = () => {
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount')}
+                                                            <input type="number" name={cc.clientId} min={0} step={10} onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'amount')}
                                                                 onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
