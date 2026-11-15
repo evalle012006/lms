@@ -1,0 +1,8 @@
+{
+  "name": "lms-branch-dump",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dump one branch's data from the LMS Postgres database into another (production -> staging)",
+  "scripts": { "dump": "node branch-dump.js" },
+  "dependencies": { "pg": "^8.13.0" }
+}
