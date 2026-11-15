@@ -984,6 +984,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.advanceDays = current.advanceDays ? current.advanceDays : 0;
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc ? current.dcmc : false;
+                                // Delinquent-MCBU rows keep their MCBU input after a draft reload
+                                if (current.remarks?.value === 'delinquent-mcbu' || current.dcmc) { collection.allowMcbuCollection = true; }
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mpdc = current.mpdc ? current.mpdc : false;
