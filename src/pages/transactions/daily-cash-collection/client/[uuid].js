@@ -2062,19 +2062,9 @@ const CashCollectionDetailsPage = () => {
 
                 const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
 
-                const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
-                // console.log(dataArr, 'before revert filter')
-                if (revertedItems.length > 0) {
-                    dataArr = revertedItems;
-                }
-
-                if (!draft && draftsCollection.length > 0) {
-                    const draftIds = new Set(draftsCollection.map(d => d.client._id));
-                    const matchingItems = dataArr.filter(item => draftIds.has(item.clientId));
-                    if (matchingItems.length > 0) {
-                        dataArr = matchingItems;
-                    }
-                }
+                // NOTE: previously dataArr was narrowed here to only the reverted rows, or only the rows that had
+                // a draft, which silently dropped every other edited row (their collections were never saved).
+                // All dirty rows are now always sent.
 
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
