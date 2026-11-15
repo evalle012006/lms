@@ -39,6 +39,10 @@ export const CODES = {
  */
 export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false } = {}) => {
     const out = [];
+    // The group is being collected when any active row carries a payment. Then the leader needs a CSF
+    // collection even if the leader row itself is still at 0, so Save Draft enforces the same leader-CSF
+    // rule as Submit (otherwise a draft with a leader at CSF 0 is accepted and only fails later on Submit).
+    const groupHasPayment = (rows || []).some((r) => r && r.status === 'active' && toNum(r.paymentCollection) > 0);
     (rows || []).forEach((cc) => {
         if (!cc || cc.status === 'totals') return;
         // page only: rows already saved as closed (loaded from DB) are history, not new input.
@@ -66,7 +70,9 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
         const settling = cc.status === 'active' && toNum(cc.paymentCollection) > 0;
 
         // Rule 2: group leader must have CSF collection > 0 (unless delinquent / excused / past due)
-        if (csfEnabled && cc.groupLeader && (collecting || settling) && !isCsfExempt(cc) && !isOffsetRemark(cc)
+        const leaderOfCollectingGroup = groupHasPayment && cc.status === 'active' && toNum(cc.loanBalance) > 0
+            && !cc.maturedPD && (cc.transferStr == null || cc.transferStr === '-');
+        if (csfEnabled && cc.groupLeader && (collecting || settling || leaderOfCollectingGroup) && !isCsfExempt(cc) && !isOffsetRemark(cc)
             && toNum(cc.csfCollection) <= 0) {
             out.push({ ...base, code: CODES.LEADER_CSF_REQUIRED,
                 message: 'Group leader must have a CSF Collection greater than 0.' });

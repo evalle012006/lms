@@ -3506,7 +3506,8 @@ const CashCollectionDetailsPage = () => {
                     toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
                     temp.mcbuError = true;
                 } else if (value > 5 && value % 5 !== 0) {
-                    toast.error('Error occured. MCBU collection must be divisible by 5.');
+                    // entry-time rule: MCBU collections above 5 are in multiples of 5
+                    toast.error(`Error occured. MCBU collection must be divisible by 5 (entered ${value}; try ${Math.floor(value / 5) * 5} or ${Math.ceil(value / 5) * 5}).`);
                     temp.mcbuError = true;
                 } else {
                     temp.mcbuError = false;
@@ -3517,7 +3518,9 @@ const CashCollectionDetailsPage = () => {
                     toast.error(`Error occured. Minimum CSF collection is ${transactionSettings.minCsfCollection}.`);
                     temp.csfError = true;
                 } else if (value > 5 && value % 5 !== 0) {
-                    toast.error('Error occured. CSF collection must be divisible by 5.');
+                    // entry-time rule: CSF collections above 5 are in multiples of 5, so the group CSF
+                    // (total MCBU collection / clients) must be rounded to a multiple of 5 when entered
+                    toast.error(`Error occured. CSF collection must be divisible by 5 (entered ${value}; try ${Math.floor(value / 5) * 5} or ${Math.ceil(value / 5) * 5}).`);
                     temp.csfError = true;
                 } else {
                     temp.csfError = false;
@@ -3537,6 +3540,14 @@ const CashCollectionDetailsPage = () => {
         setShowWarningDialog(false);
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
+            // Guard: BM cannot revert a row already BM-reverted
+            if (currentUser.role.rep === 3) {
+                const blocked = selectedRows.filter(r => (r.bmRevertCount || 0) >= 1);
+                if (blocked.length > 0) {
+                    toast.error(`Already reverted by a branch manager: ${blocked.map(r => r.fullName).join(', ')}. Only a higher-level manager can revert those.`);
+                    return;
+                }
+            }
             // a row can only be reverted when a saved cash collection record exists for it
             const noRecord = selectedRows.filter(d => !d._id);
             if (noRecord.length > 0) {
@@ -4029,7 +4040,8 @@ const CashCollectionDetailsPage = () => {
         setSelectAll(!selectAll);
         const dataList = data.map(cc => {
             let temp = {...cc};
-            if (temp.clientId && (temp?.transferStr == null || temp?.transferStr == '-')) {
+            const bmLocked = currentUser.role.rep === 3 && (temp.bmRevertCount || 0) >= 1;
+            if (temp.clientId && !bmLocked && (temp?.transferStr == null || temp?.transferStr == '-')) {
                 temp.selected = !selectAll;
             }
             return temp;
