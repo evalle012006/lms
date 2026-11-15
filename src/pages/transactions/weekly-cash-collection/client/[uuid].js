@@ -10,6 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
+import { findHardRuleViolations, hardRuleMessages } from '@/lib/collection-rules';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import { Info } from 'lucide-react';
@@ -1131,7 +1132,8 @@ const CashCollectionDetailsPage = () => {
                             collection.hasMcbuWithdrawal = true;
                             collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
                             collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                            if (mcbuWithdrawal?.status == 'pending') {
+                            // a saved draft already carries its own withdrawal: never let the pending request overwrite it on re-open
+                            if (mcbuWithdrawal?.status == 'pending' && !(collection.draft && collection.mcbuWithdrawal > 0)) {
                                 collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
                                 collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
                             }
@@ -1831,6 +1833,9 @@ const CashCollectionDetailsPage = () => {
     const validation = (draft) => {
         let errorMsg = new Set();
 
+        // hard rules apply to drafts as well
+        hardRuleMessages(findHardRuleViolations(data, { csfEnabled, dayName })).forEach(m => errorMsg.add(m));
+
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
                 if (cc.group.day === dayName) {
@@ -1924,8 +1929,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
-                if ((csfEnabled && cc.csfError) || (csfEnabled && cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
-                        && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
+                if (csfEnabled && cc.csfError && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-')
@@ -2823,6 +2827,17 @@ const CashCollectionDetailsPage = () => {
 
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
+                            if (temp.status === 'completed' && !(temp.loanBalance > 0)) {
+                                // already fully paid: no phantom target / payment for pending, reloaner or offset
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = '-';
+                                if (remarks.value?.startsWith('offset')) {
+                                    temp.paymentCollection = 0;
+                                    temp.paymentCollectionStr = '-';
+                                    temp.excess = 0;
+                                    temp.excessStr = '-';
+                                }
+                            }
                             temp.excused = false;
                             temp.delinquent = false;
     
@@ -2835,6 +2850,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
+                                        setCloseAccountRemarks('');
+                                        setOffsetUseMCBU(false);
                                         setShowRemarksModal(true);
                                         temp.error = false;
                                         setEditMode(true);
@@ -3509,6 +3526,13 @@ const CashCollectionDetailsPage = () => {
         setShowWarningDialog(false);
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
+            // a row can only be reverted when a saved cash collection record exists for it
+            const noRecord = selectedRows.filter(d => !d._id || d._id === d.loanId);
+            if (noRecord.length > 0) {
+                toast.error(`Cannot revert: no saved transaction for ${noRecord.map(d => d.fullName).join(', ')}.`);
+                return;
+            }
+
             setLoading(true);
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
             if (response.success) {
@@ -3521,7 +3545,10 @@ const CashCollectionDetailsPage = () => {
                 }, 1000);
             } else {
                 setLoading(false);
-                toast.error(response.message || 'Revert failed.');
+                const reasons = Array.isArray(response.details)
+                    ? response.details.map(dt => dt.reason).filter(Boolean).join('\n')
+                    : '';
+                toast.error([response.message || 'Revert failed.', reasons].filter(Boolean).join('\n'));
             }
         } else {
             toast.error('No row(s) selected!');
@@ -3546,6 +3573,11 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleSetCloseAccountRemarks = () => {
+        if (!String(closeAccountRemarks || '').trim()) {
+            toast.error('Offset requires a reason. Please enter the close account remarks.');
+            return;
+        }
+
         const list = data.map(cc => {
             let temp = JSON.parse(JSON.stringify(cc));
             
@@ -3560,6 +3592,8 @@ const CashCollectionDetailsPage = () => {
 
         dispatch(setCashCollectionGroup(list));
         setShowRemarksModal(false);
+        setCloseAccountRemarks('');
+        setOffsetUseMCBU(false);
     }
 
     const handleExitCloseAccountRemarks = () => {
@@ -3576,6 +3610,7 @@ const CashCollectionDetailsPage = () => {
 
         dispatch(setCashCollectionGroup(list));
         setCloseAccountRemarks('');
+        setOffsetUseMCBU(false);
         setShowRemarksModal(false);
     }
 

@@ -22,6 +22,7 @@ import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloane
 import moment from 'moment-timezone';
 import { getSystemDate } from '@/lib/date-utils';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
+import { findHardRuleViolations, sanitizeCompletedRow } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
@@ -186,9 +187,62 @@ async function saveWithProtection(req, res) {
 
         // Step 1b: CSF config guard (before the retry loop: deterministic, never worth retrying)
         const csfRows = data.collection.filter(cc => cc.status !== 'totals');
+
+        // Audit log of exactly what the client sent (ids and numbers only, no names/personal data).
+        // Lets us compare the first vs the second Save Draft when a row changes unexpectedly.
+        logger.info({
+            user_id,
+            transactionId,
+            page: 'Cash Collection SaveV2 Payload',
+            groupId: csfRows[0]?.groupId,
+            rows: csfRows.map(cc => ({
+                clientId: cc.clientId,
+                loanId: cc.loanId,
+                _id: cc._id,
+                status: cc.status,
+                draft: cc.draft,
+                remarks: cc.remarks?.value ?? cc.remarks ?? null,
+                hasCloseRemarks: !!cc.closeRemarks,
+                mcbu: cc.mcbu,
+                mcbuCol: cc.mcbuCol,
+                mcbuWithdrawal: cc.mcbuWithdrawal,
+                mcbuReturnAmt: cc.mcbuReturnAmt,
+                csfCollection: cc.csfCollection,
+                paymentCollection: cc.paymentCollection,
+                targetCollection: cc.targetCollection,
+                excess: cc.excess,
+                loanBalance: cc.loanBalance,
+                noOfPayments: cc.noOfPayments,
+                prevMcbu: cc.prevData?.mcbu,
+                prevLoanBalance: cc.prevData?.loanBalance,
+                dirty: cc._dirty,
+            })),
+        });
         if (csfRows.length > 0) {
             const csfEnabled = await loadCsfEnabled(csfRows[0].groupId);
             const violations = findCsfViolations(csfRows, csfEnabled);
+
+            csfRows.forEach(sanitizeCompletedRow);
+
+            // Hard business rules enforced server-side (apply to drafts too)
+            const ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
+            if (ruleViolations.length > 0) {
+                logger.warn({
+                    user_id,
+                    transactionId,
+                    page: 'Cash Collection SaveV2',
+                    message: 'Hard business rule violation',
+                    violations: ruleViolations.map(v => ({ code: v.code, clientId: v.clientId }))
+                });
+                return res.status(200).json({
+                    success: false,
+                    error: true,
+                    errorCode: ruleViolations[0].code,
+                    message: Array.from(new Set(ruleViolations.map(v => v.message))).join('\n'),
+                    violations: ruleViolations,
+                    transactionId
+                });
+            }
 
             if (violations.length > 0) {
                 logger.warn({
@@ -443,7 +497,8 @@ async function executeSave(req, user_id, transactionId, user) {
                     })
                 );
 
-                if (collection.loanBalance <= 0 && !collection.fullPaymentDate) {
+                // a completed (green) client was already fully paid earlier: never restamp fullPaymentDate
+                if (collection.loanBalance <= 0 && !collection.fullPaymentDate && collection.status !== 'completed') {
                     collection.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
                 }
 
@@ -884,8 +939,13 @@ async function updateClient(user_id, mutationQl, loan) {
             : loan.remarks;
 
         if (client.status === 'offset') {
-            client.oldLoId = client.loId;
-            client.oldGroupId = client.groupId;
+            // Only remember the previous group/LO when the client still has one. A re-save of an
+            // already-offset client (e.g. a second Save Draft) must not overwrite oldGroupId/oldLoId
+            // with null, otherwise rollback can never restore the client.
+            if (client.groupId || client.loId) {
+                client.oldLoId = client.loId;
+                client.oldGroupId = client.groupId;
+            }
             client.groupId = null;
             client.loId = null;
         }
