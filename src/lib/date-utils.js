@@ -262,6 +262,30 @@ export const checkIfHoliday = (date, holidays = []) => {
     return holidays.includes(dateStr);
 }
 
+// Single source of truth for "is this a non-working day" (weekend or holiday).
+// Holidays are stored as recurring 'MM-DD' (settings/holidays); `holidays` may be an array of
+// 'MM-DD' / 'YYYY-MM-DD' strings or holiday objects ({ date }). Returns 'weekend', 'holiday' or null.
+// `allowWeekend` mirrors the allowWeekendTransaction setting where a caller needs it.
+// The weekday is read from a local calendar date, so it does not shift with the server timezone
+// (unlike new Date('YYYY-MM-DD'), which is parsed as UTC).
+export const getNonWorkingReason = (date, holidays = [], { allowWeekend = false } = {}) => {
+    const m = moment(date, 'YYYY-MM-DD', true);
+    if (!m.isValid()) return null;
+
+    const day = m.day();
+    if (!allowWeekend && (day === 0 || day === 6)) return 'weekend';
+
+    const full = m.format('YYYY-MM-DD');
+    const monthDay = full.slice(5);
+    const isHoliday = (holidays || []).some(h => {
+        const d = typeof h === 'string' ? h : h?.date;
+        return d === monthDay || d === full;
+    });
+    return isHoliday ? 'holiday' : null;
+};
+
+export const isNonWorkingDay = (date, holidays = [], options) => getNonWorkingReason(date, holidays, options) !== null;
+
 export const getNextValidDate = (date, holidays = []) => {
     let nextDate = moment(date);
     while (checkIfWeekend(nextDate) || checkIfHoliday(nextDate.format("YYYY-MM-DD"), holidays)) {

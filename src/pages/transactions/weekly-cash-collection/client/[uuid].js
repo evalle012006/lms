@@ -348,7 +348,7 @@ const CashCollectionDetailsPage = () => {
 
         // Make sure today's cashCollections exist BEFORE loading the register, so opening the
         // group right after the list page can never show an empty register.
-        if (!date || date === currentDate) {
+        if ((!date || date === currentDate) && !isWeekend && !isHoliday) {
             try {
                 await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', {
                     groupId: uuid, currentDate: currentDate, currentUser: currentUser?._id, mode: 'single'

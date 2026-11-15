@@ -1,5 +1,7 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
+import { holidayType } from '@/pages/api/v2/settings/holidays/common';
+import { getNonWorkingReason } from '@/lib/date-utils';
 import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
 import { generateUUID } from '@/lib/utils';
@@ -142,8 +144,29 @@ function preSaveForLoanOfficerOnce(loId, currentDate) {
     return p;
 }
 
+// Pre-save must never create rows on a weekend or a holiday (the register is closed then).
+// The UI also guards this, but the API is called from several places, so enforce it here.
+async function getNonWorkingReasonForDate(currentDate) {
+    if (!currentDate) return null;
+    // Weekend needs no lookup; only hit the holidays table on weekdays.
+    const weekend = getNonWorkingReason(currentDate);
+    if (weekend) return weekend;
+    try {
+        const { data } = await graph.query(queryQl(holidayType));
+        return getNonWorkingReason(currentDate, data?.holidays ?? []);
+    } catch (e) {
+        console.error('pre-save holiday check failed, continuing', e);
+        return null;
+    }
+}
+
 // Helper function to pre-save collections for a single loan officer
 async function preSaveForLoanOfficer(loId, currentDate) {
+    const nonWorking = await getNonWorkingReasonForDate(currentDate);
+    if (nonWorking) {
+        console.log(`Skipping pre-save for loId: ${loId} on ${currentDate} (${nonWorking})`);
+        return { success: true, skipped: true, message: `Pre-save skipped: ${nonWorking}`, count: 0 };
+    }
     // Fetch loans that need pre-save collections
     const loans = await graph.apollo.query({
         query: gql`

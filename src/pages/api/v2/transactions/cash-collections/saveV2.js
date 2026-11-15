@@ -20,7 +20,8 @@ import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloaner, isNotificationEnabled } from '@/lib/notification-service';
 import moment from 'moment-timezone';
-import { getSystemDate } from '@/lib/date-utils';
+import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
+import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { findHardRuleViolations, sanitizeCompletedRow } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
@@ -33,6 +34,8 @@ import { resolveMispayment } from '@/lib/mispayment-utils';
 const TIMEZONE = 'Asia/Manila';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+// Stale-page guard (prevData vs DB). 'off' | 'warn' (log only, default) | 'reject' (409 STALE_DATA).
+const PREVDATA_GUARD_MODE = String(process.env.LMS_PREVDATA_GUARD || 'warn').toLowerCase();
 
 // ============================================
 // GRAPH SETUP (same as original)
@@ -135,6 +138,69 @@ async function createDelinquentAlerts(collection, loan, client, branch, user, th
     }
 }
 
+/**
+ * Weekend / holiday guard. The register pages disable every input on these days, so the API
+ * must refuse too (a direct call or a stale tab would otherwise save). `currentDate` has already
+ * been validated against the system date. Fails open if the holiday lookup errors.
+ */
+async function getNonWorkingReasonForSave(currentDate) {
+    const weekend = getNonWorkingReason(currentDate);
+    if (weekend) return weekend;
+    try {
+        const { data } = await graph.query(queryQl(holidayType));
+        return getNonWorkingReason(currentDate, data?.holidays ?? []);
+    } catch (e) {
+        logger.warn({ page: 'saveV2', message: 'Holiday lookup failed, not blocking the save', error: e.message });
+        return null;
+    }
+}
+
+const PREV_TOLERANCE = 0.005;
+const prevDiffers = (prev, current) =>
+    prev !== undefined && prev !== null && prev !== '-' && prev !== '' &&
+    Math.abs(safeNumber(prev) - safeNumber(current)) > PREV_TOLERANCE;
+
+/**
+ * Stale-page detection. The browser sends prevData = the row's values BEFORE the user edited it
+ * (MCBU, loan balance, ...). updateLoan() then writes browser-computed totals, so if another tab or
+ * user changed the loan in between, those totals silently overwrite the newer data. For rows that
+ * will update a loan, compare prevData.mcbu / prevData.loanBalance with the loan as it is now.
+ * Rows already finalized in the DB (re-sent with the group) are skipped: their loan already
+ * reflects that transaction, so a difference there is expected.
+ */
+async function findStalePrevDataRows(rows) {
+    const candidates = rows.filter(r =>
+        r.loanId && r.prevData && !r.draft &&
+        r.status !== 'tomorrow' && r.status !== 'pending' && r.status !== 'totals');
+    if (candidates.length === 0) return [];
+
+    const loanIds = Array.from(new Set(candidates.map(r => r.loanId)));
+    const ccIds = candidates.map(r => r._id).filter(Boolean);
+
+    const [loans, finalized] = await Promise.all([
+        graph.query(queryQl(createGraphType('loans', '_id mcbu loanBalance')('stale_loans'), { where: { _id: { _in: loanIds } } }))
+            .then(r => r.data?.stale_loans ?? []),
+        ccIds.length === 0 ? [] : graph.query(queryQl(createGraphType('cashCollections', '_id draft origin')('stale_ccs'), {
+            where: { _id: { _in: ccIds }, draft: { _eq: false }, origin: { _neq: 'pre-save' } }
+        })).then(r => r.data?.stale_ccs ?? [])
+    ]);
+
+    const loanById = new Map(loans.map(l => [l._id, l]));
+    const finalizedIds = new Set(finalized.map(c => c._id));
+
+    const stale = [];
+    for (const r of candidates) {
+        if (r._id && finalizedIds.has(r._id)) continue;
+        const loan = loanById.get(r.loanId);
+        if (!loan) continue;
+        const fields = [];
+        if (prevDiffers(r.prevData.mcbu, loan.mcbu)) fields.push({ field: 'mcbu', pageBaseline: safeNumber(r.prevData.mcbu), db: safeNumber(loan.mcbu) });
+        if (prevDiffers(r.prevData.loanBalance, loan.loanBalance)) fields.push({ field: 'loanBalance', pageBaseline: safeNumber(r.prevData.loanBalance), db: safeNumber(loan.loanBalance) });
+        if (fields.length > 0) stale.push({ clientId: r.clientId, loanId: r.loanId, fields });
+    }
+    return stale;
+}
+
 // ============================================
 // MAIN HANDLER WITH PROTECTION
 // ============================================
@@ -182,6 +248,27 @@ async function saveWithProtection(req, res) {
                 message: 'Transaction date mismatch. The date may have changed. Please refresh the page and try again.',
                 transactionId,
                 details: dateCheck
+            });
+        }
+
+        // Step 1a: no transactions on a weekend or a holiday (the UI is disabled then; enforce it here too)
+        const nonWorking = await getNonWorkingReasonForSave(currentDate);
+        if (nonWorking) {
+            logger.warn({
+                user_id,
+                transactionId,
+                page: 'Cash Collection SaveV2',
+                message: `Save blocked: ${currentDate} is a ${nonWorking}`
+            });
+
+            return res.status(400).json({
+                success: false,
+                error: true,
+                errorCode: 'NON_WORKING_DAY',
+                message: nonWorking === 'weekend'
+                    ? 'Transactions are not allowed on weekends.'
+                    : 'Transactions are not allowed on holidays.',
+                transactionId
             });
         }
 
@@ -282,6 +369,37 @@ async function saveWithProtection(req, res) {
                         transactionId
                     });
                 }
+            }
+        }
+
+        // Step 1c: stale-page guard (see findStalePrevDataRows). Never retried: it is deterministic.
+        if (PREVDATA_GUARD_MODE !== 'off') {
+            try {
+                const staleRows = await findStalePrevDataRows(csfRows);
+                if (staleRows.length > 0) {
+                    logger.warn({
+                        user_id,
+                        transactionId,
+                        page: 'Cash Collection SaveV2',
+                        message: 'Stale page detected: prevData does not match the loan in the DB',
+                        mode: PREVDATA_GUARD_MODE,
+                        rows: staleRows
+                    });
+
+                    if (PREVDATA_GUARD_MODE === 'reject') {
+                        return res.status(409).json({
+                            success: false,
+                            error: true,
+                            errorCode: 'STALE_DATA',
+                            message: 'This page is out of date because the loan changed since it was loaded. Please refresh the page and try again.',
+                            staleRows,
+                            transactionId
+                        });
+                    }
+                }
+            } catch (e) {
+                // the guard must never be the reason a save fails
+                logger.warn({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Stale-page check failed, continuing', error: e.message });
             }
         }
 
