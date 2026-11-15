@@ -1850,7 +1850,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         // hard rules apply to drafts as well
-        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled, dayName })).forEach(m => errorMsg.add(m));
+        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled, dayName, checkOverpaymentRemark: true })).forEach(m => errorMsg.add(m));
 
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
@@ -4677,16 +4677,16 @@ const CashCollectionDetailsPage = () => {
                                                         || ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted) 
                                                         || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
                                                         || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')))
-                                                        || (cc.status == 'completed' && cc.remarks == '')
+                                                        || (cc.status == 'completed' && !cc.remarks?.value)
                                                         || (cc.offsetTransFlag && cc.otherDay)  
                                                        )
                                                     && (cc?.transferStr == null || cc?.transferStr == '-')
                                                   ) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
-                                                            { cc.remarks !== '-' ? (
+                                                            { (cc.remarks !== '-' || cc.status === 'completed') ? (
                                                                 <Select 
                                                                     options={remarksArr}
-                                                                    value={cc.remarks}
+                                                                    value={cc.remarks?.value ? cc.remarks : null}
                                                                     styles={borderStyles}
                                                                     components={{ DropdownIndicator }}
                                                                     onChange={(val) => handlePaymentCollectionChange(val, index, 'remarks') }

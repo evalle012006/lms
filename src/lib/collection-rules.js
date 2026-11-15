@@ -30,14 +30,16 @@ export const CODES = {
     NOT_MULTIPLE_OF_TARGET: 'NOT_MULTIPLE_OF_TARGET',
     PHANTOM_COMPLETED_AMOUNTS: 'PHANTOM_COMPLETED_AMOUNTS',
     PARTIAL_PAYMENT: 'PARTIAL_PAYMENT',
+    OVERPAYMENT_REMARK_REQUIRED: 'OVERPAYMENT_REMARK_REQUIRED',
 };
 
 /**
  * @param {Array} rows client rows (client state rows, or saveV2 payload rows)
- * @param {{csfEnabled:boolean, dayName?:string}} opts dayName: only rows of the group's collection day are checked for payment/CSF rules
+ * @param {{csfEnabled:boolean, dayName?:string, checkOverpaymentRemark?:boolean}} opts dayName: only rows of the group's collection day are checked for payment/CSF rules.
+ * checkOverpaymentRemark (pages only, default off so the server is unaffected): double / advance payments need a matching remark on Save Draft too.
  * @returns {Array<{code:string,message:string,clientId?:string,name?:string}>}
  */
-export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false } = {}) => {
+export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false, checkOverpaymentRemark = false } = {}) => {
     const out = [];
     // The group is being collected when any active row carries a payment. Then the leader needs a CSF
     // collection even if the leader row itself is still at 0, so Save Draft enforces the same leader-CSF
@@ -91,6 +93,19 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
         if (collecting && target > 0 && pay > 0 && pay < target && !isMispayOrExemptRemark(cc) && !isOffsetRemark(cc)) {
             out.push({ ...base, code: CODES.PARTIAL_PAYMENT,
                 message: `Actual collection is below the target collection of ${target}. Enter the full target or choose a remark.` });
+        }
+        // Rule 6 (pages only): a multiple-of-target overpayment must carry a matching remark, on Save Draft as on Submit.
+        // Same wording as the Submit validation so the two never show as duplicates.
+        if (checkOverpaymentRemark && collecting && target > 0 && pay >= target * 2 && pay % target === 0 && !isMispayOrExemptRemark(cc)) {
+            const r = remarkValue(cc);
+            const who = cc.fullName && cc.fullName !== '-' ? `${cc.fullName}: ` : '';
+            if (pay > target * 2 && r !== 'advance payment') {
+                out.push({ ...base, code: CODES.OVERPAYMENT_REMARK_REQUIRED,
+                    message: `${who}Error occured. Actual collection is a advance payment please set remarks as Advance Payment.` });
+            } else if (pay === target * 2 && r !== 'double payment' && r !== 'advance payment') {
+                out.push({ ...base, code: CODES.OVERPAYMENT_REMARK_REQUIRED,
+                    message: `${who}Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.` });
+            }
         }
     });
     return out;

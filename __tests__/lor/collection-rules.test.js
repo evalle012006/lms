@@ -25,3 +25,31 @@ describe('Rule 2: leader CSF on drafts', () => {
             .map(v => v.code)).not.toContain(CODES.LEADER_CSF_REQUIRED);
     });
 });
+
+describe('Rule 6: double / advance payment remark (pages only)', () => {
+    const run = (rows, opts = {}) => findHardRuleViolations(rows, { csfEnabled: false, checkOverpaymentRemark: true, ...opts })
+        .filter(v => v.code === CODES.OVERPAYMENT_REMARK_REQUIRED);
+
+    test('double payment without a remark is flagged on Save Draft, with the same wording as Submit', () => {
+        const v = run([row({ fullName: 'SALVADOR, ELLEN', paymentCollection: 200 })]);
+        expect(v).toHaveLength(1);
+        expect(v[0].message).toBe('SALVADOR, ELLEN: Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.');
+    });
+    test('double payment passes with Double Payment or Advance Payment', () => {
+        expect(run([row({ paymentCollection: 200, remarks: { value: 'double payment' } })])).toHaveLength(0);
+        expect(run([row({ paymentCollection: 200, remarks: { value: 'advance payment' } })])).toHaveLength(0);
+    });
+    test('more than double needs Advance Payment specifically', () => {
+        expect(run([row({ paymentCollection: 300, remarks: { value: 'double payment' } })])).toHaveLength(1);
+        expect(run([row({ paymentCollection: 300, remarks: { value: 'advance payment' } })])).toHaveLength(0);
+    });
+    test('a single target payment, a payoff and mispay remarks are not flagged', () => {
+        expect(run([row({ paymentCollection: 100 })])).toHaveLength(0);
+        expect(run([row({ paymentCollection: 1000, loanBalance: 0 })])).toHaveLength(0);
+        expect(run([row({ paymentCollection: 200, remarks: { value: 'past due collection' } })])).toHaveLength(0);
+    });
+    test('off by default so the server (saveV2) is unaffected', () => {
+        expect(findHardRuleViolations([row({ paymentCollection: 200 })], { csfEnabled: false })
+            .map(v => v.code)).not.toContain(CODES.OVERPAYMENT_REMARK_REQUIRED);
+    });
+});
