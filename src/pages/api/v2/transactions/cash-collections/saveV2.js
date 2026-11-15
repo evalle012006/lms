@@ -225,7 +225,26 @@ async function saveWithProtection(req, res) {
             csfRows.forEach(sanitizeCompletedRow);
 
             // Hard business rules enforced server-side (apply to drafts too)
-            const ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
+            let ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
+
+            // An Offset already persisted as 'closed' (re-sent with the group) is history: it has no
+            // close reason in the payload, but it was accepted earlier. Only NEW offsets need a reason.
+            const reasonViolations = ruleViolations.filter(v => v.code === 'OFFSET_REASON_REQUIRED');
+            if (reasonViolations.length > 0) {
+                const ids = csfRows
+                    .filter(r => reasonViolations.some(v => v.clientId === r.clientId) && r._id && r._id !== r.loanId)
+                    .map(r => r._id);
+                if (ids.length > 0) {
+                    const persisted = await graph.query(
+                        queryQl(createGraphType('cashCollections', '_id status')('persisted_closed'), {
+                            where: { _id: { _in: ids }, status: { _eq: 'closed' } }
+                        })
+                    ).then(r => r.data?.persisted_closed ?? []);
+                    const persistedIds = new Set(persisted.map(x => x._id));
+                    const okClients = new Set(csfRows.filter(r => persistedIds.has(r._id)).map(r => r.clientId));
+                    ruleViolations = ruleViolations.filter(v => !(v.code === 'OFFSET_REASON_REQUIRED' && okClients.has(v.clientId)));
+                }
+            }
             if (ruleViolations.length > 0) {
                 logger.warn({
                     user_id,
