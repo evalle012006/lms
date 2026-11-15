@@ -36,10 +36,13 @@ export const CODES = {
  * @param {{csfEnabled:boolean, dayName?:string}} opts dayName: only rows of the group's collection day are checked for payment/CSF rules
  * @returns {Array<{code:string,message:string,clientId?:string,name?:string}>}
  */
-export const findHardRuleViolations = (rows, { csfEnabled = false, dayName } = {}) => {
+export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false } = {}) => {
     const out = [];
     (rows || []).forEach((cc) => {
         if (!cc || cc.status === 'totals') return;
+        // page only: rows already saved as closed (loaded from DB) are history, not new input.
+        // The server must NOT set this: new offsets arrive with status 'closed' in the payload.
+        if (skipPersistedClosed && cc.status === 'closed') return;
         const base = { clientId: cc.clientId, name: cc.fullName || cc.name };
 
         // Rule 1: offset needs a reason (checked for every offset row, draft or not)

@@ -1768,7 +1768,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         // hard rules apply to drafts as well
-        hardRuleMessages(findHardRuleViolations(data, { csfEnabled })).forEach(m => errorMsg.add(m));
+        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled })).forEach(m => errorMsg.add(m));
 
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
