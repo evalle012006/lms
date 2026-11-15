@@ -619,6 +619,19 @@ async function executeSave(req, user_id, transactionId, user) {
             await updateDenomination(mutationQl, data.collection[0]?.groupId, currentDate, overallTotalNetCollection);
         }
 
+        // On final Submit, any row of this group/date still carrying the 'pre-save' placeholder
+        // origin (rows the page did not send: pending/open/untouched) must be cleared too,
+        // otherwise they stay 'pre-save' after the group is closed.
+        const submitGroupId = data.collection[0]?.groupId;
+        if (submitGroupId && data.collection.length > 0 && data.collection.every(c => !c.draft)) {
+            mutationQl.push(
+                updateQl(COLLECTION_TYPE('collections_presave_clear_' + (mutationQl.length + 1)), {
+                    set: { origin: null },
+                    where: { groupId: { _eq: submitGroupId }, dateAdded: { _eq: currentDate }, origin: { _eq: 'pre-save' } },
+                })
+            );
+        }
+
         // save all changes in one request
         if (mutationQl.length > 0) {
             const result = await graph.mutation(...mutationQl);
@@ -706,6 +719,8 @@ const assignNullValues = (obj, origin) => {
 async function saveCollection(mutationQL, collections, currentDate) {
     const objects = collections.map(c => ({
         ... cleanUpCollection(c),
+        // a placeholder origin must never survive a real save
+        origin: c.origin === 'pre-save' ? null : (c.origin ?? null),
         _id: c._id || generateUUID(),
         dateAdded: currentDate,
     }));

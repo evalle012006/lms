@@ -345,6 +345,19 @@ const CashCollectionDetailsPage = () => {
     const getCashCollections = async (date) => {
         setLoading(true);
         const type = date ? 'filter' : 'current';
+
+        // Make sure today's cashCollections exist BEFORE loading the register, so opening the
+        // group right after the list page can never show an empty register.
+        if (!date || date === currentDate) {
+            try {
+                await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', {
+                    groupId: uuid, currentDate: currentDate, currentUser: currentUser?._id, mode: 'single'
+                });
+            } catch (e) {
+                console.error('pre-save before register load failed', e);
+            }
+        }
+
         let url = getApiBaseUrl() + 'transactions/cash-collections/get-loan-by-group-cash-collection?'
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'weekly', groupId: uuid, type: type });
 
