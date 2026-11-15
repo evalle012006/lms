@@ -4,7 +4,7 @@ import { shouldIncludeViewMode, UppercaseFirstLetter } from "@/lib/utils";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 import { useRouter } from 'next/router';
@@ -21,8 +21,16 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
+    const rawGroupList = useSelector(state => state.group.list);
+    // The redux group list is shared across pages and can hold groups of other
+    // occurrences (e.g. weekly groups while on a daily register). Only show groups
+    // that match the current group's occurrence.
+    const groupList = useMemo(() => {
+        const occ = group?.occurence;
+        if (!occ || !Array.isArray(rawGroupList)) return rawGroupList || [];
+        return rawGroupList.filter(g => !g.occurence || g.occurence === occ);
+    }, [rawGroupList, group?.occurence]);
     const [showCalendar, setShowCalendar] = useState(false);
     const branchList = useSelector(state => state.branch.list);
     const [branchName, setBranchName] = useState();
