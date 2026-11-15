@@ -621,7 +621,34 @@ async function executeSave(req, user_id, transactionId, user) {
             await saveCollection(mutationQl, newCC, currentDate);
         }
 
-        if (existCC.length > 0) {
+        // Weekly-only hardening: pre-save and the missing-row insert apply to weekly groups; daily saves are untouched.
+        const isWeeklySave = data.collection.some(c => c.status !== 'totals') && data.collection.filter(c => c.status !== 'totals').every(c => c.occurence === 'weekly');
+
+        if (existCC.length > 0 && isWeeklySave) {
+            // An UPDATE on a cash collection that no longer exists matches 0 rows and succeeds
+            // silently, while the loan/client updates in the same request still apply. That leaves
+            // loans closed / clients offset with NO cashCollections row. Rows whose _id is not in
+            // the table are therefore inserted instead of updated.
+            const ids = existCC.map(c => c._id);
+            const found = await graph.query(
+                queryQl(createGraphType('cashCollections', '_id')('cc_present'), { where: { _id: { _in: ids } } })
+            ).then(r => r.data?.cc_present ?? []);
+            const foundIds = new Set(found.map(x => x._id));
+            const toInsert = existCC.filter(c => !foundIds.has(c._id));
+            const toUpdate = existCC.filter(c => foundIds.has(c._id));
+
+            if (toInsert.length > 0) {
+                logger.warn({
+                    user_id, transactionId, page: 'Cash Collection SaveV2',
+                    message: 'Cash collection _id not found, inserting instead of updating',
+                    rows: toInsert.map(c => ({ _id: c._id, clientId: c.clientId, loanId: c.loanId, status: c.status }))
+                });
+                await saveCollection(mutationQl, toInsert, currentDate);
+            }
+            if (toUpdate.length > 0) {
+                await updateCollection(mutationQl, toUpdate);
+            }
+        } else if (existCC.length > 0) {
             await updateCollection(mutationQl, existCC);
         }
 
@@ -642,7 +669,7 @@ async function executeSave(req, user_id, transactionId, user) {
         // origin (rows the page did not send: pending/open/untouched) must be cleared too,
         // otherwise they stay 'pre-save' after the group is closed.
         const submitGroupId = data.collection[0]?.groupId;
-        if (submitGroupId && data.collection.length > 0 && data.collection.every(c => !c.draft)) {
+        if (isWeeklySave && submitGroupId && data.collection.length > 0 && data.collection.every(c => !c.draft)) {
             mutationQl.push(
                 updateQl(COLLECTION_TYPE('collections_presave_clear_' + (mutationQl.length + 1)), {
                     set: { origin: null },
