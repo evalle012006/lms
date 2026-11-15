@@ -33,6 +33,7 @@ async function revert(req, res) {
     const mutationQL = [];
     const groupCache = {};
     const blockedItems = []; // records that cannot be reverted; fails the whole request
+    const skippedItems = []; // records intentionally not reverted (reported back, never silent)
 
     try {
         if (!Array.isArray(cashCollections) || cashCollections.length === 0) {
@@ -62,6 +63,12 @@ async function revert(req, res) {
             const loanId = resolveLoanId(cashCollection);
 
             if (!loanId) {
+                // never skip silently: a row without a loan reference cannot be rolled back
+                blockedItems.push({
+                    cashCollectionId: cashCollection._id,
+                    clientId: cashCollection.clientId,
+                    reason: 'No loan reference on the transaction.'
+                });
                 continue;
             }
 
@@ -106,6 +113,28 @@ async function revert(req, res) {
 
             // New loan should be ignored in rollback
             if (currentLoan.status == 'pending' && currentLoan.loanCycle == 1) {
+                skippedItems.push({
+                    cashCollectionId: cashCollection._id,
+                    loanId,
+                    clientId: cashCollection.clientId,
+                    reason: 'New loan (cycle 1, pending) has nothing to roll back.'
+                });
+                continue;
+            }
+
+            // The cash collection being deleted must really exist, otherwise the revert would
+            // silently leave it behind while the loan/client are restored.
+            const existingCc = await graph.query(
+                queryQl(CASH_COLLECTION_TYPE('cc_exists'), { where: { _id: { _eq: cashCollection._id } }, limit: 1 })
+            ).then(r => r.data?.cc_exists ?? []);
+
+            if (existingCc.length === 0) {
+                blockedItems.push({
+                    cashCollectionId: cashCollection._id,
+                    loanId,
+                    clientId: cashCollection.clientId,
+                    reason: 'Cash collection record not found (already reverted or changed).'
+                });
                 continue;
             }
 
@@ -114,8 +143,11 @@ async function revert(req, res) {
             let client = null;
             let group = null;
 
-            if (cashCollection.status == 'closed') {
-                [client] = await findClients({ _id: { _eq: loan_history.data.clientId } });
+            const [clientNow] = await findClients({ _id: { _eq: loan_history.data.clientId } });
+            const restoreClient = cashCollection.status == 'closed' || clientNow?.status === 'offset';
+
+            if (restoreClient) {
+                client = clientNow;
                 [group] = await findGroups({ _id: { _eq: loan_history.data.groupId } });
 
                 if (!client || !group) {
@@ -197,16 +229,19 @@ async function revert(req, res) {
                 );
             }
 
-            // Update client if cashCollection is closed
-            if (cashCollection.status == 'closed') {
+            // Update client if cashCollection is closed (or the client is still flagged offset)
+            if (restoreClient) {
                 groupCache[group._id].slots.push(cashCollection.slotNo);
                 mutationQL.push(
                     updateQl(
                         createGraphType('client', `_id`)(`client_${mutationQL.length}`),
                         {
                             set: {
-                                groupId: client.oldGroupId,
-                                loId: client.oldLoId,
+                                // fall back to the loan snapshot when oldGroupId/oldLoId were lost
+                                groupId: client.oldGroupId ?? loan_history.data.groupId ?? null,
+                                loId: client.oldLoId ?? loan_history.data.loId ?? null,
+                                // offset/closed clients return to active
+                                status: client.status === 'offset' ? 'active' : client.status,
                                 oldGroupId: null,
                                 oldLoId: null
                             },
@@ -246,7 +281,7 @@ async function revert(req, res) {
         }
 
         if (mutationQL.length === 0) {
-            return send(res, 200, { success: true, message: 'No valid records to revert' });
+            return send(res, 200, { success: true, message: 'No valid records to revert', skipped: skippedItems });
         }
 
         for (const group of Object.values(groupCache)) {
@@ -256,7 +291,7 @@ async function revert(req, res) {
         }
 
         const result = await graph.mutation(...mutationQL);
-        return send(res, 200, { success: true, data: result?.data });
+        return send(res, 200, { success: true, data: result?.data, skipped: skippedItems });
 
     } catch (error) {
         console.error(error);

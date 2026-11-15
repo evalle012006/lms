@@ -10,6 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
+import { findHardRuleViolations, hardRuleMessages } from '@/lib/collection-rules';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import { Info } from 'lucide-react';
@@ -49,6 +50,8 @@ import { useMemo } from 'react';
 import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
 import { resolveMispayment } from '@/lib/mispayment-utils';
+import { normalizeNumberInput } from '@/lib/number-input';
+import { restoreRemarkFlags, withClientName } from '@/lib/remark-flags';
 import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
 import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
@@ -980,6 +983,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.advanceDays = current.advanceDays ? current.advanceDays : 0;
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc ? current.dcmc : false;
+                                restoreRemarkFlags(collection, current);
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mpdc = current.mpdc ? current.mpdc : false;
@@ -1764,99 +1768,101 @@ const CashCollectionDetailsPage = () => {
     const validation = (draft) => {
         let errorMsg = new Set();
 
+        // hard rules apply to drafts as well
+        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled })).forEach(m => errorMsg.add(m));
+
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
                 if (cc.error) {
-                    errorMsg.add('Error occured. Please double check the Actual Collection column.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please double check the Actual Collection column.'));
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
-                    errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please select a remarks for 0 or no payment Actual Collection.'));
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                         && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
                         && !cc.remarks.value.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
                         && !cc.remarks.value?.startsWith('collection-')))) ) {
-                    errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
+                    errorMsg.add(withClientName(cc, "Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks."));
                 } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
-                    errorMsg.add("Error occured. Past due is less than the target collection.");
+                    errorMsg.add(withClientName(cc, "Error occured. Past due is less than the target collection."));
                 } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value?.startsWith('excused') || cc.remarks.value?.startsWith('delinquent')) ) {
                     if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
-                        errorMsg.add("Error occured. Amount collection is not divisible by 10");
+                        errorMsg.add(withClientName(cc, "Error occured. Amount collection is not divisible by 10"));
                     }
                 } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan 
                         && (!cc.remarks?.value.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
                         && !cc.remarks?.value.startsWith('offset-')) {
-                    errorMsg.add("Actual collection is below the target collection.");
+                    errorMsg.add(withClientName(cc, "Actual collection is below the target collection."));
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                     if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
                         && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') && cc.remarks.value !== 'offset-matured-pd' ) {
-                        errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
+                        errorMsg.add(withClientName(cc, `Actual collection should be divisible by ${cc.activeLoan}.`));
                     }
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) || parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) && cc.loanBalance !== 0) {
                     if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                        errorMsg.add(`Error occured. Actual collection is a advance payment please set remarks as Advance Payment.`);
+                        errorMsg.add(withClientName(cc, `Error occured. Actual collection is a advance payment please set remarks as Advance Payment.`));
                     } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                        errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.'));
                     }
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
-                    errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.'));
                 }
 
                 if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset')) && !cc?.maturedPDPrevTransaction) {
-                    errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please input the full balance amount before closing the loan account.'));
                 }
 
                 if (cc.mcbuError) {
-                    errorMsg.add('Error occured. Please double check the MCBU Collection/Withdrawal column.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please double check the MCBU Collection/Withdrawal column.'));
                 }
 
                 if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < getDailyMinMcbu(1, cc.remarks)) {
                     if (!cc.remarks || (cc.remarks 
                         && (cc.remarks.value !== 'past due' && cc.remarks.value?.startsWith('excused-')
                         && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
-                        errorMsg.add('Error occured. Invalid MCBU Collection.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Collection.'));
                     }
                 } else if (parseFloat(cc.mcbuCol) > 5 && parseFloat(cc.mcbuCol) % 5 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
-                    errorMsg.add('Error occured. MCBU collection should be divisible by 5.');
+                    errorMsg.add(withClientName(cc, 'Error occured. MCBU collection should be divisible by 5.'));
                 }
 
                 if (cc.mcbuWithdrawFlag) {
                     if (!cc.mcbuWithdrawal || parseFloat(cc.mcbuWithdrawal) > parseFloat(cc.mcbu)) {
-                        errorMsg.add('Error occured. Invalid MCBU Withdraw amount.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Withdraw amount.'));
                     } else if (parseFloat(cc.mcbuWithdrawal) < 10) {
-                        errorMsg.add('Error occured. MCBU withdrawal amount is less than ₱10.');
+                        errorMsg.add(withClientName(cc, 'Error occured. MCBU withdrawal amount is less than ₱10.'));
                     }
                 }
 
                 if (cc.dcmc && cc.remarks?.value == 'delinquent-mcbu' && cc.mcbuCol <= 0) {
-                    errorMsg.add('Error occured. Please add MCBU amount.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please add MCBU amount.'));
                 }
 
                 if ((cc.remarks == '' && cc.paymentCollection > 0) && (cc.remarks && ['reloaner-cont', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                     const noPaymentsToday = cc.paymentCollection / cc.activeLoan;
                     const expectedMcbu = getDailyMinMcbu(noPaymentsToday, cc.remarks);
                     if (!cc.mcbuCol) {
-                        errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                        errorMsg.add(withClientName(cc, `Error occured. No MCBU Collection detected.`));
                     } else if (cc.mcbuCol < expectedMcbu) {
-                        errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                        errorMsg.add(withClientName(cc, `Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`));
                     }
                 }
 
-                if ((csfEnabled && cc.csfError) || (csfEnabled && cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
-                    && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
-                    errorMsg.add('Error occured. Please double check the CSF Collection column.');
+                if (csfEnabled && cc.csfError && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
+                    errorMsg.add(withClientName(cc, 'Error occured. Please double check the CSF Collection column.'));
                 }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' 
                     && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') 
                     && !cc.remarks.value?.startsWith('offset'))))) {
-                errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
+                errorMsg.add(withClientName(cc, "Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET."));
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner-cont', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
                 const noPaymentsToday = cc.paymentCollection / activeLoan;
                 const expectedMcbu = getDailyMinMcbu(noPaymentsToday, cc.remarks);
 
                 if (!cc.mcbuCol) {
-                    errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                    errorMsg.add(withClientName(cc, `Error occured. No MCBU Collection detected.`));
                 } else if (cc.mcbuCol < expectedMcbu) {
-                    errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                    errorMsg.add(withClientName(cc, `Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`));
                 }
             }
         });
@@ -1974,10 +1980,14 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
+                        // Untouched unpaid rows on Save Draft are not a mispay yet (no remark chosen); Submit blocks them without a remark.
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && !draft) {
                             temp.mispayment = true;
                         }
                         temp.mispayment = resolveMispayment(temp);
+                        if (draft && !(temp.paymentCollection > 0) && !temp.remarks?.value) {
+                            temp.mispayment = false; // draft, no payment and no remark chosen yet
+                        }
 
                         if (temp.remarks && temp.remarks.value === 'excused advance payment') {
                             temp.activeLoan = 0;
@@ -2057,19 +2067,9 @@ const CashCollectionDetailsPage = () => {
 
                 const overallTotalNetCollection = data.find(cc => cc.status === 'totals')?.totalCollection || 0;
 
-                const revertedItems = dataArr.filter(cc => cc.reverted || cc.fromReverted);
-                // console.log(dataArr, 'before revert filter')
-                if (revertedItems.length > 0) {
-                    dataArr = revertedItems;
-                }
-
-                if (!draft && draftsCollection.length > 0) {
-                    const draftIds = new Set(draftsCollection.map(d => d.client._id));
-                    const matchingItems = dataArr.filter(item => draftIds.has(item.clientId));
-                    if (matchingItems.length > 0) {
-                        dataArr = matchingItems;
-                    }
-                }
+                // NOTE: previously dataArr was narrowed here to only the reverted rows, or only the rows that had
+                // a draft, which silently dropped every other edited row (their collections were never saved).
+                // All dirty rows are now always sent.
 
                 // const pendings = dataArr.filter(cc => {
                 //     return cc?.advance && cc.status == 'pending';
@@ -2722,6 +2722,17 @@ const CashCollectionDetailsPage = () => {
         
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
+                            if (temp.status === 'completed' && !(temp.loanBalance > 0)) {
+                                // already fully paid: no phantom target / payment for pending, reloaner or offset
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = '-';
+                                if (remarks.value?.startsWith('offset')) {
+                                    temp.paymentCollection = 0;
+                                    temp.paymentCollectionStr = '-';
+                                    temp.excess = 0;
+                                    temp.excessStr = '-';
+                                }
+                            }
                             temp.excused = false;
                             temp.delinquent = false;
                             temp.maturedPD = false;
@@ -2738,6 +2749,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
+                                        setCloseAccountRemarks('');
+                                        setOffsetUseMCBU(false);
                                         setShowRemarksModal(true);
                                         temp.error = false;
                                         setEditMode(true);
@@ -3380,7 +3393,8 @@ const CashCollectionDetailsPage = () => {
                     toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
                     temp.mcbuError = true;
                 } else if (value > 5 && value % 5 !== 0) {
-                    toast.error('Error occured. MCBU collection must be divisible by 5.');
+                    // entry-time rule: MCBU collections above 5 are in multiples of 5
+                    toast.error(`Error occured. MCBU collection must be divisible by 5 (entered ${value}; try ${Math.floor(value / 5) * 5} or ${Math.ceil(value / 5) * 5}).`);
                     temp.mcbuError = true;
                 } else {
                     temp.mcbuError = false;
@@ -3391,7 +3405,9 @@ const CashCollectionDetailsPage = () => {
                     toast.error(`Error occured. Minimum CSF collection is ${transactionSettings.minCsfCollection}.`);
                     temp.csfError = true;
                 } else if (value > 5 && value % 5 !== 0) {
-                    toast.error('Error occured. CSF collection must be divisible by 5.');
+                    // entry-time rule: CSF collections above 5 are in multiples of 5, so the group CSF
+                    // (total MCBU collection / clients) must be rounded to a multiple of 5 when entered
+                    toast.error(`Error occured. CSF collection must be divisible by 5 (entered ${value}; try ${Math.floor(value / 5) * 5} or ${Math.ceil(value / 5) * 5}).`);
                     temp.csfError = true;
                 } else {
                     temp.csfError = false;
@@ -3415,10 +3431,17 @@ const CashCollectionDetailsPage = () => {
             if (currentUser.role.rep === 3) {
                 const blocked = selectedRows.filter(r => (r.bmRevertCount || 0) >= 1);
                 if (blocked.length > 0) {
-                    toast.error('One or more selected rows have already been reverted by a branch manager. Only a higher-level manager can revert those.');
+                    toast.error(`Already reverted by a branch manager: ${blocked.map(r => r.fullName).join(', ')}. Only a higher-level manager can revert those.`);
                     return;
                 }
             }
+            // a row can only be reverted when a saved cash collection record exists for it
+            const noRecord = selectedRows.filter(d => !d._id);
+            if (noRecord.length > 0) {
+                toast.error(`Cannot revert: no saved transaction for ${noRecord.map(d => d.fullName).join(', ')}.`);
+                return;
+            }
+
             setLoading(true);
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
             if (response.success) {
@@ -3431,7 +3454,8 @@ const CashCollectionDetailsPage = () => {
                 }, 1000);
             } else {
                 setLoading(false);
-                toast.error(response.message || 'Revert failed.');
+                const reasons = Array.isArray(response.details) ? response.details.map(dt => dt.reason).filter(Boolean).join('\n') : '';
+                toast.error([response.message || 'Revert failed.', reasons].filter(Boolean).join('\n'));
             }
         } else {
             toast.error('No row(s) selected!');
@@ -3456,6 +3480,11 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleSetCloseAccountRemarks = () => {
+        if (!String(closeAccountRemarks || '').trim()) {
+            toast.error('Offset requires a reason. Please enter the close account remarks.');
+            return;
+        }
+
         const list = data.map(cc => {
             let temp = JSON.parse(JSON.stringify(cc));
             
@@ -3470,6 +3499,8 @@ const CashCollectionDetailsPage = () => {
 
         dispatch(setCashCollectionGroup(list));
         setShowRemarksModal(false);
+        setCloseAccountRemarks('');
+        setOffsetUseMCBU(false);
     }
 
     const handleExitCloseAccountRemarks = () => {
@@ -3486,6 +3517,7 @@ const CashCollectionDetailsPage = () => {
 
         dispatch(setCashCollectionGroup(list));
         setCloseAccountRemarks('');
+        setOffsetUseMCBU(false);
         setShowRemarksModal(false);
     }
 
@@ -3883,7 +3915,8 @@ const CashCollectionDetailsPage = () => {
         setSelectAll(!selectAll);
         const dataList = data.map(cc => {
             let temp = {...cc};
-            if (temp.clientId && (temp?.transferStr == null || temp?.transferStr == '-')) {
+            const bmLocked = currentUser.role.rep === 3 && (temp.bmRevertCount || 0) >= 1;
+            if (temp.clientId && !bmLocked && (temp?.transferStr == null || temp?.transferStr == '-')) {
                 temp.selected = !selectAll;
             }
             return temp;
@@ -4377,7 +4410,7 @@ const CashCollectionDetailsPage = () => {
                                                      ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} 
-                                                                onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')} 
+                                                                onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'mcbuCol')} 
                                                                 disabled={cc.disableMcbuCol}
                                                                 onClick={(e) => e.stopPropagation()} 
                                                                 onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} 
@@ -4400,7 +4433,7 @@ const CashCollectionDetailsPage = () => {
                                                      ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-csfCol`} min={0} step={5} 
-                                                                onChange={(e) => handlePaymentCollectionChange(e, index, 'csfCol')} 
+                                                                onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'csfCol')} 
                                                                 disabled={cc.disableCsfCol}
                                                                 onClick={(e) => e.stopPropagation()} 
                                                                 onBlur={(e) => handlePaymentValidation(e, cc, index, 'csfCol')} 
@@ -4422,7 +4455,7 @@ const CashCollectionDetailsPage = () => {
                                                     { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
                                                         || cc?.reverted || cc.draft) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                             <React.Fragment>
-                                                                <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount')}
+                                                                <input type="number" name={cc.clientId} min={0} step={10} onFocus={(e) => e.target.select()} onChange={(e) => handlePaymentCollectionChange(normalizeNumberInput(e), index, 'amount')}
                                                                     onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
                                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                                 focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>

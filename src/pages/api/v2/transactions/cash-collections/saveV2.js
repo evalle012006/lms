@@ -20,8 +20,10 @@ import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloaner, isNotificationEnabled } from '@/lib/notification-service';
 import moment from 'moment-timezone';
-import { getSystemDate } from '@/lib/date-utils';
+import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
+import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
+import { findHardRuleViolations, sanitizeCompletedRow } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
@@ -32,6 +34,8 @@ import { resolveMispayment } from '@/lib/mispayment-utils';
 const TIMEZONE = 'Asia/Manila';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+// Stale-page guard (prevData vs DB). 'off' | 'warn' (log only, default) | 'reject' (409 STALE_DATA).
+const PREVDATA_GUARD_MODE = String(process.env.LMS_PREVDATA_GUARD || 'warn').toLowerCase();
 
 // ============================================
 // GRAPH SETUP (same as original)
@@ -134,6 +138,69 @@ async function createDelinquentAlerts(collection, loan, client, branch, user, th
     }
 }
 
+/**
+ * Weekend / holiday guard. The register pages disable every input on these days, so the API
+ * must refuse too (a direct call or a stale tab would otherwise save). `currentDate` has already
+ * been validated against the system date. Fails open if the holiday lookup errors.
+ */
+async function getNonWorkingReasonForSave(currentDate) {
+    const weekend = getNonWorkingReason(currentDate);
+    if (weekend) return weekend;
+    try {
+        const { data } = await graph.query(queryQl(holidayType));
+        return getNonWorkingReason(currentDate, data?.holidays ?? []);
+    } catch (e) {
+        logger.warn({ page: 'saveV2', message: 'Holiday lookup failed, not blocking the save', error: e.message });
+        return null;
+    }
+}
+
+const PREV_TOLERANCE = 0.005;
+const prevDiffers = (prev, current) =>
+    prev !== undefined && prev !== null && prev !== '-' && prev !== '' &&
+    Math.abs(safeNumber(prev) - safeNumber(current)) > PREV_TOLERANCE;
+
+/**
+ * Stale-page detection. The browser sends prevData = the row's values BEFORE the user edited it
+ * (MCBU, loan balance, ...). updateLoan() then writes browser-computed totals, so if another tab or
+ * user changed the loan in between, those totals silently overwrite the newer data. For rows that
+ * will update a loan, compare prevData.mcbu / prevData.loanBalance with the loan as it is now.
+ * Rows already finalized in the DB (re-sent with the group) are skipped: their loan already
+ * reflects that transaction, so a difference there is expected.
+ */
+async function findStalePrevDataRows(rows) {
+    const candidates = rows.filter(r =>
+        r.loanId && r.prevData && !r.draft &&
+        r.status !== 'tomorrow' && r.status !== 'pending' && r.status !== 'totals');
+    if (candidates.length === 0) return [];
+
+    const loanIds = Array.from(new Set(candidates.map(r => r.loanId)));
+    const ccIds = candidates.map(r => r._id).filter(Boolean);
+
+    const [loans, finalized] = await Promise.all([
+        graph.query(queryQl(createGraphType('loans', '_id mcbu loanBalance')('stale_loans'), { where: { _id: { _in: loanIds } } }))
+            .then(r => r.data?.stale_loans ?? []),
+        ccIds.length === 0 ? [] : graph.query(queryQl(createGraphType('cashCollections', '_id draft origin')('stale_ccs'), {
+            where: { _id: { _in: ccIds }, draft: { _eq: false }, origin: { _neq: 'pre-save' } }
+        })).then(r => r.data?.stale_ccs ?? [])
+    ]);
+
+    const loanById = new Map(loans.map(l => [l._id, l]));
+    const finalizedIds = new Set(finalized.map(c => c._id));
+
+    const stale = [];
+    for (const r of candidates) {
+        if (r._id && finalizedIds.has(r._id)) continue;
+        const loan = loanById.get(r.loanId);
+        if (!loan) continue;
+        const fields = [];
+        if (prevDiffers(r.prevData.mcbu, loan.mcbu)) fields.push({ field: 'mcbu', pageBaseline: safeNumber(r.prevData.mcbu), db: safeNumber(loan.mcbu) });
+        if (prevDiffers(r.prevData.loanBalance, loan.loanBalance)) fields.push({ field: 'loanBalance', pageBaseline: safeNumber(r.prevData.loanBalance), db: safeNumber(loan.loanBalance) });
+        if (fields.length > 0) stale.push({ clientId: r.clientId, loanId: r.loanId, fields });
+    }
+    return stale;
+}
+
 // ============================================
 // MAIN HANDLER WITH PROTECTION
 // ============================================
@@ -184,11 +251,104 @@ async function saveWithProtection(req, res) {
             });
         }
 
+        // Step 1a: no transactions on a weekend or a holiday (the UI is disabled then; enforce it here too)
+        const nonWorking = await getNonWorkingReasonForSave(currentDate);
+        if (nonWorking) {
+            logger.warn({
+                user_id,
+                transactionId,
+                page: 'Cash Collection SaveV2',
+                message: `Save blocked: ${currentDate} is a ${nonWorking}`
+            });
+
+            return res.status(400).json({
+                success: false,
+                error: true,
+                errorCode: 'NON_WORKING_DAY',
+                message: nonWorking === 'weekend'
+                    ? 'Transactions are not allowed on weekends.'
+                    : 'Transactions are not allowed on holidays.',
+                transactionId
+            });
+        }
+
         // Step 1b: CSF config guard (before the retry loop: deterministic, never worth retrying)
         const csfRows = data.collection.filter(cc => cc.status !== 'totals');
+
+        // Audit log of exactly what the client sent (ids and numbers only, no names/personal data).
+        // Lets us compare the first vs the second Save Draft when a row changes unexpectedly.
+        logger.info({
+            user_id,
+            transactionId,
+            page: 'Cash Collection SaveV2 Payload',
+            groupId: csfRows[0]?.groupId,
+            rows: csfRows.map(cc => ({
+                clientId: cc.clientId,
+                loanId: cc.loanId,
+                _id: cc._id,
+                status: cc.status,
+                draft: cc.draft,
+                remarks: cc.remarks?.value ?? cc.remarks ?? null,
+                hasCloseRemarks: !!cc.closeRemarks,
+                mcbu: cc.mcbu,
+                mcbuCol: cc.mcbuCol,
+                mcbuWithdrawal: cc.mcbuWithdrawal,
+                mcbuReturnAmt: cc.mcbuReturnAmt,
+                csfCollection: cc.csfCollection,
+                paymentCollection: cc.paymentCollection,
+                targetCollection: cc.targetCollection,
+                excess: cc.excess,
+                loanBalance: cc.loanBalance,
+                noOfPayments: cc.noOfPayments,
+                prevMcbu: cc.prevData?.mcbu,
+                prevLoanBalance: cc.prevData?.loanBalance,
+                dirty: cc._dirty,
+            })),
+        });
         if (csfRows.length > 0) {
             const csfEnabled = await loadCsfEnabled(csfRows[0].groupId);
             const violations = findCsfViolations(csfRows, csfEnabled);
+
+            csfRows.forEach(sanitizeCompletedRow);
+
+            // Hard business rules enforced server-side (apply to drafts too)
+            let ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
+
+            // An Offset already persisted as 'closed' (re-sent with the group) is history: it has no
+            // close reason in the payload, but it was accepted earlier. Only NEW offsets need a reason.
+            const reasonViolations = ruleViolations.filter(v => v.code === 'OFFSET_REASON_REQUIRED');
+            if (reasonViolations.length > 0) {
+                const ids = csfRows
+                    .filter(r => reasonViolations.some(v => v.clientId === r.clientId) && r._id && r._id !== r.loanId)
+                    .map(r => r._id);
+                if (ids.length > 0) {
+                    const persisted = await graph.query(
+                        queryQl(createGraphType('cashCollections', '_id status')('persisted_closed'), {
+                            where: { _id: { _in: ids }, status: { _eq: 'closed' } }
+                        })
+                    ).then(r => r.data?.persisted_closed ?? []);
+                    const persistedIds = new Set(persisted.map(x => x._id));
+                    const okClients = new Set(csfRows.filter(r => persistedIds.has(r._id)).map(r => r.clientId));
+                    ruleViolations = ruleViolations.filter(v => !(v.code === 'OFFSET_REASON_REQUIRED' && okClients.has(v.clientId)));
+                }
+            }
+            if (ruleViolations.length > 0) {
+                logger.warn({
+                    user_id,
+                    transactionId,
+                    page: 'Cash Collection SaveV2',
+                    message: 'Hard business rule violation',
+                    violations: ruleViolations.map(v => ({ code: v.code, clientId: v.clientId }))
+                });
+                return res.status(200).json({
+                    success: false,
+                    error: true,
+                    errorCode: ruleViolations[0].code,
+                    message: Array.from(new Set(ruleViolations.map(v => v.message))).join('\n'),
+                    violations: ruleViolations,
+                    transactionId
+                });
+            }
 
             if (violations.length > 0) {
                 logger.warn({
@@ -209,6 +369,37 @@ async function saveWithProtection(req, res) {
                         transactionId
                     });
                 }
+            }
+        }
+
+        // Step 1c: stale-page guard (see findStalePrevDataRows). Never retried: it is deterministic.
+        if (PREVDATA_GUARD_MODE !== 'off') {
+            try {
+                const staleRows = await findStalePrevDataRows(csfRows);
+                if (staleRows.length > 0) {
+                    logger.warn({
+                        user_id,
+                        transactionId,
+                        page: 'Cash Collection SaveV2',
+                        message: 'Stale page detected: prevData does not match the loan in the DB',
+                        mode: PREVDATA_GUARD_MODE,
+                        rows: staleRows
+                    });
+
+                    if (PREVDATA_GUARD_MODE === 'reject') {
+                        return res.status(409).json({
+                            success: false,
+                            error: true,
+                            errorCode: 'STALE_DATA',
+                            message: 'This page is out of date because the loan changed since it was loaded. Please refresh the page and try again.',
+                            staleRows,
+                            transactionId
+                        });
+                    }
+                }
+            } catch (e) {
+                // the guard must never be the reason a save fails
+                logger.warn({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Stale-page check failed, continuing', error: e.message });
             }
         }
 
@@ -443,7 +634,8 @@ async function executeSave(req, user_id, transactionId, user) {
                     })
                 );
 
-                if (collection.loanBalance <= 0 && !collection.fullPaymentDate) {
+                // a completed (green) client was already fully paid earlier: never restamp fullPaymentDate
+                if (collection.loanBalance <= 0 && !collection.fullPaymentDate && collection.status !== 'completed') {
                     collection.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
                 }
 
@@ -547,7 +739,34 @@ async function executeSave(req, user_id, transactionId, user) {
             await saveCollection(mutationQl, newCC, currentDate);
         }
 
-        if (existCC.length > 0) {
+        // Weekly-only hardening: pre-save and the missing-row insert apply to weekly groups; daily saves are untouched.
+        const isWeeklySave = data.collection.some(c => c.status !== 'totals') && data.collection.filter(c => c.status !== 'totals').every(c => c.occurence === 'weekly');
+
+        if (existCC.length > 0 && isWeeklySave) {
+            // An UPDATE on a cash collection that no longer exists matches 0 rows and succeeds
+            // silently, while the loan/client updates in the same request still apply. That leaves
+            // loans closed / clients offset with NO cashCollections row. Rows whose _id is not in
+            // the table are therefore inserted instead of updated.
+            const ids = existCC.map(c => c._id);
+            const found = await graph.query(
+                queryQl(createGraphType('cashCollections', '_id')('cc_present'), { where: { _id: { _in: ids } } })
+            ).then(r => r.data?.cc_present ?? []);
+            const foundIds = new Set(found.map(x => x._id));
+            const toInsert = existCC.filter(c => !foundIds.has(c._id));
+            const toUpdate = existCC.filter(c => foundIds.has(c._id));
+
+            if (toInsert.length > 0) {
+                logger.warn({
+                    user_id, transactionId, page: 'Cash Collection SaveV2',
+                    message: 'Cash collection _id not found, inserting instead of updating',
+                    rows: toInsert.map(c => ({ _id: c._id, clientId: c.clientId, loanId: c.loanId, status: c.status }))
+                });
+                await saveCollection(mutationQl, toInsert, currentDate);
+            }
+            if (toUpdate.length > 0) {
+                await updateCollection(mutationQl, toUpdate);
+            }
+        } else if (existCC.length > 0) {
             await updateCollection(mutationQl, existCC);
         }
 
@@ -562,6 +781,19 @@ async function executeSave(req, user_id, transactionId, user) {
 
         if (overallTotalNetCollection > 0) {
             await updateDenomination(mutationQl, data.collection[0]?.groupId, currentDate, overallTotalNetCollection);
+        }
+
+        // On final Submit, any row of this group/date still carrying the 'pre-save' placeholder
+        // origin (rows the page did not send: pending/open/untouched) must be cleared too,
+        // otherwise they stay 'pre-save' after the group is closed.
+        const submitGroupId = data.collection[0]?.groupId;
+        if (isWeeklySave && submitGroupId && data.collection.length > 0 && data.collection.every(c => !c.draft)) {
+            mutationQl.push(
+                updateQl(COLLECTION_TYPE('collections_presave_clear_' + (mutationQl.length + 1)), {
+                    set: { origin: null },
+                    where: { groupId: { _eq: submitGroupId }, dateAdded: { _eq: currentDate }, origin: { _eq: 'pre-save' } },
+                })
+            );
         }
 
         // save all changes in one request
@@ -651,6 +883,8 @@ const assignNullValues = (obj, origin) => {
 async function saveCollection(mutationQL, collections, currentDate) {
     const objects = collections.map(c => ({
         ... cleanUpCollection(c),
+        // a placeholder origin must never survive a real save
+        origin: c.origin === 'pre-save' ? null : (c.origin ?? null),
         _id: c._id || generateUUID(),
         dateAdded: currentDate,
     }));
@@ -884,8 +1118,13 @@ async function updateClient(user_id, mutationQl, loan) {
             : loan.remarks;
 
         if (client.status === 'offset') {
-            client.oldLoId = client.loId;
-            client.oldGroupId = client.groupId;
+            // Only remember the previous group/LO when the client still has one. A re-save of an
+            // already-offset client (e.g. a second Save Draft) must not overwrite oldGroupId/oldLoId
+            // with null, otherwise rollback can never restore the client.
+            if (client.groupId || client.loId) {
+                client.oldLoId = client.loId;
+                client.oldGroupId = client.groupId;
+            }
             client.groupId = null;
             client.loId = null;
         }

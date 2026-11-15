@@ -1,14 +1,28 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
+import { holidayType } from '@/pages/api/v2/settings/holidays/common';
+import { getNonWorkingReason } from '@/lib/date-utils';
 import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
 import { generateUUID } from '@/lib/utils';
+import { createHash } from 'crypto';
 import { apiHandler } from '@/services/api-handler';
+import { findGroups } from '@/lib/graph.functions';
 import { gql } from 'node_modules/apollo-boost/lib/index';
 
 const graph = new GraphProvider();
 
 const toText = v => (v == null ? null : String(v));
+
+// Deterministic UUID (sha1-based, v5-style) so the same loan+date always maps to the same row id.
+// Combined with on_conflict on the primary key, concurrent pre-save calls cannot create duplicates.
+const presaveId = (loanId, date) => {
+    const h = createHash('sha1').update(`presave|${loanId}|${date}`).digest();
+    h[6] = (h[6] & 0x0f) | 0x50;
+    h[8] = (h[8] & 0x3f) | 0x80;
+    const x = h.subarray(0, 16).toString('hex');
+    return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20, 32)}`;
+};
 
 export default apiHandler({
     post: save
@@ -17,7 +31,7 @@ export default apiHandler({
 async function save(req, res) {
     let response = {};
     let statusCode = 200;
-    const { loId, loanOfficers, currentDate, mode = 'single' } = req.body;
+    let { loId, loanOfficers, currentDate, mode = 'single', groupId } = req.body;
 
     try {
         // Batch mode - process multiple loan officers
@@ -31,7 +45,7 @@ async function save(req, res) {
 
             for (const lo of loanOfficers) {
                 try {
-                    const result = await preSaveForLoanOfficer(lo.loId, currentDate);
+                    const result = await preSaveForLoanOfficerOnce(lo.loId, currentDate);
                     
                     if (result.skipped) {
                         skippedCount++;
@@ -75,9 +89,15 @@ async function save(req, res) {
             return;
         }
 
+        // Group mode: the register page asks for its own group's LO so it can wait for pre-save
+        if (!loId && groupId) {
+            const [grp] = await findGroups({ _id: { _eq: groupId } }, 'loanOfficerId');
+            loId = grp?.loanOfficerId;
+        }
+
         // Single mode - process one loan officer (existing implementation)
         if (mode === 'single' && loId) {
-            const result = await preSaveForLoanOfficer(loId, currentDate);
+            const result = await preSaveForLoanOfficerOnce(loId, currentDate);
             
             response = result;
             res.status(statusCode)
@@ -113,8 +133,40 @@ async function save(req, res) {
     }
 }
 
+// Concurrent calls for the same LO+date (list page, register page) share one run, so the
+// check-then-insert cannot race into duplicate rows on a single server instance.
+const inFlight = new Map();
+function preSaveForLoanOfficerOnce(loId, currentDate) {
+    const key = `${loId}|${currentDate}`;
+    if (inFlight.has(key)) return inFlight.get(key);
+    const p = preSaveForLoanOfficer(loId, currentDate).finally(() => inFlight.delete(key));
+    inFlight.set(key, p);
+    return p;
+}
+
+// Pre-save must never create rows on a weekend or a holiday (the register is closed then).
+// The UI also guards this, but the API is called from several places, so enforce it here.
+async function getNonWorkingReasonForDate(currentDate) {
+    if (!currentDate) return null;
+    // Weekend needs no lookup; only hit the holidays table on weekdays.
+    const weekend = getNonWorkingReason(currentDate);
+    if (weekend) return weekend;
+    try {
+        const { data } = await graph.query(queryQl(holidayType));
+        return getNonWorkingReason(currentDate, data?.holidays ?? []);
+    } catch (e) {
+        console.error('pre-save holiday check failed, continuing', e);
+        return null;
+    }
+}
+
 // Helper function to pre-save collections for a single loan officer
 async function preSaveForLoanOfficer(loId, currentDate) {
+    const nonWorking = await getNonWorkingReasonForDate(currentDate);
+    if (nonWorking) {
+        console.log(`Skipping pre-save for loId: ${loId} on ${currentDate} (${nonWorking})`);
+        return { success: true, skipped: true, message: `Pre-save skipped: ${nonWorking}`, count: 0 };
+    }
     // Fetch loans that need pre-save collections
     const loans = await graph.apollo.query({
         query: gql`
@@ -158,7 +210,6 @@ async function preSaveForLoanOfficer(loId, currentDate) {
                     where: {
                         clientId: { _in: $clientIds }
                         dateAdded: { _eq: $currentDate }
-                        origin: { _in: ["pre-save", "offline"] }
                     }
                 ) {
                     clientId
@@ -195,7 +246,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
 
     // Create cash collections from loans (only for new clients)
     const cashCollections = loansToPreSave.map(loan => ({
-        _id: generateUUID(),
+        _id: presaveId(loan._id + '', currentDate),
         loanId: loan._id + '',
         branchId: loan.branchId,
         groupId: loan.groupId,
@@ -247,7 +298,8 @@ async function preSaveForLoanOfficer(loId, currentDate) {
     // Insert the collections
     await graph.mutation(
         insertQl(createGraphType('cashCollections', '_id')('collections'), {
-            objects: cashCollections
+            objects: cashCollections,
+            on_conflict: { constraint: 'cashCollections_pkey', update_columns: [] }
         })
     );
 
