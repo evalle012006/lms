@@ -52,6 +52,7 @@ import { useStaleDataRefresh } from '@/hooks/useStaleDataRefresh';
 import { resolveCsfMcbuAddOn } from '@/lib/csf-utils';
 import { resolveMispayment } from '@/lib/mispayment-utils';
 import { normalizeNumberInput } from '@/lib/number-input';
+import { restoreRemarkFlags, withClientName } from '@/lib/remark-flags';
 import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
 import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
@@ -999,8 +1000,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.advanceDays = current.advanceDays ? current.advanceDays : 0;
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc;
-                                // Delinquent-MCBU rows keep their MCBU input after a draft reload
-                                if (current.remarks?.value === 'delinquent-mcbu' || current.dcmc) { collection.allowMcbuCollection = true; }
+                                restoreRemarkFlags(collection, current);
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
@@ -1856,46 +1856,46 @@ const CashCollectionDetailsPage = () => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
-                        errorMsg.add('Error occured. Please double check the Actual Collection column.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Please double check the Actual Collection column.'));
                     } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
-                        errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Please select a remarks for 0 or no payment Actual Collection.'));
                     } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                             && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
                             && !cc.remarks.value.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
                             && !cc.remarks.value?.startsWith('collection-')))) ) {
-                        errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
+                        errorMsg.add(withClientName(cc, "Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks."));
                     } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
-                        errorMsg.add("Error occured. Past due is less than the target collection.");
+                        errorMsg.add(withClientName(cc, "Error occured. Past due is less than the target collection."));
                     } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value?.startsWith('excused') || cc.remarks.value?.startsWith('delinquent')) ) {
                         if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
-                            errorMsg.add("Error occured. Amount collection is not divisible by 10");
+                            errorMsg.add(withClientName(cc, "Error occured. Amount collection is not divisible by 10"));
                         }
                     } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan 
                             && (!cc.remarks?.value.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
                             && !cc.remarks?.value.startsWith('offset-')) {
-                        errorMsg.add("Actual collection is below the target collection.");
+                        errorMsg.add(withClientName(cc, "Actual collection is below the target collection."));
                     } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                         if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
                             && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') && cc.remarks.value !== 'offset-matured-pd' ) {
-                            errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
+                            errorMsg.add(withClientName(cc, `Actual collection should be divisible by ${cc.activeLoan}.`));
                         }
                     } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) || parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) && cc.loanBalance !== 0) {
                         if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                            errorMsg.add(`Error occured. Actual collection is a advance payment please set remarks as Advance Payment.`);
+                            errorMsg.add(withClientName(cc, `Error occured. Actual collection is a advance payment please set remarks as Advance Payment.`));
                         } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                            errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.');
+                            errorMsg.add(withClientName(cc, 'Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.'));
                         }
                     } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
-                        errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.'));
                     }
     
                     if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset')) && !cc?.maturedPDPrevTransaction) {
-                        errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Please input the full balance amount before closing the loan account.'));
                     }
                 }
 
                 if (cc.mcbuError) {
-                    errorMsg.add('Error occured. Please double check the MCBU Collection/Withdrawal column.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please double check the MCBU Collection/Withdrawal column.'));
                 } 
                 
                 if (cc.groupDay === dayName || cc.offsetTransFlag) {
@@ -1907,30 +1907,30 @@ const CashCollectionDetailsPage = () => {
                             || remarksValue?.startsWith('delinquent');
 
                         if (!cc.remarks || !isExemptFromMcbu) {
-                            errorMsg.add('Error occured. Invalid MCBU Collection.');
+                            errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Collection.'));
                         }
                     } else if (parseFloat(cc.mcbuCol) > getWeeklyMinMcbu(cc.group?.weeklyScheduleType, 1, cc.remarks)
                         && parseFloat(cc.mcbuCol) % 5 !== 0 && parseFloat(cc.mcbuInterest) === 0) {
-                        errorMsg.add('Error occured. MCBU collection should be divisible by 5.');
+                        errorMsg.add(withClientName(cc, 'Error occured. MCBU collection should be divisible by 5.'));
                     }
                 }
 
                 if (cc.mcbuWithdrawFlag) {
                     if (!cc.mcbuWithdrawal) {
-                        errorMsg.add('Error occured. Invalid MCBU Withdraw amount.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Withdraw amount.'));
                     } else if (parseFloat(cc.mcbuWithdrawal) < 10) {
-                        errorMsg.add('Error occured. MCBU withdrawal amount is less than ₱10.');
+                        errorMsg.add(withClientName(cc, 'Error occured. MCBU withdrawal amount is less than ₱10.'));
                     }
                 }
 
                 if (cc.offsetTransFlag) {
                     if (!cc.remarks || (cc.remarks && !cc.remarks.value?.startsWith('offset-'))) {
-                        errorMsg.add('Error occured. Only offset transaction allowed.');
+                        errorMsg.add(withClientName(cc, 'Error occured. Only offset transaction allowed.'));
                     }
                 }
 
                 if (cc.dcmc && cc.remarks?.value == 'delinquent-mcbu' && cc.mcbuCol <= 0) {
-                    errorMsg.add('Error occured. Please add MCBU amount.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please add MCBU amount.'));
                 }
 
                 
@@ -1939,29 +1939,29 @@ const CashCollectionDetailsPage = () => {
                     const expectedMcbu = getWeeklyMinMcbu(cc.group?.weeklyScheduleType, noPaymentsToday, cc.remarks);
                     
                     if (!cc.mcbuCol) {
-                        errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                        errorMsg.add(withClientName(cc, `Error occured. No MCBU Collection detected.`));
                     } else if (cc.mcbuCol < expectedMcbu) {
-                        errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                        errorMsg.add(withClientName(cc, `Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`));
                     }
                 }
 
                 if (csfEnabled && cc.csfError && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
-                    errorMsg.add('Error occured. Please double check the CSF Collection column.');
+                    errorMsg.add(withClientName(cc, 'Error occured. Please double check the CSF Collection column.'));
                 }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-')
                     // a loan released today has no payoff yet, so it needs no remarks
                     && !(cc.status === 'tomorrow' && !cc.fullPaymentDate)
                     && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
-                errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
+                errorMsg.add(withClientName(cc, "Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET."));
             } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
                 const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
                 const noPaymentsToday = cc.paymentCollection / activeLoan;
                 const expectedMcbu = getWeeklyMinMcbu(cc.group?.weeklyScheduleType, noPaymentsToday, cc.remarks);
 
                 if (!cc.mcbuCol) {
-                    errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                    errorMsg.add(withClientName(cc, `Error occured. No MCBU Collection detected.`));
                 } else if (cc.mcbuCol < expectedMcbu) {
-                    errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                    errorMsg.add(withClientName(cc, `Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`));
                 }
             }
         });
