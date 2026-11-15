@@ -3531,7 +3531,7 @@ const CashCollectionDetailsPage = () => {
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
             // a row can only be reverted when a saved cash collection record exists for it
-            const noRecord = selectedRows.filter(d => !d._id || d._id === d.loanId);
+            const noRecord = selectedRows.filter(d => !d._id);
             if (noRecord.length > 0) {
                 toast.error(`Cannot revert: no saved transaction for ${noRecord.map(d => d.fullName).join(', ')}.`);
                 return;
