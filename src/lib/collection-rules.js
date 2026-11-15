@@ -29,6 +29,7 @@ export const CODES = {
     LEADER_CSF_REQUIRED: 'LEADER_CSF_REQUIRED',
     NOT_MULTIPLE_OF_TARGET: 'NOT_MULTIPLE_OF_TARGET',
     PHANTOM_COMPLETED_AMOUNTS: 'PHANTOM_COMPLETED_AMOUNTS',
+    PARTIAL_PAYMENT: 'PARTIAL_PAYMENT',
 };
 
 /**
@@ -77,6 +78,13 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
         if (collecting && target > 0 && pay > target && pay % target !== 0 && !isMispayOrExemptRemark(cc)) {
             out.push({ ...base, code: CODES.NOT_MULTIPLE_OF_TARGET,
                 message: `Actual collection should be divisible by ${target}.` });
+        }
+        // Rule 5: a payment below the target collection is not allowed (a payoff of the remaining balance is
+        // fine: that row has balance 0 after the payment and is not 'collecting'). Remarks like Excused,
+        // Delinquent or Past Due are exempt; so are offsets.
+        if (collecting && target > 0 && pay > 0 && pay < target && !isMispayOrExemptRemark(cc) && !isOffsetRemark(cc)) {
+            out.push({ ...base, code: CODES.PARTIAL_PAYMENT,
+                message: `Actual collection is below the target collection of ${target}. Enter the full target or choose a remark.` });
         }
     });
     return out;
