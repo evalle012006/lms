@@ -397,6 +397,7 @@ const CashCollectionDetailsPage = () => {
                     let amountRelease = 0;
                     let loanBalance = 0;
                     let mispayment = false;
+                    // let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
                     let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
@@ -425,6 +426,7 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
                             excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
                             paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            coMaker = '-';
                             csfCollection = current.csfCollection;
                             csfWithdrawal = current.csfWithdrawal;
                             csfReturnAmt = current.csfReturnAmt;
@@ -482,7 +484,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
-                        coMaker: '-',
+                        coMaker: normalizeCoMaker(cc.coMaker),
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -1769,7 +1771,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         // hard rules apply to drafts as well
-        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled })).forEach(m => errorMsg.add(m));
+        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled, checkOverpaymentRemark: true, checkEntryRules: true })).forEach(m => errorMsg.add(m));
 
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
@@ -2321,7 +2323,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispayment = false;
                                     temp.mispaymentStr = "No";
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
-                                    temp.noOfPayments = temp.noOfPayments + noPayments;
+                                    temp.noOfPayments = Math.ceil(temp.noOfPayments + noPayments); // payoff can be a fraction of a payment: count is a whole number, rounded up
                                     const finalMcbu = getDailyMinMcbu(noPayments);
                                     temp.mcbuCol = finalMcbu;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
@@ -3106,7 +3108,7 @@ const CashCollectionDetailsPage = () => {
                                         if (parseFloat(newPayment) > parseFloat(temp.activeLoan)) {
                                             temp.excess = parseFloat(newPayment) - parseFloat(temp.activeLoan);
                                             temp.excessStr = formatPricePhp(temp.excess);
-                                            temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
+                                            temp.noOfPayments = Math.ceil(parseInt(temp.noOfPayments) + noOfPayments); // whole number, rounded up
                                             const excessMcbu = temp.excess / temp.activeLoan;
                                             const finalMcbu = getDailyMinMcbu(excessMcbu + 1, remarks);
                                             temp.mcbuCol = finalMcbu;
@@ -4571,15 +4573,15 @@ const CashCollectionDetailsPage = () => {
                                                         || (!cc?._id || cc?.reverted) 
                                                         || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
                                                         || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')))
-                                                        || (cc.status == 'completed' && cc.remarks == '')
+                                                        || (cc.status == 'completed' && !cc.remarks?.value)
                                                        )
                                                     && (cc?.transferStr == null || cc?.transferStr == '-')
                                                     ) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
-                                                            { cc.remarks !== '-' ? (
+                                                            { (cc.remarks !== '-' || cc.status === 'completed') ? (
                                                                 <Select 
                                                                     options={remarksArr}
-                                                                    value={cc.remarks}
+                                                                    value={cc.remarks?.value ? cc.remarks : null}
                                                                     styles={borderStyles}
                                                                     components={{ DropdownIndicator }}
                                                                     onChange={(val) => handlePaymentCollectionChange(val, index, 'remarks') }
