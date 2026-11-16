@@ -68,6 +68,7 @@ const emptyRow = (day) => ({
   cbhbCollection: 0,
   cbhbAdditional: 0,
   cbhbOther: 0,
+  otherIncomePicture: 0,
 
   withholdingTax: 0,
   mcbuUnclaimReturn: 0,
@@ -246,6 +247,7 @@ const emptyRow = (day) => ({
 }) => {
   const [transactions, setTransactions] = useState([]);
   const [otherIncomeTransactions, setOtherIncomeTransactions] = useState([]);
+  const [otherReceiptsTransactions, setOtherReceiptsTransactions] = useState([]);
 
   // =========================================================
   // LOAD DCS TRANSACTIONS FOR CASHBOOK
@@ -345,6 +347,55 @@ const emptyRow = (day) => ({
       };
   }, [branchId, selectedDate, otherIncomeRefreshKey]);
 
+  useEffect(() => {
+      if (!branchId || !selectedDate) {
+          setOtherReceiptsTransactions([]);
+          return;
+      }
+
+      let cancelled = false;
+
+      const loadOtherReceipts = async () => {
+          try {
+              const selectedMonth = selectedDate.slice(0, 7);
+
+              const params = new URLSearchParams({
+                  branch_id: String(branchId),
+                  month: selectedMonth,
+              });
+
+              const response = await fetchWrapper.get(
+                  `${getApiBaseUrl()}transactions/dcs/other-receipts?${params.toString()}`
+              );
+
+              if (cancelled) return;
+
+              setOtherReceiptsTransactions(
+                  Array.isArray(response?.transactions)
+                      ? response.transactions
+                      : []
+              );
+
+          } catch (error) {
+              console.error(
+                  "Failed to load Cashbook Other Receipts:",
+                  error
+              );
+
+              if (!cancelled) {
+                  setOtherReceiptsTransactions([]);
+              }
+          }
+      };
+
+      loadOtherReceipts();
+
+      return () => {
+          cancelled = true;
+      };
+
+  }, [branchId, selectedDate, otherIncomeRefreshKey]);
+
   /* =======================================================
      TEMPORARY UI DATA
      Later this will come from API / Hasura.
@@ -378,6 +429,7 @@ const emptyRow = (day) => ({
       Number(row.cbhbCollection || 0) +
       Number(row.cbhbAdditional || 0) +
       Number(row.cbhbOther || 0) +
+      Number(row.otherIncomePicture || 0) +
       Number(row.withholdingTax || 0) +
       Number(row.mcbuUnclaimReturn || 0) +
       Number(row.csfIn || 0) +
@@ -437,10 +489,52 @@ const emptyRow = (day) => ({
       let otherReceiptsTotal = 0;
       let withholdingTax = 0;
       let managementExpensesTotal = 0;
+      let cbhbDisbursementTotal = 0;
       let otherIncomeBankDeposit = 0;
+      let otherIncomeBankWithdrawal = 0;
       let otherIncomePenalty = 0;
       let otherIncomeExcessRemittance = 0;
       let otherIncomePassbook = 0;
+
+      otherReceiptsTransactions.forEach((transaction) => {
+          const transactionDate = String(
+              transaction?.transaction_date || ""
+          ).slice(0, 10);
+
+          if (transactionDate !== dateKey) {
+              return;
+          }
+
+          const amount = Number(transaction?.amount || 0);
+
+          if (!Number.isFinite(amount) || amount <= 0) {
+              return;
+          }
+
+          switch (transaction.transaction_type) {
+              case "staff_cbu_collection":
+                  staffCbuCollection += amount;
+                  break;
+
+              case "staff_cashbond_collection":
+                  cashbondCollection += amount;
+                  break;
+
+              case "staff_loan_collection":
+                  salaryAdvanceCollection += amount;
+                  break;
+
+              case "staff_sbf_utility_collection":
+              case "mpl_contribution":
+              case "sss_contribution":
+              case "ap_payroll":
+                  otherReceiptsTotal += amount;
+                  break;
+
+              default:
+                  break;
+          }
+      });
 
       otherIncomeTransactions.forEach((transaction) => {
           const transactionDate = String(
@@ -473,6 +567,10 @@ const emptyRow = (day) => ({
 
             case "bank_deposit":
                 otherIncomeBankDeposit += amount;
+                break;
+
+            case "bank_withdrawal":
+                otherIncomeBankWithdrawal += amount;
                 break;
 
             default:
@@ -564,6 +662,15 @@ const emptyRow = (day) => ({
             managementExpensesTotal += amount;
           }
 
+          // CBHB TOTAL DISBURSEMENT
+          // Transaction > Other Payments > Code 023
+          if (
+            category === "other payments" &&
+            code === "023"
+          ) {
+            cbhbDisbursementTotal += amount;
+          }
+
           if (isIncludedOtherReceipt(item)) {
             otherReceiptsTotal += amount;
           }
@@ -623,7 +730,7 @@ const emptyRow = (day) => ({
         });
       });
 
-      result.push({
+    result.push({
         ...emptyRow(day),
 
         date,
@@ -640,6 +747,7 @@ const emptyRow = (day) => ({
         mcbuCollection: summary?.rcptMcbu ?? 0,
         csfCollection: summary?.rcptCsf ?? 0,
         managementCostExpenses: managementExpensesTotal,
+        cbhbDisbursement: cbhbDisbursementTotal,
 
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
@@ -678,9 +786,14 @@ const emptyRow = (day) => ({
         lrfCollection: summary?.rcptLrf ?? 0,
         cbhbCollection: summary?.rcptCbhb ?? 0,
         cbhbAdditional: summary?.rcptAddHospi ?? 0,
+
         cbhbOther:
           Number(summary?.rcptOtherIncomePassbook || 0) +
           otherIncomePassbook,
+
+        otherIncomePicture:
+          Number(summary?.rcptOtherReceiptsPicture || 0),
+
         withholdingTax,
 
         mcbuUnclaimReturn:
@@ -704,10 +817,15 @@ const emptyRow = (day) => ({
 
         otherReceipts: otherReceiptsTotal,
         rebatesLoan: summary?.payRebates ?? 0,
-        bankWithdrawal: summary?.rcptBankWithdrawal ?? 0,
-        bankDeposit:
+
+        bankWithdrawal:
+          Number(summary?.rcptBankWithdrawal || 0) +
+          otherIncomeBankWithdrawal,
+
+          bankDeposit:
           Number(summary?.payBankDeposits || 0) +
           otherIncomeBankDeposit,
+
         otherPayment: summary?.payOtherPayments ?? 0,
 
       });
@@ -747,12 +865,13 @@ const emptyRow = (day) => ({
 
     return result;
   }, [
-    selectedDate,
-    year,
-    monthIndex,
-    cashbookData,
-    transactions,
-    otherIncomeTransactions,
+      selectedDate,
+      year,
+      monthIndex,
+      cashbookData,
+      transactions,
+      otherIncomeTransactions,
+      otherReceiptsTransactions,
   ]);
 
   const isWeekEnd = (row, index) => {
@@ -826,6 +945,7 @@ const emptyRow = (day) => ({
         <td>{money(sumField(sourceRows, "cbhbCollection"))}</td>
         <td>{money(sumField(sourceRows, "cbhbAdditional"))}</td>
         <td>{money(sumField(sourceRows, "cbhbOther"))}</td>
+        <td>{money(sumField(sourceRows, "otherIncomePicture"))}</td>
 
         <td>{money(sumField(sourceRows, "withholdingTax"))}</td>
         <td>{money(sumField(sourceRows, "mcbuUnclaimReturn"))}</td>
@@ -1170,7 +1290,7 @@ const emptyRow = (day) => ({
             <tr className="cb-main-group">
               <th
                 className="cb-receipts-title"
-                colSpan={23}
+                colSpan={24}
               >
                 RECEIPTS / DEBIT
               </th>
@@ -1276,6 +1396,12 @@ const emptyRow = (day) => ({
                 Other Income
                 <br />
                 (Passbook)
+              </th>
+
+              <th className="cb-special">
+                Other Income
+                <br />
+                (Picture)
               </th>
 
               <th className="cb-special">
@@ -1552,6 +1678,10 @@ const emptyRow = (day) => ({
 
                     <td className="cb-special">
                       {money(row.cbhbOther)}
+                    </td>
+
+                    <td className="cb-special">
+                      {money(row.otherIncomePicture)}
                     </td>
 
                     <td className="cb-special">

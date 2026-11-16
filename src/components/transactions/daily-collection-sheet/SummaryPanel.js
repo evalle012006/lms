@@ -38,6 +38,14 @@ const SummaryPanel = ({
 }) => {
     const d = mapSummaryData(rawData);
 
+    const PICTURE_FEE_PER_RELEASE = 50;
+
+    const totalLoanReleases =
+        Number(d?.payLoanReleaseNo) || 0;
+
+    const otherIncomePicture =
+        totalLoanReleases * PICTURE_FEE_PER_RELEASE;
+
     const [beginningBalanceOverride, setBeginningBalanceOverride] = useState(null);
     const [hasOverride, setHasOverride] = useState(false);
     const [balanceSource, setBalanceSource] = useState('historical');
@@ -47,12 +55,19 @@ const SummaryPanel = ({
     const [balanceSaving, setBalanceSaving] = useState(false);
     const [balanceError, setBalanceError] = useState('');
     const [otherIncomeBankDeposit, setOtherIncomeBankDeposit] = useState(0);
+    const [otherIncomeBankWithdrawal, setOtherIncomeBankWithdrawal] = useState(0);
     const [otherIncomeReceipts, setOtherIncomeReceipts] = useState(0);
     const [otherIncomePassbook, setOtherIncomePassbook] = useState(0);
+
+    const [staffCbuCollection, setStaffCbuCollection] = useState(0);
+    const [staffCashbondCollection, setStaffCashbondCollection] = useState(0);
+    const [staffLoanCollection, setStaffLoanCollection] = useState(0);
+    const [otherReceiptsCollections, setOtherReceiptsCollections] = useState(0);
 
     useEffect(() => {
         if (!branchId || !selectedDate) {
             setOtherIncomeBankDeposit(0);
+            setOtherIncomeBankWithdrawal(0);
             setOtherIncomeReceipts(0);
             setOtherIncomePassbook(0);
             return;
@@ -78,6 +93,7 @@ const SummaryPanel = ({
                     : [];
 
                 let bankDepositTotal = 0;
+                let bankWithdrawalTotal = 0;
                 let otherIncomeTotal = 0;
                 let passbookTotal = 0;
 
@@ -92,6 +108,10 @@ const SummaryPanel = ({
 
                         case "bank_deposit":
                             bankDepositTotal += amount;
+                            break;
+
+                        case "bank_withdrawal":
+                            bankWithdrawalTotal += amount;
                             break;
 
                         case "penalty":
@@ -109,6 +129,7 @@ const SummaryPanel = ({
                 });
 
                 setOtherIncomeBankDeposit(bankDepositTotal);
+                setOtherIncomeBankWithdrawal(bankWithdrawalTotal);
                 setOtherIncomeReceipts(otherIncomeTotal);
                 setOtherIncomePassbook(passbookTotal);
             } catch (error) {
@@ -116,6 +137,7 @@ const SummaryPanel = ({
 
                 if (!cancelled) {
                     setOtherIncomeBankDeposit(0);
+                    setOtherIncomeBankWithdrawal(0);
                     setOtherIncomeReceipts(0);
                     setOtherIncomePassbook(0);
                 }
@@ -123,6 +145,97 @@ const SummaryPanel = ({
         };
 
         loadBankDeposits();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [branchId, selectedDate, otherIncomeRefreshKey]);
+
+    useEffect(() => {
+        if (!branchId || !selectedDate) {
+            setStaffCbuCollection(0);
+            setStaffCashbondCollection(0);
+            setStaffLoanCollection(0);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadOtherReceipts = async () => {
+            try {
+                const params = new URLSearchParams({
+                    branch_id: String(branchId),
+                    transaction_date: selectedDate,
+                });
+
+                const response = await fetchWrapper.get(
+                    `${getApiBaseUrl()}transactions/dcs/other-receipts?${params.toString()}`
+                );
+
+                if (cancelled) return;
+
+                const transactions = Array.isArray(response?.transactions)
+                    ? response.transactions
+                    : [];
+
+                let cbuTotal = 0;
+                let cashbondTotal = 0;
+                let loanTotal = 0;
+                let otherReceiptsTotal = 0;
+
+                transactions.forEach((transaction) => {
+                    const amount = Number(transaction?.amount || 0);
+
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                        return;
+                    }
+
+                    switch (transaction.transaction_type) {
+                        case "staff_cbu_collection":
+                            cbuTotal += amount;
+                            break;
+
+                        case "staff_cashbond_collection":
+                            cashbondTotal += amount;
+                            break;
+
+                        case "staff_loan_collection":
+                            loanTotal += amount;
+                            break;
+
+                        case "staff_sbf_utility_collection":
+                        case "mpl_contribution":
+                        case "sss_contribution":
+                        case "ap_payroll":
+                            otherReceiptsTotal += amount;
+                            break;
+
+                        default:
+                            break;
+                    }
+                });
+
+                setStaffCbuCollection(cbuTotal);
+                setStaffCashbondCollection(cashbondTotal);
+                setStaffLoanCollection(loanTotal);
+                setOtherReceiptsCollections(otherReceiptsTotal);
+
+            } catch (error) {
+                console.error(
+                    "Failed to load Other Receipts collections:",
+                    error
+                );
+
+                if (!cancelled) {
+                    setStaffCbuCollection(0);
+                    setStaffCashbondCollection(0);
+                    setStaffLoanCollection(0);
+                    setOtherReceiptsCollections(0);
+                }
+            }
+        };
+
+        loadOtherReceipts();
 
         return () => {
             cancelled = true;
@@ -251,9 +364,7 @@ const SummaryPanel = ({
             ? Number(dcsTotals.mcbuActual) || 0
             : d.rcptMcbu,
 
-        rcptCsf: dcsTotals
-            ? Number(dcsTotals.csfCollection) || 0
-            : d.rcptCsf,
+        rcptCsf: Number(d.rcptCsf) || 0,
 
         rcptRegularLoan: dcsTotals
             ? Number(dcsTotals.regularLoanActual) || 0
@@ -263,8 +374,15 @@ const SummaryPanel = ({
             ? Number(dcsTotals.otherLoanActual) || 0
             : d.rcptOtherLoan,
 
-        rcptStaffCbu: d.rcptStaffCbu,
-        rcptStaffPrincipal: d.rcptStaffPrincipal,
+        rcptStaffCbu:
+            Number(d.rcptStaffCbu || 0) +
+            staffCbuCollection +
+            staffCashbondCollection,
+
+        rcptStaffPrincipal:
+            Number(d.rcptStaffPrincipal || 0) +
+            staffLoanCollection,
+
         rcptAdminFees: d.rcptAdminFees,
         rcptLrf: d.rcptLrf,
         rcptCbhb: d.rcptCbhb,
@@ -280,10 +398,20 @@ const SummaryPanel = ({
             Number(d.rcptOtherIncome || 0) +
             otherIncomeReceipts,
         rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
-        rcptOtherReceiptsPicture: d.rcptOtherReceiptsPicture,
-        rcptOtherReceiptsGl: d.rcptOtherReceiptsGl,
-        rcptFundTransferIn: Number(d.rcptFundTransferIn) || 0,
-        rcptBankWithdrawal: d.rcptBankWithdrawal,
+
+        rcptOtherReceiptsPicture: otherIncomePicture,
+
+        rcptOtherReceiptsGl:
+            Number(d.rcptOtherReceiptsGl || 0) +
+            otherReceiptsCollections,
+
+        rcptFundTransferIn:
+            Number(d.rcptFundTransferIn) || 0,
+
+        rcptBankWithdrawal:
+            Number(d.rcptBankWithdrawal || 0) +
+            otherIncomeBankWithdrawal,
+
         payLoanRelease: d.payLoanRelease,
         payMcbuWithdrawal: d.payMcbuWithdrawal,
         payCsfWithdrawal: d.payCsfWithdrawal,
@@ -339,10 +467,17 @@ const SummaryPanel = ({
     // ── UPDATED TOTALS ───────────────────────────────────
 
     const updatedTotalReceipts =
+        effectiveBeginningBalance +
         Number(d.totalReceipts || 0) +
         totalCollectionDifference +
         otherIncomeReceipts +
-        otherIncomePassbook;
+        otherIncomePassbook +
+        otherIncomeBankWithdrawal +
+        staffCbuCollection +
+        staffCashbondCollection +
+        staffLoanCollection +
+        otherReceiptsCollections +
+        (otherIncomePicture - Number(d.rcptOtherReceiptsPicture || 0));
 
     const updatedTotalPayments =
         Number(d.totalPayments || 0) +
@@ -352,7 +487,6 @@ const SummaryPanel = ({
     const updatedClosingBalance =
         Math.round(
             (
-                effectiveBeginningBalance +
                 updatedTotalReceipts -
                 updatedTotalPayments
             ) * 100

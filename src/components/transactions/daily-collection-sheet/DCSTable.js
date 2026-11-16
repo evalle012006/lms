@@ -133,7 +133,7 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                             {/* NET */}
                             <th className={th('font-bold text-teal-700')} rowSpan={3}>NET</th>
                             {/* Full Payment */}
-                            <th className={th()} colSpan={2}>Renewal</th>
+                            <th className={th()} colSpan={2}>Full Payment</th>
                             <th className={th()} colSpan={2}>Offset</th>
                             <th className={th()} rowSpan={3}>Clients</th>
                         </tr>
