@@ -134,7 +134,8 @@ export const hardRuleMessages = (violations) => Array.from(new Set((violations |
 export const sanitizeCompletedRow = (cc) => {
     if (!cc || cc.status !== 'completed' || toNum(cc.loanBalance) > 0) return cc;
     cc.targetCollection = 0;
-    if (isOffsetRemark(cc)) {
+    // a payment made today (prior balance > 0) is real: keep it; only wipe phantom amounts on already-paid loans
+    if (isOffsetRemark(cc) && !(toNum(cc.prevData?.loanBalance) > 0)) {
         cc.paymentCollection = 0;
         cc.excess = 0;
     }

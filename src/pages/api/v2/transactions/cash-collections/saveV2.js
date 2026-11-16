@@ -1045,6 +1045,14 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
             }
         }
 
+        // An offset closes the loan even while a balance remains, which skips the block above.
+        // closedDate must still be stamped, otherwise the register's "today" query never lists it.
+        if (collection.status === 'closed' && collection.loanBalance > 0) {
+            loan.status = 'closed';
+            loan.closedDate = currentDate;
+            loan.dateModified = currentDate;
+        }
+
         loan.lastUpdated = currentDate;
 
         // serialize back to string — loans.remarks column is varchar not jsonb

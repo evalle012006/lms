@@ -743,7 +743,13 @@ const CashCollectionDetailsPage = () => {
 
                         if (!cc?.maturedPD) {
                             activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
-                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            // Closed/offset today: today's saved row is the source of truth for what was collected.
+                            // loan.history is only refreshed on a full payoff, so an offset with no payment would
+                            // otherwise show the previous transaction's amount.
+                            const todayRow = cc?.current?.find(cur => cur?.transfer !== true);
+                            paymentCollection = (todayRow && todayRow.paymentCollection != null)
+                                ? todayRow.paymentCollection
+                                : (cc?.history?.collection ? cc.history.collection : 0);
                         }
                         
                         collection = {
@@ -2842,7 +2848,8 @@ const CashCollectionDetailsPage = () => {
                                 // already fully paid: no phantom target / payment for pending, reloaner or offset
                                 temp.targetCollection = 0;
                                 temp.targetCollectionStr = '-';
-                                if (remarks.value?.startsWith('offset')) {
+                                // keep today's payment: only wipe it when the loan was already paid off before today (prior balance <= 0)
+                                if (remarks.value?.startsWith('offset') && !(parseFloat(temp.prevData?.loanBalance) > 0)) {
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
                                     temp.excess = 0;
@@ -3041,11 +3048,9 @@ const CashCollectionDetailsPage = () => {
                                         temp.mispayment = false;
                                         temp.mispaymentStr = 'No';
                                     } else {
-                                        if (temp.paymentCollection > temp.activeLoan) {
-                                            temp.error = true;
-                                            toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
-                                        } else {
-                                            if (remarks?.value == 'delinquent') {
+                                        {
+                                            // Delinquent and Excused both clear the Actual Collection (back to blank), restoring balance and payment count
+                                            if (remarks?.value == 'delinquent' || remarks?.value?.startsWith('excused-')) {
                                                 if (temp.paymentCollection > 0) {
                                                     temp.loanBalance += temp.paymentCollection;
                                                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
