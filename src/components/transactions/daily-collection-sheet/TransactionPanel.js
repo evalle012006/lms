@@ -10,6 +10,17 @@ const OTHER_INCOME_TYPES = [
     { value: 'excess_remittance', label: 'Excess Remittance' },
     { value: 'passbook', label: 'Passbook' },
     { value: 'bank_deposit', label: 'Bank Deposit' },
+    { value: 'bank_withdrawal', label: 'Bank Withdrawal' },
+];
+
+const OTHER_RECEIPTS_TYPES = [
+    { value: 'staff_cbu_collection', label: 'Staff CBU Collection' },
+    { value: 'staff_cashbond_collection', label: 'Staff Cashbond Collection' },
+    { value: 'staff_loan_collection', label: 'Staff Loan Collection' },
+    { value: 'staff_sbf_utility_collection', label: 'Staff SBF / Utility Collection' },
+    { value: 'mpl_contribution', label: 'MPL Contribution' },
+    { value: 'sss_contribution', label: 'SSS Contribution' },
+    { value: 'ap_payroll', label: 'A/P Payroll' },
 ];
 
 const EMPTY_OTHER_INCOME_FORM = {
@@ -127,8 +138,6 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OR-025-03', category: 'Other Receipts', code: '025 - Scholarship Grant Program Refund', accountTitle: 'Scholarship Grant Program Refund' },
     { id: 'OR-025-04', category: 'Other Receipts', code: '025 - Medical Mission Program (Health Care) Refund', accountTitle: 'Medical Mission Program (Health Care) Refund' },
     { id: 'OR-025-05', category: 'Other Receipts', code: '025 - Business Development Program Refund', accountTitle: 'Business Development Program Refund' },
-    { id: 'OR-028', category: 'Other Receipts', code: '028 - Staff CBU Collection', accountTitle: 'Staff CBU Collection' },
-    { id: 'OR-029', category: 'Other Receipts', code: '029 - Staff Cashbond Collection', accountTitle: 'Staff Cashbond Collection' },
     { id: 'OR-030', category: 'Other Receipts', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
     { id: 'OR-033', category: 'Other Receipts', code: '033 - Accrued Expenses (Picture Collection)', accountTitle: 'Accrued Expenses (Picture Collection)' },
     { id: 'OR-034-01', category: 'Other Receipts', code: '034 - Accounts Payable (Payroll A/C)', accountTitle: 'Accounts Payable (Payroll A/C)' },
@@ -189,6 +198,7 @@ const TransactionPanel = ({
     };
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTypeModal, setShowTypeModal] = useState(false);
+    const [transactionModalCategory, setTransactionModalCategory] = useState('other_income');
     const [showViewModal, setShowViewModal] = useState(false);
     const [transactionTypes, setTransactionTypes] = useState(INITIAL_TRANSACTION_TYPES);
 
@@ -198,6 +208,10 @@ const TransactionPanel = ({
     const [deletingTransactionId, setDeletingTransactionId] = useState(null);
     const [otherIncomeDate, setOtherIncomeDate] = useState(selectedDate || "");
     const [otherIncomeTransactions, setOtherIncomeTransactions] = useState([]);
+    const [otherReceiptsTransactions, setOtherReceiptsTransactions] = useState([]);
+    const [loadingOtherReceipts, setLoadingOtherReceipts] = useState(false);
+    const [deletingOtherReceiptsId, setDeletingOtherReceiptsId] = useState(null);
+    const [viewingOtherReceipts, setViewingOtherReceipts] = useState(null);
     const [loadingOtherIncome, setLoadingOtherIncome] = useState(false);
     const [editingOtherIncomeId, setEditingOtherIncomeId] = useState(null);
     const [viewingOtherIncome, setViewingOtherIncome] = useState(null);
@@ -275,6 +289,50 @@ const TransactionPanel = ({
         }
     };
 
+    const loadOtherReceiptsTransactions = async () => {
+        if (!branchId || !selectedDate) {
+            setOtherReceiptsTransactions([]);
+            return;
+        }
+
+        try {
+            setLoadingOtherReceipts(true);
+
+            const params = new URLSearchParams({
+                branch_id: String(branchId),
+                transaction_date: String(selectedDate).slice(0, 10),
+            });
+
+            const response = await fetchWrapper.get(
+                `${getApiBaseUrl()}transactions/dcs/other-receipts?${params.toString()}`
+            );
+
+            if (response?.error || response?.success === false) {
+                throw new Error(
+                    response?.message ||
+                    "Failed to load Other Receipts Transactions."
+                );
+            }
+
+            setOtherReceiptsTransactions(
+                Array.isArray(response?.transactions)
+                    ? response.transactions
+                    : []
+            );
+
+        } catch (error) {
+            console.error(
+                "Load Other Receipts Transactions error:",
+                error
+            );
+
+            setOtherReceiptsTransactions([]);
+
+        } finally {
+            setLoadingOtherReceipts(false);
+        }
+    };
+
     const loadTransactions = async () => {
         if (!branchId || !selectedDate) {
             setTransactions([]);
@@ -327,6 +385,7 @@ const TransactionPanel = ({
     useEffect(() => {
         loadTransactions();
         loadOtherIncomeTransactions();
+        loadOtherReceiptsTransactions();
     }, [branchId, selectedDate]);
 
     const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -361,6 +420,23 @@ const TransactionPanel = ({
             ...EMPTY_FORM,
             date: selectedDate || currentDate,
             items: [{ ...EMPTY_ITEM }],
+        });
+
+        setShowCreateModal(true);
+    };
+
+    const openOtherReceiptsModal = () => {
+        setEditingTransactionId(null);
+
+        setTransactionForm({
+            ...EMPTY_FORM,
+            date: selectedDate || currentDate,
+            items: [
+                {
+                    ...EMPTY_ITEM,
+                    category: 'Other Receipts',
+                },
+            ],
         });
 
         setShowCreateModal(true);
@@ -495,18 +571,19 @@ const TransactionPanel = ({
                 amount,
             };
 
+            const endpoint =
+                transactionModalCategory === 'other_receipts'
+                    ? 'transactions/dcs/other-receipts'
+                    : 'transactions/dcs/other-income';
+
+            const apiUrl = `${getApiBaseUrl()}${endpoint}`;
+
             const response = editingOtherIncomeId
-                ? await fetchWrapper.put(
-                    `${getApiBaseUrl()}transactions/dcs/other-income`,
-                    {
-                        ...payload,
-                        id: editingOtherIncomeId,
-                    }
-                )
-                : await fetchWrapper.post(
-                    `${getApiBaseUrl()}transactions/dcs/other-income`,
-                    payload
-                );
+                ? await fetchWrapper.put(apiUrl, {
+                    ...payload,
+                    id: editingOtherIncomeId,
+                })
+                : await fetchWrapper.post(apiUrl, payload);
 
             if (response?.error || response?.success === false) {
                 throw new Error(
@@ -515,7 +592,11 @@ const TransactionPanel = ({
                 );
             }
 
-            alert("Other Income Transaction saved successfully.");
+            alert(
+                transactionModalCategory === 'other_receipts'
+                    ? 'Other Receipts Transaction saved successfully.'
+                    : 'Other Income Transaction saved successfully.'
+            );
 
             setTypeForm({
                 ...EMPTY_OTHER_INCOME_FORM,
@@ -524,7 +605,11 @@ const TransactionPanel = ({
             setShowTypeModal(false);
             setEditingOtherIncomeId(null);
 
-            await loadOtherIncomeTransactions();
+            if (transactionModalCategory === 'other_receipts') {
+                await loadOtherReceiptsTransactions();
+            } else {
+                await loadOtherIncomeTransactions();
+            }
 
             if (typeof onOtherIncomeChanged === "function") {
                 onOtherIncomeChanged();
@@ -532,14 +617,92 @@ const TransactionPanel = ({
 
         } catch (error) {
             console.error(
-                "Save Other Income Transaction error:",
+                "Save DCS Transaction error:",
                 error
             );
 
+            const fallbackMessage =
+                transactionModalCategory === 'other_receipts'
+                    ? 'Failed to save Other Receipts Transaction.'
+                    : 'Failed to save Other Income Transaction.';
+
             alert(
+                error?.response?.data?.message ||
                 error?.message ||
-                "Failed to save Other Income Transaction."
+                fallbackMessage
             );
+        }
+    };
+
+    const handleDeleteOtherReceipts = async (transaction) => {
+        if (!transaction?.id || !branchId) {
+            alert("Invalid transaction or branch.");
+            return;
+        }
+
+        if (!canManageTransaction) {
+            alert("You do not have permission to delete this transaction.");
+            return;
+        }
+
+        if (deletingOtherReceiptsId !== null) return;
+
+        const typeLabel =
+            OTHER_RECEIPTS_TYPES.find(
+                (type) => type.value === transaction.transaction_type
+            )?.label || transaction.transaction_type;
+
+        const confirmed = window.confirm(
+            `Are you sure you want to permanently delete this Other Receipts Transaction?\n\n` +
+            `Type: ${typeLabel}\n` +
+            `Description: ${transaction.description}\n` +
+            `Amount: ₱ ${money(transaction.amount)}`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            setDeletingOtherReceiptsId(transaction.id);
+
+            const params = new URLSearchParams({
+                id: String(transaction.id),
+                branch_id: String(branchId),
+            });
+
+            const response = await fetchWrapper.delete(
+                `${getApiBaseUrl()}transactions/dcs/other-receipts?${params.toString()}`
+            );
+
+            if (response?.error || response?.success !== true) {
+                throw new Error(
+                    response?.message ||
+                    "Failed to delete Other Receipts Transaction."
+                );
+            }
+
+            if (viewingOtherReceipts?.id === transaction.id) {
+                setViewingOtherReceipts(null);
+            }
+
+            await loadOtherReceiptsTransactions();
+
+            if (typeof onOtherIncomeChanged === "function") {
+                onOtherIncomeChanged();
+            }
+
+            alert("Other Receipts Transaction deleted successfully.");
+
+        } catch (error) {
+            console.error("Delete Other Receipts error:", error);
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to delete Other Receipts Transaction."
+            );
+
+        } finally {
+            setDeletingOtherReceiptsId(null);
         }
     };
 
@@ -1423,6 +1586,7 @@ const TransactionPanel = ({
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setTransactionModalCategory('other_income');
                                         setEditingOtherIncomeId(null);
                                         setOtherIncomeDate(selectedDate || "");
                                         setTypeForm({ ...EMPTY_OTHER_INCOME_FORM });
@@ -1444,6 +1608,33 @@ const TransactionPanel = ({
                                 </button>
                             )}
 
+                            {/* OTHER RECEIPTS TRANSACTION BUTTON */}
+                            {canManageTransaction && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTransactionModalCategory('other_receipts');
+                                        setEditingOtherIncomeId(null);
+                                        setOtherIncomeDate(selectedDate || '');
+                                        setTypeForm({ ...EMPTY_OTHER_INCOME_FORM });
+                                        setShowTypeModal(true);
+                                    }}
+                                    className="
+                                        inline-flex items-center gap-2
+                                        px-4 py-2
+                                        border border-blue-600
+                                        text-blue-700
+                                        hover:bg-blue-50
+                                        text-sm font-semibold
+                                        rounded-md
+                                        transition-colors
+                                    "
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Other Receipts Transaction
+                                </button>
+                            )}
+
                             <button
                                 type="button"
                                 onClick={openCreateModal}
@@ -1461,7 +1652,6 @@ const TransactionPanel = ({
                                 <Plus className="w-4 h-4" />
                                 Create Transaction
                             </button>
-
                         </div>
                     </div>
                 </div>
@@ -1792,6 +1982,7 @@ const TransactionPanel = ({
                                                         <button
                                                             type="button"
                                                             onClick={() => {
+                                                                setTransactionModalCategory('other_income');
                                                                 setEditingOtherIncomeId(transaction.id);
 
                                                                 setOtherIncomeDate(
@@ -1826,6 +2017,169 @@ const TransactionPanel = ({
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                             {deletingOtherIncomeId === transaction.id
+                                                                ? "Deleting..."
+                                                                : "Delete"}
+                                                        </button>
+                                                    )}
+
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+
+                                </tbody>
+                            </table>
+
+                        </div>
+                    )}
+
+                </div>
+            </div>
+
+            {/* =========================================================
+                OTHER RECEIPTS TRANSACTIONS LIST
+            ========================================================== */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm mt-5">
+
+                <div className="px-5 py-4 border-b border-gray-200">
+                    <h2 className="text-base font-bold text-gray-800">
+                        Other Receipts Transactions
+                    </h2>
+
+                    <p className="text-xs text-gray-500 mt-1">
+                        Other receipts transactions for the selected DCS date
+                    </p>
+                </div>
+
+                <div className="p-5">
+
+                    {loadingOtherReceipts ? (
+                        <div className="text-center py-8 text-sm text-gray-500">
+                            Loading Other Receipts Transactions...
+                        </div>
+
+                    ) : otherReceiptsTransactions.length === 0 ? (
+                        <div className="border border-dashed border-gray-300 rounded-lg py-10 text-center">
+                            <p className="text-sm text-gray-500">
+                                No Other Receipts Transactions for this date.
+                            </p>
+                        </div>
+
+                    ) : (
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+
+                            <table className="w-full min-w-[800px] text-sm">
+
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Transaction Date
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Transaction Type
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600">
+                                            Description
+                                        </th>
+
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600">
+                                            Amount
+                                        </th>
+
+                                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-600">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-gray-200">
+
+                                    {otherReceiptsTransactions.map((transaction) => (
+                                        <tr
+                                            key={transaction.id}
+                                            className="hover:bg-gray-50"
+                                        >
+
+                                            <td className="px-4 py-3 text-gray-700">
+                                                {transaction.transaction_date}
+                                            </td>
+
+                                            <td className="px-4 py-3 font-semibold text-gray-800">
+                                                {OTHER_RECEIPTS_TYPES.find(
+                                                    (type) =>
+                                                        type.value === transaction.transaction_type
+                                                )?.label || transaction.transaction_type}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-gray-700">
+                                                {transaction.description}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-right font-bold text-gray-800">
+                                                ₱ {money(transaction.amount)}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-center gap-2">
+
+                                                    {/* VIEW */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setViewingOtherReceipts(transaction)
+                                                        }
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-md text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        View
+                                                    </button>
+
+                                                    {/* EDIT */}
+                                                    {canManageTransaction && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setTransactionModalCategory('other_receipts');
+
+                                                                setEditingOtherIncomeId(transaction.id);
+
+                                                                setOtherIncomeDate(
+                                                                    transaction.transaction_date
+                                                                );
+
+                                                                setTypeForm({
+                                                                    transactionType:
+                                                                        transaction.transaction_type,
+                                                                    description:
+                                                                        transaction.description,
+                                                                    amount:
+                                                                        String(transaction.amount),
+                                                                });
+
+                                                                setShowTypeModal(true);
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-md text-xs font-semibold hover:bg-amber-600"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                            Edit
+                                                        </button>
+                                                    )}
+
+                                                    {/* DELETE */}
+                                                    {canManageTransaction && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={deletingOtherReceiptsId !== null}
+                                                            onClick={() =>
+                                                                handleDeleteOtherReceipts(transaction)
+                                                            }
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+
+                                                            {deletingOtherReceiptsId === transaction.id
                                                                 ? "Deleting..."
                                                                 : "Delete"}
                                                         </button>
@@ -2399,7 +2753,9 @@ const TransactionPanel = ({
 
                             <div>
                                 <h2 className="text-lg font-bold text-gray-800">
-                                    Other Income Transaction
+                                    {transactionModalCategory === 'other_receipts'
+                                        ? 'Other Receipts Transaction'
+                                        : 'Other Income Transaction'}
                                 </h2>
 
                                 <p className="text-xs text-gray-500 mt-0.5">
@@ -2455,7 +2811,11 @@ const TransactionPanel = ({
                                         Select transaction type
                                     </option>
 
-                                    {OTHER_INCOME_TYPES.map((type) => (
+                                    {(
+                                        transactionModalCategory === 'other_receipts'
+                                            ? OTHER_RECEIPTS_TYPES
+                                            : OTHER_INCOME_TYPES
+                                    ).map((type) => (
                                         <option
                                             key={type.value}
                                             value={type.value}
@@ -2607,6 +2967,93 @@ const TransactionPanel = ({
                                 type="button"
                                 onClick={() => setViewingOtherIncome(null)}
                                 className="px-4 py-2 bg-teal-600 text-white rounded-md text-sm font-semibold"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
+
+            {/* =========================================================
+                VIEW OTHER RECEIPTS TRANSACTION
+            ========================================================== */}
+            {viewingOtherReceipts && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => setViewingOtherReceipts(null)}
+                    />
+
+                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+
+                        <div className="flex items-center justify-between px-5 py-4 border-b">
+                            <h2 className="text-lg font-bold text-gray-800">
+                                Other Receipts Transaction Details
+                            </h2>
+
+                            <button
+                                type="button"
+                                onClick={() => setViewingOtherReceipts(null)}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 text-sm">
+
+                            <div>
+                                <p className="text-gray-500">
+                                    Transaction Date
+                                </p>
+
+                                <p className="font-semibold">
+                                    {viewingOtherReceipts.transaction_date}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">
+                                    Transaction Type
+                                </p>
+
+                                <p className="font-semibold">
+                                    {OTHER_RECEIPTS_TYPES.find(
+                                        (type) =>
+                                            type.value === viewingOtherReceipts.transaction_type
+                                    )?.label || viewingOtherReceipts.transaction_type}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">
+                                    Description
+                                </p>
+
+                                <p className="font-semibold whitespace-pre-wrap">
+                                    {viewingOtherReceipts.description}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-gray-500">
+                                    Amount
+                                </p>
+
+                                <p className="text-lg font-bold text-blue-700">
+                                    ₱ {money(viewingOtherReceipts.amount)}
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div className="flex justify-end px-5 py-4 border-t">
+                            <button
+                                type="button"
+                                onClick={() => setViewingOtherReceipts(null)}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold"
                             >
                                 Close
                             </button>

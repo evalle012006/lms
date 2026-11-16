@@ -275,7 +275,7 @@ export const SUMMARY_RECEIPTS = [
     { no: '12a',key: 'rcptOtherIncomePassbook',     label: 'Other Income (Passbook)',                  source: 'collection' },
     { no: '12b',key: 'rcptOtherIncome',             label: 'Other Income',                             source: 'collection' },
     { no: '12c',key: 'rcptOtherIncomeCsf',          label: 'Other Income CSF W/o Agent',               source: 'collection' },
-    { no: 13,   key: 'rcptOtherReceiptsPicture',    label: 'Other Receipts (Picture)',                 source: 'collection' },
+    { no: 13,   key: 'rcptOtherReceiptsPicture',    label: 'Other Income (Picture)',                   source: 'collection' },
     { no: 14,   key: 'rcptOtherReceiptsGl',         label: 'Other Receipts',                           source: 'gl' },
     { no: 15,   key: 'rcptFundTransferIn',          label: 'Fund Transfer',                            source: 'special' },
     { no: 16,   key: 'rcptBankWithdrawal',          label: 'Bank Withdrawal',                          source: 'special' },

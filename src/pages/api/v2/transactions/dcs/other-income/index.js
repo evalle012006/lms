@@ -1,3 +1,4 @@
+//src/pages/api/v2/transactions/dcs/other-income/index.js
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 
@@ -40,6 +41,7 @@ const ALLOWED_TYPES = [
     "excess_remittance",
     "passbook",
     "bank_deposit",
+    "bank_withdrawal",
 ];
 
 export default apiHandler({
