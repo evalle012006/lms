@@ -130,6 +130,30 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
 
 export const hardRuleMessages = (violations) => Array.from(new Set((violations || []).map((v) => v.message)));
 
+// A payoff recorded today (balance reached 0 from a positive previous balance) must carry the START-of-transaction
+// figures in history (previous balance, target, payment, excess). The page only refreshes history on some paths,
+// so a stale loan.history (last week's 600 / 1920) could be saved. Done server-side so it holds for every path.
+export const refreshPayoffHistory = (cc) => {
+    if (!cc || cc.draft) return cc;
+    const prevBalance = toNum(cc.prevData?.loanBalance);
+    if (!(toNum(cc.loanBalance) <= 0 && toNum(cc.paymentCollection) > 0 && prevBalance > 0)) return cc;
+    const h = cc.history && typeof cc.history === 'object' ? cc.history : {};
+    const activeLoan = toNum(cc.prevData?.activeLoan) || toNum(h.activeLoan);
+    const excess = toNum(cc.excess) > 0 ? toNum(cc.excess) : Math.max(toNum(cc.paymentCollection) - activeLoan, 0);
+    cc.history = {
+        ...h,
+        amountRelease: cc.prevData?.amountRelease ?? h.amountRelease,
+        loanBalance: prevBalance,
+        activeLoan,
+        excess,
+        collection: toNum(cc.paymentCollection),
+        loanCycle: h.loanCycle ?? cc.loanCycle,
+        remarks: cc.remarks && typeof cc.remarks === 'object' ? cc.remarks : (h.remarks ?? cc.remarks),
+        advanceDays: h.advanceDays ?? cc.advanceDays ?? 0,
+    };
+    return cc;
+};
+
 // Server-side sanitizer: a completed (fully paid) row must never persist a phantom target/payment.
 export const sanitizeCompletedRow = (cc) => {
     if (!cc || cc.status !== 'completed' || toNum(cc.loanBalance) > 0) return cc;

@@ -23,7 +23,7 @@ import moment from 'moment-timezone';
 import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
 import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
-import { findHardRuleViolations, sanitizeCompletedRow } from '@/lib/collection-rules';
+import { findHardRuleViolations, sanitizeCompletedRow, refreshPayoffHistory } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
@@ -310,6 +310,7 @@ async function saveWithProtection(req, res) {
             const violations = findCsfViolations(csfRows, csfEnabled);
 
             csfRows.forEach(sanitizeCompletedRow);
+            csfRows.forEach(refreshPayoffHistory);
 
             // Hard business rules enforced server-side (apply to drafts too)
             let ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
