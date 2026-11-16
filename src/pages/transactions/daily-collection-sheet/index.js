@@ -324,6 +324,16 @@ const DailyCollectionSheet = () => {
                                 : response.data;
 
                             const mappedSummary = mapSummaryData(raw);
+                            // =========================================================
+                            // CASHBOOK - OTHER INCOME (PICTURE)
+                            // ₱50 PER LOAN RELEASE
+                            // =========================================================
+
+                            const pictureLoanReleaseCount =
+                                Number(mappedSummary?.payLoanReleaseNo) || 0;
+
+                            const cashbookOtherIncomePicture =
+                                pictureLoanReleaseCount * 50;
 
                             // =========================================================
                             // CASHBOOK - AUTOMATIC LOAN RELEASES
@@ -503,6 +513,10 @@ const DailyCollectionSheet = () => {
                                 mappedSummary
                                     ? {
                                         ...mappedSummary,
+
+                                        // Automatically calculated Picture income
+                                        rcptOtherReceiptsPicture:
+                                            cashbookOtherIncomePicture,
 
                                         // CASHBOOK LOAN RELEASES
                                         ...cashbookLoanReleases,
