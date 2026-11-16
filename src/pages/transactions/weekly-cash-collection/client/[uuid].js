@@ -701,7 +701,7 @@ const CashCollectionDetailsPage = () => {
                         let prevData = cc.prevData;
                         let draft = false;
                         let reverted = false;
-                        let remarks = cc.remarks ? cc.remarks : '';
+                        let remarks = cc.remarks ? cc.remarks : (cc.history?.remarks || '');
                         let ccId = cc._id;
                         let loanId = cc._id;
                         let csf = cc.csf;
