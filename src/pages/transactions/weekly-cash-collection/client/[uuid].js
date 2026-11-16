@@ -1850,7 +1850,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         // hard rules apply to drafts as well
-        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled, dayName, checkOverpaymentRemark: true })).forEach(m => errorMsg.add(m));
+        hardRuleMessages(findHardRuleViolations(data, { skipPersistedClosed: true, csfEnabled, dayName, checkOverpaymentRemark: true, checkEntryRules: true })).forEach(m => errorMsg.add(m));
 
         data && data.map(cc => {
             if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
@@ -2424,7 +2424,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispaymentStr = "No";
     
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
-                                    temp.noOfPayments = temp.noOfPayments + noPayments;
+                                    temp.noOfPayments = Math.ceil(temp.noOfPayments + noPayments); // payoff can be a fraction of a payment: count is a whole number, rounded up
                                     const finalMcbu = getWeeklyMinMcbu(temp.group?.weeklyScheduleType, noPayments);
                                     temp.mcbuCol = finalMcbu;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
@@ -3219,7 +3219,7 @@ const CashCollectionDetailsPage = () => {
                                         if (parseFloat(newPayment) > parseFloat(temp.activeLoan)) {
                                             temp.excess = parseFloat(newPayment) - parseFloat(temp.activeLoan);
                                             temp.excessStr = formatPricePhp(temp.excess);
-                                            temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
+                                            temp.noOfPayments = Math.ceil(parseInt(temp.noOfPayments) + noOfPayments); // whole number, rounded up
                                             const excessMcbu = temp.excess / temp.activeLoan;
                                             const finalMcbu = getWeeklyMinMcbu(temp.group?.weeklyScheduleType, excessMcbu + 1, remarks);
                                             temp.mcbuCol = finalMcbu;

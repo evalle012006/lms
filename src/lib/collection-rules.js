@@ -31,15 +31,18 @@ export const CODES = {
     PHANTOM_COMPLETED_AMOUNTS: 'PHANTOM_COMPLETED_AMOUNTS',
     PARTIAL_PAYMENT: 'PARTIAL_PAYMENT',
     OVERPAYMENT_REMARK_REQUIRED: 'OVERPAYMENT_REMARK_REQUIRED',
+    CSF_NOT_MULTIPLE_OF_5: 'CSF_NOT_MULTIPLE_OF_5',
+    REMARK_REQUIRED_FOR_ZERO_PAYMENT: 'REMARK_REQUIRED_FOR_ZERO_PAYMENT',
 };
 
 /**
  * @param {Array} rows client rows (client state rows, or saveV2 payload rows)
  * @param {{csfEnabled:boolean, dayName?:string, checkOverpaymentRemark?:boolean}} opts dayName: only rows of the group's collection day are checked for payment/CSF rules.
  * checkOverpaymentRemark (pages only, default off so the server is unaffected): double / advance payments need a matching remark on Save Draft too.
+ * checkEntryRules (pages only, default off): the entry-time rules also hold on Save Draft: CSF above 5 in multiples of 5, and a 0 payment in a collecting group needs a remark.
  * @returns {Array<{code:string,message:string,clientId?:string,name?:string}>}
  */
-export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false, checkOverpaymentRemark = false } = {}) => {
+export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skipPersistedClosed = false, checkOverpaymentRemark = false, checkEntryRules = false } = {}) => {
     const out = [];
     // The group is being collected when any active row carries a payment. Then the leader needs a CSF
     // collection even if the leader row itself is still at 0, so Save Draft enforces the same leader-CSF
@@ -106,6 +109,20 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
                 out.push({ ...base, code: CODES.OVERPAYMENT_REMARK_REQUIRED,
                     message: `${who}Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.` });
             }
+        }
+        // Rule 7 (pages only): same entry-time rule as the CSF input (above 5 = multiples of 5), so a draft cannot persist e.g. CSF 7.
+        if (checkEntryRules && cc.status === 'active' && toNum(cc.csfCollection) > 5 && toNum(cc.csfCollection) % 5 !== 0) {
+            const who = cc.fullName && cc.fullName !== '-' ? `${cc.fullName}: ` : '';
+            out.push({ ...base, code: CODES.CSF_NOT_MULTIPLE_OF_5,
+                message: `${who}Error occured. CSF collection must be divisible by 5.` });
+        }
+        // Rule 8 (pages only): in a group that is being collected, a row with 0 payment needs a remark. Same wording as Submit.
+        const dueToday = dayName ? (cc.group?.day === dayName || cc.groupDay === dayName) : true; // pages only: a 0 row has no payment to infer the day from
+        if (checkEntryRules && groupHasPayment && cc.status === 'active' && toNum(cc.loanBalance) > 0 && dueToday && !cc.maturedPD
+            && (cc.transferStr == null || cc.transferStr === '-') && toNum(cc.paymentCollection) === 0 && !remarkValue(cc)) {
+            const who = cc.fullName && cc.fullName !== '-' ? `${cc.fullName}: ` : '';
+            out.push({ ...base, code: CODES.REMARK_REQUIRED_FOR_ZERO_PAYMENT,
+                message: `${who}Error occured. Please select a remarks for 0 or no payment Actual Collection.` });
         }
     });
     return out;
