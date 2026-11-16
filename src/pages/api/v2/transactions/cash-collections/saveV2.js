@@ -23,7 +23,7 @@ import moment from 'moment-timezone';
 import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
 import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
-import { findHardRuleViolations, sanitizeCompletedRow } from '@/lib/collection-rules';
+import { findHardRuleViolations, sanitizeCompletedRow, refreshPayoffHistory } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
@@ -310,6 +310,7 @@ async function saveWithProtection(req, res) {
             const violations = findCsfViolations(csfRows, csfEnabled);
 
             csfRows.forEach(sanitizeCompletedRow);
+            csfRows.forEach(refreshPayoffHistory);
 
             // Hard business rules enforced server-side (apply to drafts too)
             let ruleViolations = findHardRuleViolations(csfRows, { csfEnabled });
@@ -904,10 +905,15 @@ async function updateCollection(mutationQL, collections) {
             delete c.origin;
         }
 
+        // An update must never move a row to another date: the page can send a stale dateAdded (e.g. a
+        // transfer/tomorrow row loaded with the loan's original date) and rewriting it collides with the
+        // loan's own row on that date (uix_cashCollections__loanId_dateAdded).
+        const { dateAdded: _ignoredDateAdded, ...updateFields } = cleanUpCollection(c);
+
         mutationQL.push(
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
                 set: {
-                    ... cleanUpCollection(c),
+                    ... updateFields,
                     origin: c.origin === 'offline' ? 'offline' : null,
                     reverted: null,
                 },

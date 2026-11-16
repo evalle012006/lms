@@ -4,6 +4,7 @@ import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions'; // CONFIRM this import path for findUserById
 import { resolveCohEditPermission } from '@/lib/coh-permissions';
 import { apiHandler } from '@/services/api-handler';
+import { validateBranchCode } from '@/lib/branch-code';
 
 const graph = new GraphProvider();
 
@@ -109,6 +110,22 @@ async function updateBranch(req, res) {
     // (root/admin only, audited). A stale table row must not overwrite it.
     delete branch.skipClientFaceVerify;
     delete branch.skipClientFaceVerifyUntil;
+
+    // The table posts whole rows (lock / flow-version toggles), so a legacy code with a
+    // space must not block those. Validate only when the code is actually being changed.
+    if (branch.code !== undefined) {
+        const current = await graph.query(
+            queryQl(createGraphType('branches', 'code')('branches'), { where: { _id: { _eq: branchId } } })
+        ).then(r => r.data.branches?.[0]?.code);
+        if (current !== undefined && branch.code !== current) {
+            const codeError = validateBranchCode(branch.code);
+            if (codeError) {
+                return res.status(400)
+                    .setHeader('Content-Type', 'application/json')
+                    .end(JSON.stringify({ error: true, fields: ['code'], message: codeError }));
+            }
+        }
+    }
 
     const branchlock = branch.forLock ?? false;
     delete branch.forLock;
