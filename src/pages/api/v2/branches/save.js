@@ -5,6 +5,7 @@ import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment'
+import { validateBranchCode } from '@/lib/branch-code';
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
@@ -20,6 +21,13 @@ async function save(req, res) {
     const { name = null, code = null, phoneNumber = null, email = null, address = null, areaId = null, divisionId = null,  regionId = null } = req.body;
     let response = {};
     let statusCode = 200;
+
+    const codeError = validateBranchCode(code);
+    if (codeError) {
+        return res.status(400)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify({ error: true, fields: ['code'], message: codeError }));
+    }
 
     let [branch] = await graph.query(
         queryQl(BRANCH_TYPE, {

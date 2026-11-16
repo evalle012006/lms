@@ -13,6 +13,7 @@ import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import { getApiBaseUrl } from "@/lib/constants";
 import SelectDropdown from "@/lib/ui/select";
+import { BRANCH_CODE_REGEX, BRANCH_CODE_MESSAGE, sanitizeBranchCode } from "@/lib/branch-code";
 
 const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -36,7 +37,8 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
             .required('Please enter name'),
         code: yup
             .string()
-            .required('Please enter code'),
+            .required('Please enter code')
+            .test('branch-code-format', BRANCH_CODE_MESSAGE, (value) => mode !== 'add' || !value || BRANCH_CODE_REGEX.test(value)),
         email: yup
             .string()
             .email('Please enter valid email address')
@@ -158,7 +160,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                         <InputText
                                             name="code"
                                             value={values.code}
-                                            onChange={handleChange}
+                                            onChange={(e) => setFieldValue('code', sanitizeBranchCode(e.target.value))}
                                             label="Code"
                                             placeholder="Enter Code"
                                             setFieldValue={setFieldValue}
