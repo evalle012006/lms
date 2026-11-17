@@ -56,6 +56,15 @@ import { restoreRemarkFlags, withClientName } from '@/lib/remark-flags';
 import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
 import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
+// Snapshot of the user-editable fields. A row loaded from an already submitted collection whose snapshot is
+// unchanged at Submit was not edited, so it is not re-sent (the server only needs what changed).
+const rowEditSig = (cc) => JSON.stringify([
+    cc.paymentCollection, cc.mcbuCol, cc.csfCollection, cc.csfWithdrawal, cc.mcbuWithdrawal, cc.mcbuInterest,
+    cc.mcbuReturnAmt, cc.csfReturnAmt, cc.excess, cc.status, cc.advance, cc.mispayment, cc.excused, cc.delinquent,
+    typeof cc.remarks === 'string' ? cc.remarks : cc.remarks?.value ?? '', cc.closeRemarks ?? '',
+    !!cc.mcbuWithdrawFlag, !!cc.offsetTransFlag, !!cc.mcbuInterestFlag,
+]);
+
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
     const isStaging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false
@@ -1050,8 +1059,11 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
+                                // already submitted (draft === false), not a pre-save/QR row: only re-sent if edited
+                                collection._persistedRow = current.draft === false && !current.origin && !collection.qrSourced;
                                 // loans.reverted is only a pending revert until today's collection is resubmitted (non-draft)
-                                if (!current.draft) collection.reverted = false;
+                                // only a SUBMITTED row (draft === false) ends the pending revert; a reverted row comes back as a pre-save row with draft null
+                                if (current.draft === false) collection.reverted = false;
                                 collection.csfCollection = current.csfCollection;
                                 collection.csfCollectionStr = current.csfCollection > 0 ? formatPricePhp(current.csfCollection) : '-';
                                 collection.csfWithdrawal = current.csfWithdrawal;
@@ -1218,6 +1230,7 @@ const CashCollectionDetailsPage = () => {
                 collection.bmRevertCount = cc.bmRevertCount ? cc.bmRevertCount : 0;
 
                 collection.selected = false;
+                if (collection._persistedRow) collection._baseSig = rowEditSig(collection);
                 cashCollection.push(collection);
             });
 
@@ -2060,8 +2073,8 @@ const CashCollectionDetailsPage = () => {
             } else {
                 let prevDraftDate =  null;
                 // TEMP DEBUG: which rows are _dirty when Submit builds the payload (remove after diagnosing)
-                console.log('[LOR submit] dirty rows:', data.filter(cc => !!cc._dirty).map(cc => ({ slot: cc.slotNo, name: cc.fullName, status: cc.status, persistedClosed: !!cc.persistedClosed, origin: cc.origin ?? null, draft: cc.draft })));
-                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty && !cc.persistedClosed).map(cc => {
+                // console.log('[LOR submit] dirty rows:', JSON.stringify(data.filter(cc => !!cc._dirty).map(cc => ({ slot: cc.slotNo, name: cc.fullName, status: cc.status, persistedClosed: !!cc.persistedClosed, origin: cc.origin ?? null, draft: cc.draft, persistedRow: !!cc._persistedRow, edited: !!cc._baseSig && rowEditSig(cc) !== cc._baseSig }))));
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty && !cc.persistedClosed && !(cc._baseSig && rowEditSig(cc) === cc._baseSig)).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group?.day ?? currentGroup?.day;
@@ -2089,6 +2102,8 @@ const CashCollectionDetailsPage = () => {
                         delete temp.mpdc;
                     }
                     delete temp.dirty;
+                    delete temp._persistedRow;
+                    delete temp._baseSig;
                     delete temp.group;
                     delete temp.pastDueStr;
                     delete temp.groupCashCollections;
