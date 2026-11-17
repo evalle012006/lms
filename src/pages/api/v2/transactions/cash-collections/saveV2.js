@@ -616,6 +616,7 @@ async function executeSave(req, user_id, transactionId, user) {
 
     const mutationQl = [];
     const offsetCollections = []; // Track offsets for notifications
+    const rowsToVerify = []; // rows that updated a loan: each must end up with a cashCollections row
 
     const delinquentAlertThreshold = await getDelinquentAlertThreshold();
 
@@ -796,6 +797,7 @@ async function executeSave(req, user_id, transactionId, user) {
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate);
                     await updateClient(user_id, mutationQl, collection);
+                    rowsToVerify.push(collection);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0 && !collection.hasMcbuWithdrawal) {
@@ -878,6 +880,10 @@ async function executeSave(req, user_id, transactionId, user) {
             }
         }
 
+        // Final invariant: every row that updated a loan has a cashCollections row for this date.
+        // Independent of how the rows were routed above (insert / update / weekly missing-row insert).
+        await healMissingCashCollections({ rows: rowsToVerify, currentDate, user_id, transactionId });
+
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
         if (reverted.length == 0) {
             const pendingLoans = data.collection.filter(c => (c.status === 'pending' || c.status === 'closed') && c.advance == true);
@@ -950,6 +956,50 @@ const assignNullValues = (obj, origin) => {
 
     return cc;
 };
+
+/**
+ * Post-save safety net. A loan can be closed/updated while its cashCollections row never got written
+ * (seen in production: 4 Offset loans closed on 2026-11-16, no cashCollections for those clients, totals short).
+ * After the main mutation, verify by clientId + date and insert whatever is missing, and log it loudly.
+ */
+async function healMissingCashCollections({ rows, currentDate, user_id, transactionId }) {
+    if (!rows || rows.length === 0) return;
+
+    const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))];
+    if (clientIds.length === 0) return;
+
+    const present = await graph.query(
+        queryQl(createGraphType('cashCollections', '_id clientId')('cc_verify'), {
+            where: { clientId: { _in: clientIds }, dateAdded: { _eq: currentDate } }
+        })
+    ).then(r => r.data?.cc_verify ?? []);
+
+    const have = new Set(present.map(c => c.clientId));
+    const seen = new Set();
+    const missing = rows.filter(r => {
+        if (!r.clientId || have.has(r.clientId) || seen.has(r.clientId)) return false;
+        seen.add(r.clientId);
+        return true;
+    });
+    if (missing.length === 0) return;
+
+    logger.error({
+        user_id, transactionId, page: 'Cash Collection SaveV2',
+        message: 'cashCollections missing after save, re-inserting',
+        currentDate,
+        rows: missing.map(r => ({
+            _id: r._id, loanId: r.loanId, clientId: r.clientId, status: r.status, draft: r.draft,
+            remarks: r.remarks?.value ?? r.remarks ?? null, paymentCollection: r.paymentCollection
+        }))
+    });
+
+    const mutations = [];
+    await saveCollection(mutations, missing.map(r => ({ ...r, _id: generateUUID(), draft: false })), currentDate);
+    const result = await graph.mutation(...mutations);
+    if (result?.errors?.length) {
+        throw new Error(`Re-insert of missing cashCollections failed: ${result.errors.map(e => e.message).join(', ')}`);
+    }
+}
 
 async function saveCollection(mutationQL, collections, currentDate) {
     const objects = collections.map(c => ({

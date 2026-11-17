@@ -604,7 +604,7 @@ async function processLOApproval({ loId, branchId, currentDate, currentTime, mod
 
     // Only run these validations if NOT admin
     if (!isAdmin && mode === 'close') {
-        const issues = await collectLoBlockingIssues(cashCollectionCounts, branchId, currentDate);
+        const issues = await collectLoBlockingIssues(cashCollectionCounts, branchId, currentDate, loId);
         if (issues.length > 0) {
             return blockedResponse(issues);
         }
@@ -680,7 +680,7 @@ async function processLOApproval({ loId, branchId, currentDate, currentTime, mod
  * Blocking conditions are identical to the previous first-failure chain; only
  * the reporting changed (all issues, each naming the offending groups).
  */
-async function collectLoBlockingIssues(cashCollectionCounts, branchId, currentDate) {
+async function collectLoBlockingIssues(cashCollectionCounts, branchId, currentDate, loId) {
     const issues = [];
     const current = (cc) => cc.cashCollections?.[0];
 
@@ -770,6 +770,19 @@ async function collectLoBlockingIssues(cashCollectionCounts, branchId, currentDa
         hasPendingDenominations,
         (cc) => ({ count: cc.denom_count })
     );
+    // Loans closed today (Offset / payoff) whose cashCollections row is missing: totals would be short.
+    const missingClosing = loId ? await step('check-missing-closing-cash-collections', () =>
+        findClosedLoansWithoutCashCollection(loId, currentDate)
+    ) : [];
+    if (missingClosing.length > 0) {
+        issues.push(makeIssue(
+            'MISSING_CASH_COLLECTION',
+            'Some loans closed today have no cash collection record, so the totals would be wrong. Please contact support before closing.',
+            missingClosing.map(l => `${l.groupName ?? ''} #${l.slotNo ?? ''} ${l.fullName ?? ''}`.trim()),
+            { loans: missingClosing.map(l => ({ loanId: l._id, clientId: l.clientId, groupId: l.groupId })) }
+        ));
+    }
+
     addGroupIssue(
         'PENDING_LOANS',
         'LO has pending Loan entries. Please check and approve or contact Branch Manager.',
@@ -786,6 +799,29 @@ async function collectLoBlockingIssues(cashCollectionCounts, branchId, currentDa
 
 // CHANGED: helper try/catch blocks that only logged-and-rethrew are gone —
 // callers wrap these in step(), so the failure is logged once, with context.
+
+async function findClosedLoansWithoutCashCollection(loId, currentDate) {
+    const closedLoans = await graph.query(
+        queryQl(createGraphType('loans', '_id clientId groupId groupName slotNo fullName')('closed_today_loans'), {
+            where: {
+                loId: { _eq: loId },
+                status: { _eq: 'closed' },
+                closedDate: { _eq: currentDate },
+                transferred: { _neq: true },
+                transferredReleased: { _neq: true },
+            }
+        })
+    ).then(r => r.data?.closed_today_loans ?? []);
+    if (closedLoans.length === 0) return [];
+
+    const present = await graph.query(
+        queryQl(createGraphType('cashCollections', '_id clientId')('cc_for_closed'), {
+            where: { clientId: { _in: closedLoans.map(l => l.clientId) }, dateAdded: { _eq: currentDate } }
+        })
+    ).then(r => r.data?.cc_for_closed ?? []);
+    const have = new Set(present.map(c => c.clientId));
+    return closedLoans.filter(l => !have.has(l.clientId));
+}
 
 async function checkBranchTransactionStatus(branchId, currentDate) {
     // Get all cash collections for this branch that are NOT closed
