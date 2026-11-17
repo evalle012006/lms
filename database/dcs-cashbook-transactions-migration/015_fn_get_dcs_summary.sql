@@ -1,5 +1,46 @@
 CREATE OR REPLACE FUNCTION public.fn_get_dcs_summary(_branch_id text, _lo_id text, _selected_date date)
- RETURNS TABLE(beginning_balance numeric, rcpt_mcbu numeric, rcpt_csf numeric, rcpt_regular_loan numeric, rcpt_other_loan numeric, rcpt_admin_fees numeric, rcpt_lrf numeric, rcpt_cbhb numeric, rcpt_add_hospi numeric, rcpt_other_income_passbook numeric, rcpt_other_income numeric, rcpt_other_income_csf numeric, rcpt_other_receipts_picture numeric, rcpt_staff_cbu numeric, rcpt_staff_principal numeric, rcpt_wtax numeric, rcpt_other_receipts_gl numeric, rcpt_gl_detail jsonb, rcpt_mcbu_unclaimed_in numeric, rcpt_fund_transfer_in numeric, rcpt_bank_withdrawal numeric, total_receipts numeric, pay_loan_release_no integer, pay_loan_release_amount numeric, pay_mcbu_withdrawal numeric, pay_csf_withdrawal numeric, pay_mcbu_return numeric, pay_csf_return numeric, pay_staff_loan_release numeric, pay_mngt_expenses numeric, pay_cbhb_disbursed numeric, pay_rebates numeric, pay_other_payments numeric, pay_gl_detail jsonb, pay_mcbu_unclaimed_out numeric, pay_fund_transfer_out numeric, pay_bank_deposits numeric, total_payments numeric, closing_balance numeric, loan_release_per_lo jsonb, denomination_summary jsonb)
+ RETURNS TABLE(
+    beginning_balance numeric, 
+    rcpt_mcbu numeric, 
+    rcpt_csf numeric, 
+    rcpt_regular_loan numeric, 
+    rcpt_other_loan numeric, 
+    rcpt_admin_fees numeric, 
+    rcpt_lrf numeric, 
+    rcpt_cbhb numeric, 
+    rcpt_add_hospi numeric, 
+    rcpt_other_income_passbook numeric, 
+    rcpt_other_income numeric, 
+    rcpt_other_income_csf numeric, 
+    rcpt_other_receipts_picture numeric, 
+    rcpt_staff_cbu numeric, 
+    rcpt_staff_principal numeric, 
+    rcpt_wtax numeric, 
+    rcpt_other_receipts_gl numeric, 
+    rcpt_gl_detail jsonb, 
+    rcpt_mcbu_unclaimed_in numeric, 
+    rcpt_fund_transfer_in numeric, 
+    rcpt_bank_withdrawal numeric, 
+    total_receipts numeric, 
+    pay_loan_release_no integer, 
+    pay_loan_release_amount numeric, 
+    pay_mcbu_withdrawal numeric, 
+    pay_csf_withdrawal numeric, 
+    pay_mcbu_return numeric, 
+    pay_csf_return numeric, 
+    pay_staff_loan_release numeric, 
+    pay_mngt_expenses numeric, 
+    pay_cbhb_disbursed numeric, 
+    pay_rebates numeric, 
+    pay_other_payments numeric, 
+    pay_gl_detail jsonb, 
+    pay_mcbu_unclaimed_out numeric, 
+    pay_fund_transfer_out numeric, 
+    pay_bank_deposits numeric, 
+    total_payments numeric, 
+    closing_balance numeric, 
+    loan_release_per_lo jsonb, 
+    denomination_summary jsonb)
  LANGUAGE plpgsql
 AS $function$
 DECLARE
@@ -98,8 +139,30 @@ BEGIN
         COALESCE(SUM(cc."csfIn"), 0),
         COALESCE(SUM(cc."otherPictureCollection"), 0),
         -- Loan Release (tomorrow status, not transfer)
-        COALESCE(SUM(CASE WHEN cc.status = 'tomorrow' AND cc.transfer IS NOT TRUE THEN 1 ELSE 0 END), 0)::integer,
-        COALESCE(SUM(CASE WHEN cc.status = 'tomorrow' AND cc.transfer IS NOT TRUE THEN cc."currentReleaseAmount" ELSE 0 END), 0),
+        COALESCE(
+            SUM(
+                CASE 
+                    WHEN cc.status = 'tomorrow' 
+                    AND cc.transfer IS NOT TRUE 
+                    THEN 1 
+                    ELSE 0 
+                END
+            ), 
+            0
+        )::integer,
+        
+        COALESCE(
+            SUM(
+                CASE 
+                    WHEN cc.status = 'tomorrow' 
+                    AND cc.transfer IS NOT TRUE 
+                    THEN cc."currentReleaseAmount" 
+                    ELSE 0 
+                END
+            ), 
+            0
+        ),
+
         -- MCBU & CSF Withdrawals
         COALESCE(SUM(cc."mcbuWithdrawal"), 0),
         COALESCE(SUM(cc."csfWithdrawal"), 0),
