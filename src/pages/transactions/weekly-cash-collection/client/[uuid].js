@@ -871,6 +871,9 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                         }
     
+                        // loaded as already closed (offset saved earlier): history, never re-sent on Submit
+                        collection.persistedClosed = true;
+
                         if (loanBalance > 0) {
                             collection.transferred = true;
                         }
@@ -1047,6 +1050,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
+                                // loans.reverted is only a pending revert until today's collection is resubmitted (non-draft)
+                                if (!current.draft) collection.reverted = false;
                                 collection.csfCollection = current.csfCollection;
                                 collection.csfCollectionStr = current.csfCollection > 0 ? formatPricePhp(current.csfCollection) : '-';
                                 collection.csfWithdrawal = current.csfWithdrawal;
@@ -2054,7 +2059,9 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty).map(cc => {
+                // TEMP DEBUG: which rows are _dirty when Submit builds the payload (remove after diagnosing)
+                console.log('[LOR submit] dirty rows:', data.filter(cc => !!cc._dirty).map(cc => ({ slot: cc.slotNo, name: cc.fullName, status: cc.status, persistedClosed: !!cc.persistedClosed, origin: cc.origin ?? null, draft: cc.draft })));
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty && !cc.persistedClosed).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group?.day ?? currentGroup?.day;
