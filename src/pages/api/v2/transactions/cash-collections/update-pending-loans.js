@@ -100,12 +100,28 @@ async function updatePendingLoan(user_id, collection, currentDate) {
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
 
+        // Reloan of a client who was already completed: the LOR row may still be an untouched
+        // pre-save placeholder (no history / remarks / fullPaymentDate). Never close the old loan
+        // from blanks - recover the real payoff date from the client's earlier cashCollections.
+        const payoffDate = currentLoan.fullPaymentDate
+            || cashCollection.fullPaymentDate
+            || await findLastPayoffDate(currentLoan.clientId, currentDate);
+        const wasCompleted = Number(currentLoan.loanBalance) <= 0 || currentLoan.status === 'completed';
+        const reloanerRemark = { label: 'Reloaner', value: currentLoan.occurence === 'daily' ? 'reloaner-cont' : 'reloaner' };
+        const baseHistory = cashCollection.history || currentLoan.history || {};
+        const closedHistory = {
+            ...baseHistory,
+            amountRelease: baseHistory.amountRelease ?? (Number(currentLoan.amountRelease) || 0),
+            ...(wasCompleted && !baseHistory.remarks?.value ? { remarks: reloanerRemark } : {}),
+        };
+        const ccNeedsReloanerRemark = wasCompleted && !cashCollection.remarks;
+
         const toUpdatePendingLoan = {
           advanceTransaction: true,
           mcbu: cashCollection.mcbu,
           csf: cashCollection.csf,
-          prevLoanFullPaymentDate: currentDate,
-          prevLoanFullPaymentAmount: cashCollection.fullPayment,
+          prevLoanFullPaymentDate: payoffDate || currentDate,
+          prevLoanFullPaymentAmount: Number(cashCollection.fullPayment) > 0 ? cashCollection.fullPayment : (Number(currentLoan.history?.amountRelease) || Number(currentLoan.amountRelease) || 0),
           mcbuWithdrawal: cashCollection.mcbuWithdrawal,
           csfWithdrawal: cashCollection.csfWithdrawal,
         };
@@ -119,12 +135,12 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           csf: 0,
           mcbuCollection: cashCollection.mcbu,
           noOfPayments: cashCollection.noOfPayments,
-          fullPaymentDate:  cashCollection.fullPaymentDate,
+          fullPaymentDate:  payoffDate,
           mcbuWithdrawal: cashCollection.mcbuWithdrawal,
           mcbuReturnAmt: cashCollection.mcbuReturnAmt,
           csfWithdrawal: cashCollection.csfWithdrawal,
           csfReturnAmt: cashCollection.csfReturnAmt,
-          history: cashCollection.history,
+          history: closedHistory,
           advanceTransaction: false
         };
 
@@ -132,6 +148,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           loanId: pendingLoan._id,
           currentReleaseAmount: pendingLoan.amountRelease,
           prevLoanId: currentLoan._id,
+          ...(ccNeedsReloanerRemark ? { remarks: reloanerRemark } : {}),   // cashCollections.remarks is jsonb: store the object
           admissionCollection: pendingLoan.admissionCollection,
           lrfCollection: pendingLoan.lrfCollection,
           cbhbCollection: pendingLoan.cbhbCollection,
@@ -207,4 +224,16 @@ async function updatePendingLoan(user_id, collection, currentDate) {
         throw err;
       })
     }
+}
+
+// Most recent payoff date recorded on any of the client's cashCollections (covers loans that were
+// transferred, where the loan row lost fullPaymentDate but the daily/weekly rows kept it).
+async function findLastPayoffDate(clientId, currentDate) {
+    const rows = await findCashCollections({
+        clientId: { _eq: clientId },
+        fullPaymentDate: { _is_null: false },
+        dateAdded: { _lte: currentDate },
+    }, 'dateAdded fullPaymentDate');
+    const dates = rows.map(r => String(r.fullPaymentDate).slice(0, 10)).filter(Boolean).sort();
+    return dates.length ? dates[dates.length - 1] : null;
 }
