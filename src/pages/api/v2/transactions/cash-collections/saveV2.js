@@ -36,6 +36,8 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 // Stale-page guard (prevData vs DB). 'off' | 'warn' (log only, default) | 'reject' (409 STALE_DATA).
 const PREVDATA_GUARD_MODE = String(process.env.LMS_PREVDATA_GUARD || 'warn').toLowerCase();
+// Closed-loan guard: 'off' | 'warn' (log only, default) | 'reject' (409). Same convention as LMS_PREVDATA_GUARD.
+const CLOSEDLOAN_GUARD_MODE = String(process.env.LMS_CLOSEDLOAN_GUARD || 'warn').toLowerCase();
 
 // ============================================
 // GRAPH SETUP (same as original)
@@ -199,6 +201,42 @@ async function findStalePrevDataRows(rows) {
         if (fields.length > 0) stale.push({ clientId: r.clientId, loanId: r.loanId, fields });
     }
     return stale;
+}
+
+/**
+ * Closed-loan guard. updateLoan() writes the submitted row over the loan (status, balance, MCBU, ...),
+ * so a row that is NOT a closing row but points at a loan that is already closed silently re-opens it
+ * and corrupts the offset (seen on a weekly Offset: the loan kept its close date and cycle 0 but came
+ * back active with its old balance/MCBU). Only rows that will update a loan are checked; drafts,
+ * tomorrow/pending release rows and totals never update an existing loan here. A row that is itself
+ * 'closed' (an Offset re-sent with the group) is expected and is not flagged.
+ */
+async function findClosedLoanOverwrites(rows) {
+    const candidates = rows.filter(r =>
+        r.loanId && !r.draft && r.status !== 'closed' &&
+        r.status !== 'tomorrow' && r.status !== 'pending' && r.status !== 'totals');
+    if (candidates.length === 0) return [];
+
+    const loanIds = Array.from(new Set(candidates.map(r => r.loanId)));
+    const closedLoans = await graph.query(
+        queryQl(createGraphType('loans', '_id status closedDate')('closed_loans'), {
+            where: { _id: { _in: loanIds }, status: { _eq: 'closed' } }
+        })
+    ).then(r => r.data?.closed_loans ?? []);
+    if (closedLoans.length === 0) return [];
+
+    const closedById = new Map(closedLoans.map(l => [l._id, l]));
+    return candidates
+        .filter(r => closedById.has(r.loanId))
+        .map(r => ({
+            clientId: r.clientId,
+            loanId: r.loanId,
+            fullName: r.fullName,
+            slotNo: r.slotNo,
+            incomingStatus: r.status,
+            remarks: r.remarks?.value,
+            closedDate: closedById.get(r.loanId).closedDate
+        }));
 }
 
 // ============================================
@@ -404,6 +442,38 @@ async function saveWithProtection(req, res) {
             }
         }
 
+        // Step 1d: closed-loan guard (see findClosedLoanOverwrites). Deterministic, never retried.
+        if (CLOSEDLOAN_GUARD_MODE !== 'off') {
+            try {
+                const overwrites = await findClosedLoanOverwrites(csfRows);
+                if (overwrites.length > 0) {
+                    logger.warn({
+                        user_id,
+                        transactionId,
+                        page: 'Cash Collection SaveV2',
+                        message: 'Row would overwrite a loan that is already closed',
+                        mode: CLOSEDLOAN_GUARD_MODE,
+                        rows: overwrites
+                    });
+
+                    if (CLOSEDLOAN_GUARD_MODE === 'reject') {
+                        const names = overwrites.map(o => o.fullName || o.clientId).join(', ');
+                        return res.status(409).json({
+                            success: false,
+                            error: true,
+                            errorCode: 'LOAN_ALREADY_CLOSED',
+                            message: `The loan is already closed for: ${names}. Please refresh the page; nothing was saved.`,
+                            closedLoanRows: overwrites,
+                            transactionId
+                        });
+                    }
+                }
+            } catch (e) {
+                // the guard must never be the reason a save fails
+                logger.warn({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Closed-loan check failed, continuing', error: e.message });
+            }
+        }
+
         // Step 2: Execute save with retry
         let lastError = null;
         let attempt = 0;
@@ -546,6 +616,7 @@ async function executeSave(req, user_id, transactionId, user) {
 
     const mutationQl = [];
     const offsetCollections = []; // Track offsets for notifications
+    const rowsToVerify = []; // rows that updated a loan: each must end up with a cashCollections row
 
     const delinquentAlertThreshold = await getDelinquentAlertThreshold();
 
@@ -726,6 +797,7 @@ async function executeSave(req, user_id, transactionId, user) {
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate);
                     await updateClient(user_id, mutationQl, collection);
+                    rowsToVerify.push(collection);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0 && !collection.hasMcbuWithdrawal) {
@@ -808,6 +880,10 @@ async function executeSave(req, user_id, transactionId, user) {
             }
         }
 
+        // Final invariant: every row that updated a loan has a cashCollections row for this date.
+        // Independent of how the rows were routed above (insert / update / weekly missing-row insert).
+        await healMissingCashCollections({ rows: rowsToVerify, currentDate, user_id, transactionId });
+
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
         if (reverted.length == 0) {
             const pendingLoans = data.collection.filter(c => (c.status === 'pending' || c.status === 'closed') && c.advance == true);
@@ -881,6 +957,50 @@ const assignNullValues = (obj, origin) => {
     return cc;
 };
 
+/**
+ * Post-save safety net. A loan can be closed/updated while its cashCollections row never got written
+ * (seen in production: 4 Offset loans closed on 2026-11-16, no cashCollections for those clients, totals short).
+ * After the main mutation, verify by clientId + date and insert whatever is missing, and log it loudly.
+ */
+async function healMissingCashCollections({ rows, currentDate, user_id, transactionId }) {
+    if (!rows || rows.length === 0) return;
+
+    const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))];
+    if (clientIds.length === 0) return;
+
+    const present = await graph.query(
+        queryQl(createGraphType('cashCollections', '_id clientId')('cc_verify'), {
+            where: { clientId: { _in: clientIds }, dateAdded: { _eq: currentDate } }
+        })
+    ).then(r => r.data?.cc_verify ?? []);
+
+    const have = new Set(present.map(c => c.clientId));
+    const seen = new Set();
+    const missing = rows.filter(r => {
+        if (!r.clientId || have.has(r.clientId) || seen.has(r.clientId)) return false;
+        seen.add(r.clientId);
+        return true;
+    });
+    if (missing.length === 0) return;
+
+    logger.error({
+        user_id, transactionId, page: 'Cash Collection SaveV2',
+        message: 'cashCollections missing after save, re-inserting',
+        currentDate,
+        rows: missing.map(r => ({
+            _id: r._id, loanId: r.loanId, clientId: r.clientId, status: r.status, draft: r.draft,
+            remarks: r.remarks?.value ?? r.remarks ?? null, paymentCollection: r.paymentCollection
+        }))
+    });
+
+    const mutations = [];
+    await saveCollection(mutations, missing.map(r => ({ ...r, _id: generateUUID(), draft: false })), currentDate);
+    const result = await graph.mutation(...mutations);
+    if (result?.errors?.length) {
+        throw new Error(`Re-insert of missing cashCollections failed: ${result.errors.map(e => e.message).join(', ')}`);
+    }
+}
+
 async function saveCollection(mutationQL, collections, currentDate) {
     const objects = collections.map(c => ({
         ... cleanUpCollection(c),
@@ -908,7 +1028,8 @@ async function updateCollection(mutationQL, collections) {
         // An update must never move a row to another date: the page can send a stale dateAdded (e.g. a
         // transfer/tomorrow row loaded with the loan's original date) and rewriting it collides with the
         // loan's own row on that date (uix_cashCollections__loanId_dateAdded).
-        const { dateAdded: _ignoredDateAdded, ...updateFields } = cleanUpCollection(c);
+        // insertedDateTime is fixed at creation for the same reason: the page can send the loan's own insert time.
+        const { dateAdded: _ignoredDateAdded, insertedDateTime: _ignoredInsertedDateTime, ...updateFields } = cleanUpCollection(c);
 
         mutationQL.push(
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {

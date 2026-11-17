@@ -296,19 +296,37 @@ async function preSaveForLoanOfficer(loId, currentDate) {
     }));
 
     // Insert the collections
-    await graph.mutation(
+    const insertResult = await graph.mutation(
         insertQl(createGraphType('cashCollections', '_id')('collections'), {
             objects: cashCollections,
             on_conflict: { constraint: 'cashCollections_pkey', update_columns: [] }
         })
     );
 
-    console.log(`Successfully pre-saved ${cashCollections.length} collections for loId: ${loId}`);
+    // The conflict clause makes the insert a silent no-op for an id that already exists (e.g. a row for this
+    // loan+date that a stale save moved to another date). Report what was really written, never just what was tried.
+    const attemptedCount = cashCollections.length;
+    const affectedRows = Number(insertResult?.data?.collections?.affected_rows);
+    const insertedCount = Number.isFinite(affectedRows) ? affectedRows : attemptedCount;
+    const conflictCount = Math.max(attemptedCount - insertedCount, 0);
+
+    if (conflictCount > 0) {
+        console.warn(
+            `Pre-save skipped ${conflictCount} of ${attemptedCount} collection(s) for loId: ${loId} on ${currentDate}: a row with the same id already exists.`,
+            cashCollections.slice(0, 20).map(c => ({ _id: c._id, loanId: c.loanId, clientId: c.clientId }))
+        );
+    } else {
+        console.log(`Successfully pre-saved ${insertedCount} collections for loId: ${loId}`);
+    }
 
     return { 
         success: true, 
-        message: 'Collections pre-saved successfully',
-        count: cashCollections.length,
+        message: conflictCount > 0
+            ? `Pre-saved ${insertedCount} collection(s); ${conflictCount} skipped because a row with the same id already exists`
+            : 'Collections pre-saved successfully',
+        count: insertedCount,
+        attemptedCount,
+        conflictCount,
         skippedCount: existingClientIds.size
     };
 }

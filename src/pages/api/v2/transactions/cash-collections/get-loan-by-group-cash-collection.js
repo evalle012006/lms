@@ -94,6 +94,15 @@ async function getLoanWithCashCollection(req, res) {
                 mcbuWithdrawalList: c.mcbuWithdrawals ?? [],
             };
 
+            // A loan closed today (Offset / payoff) must have a cashCollections row for today. If it does not, the
+            // register would still render a believable row built from the loan, while every total (which reads
+            // cashCollections) comes up short. Flag it so the page and the LO close check can surface it.
+            const dayOf = d => (d ? String(d).slice(0, 10) : null);
+            const closedToday = row.status === 'closed'
+                && !row.transferred && !row.transferredReleased
+                && (dayOf(row.closedDate) === date || dayOf(row.fullPaymentDate) === date);
+            row.missingCashCollection = c.curr_type === 'current' && closedToday && (row.current ?? []).length === 0;
+
             const qrEntry = qrByClientId.get(row.clientId);
             if (qrEntry) {
                 const existingRow = row.current?.[0];

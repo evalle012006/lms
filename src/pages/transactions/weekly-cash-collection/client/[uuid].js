@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
@@ -357,7 +357,24 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const getCashCollections = async (date) => {
+    // Dedupe identical in-flight loads (mount effect re-runs on router/settings changes) and
+    // ignore responses from superseded loads so a slow stale response can't overwrite newer data.
+    const inFlightLoadRef = useRef({ key: null, promise: null });
+    const loadSeqRef = useRef(0);
+    const getCashCollections = (date) => {
+        const key = `${uuid}|${date || 'current'}`;
+        if (inFlightLoadRef.current.key === key && inFlightLoadRef.current.promise) {
+            return inFlightLoadRef.current.promise;
+        }
+        const seq = ++loadSeqRef.current;
+        const promise = loadCashCollections(date, seq).finally(() => {
+            if (inFlightLoadRef.current.promise === promise) inFlightLoadRef.current = { key: null, promise: null };
+        });
+        inFlightLoadRef.current = { key, promise };
+        return promise;
+    };
+
+    const loadCashCollections = async (date, seq) => {
         setLoading(true);
         const type = date ? 'filter' : 'current';
 
@@ -381,6 +398,7 @@ const CashCollectionDetailsPage = () => {
             fetchWrapper.get(url),
             fetchWrapper.get(getApiBaseUrl() + 'transactions/cash-collections/csf-config?' + new URLSearchParams({ groupId: uuid })).catch(() => null),
         ]);
+        if (seq !== loadSeqRef.current) return; // superseded by a newer load
         const csfEnabledNow = csfConfig?.success ? csfConfig.csfEnabled !== false : true;
         setCsfEnabled(csfEnabledNow);
 
