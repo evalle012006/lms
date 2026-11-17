@@ -194,6 +194,10 @@ async function approveReject(req, res) {
 
                                     if (existingCashCollection[0].status == 'completed') {
                                         updatedLoan.status = 'completed';
+                                        const prevPayoff = existingCashCollection[0].fullPaymentDate;
+                                        if (!updatedLoan.fullPaymentDate && prevPayoff && prevPayoff !== currentDate) {
+                                            updatedLoan.fullPaymentDate = prevPayoff;
+                                        }
                                     }
                                 }
                                 delete prevLoan._id;
@@ -381,7 +385,9 @@ async function saveCashCollection(transfer, loan, updatedLoan, sourceGroup, targ
 
             if (existingCashCollection.length > 0) {
                 const prevCC = existingCashCollection[0];
-                data.remarks      = prevCC.remarks ?? null;
+                data.remarks      = mapReloanerRemark(prevCC.remarks ?? null, targetGroup.occurence);
+                // keep the original payoff date unless the payoff happened on the transfer day itself
+                data.fullPaymentDate = (prevCC.fullPaymentDate && prevCC.fullPaymentDate !== currentDate) ? prevCC.fullPaymentDate : null;
                 data.status       = prevCC.status ?? null;
                 data.mispayment   = prevCC.mispayment ?? false;
                 data.noMispayment = prevCC.noMispayment ?? 0;
@@ -531,4 +537,21 @@ function getAndValidateLoan(loans) {
     }
 
     return { loan: loan, error: withError, errorMsg: errorMsg };
+}
+
+// Daily LORs store the Reloaner remark as 'reloaner-cont', weekly LORs as 'reloaner'. A transfer
+// between occurrences must translate it or the target page's remark dropdown cannot match it.
+// cashCollections.remarks is stored either as an object or as a JSON string; keep the input shape.
+function mapReloanerRemark(remarks, targetOccurence) {
+    if (!remarks) return remarks;
+    const isString = typeof remarks === 'string';
+    let parsed = remarks;
+    if (isString) { try { parsed = JSON.parse(remarks); } catch (e) { return remarks; } }
+    if (!parsed || typeof parsed !== 'object') return remarks;
+    let value = parsed.value;
+    if (targetOccurence === 'weekly' && value === 'reloaner-cont') value = 'reloaner';
+    else if (targetOccurence === 'daily' && value === 'reloaner') value = 'reloaner-cont';
+    if (value === parsed.value) return remarks;
+    const out = { ...parsed, value };
+    return isString ? JSON.stringify(out) : out;
 }

@@ -396,6 +396,9 @@ const CashCollectionDetailsPage = () => {
                 transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.current[0]?.groupStatus === 'closed');
             }
 
+            // A group that is already closed (or viewed on a past date) is read-only until it is reopened.
+            const groupIsClosed = !(transactionStatus.length === 0 && (!date || currentDate === date));
+
             if (transactionStatus.length === 0 && (!date || currentDate === date)) {
                 setEditMode(true);
                 setGroupSummaryIsClose(false);
@@ -1685,7 +1688,7 @@ const CashCollectionDetailsPage = () => {
 
             const hasDraft = cashCollection.filter(cc => cc.draft);
             if (hasDraft.length > 0) {
-                setEditMode(true);
+                if (!groupIsClosed) setEditMode(true);
                 setHasDraft(true);
                 setDraftsCollection(hasDraft);
                 console.log('Drafts Collection found: ', hasDraft)
@@ -1711,7 +1714,7 @@ const CashCollectionDetailsPage = () => {
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
             if (haveReverted.length > 0) {
-                setEditMode(true);
+                if (!groupIsClosed) setEditMode(true); // closed group stays read-only until it is reopened
                 setRevertMode(true);
                 console.log('Reverted Collection found: ', haveReverted)
             }
@@ -4284,6 +4287,10 @@ const CashCollectionDetailsPage = () => {
         );
     }, [data]);
 
+    // Revert selection: BM (and anyone once a BM revert exists) may select rows, but a BM cannot while the group is closed.
+    const showRevertSelect = (currentUser.role.rep == 3 || data.some(cc => (cc.bmRevertCount || 0) >= 1))
+        && (currentUser.role.rep < 3 || !groupSummaryIsClose);
+
     return (
         <Layout header={false} noPad={true} hScroll={false}>
             {(isV2TransactionApiEnabled && pageStale) && (
@@ -4369,7 +4376,7 @@ const CashCollectionDetailsPage = () => {
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">
-                                        {(currentUser.role.rep == 3 || data.some(cc => (cc.bmRevertCount || 0) >= 1)) && (
+                                        {showRevertSelect && (
                                             <th className="p-2 text-center">
                                                 <CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} />
                                             </th>
@@ -4452,7 +4459,7 @@ const CashCollectionDetailsPage = () => {
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
                                                                 ${rowBg} ${highlightClass}
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
-                                                {(currentUser.role.rep == 3 || data.some(r => (r.bmRevertCount || 0) >= 1)) && (
+                                                {showRevertSelect && (
                                                     <th className="p-2 text-center">
                                                         {cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-') && (
                                                             currentUser.role.rep == 3 ? (
