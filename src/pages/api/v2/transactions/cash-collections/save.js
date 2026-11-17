@@ -193,6 +193,15 @@ async function save(req, res) {
                     await updateClient(user_id, mutationQl, collection);
                 }
 
+                // A resubmitted (non-draft) reverted row resolves the revert. updateLoan never writes loans.reverted
+                // and is skipped for pending/advance rows, so clear it here.
+                if (collection.fromReverted && !collection.draft && collection.loanId) {
+                    mutationQl.push(updateQl(LOAN_TYPE('update_loans_reverted_' + mutationQl.length), {
+                        set: { reverted: false },
+                        where: { _id: { _eq: collection.loanId } }
+                    }));
+                }
+
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0 && !collection.hasMcbuWithdrawal) {
                     await updateLoanMcbuWithdrawal(user_id, mutationQl, collection)
                 }

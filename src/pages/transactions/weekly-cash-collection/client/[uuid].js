@@ -1047,6 +1047,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
+                                // loans.reverted is only a pending revert until today's collection is resubmitted (non-draft)
+                                if (!current.draft) collection.reverted = false;
                                 collection.csfCollection = current.csfCollection;
                                 collection.csfCollectionStr = current.csfCollection > 0 ? formatPricePhp(current.csfCollection) : '-';
                                 collection.csfWithdrawal = current.csfWithdrawal;
