@@ -307,8 +307,8 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </div>
                         )}
 
-                        {/* rep<3 (higher roles): revert only when BM has already used their revert on at least one row */}
-                        {(currentUser.role.rep < 3 && data.some(cc => (cc.bmRevertCount || 0) >= 1)) && (
+                        {/* rep<3 (higher roles): revert only when the group is open and BM has already used their revert on at least one row */}
+                        {(currentUser.role.rep < 3 && groupTransactionStatus != 'close' && data.some(cc => (cc.bmRevertCount || 0) >= 1)) && (
                             <div className="w-40">
                                 <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
                             </div>

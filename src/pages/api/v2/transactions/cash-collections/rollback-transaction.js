@@ -138,6 +138,17 @@ async function revert(req, res) {
                 continue;
             }
 
+            // A closed group transaction is read-only: it must be reopened before anything is reverted.
+            if (existingCc[0].groupStatus === 'closed') {
+                blockedItems.push({
+                    cashCollectionId: cashCollection._id,
+                    loanId,
+                    clientId: cashCollection.clientId,
+                    reason: 'The group transaction is closed. Reopen it before reverting.'
+                });
+                continue;
+            }
+
             // Client and group are only needed when the collection was closed
             // (client is moved back to the old group and the slot is re-taken).
             let client = null;
