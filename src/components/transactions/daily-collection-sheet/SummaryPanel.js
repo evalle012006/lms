@@ -37,6 +37,7 @@ const SummaryPanel = ({
     onBeginningBalanceSaved
 }) => {
     const d = mapSummaryData(rawData);
+    console.log("12b Database Other Income:", d?.rcptOtherIncome);
 
     const PICTURE_FEE_PER_RELEASE = 50;
 
@@ -359,6 +360,7 @@ const SummaryPanel = ({
         </div>
     );
 
+    console.log("12b Other Income Transactions:", otherIncomeReceipts);
     const amounts = {
         rcptMcbu: dcsTotals
             ? Number(dcsTotals.mcbuActual) || 0
@@ -366,13 +368,25 @@ const SummaryPanel = ({
 
         rcptCsf: Number(d.rcptCsf) || 0,
 
+        // Regular Loan Collection (60 Days)
         rcptRegularLoan: dcsTotals
             ? Number(dcsTotals.regularLoanActual) || 0
-            : d.rcptRegularLoan,
+            : Number(d.rcptRegularLoan) || 0,
 
+        // Weekly Collection (24 Weeks)
         rcptOtherLoan: dcsTotals
             ? Number(dcsTotals.otherLoanActual) || 0
-            : d.rcptOtherLoan,
+            : Number(d.rcptOtherLoan) || 0,
+
+        // Weekly Collection (12 Weeks)
+        rcptWeekly12: dcsTotals
+            ? Number(dcsTotals.weekly12Actual) || 0
+            : Number(d.rcptWeekly12) || 0,
+
+        // Weekly Loan Collection (12 Weeks)
+        rcptWeekly12: dcsTotals
+            ? Number(dcsTotals.weekly12Actual) || 0
+            : 0,
 
         rcptStaffCbu:
             Number(d.rcptStaffCbu || 0) +
@@ -392,7 +406,7 @@ const SummaryPanel = ({
         rcptMcbuUnclaimedIn: Number(d.rcptMcbuUnclaimedIn) || 0,
 
         rcptOtherIncomePassbook:
-            Number(d.rcptOtherIncomePassbook || 0) +
+            (Number(dcsTotals?.admissionNo) || 0) * 50 +
             otherIncomePassbook,
         rcptOtherIncome:
             Number(d.rcptOtherIncome || 0) +
@@ -440,6 +454,7 @@ const SummaryPanel = ({
     const csfDifference = amounts.rcptCsf - d.rcptCsf;
     const regularLoanDifference = amounts.rcptRegularLoan - d.rcptRegularLoan;
     const otherLoanDifference = amounts.rcptOtherLoan - d.rcptOtherLoan;
+    const weekly12Difference = amounts.rcptWeekly12 - (Number(d.rcptWeekly12) || 0);
     const mcbuUnclaimedInDifference =
         amounts.rcptMcbuUnclaimedIn -
         d.rcptMcbuUnclaimedIn;
@@ -453,6 +468,7 @@ const SummaryPanel = ({
         csfDifference +
         regularLoanDifference +
         otherLoanDifference +
+        weekly12Difference +
         mcbuUnclaimedInDifference +
         fundTransferInDifference;
 
@@ -471,13 +487,19 @@ const SummaryPanel = ({
         Number(d.totalReceipts || 0) +
         totalCollectionDifference +
         otherIncomeReceipts +
-        otherIncomePassbook +
         otherIncomeBankWithdrawal +
         staffCbuCollection +
         staffCashbondCollection +
         staffLoanCollection +
         otherReceiptsCollections +
-        (otherIncomePicture - Number(d.rcptOtherReceiptsPicture || 0));
+        (
+            amounts.rcptOtherIncomePassbook -
+            Number(d.rcptOtherIncomePassbook || 0)
+        ) +
+        (
+            otherIncomePicture -
+            Number(d.rcptOtherReceiptsPicture || 0)
+        );
 
     const updatedTotalPayments =
         Number(d.totalPayments || 0) +
@@ -660,47 +682,6 @@ const SummaryPanel = ({
                     </tbody>
                 </table>
             </div>
-
-            {d.loanReleasePerLo.length > 0 && (
-                <div className="border border-purple-300 rounded-lg overflow-hidden">
-                    <div className="bg-purple-600 px-3 py-1.5">
-                        <span className="text-white font-bold text-xs tracking-wide">LOAN RELEASE PER LO</span>
-                    </div>
-                    <table className="w-full border-collapse text-sm">
-                        <thead>
-                            <tr className="bg-purple-50">
-                                <th className="border border-purple-200 px-3 py-1.5 text-left text-xs font-semibold">LO</th>
-                                <th className="border border-purple-200 px-3 py-1.5 text-center text-xs font-semibold"># of Client</th>
-                                <th className="border border-purple-200 px-3 py-1.5 text-right text-xs font-semibold">Release Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {d.loanReleasePerLo.map((lo, i) => (
-                                <tr key={lo.loId || i} className="hover:bg-purple-50">
-                                    <td className="border border-gray-200 px-3 py-1.5 text-xs">
-                                        LO-{lo.loNo} — {lo.loName}
-                                    </td>
-                                    <td className="border border-gray-200 px-3 py-1.5 text-center text-xs">{lo.noClients}</td>
-                                    <td className="border border-gray-200 px-3 py-1.5 text-right text-xs font-medium">
-                                        {formatPricePhp(lo.releaseAmount)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="bg-purple-50 font-bold">
-                                <td className="border border-purple-200 px-3 py-1.5 text-xs">TOTAL</td>
-                                <td className="border border-purple-200 px-3 py-1.5 text-center text-xs">
-                                    {d.loanReleasePerLo.reduce((s, lo) => s + (lo.noClients || 0), 0)}
-                                </td>
-                                <td className="border border-purple-200 px-3 py-1.5 text-right text-xs">
-                                    {formatPricePhp(d.loanReleasePerLo.reduce((s, lo) => s + (lo.releaseAmount || 0), 0))}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            )}
         </div>
     );
 };
