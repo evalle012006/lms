@@ -67,6 +67,10 @@ const parseRow = (item) => {
         loName:             item.lo_name || item.loName,
         groupId:            item.group_id  || item.groupId,
         groupName:          item.group_name || item.groupName,
+
+        releaseWithoutSC:
+            Number(d.releaseWithoutSC ?? d.release_without_sc ?? 0),
+        
         morningRemittance:   parseFloat(item.morning_remittance   || item.morningRemittance)   || 0,
         afternoonRemittance: parseFloat(item.afternoon_remittance || item.afternoonRemittance) || 0,
         denomNetCollection:  parseFloat(item.denom_net_collection  || item.denomNetCollection)  || 0,
@@ -79,6 +83,15 @@ const parseRow = (item) => {
         otherLoanTarget:     parseFloat(d.otherLoanTarget  || d.other_loan_target)  || 0,
         otherLoanAdvance:    parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0,
         otherLoanActual:     parseFloat(d.otherLoanActual  || d.other_loan_actual)  || 0,
+        // Weekly (12 Weeks)
+        weekly12Target:
+            Number(d.weekly12Target ?? d.weekly12_target ?? 0),
+
+        weekly12Advance:
+            Number(d.weekly12Advance ?? d.weekly12_advance ?? 0),
+
+        weekly12Actual:
+            Number(d.weekly12Actual ?? d.weekly12_actual ?? 0),
         admissionNo:         parseInt(d.admissionNo  || d.admission_no)   || 0,
         admissionAmount:     parseFloat(d.admissionAmount || d.admission_amount) || 0,
         lrfCollection:       parseFloat(d.lrfCollection  || d.lrf_collection)  || 0,
@@ -116,10 +129,16 @@ const calculateTotals = (rows) => {
     const num = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
     const int = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
     return {
-        mcbuTarget: num('mcbuTarget'), mcbuActual: num('mcbuActual'),
+        releaseWithoutSC: num('releaseWithoutSC'),
+
+        mcbuTarget: num('mcbuTarget'),
+        mcbuActual: num('mcbuActual'),
         csfCollection: num('csfCollection'),
         regularLoanTarget: num('regularLoanTarget'), regularLoanAdvance: num('regularLoanAdvance'), regularLoanActual: num('regularLoanActual'),
         otherLoanTarget: num('otherLoanTarget'), otherLoanAdvance: num('otherLoanAdvance'), otherLoanActual: num('otherLoanActual'),
+        weekly12Target: num('weekly12Target'),
+        weekly12Advance: num('weekly12Advance'),
+        weekly12Actual: num('weekly12Actual'),
         admissionNo: int('admissionNo'), admissionAmount: num('admissionAmount'),
         lrfCollection: num('lrfCollection'),
         cbhbNo: int('cbhbNo'), cbhbAmount: num('cbhbAmount'),
@@ -146,6 +165,10 @@ const DailyCollectionSheet = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentBranch = useSelector(state => state.branch.data);
     const branchList = useSelector(state => state.branch.list);
+
+    const currentUserId = currentUser?._id;
+    const designatedBranchId = currentUser?.designatedBranchId;
+    const currentBranchId = currentBranch?._id;
 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState([]);
@@ -529,6 +552,13 @@ const DailyCollectionSheet = () => {
                                         // Source: DCS Summary Panel Receipts #15
                                         rcptFundTransferIn:
                                             Number(mappedSummary.rcptFundTransferIn) || 0,
+                                        
+                                        // CASHBOOK - ADMISSION COUNT
+                                        // Number of new members for this specific date
+                                        admissionNo:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.admissionNo) || 0
+                                                : Number(mappedSummary.rcptAdminFeesNo) || 0,
 
                                         // MCBU Collection
                                         rcptMcbu:
@@ -549,10 +579,18 @@ const DailyCollectionSheet = () => {
                                                 : mappedSummary.rcptRegularLoan,
 
                                         // Other Loan Collection (Weekly)
+                                        // Includes both 24 Weeks and 12 Weeks
+                                        // Weekly Collection (24 Weeks)
                                         rcptOtherLoan:
                                             cashbookCollectionTotals !== null
-                                                ? cashbookCollectionTotals.otherLoanActual
-                                                : mappedSummary.rcptOtherLoan,
+                                                ? Number(cashbookCollectionTotals.otherLoanActual) || 0
+                                                : Number(mappedSummary.rcptOtherLoan) || 0,
+
+                                        // Weekly Collection (12 Weeks)
+                                        rcptWeekly12:
+                                            cashbookCollectionTotals !== null
+                                                ? Number(cashbookCollectionTotals.weekly12Actual) || 0
+                                                : Number(mappedSummary.rcptWeekly12) || 0,
 
                                         // MCBU Withdrawal
                                         payMcbuWithdrawal:
@@ -622,7 +660,7 @@ const DailyCollectionSheet = () => {
     );
 
     useEffect(() => {
-        if (activeTab !== 'cashbook' && activeTab !== 'dcs') return;
+        if (activeTab !== 'cashbook') return;
 
         let branchId = null;
         let loId = null;
@@ -769,8 +807,9 @@ const DailyCollectionSheet = () => {
 
         fetchData();
     }, [
-        currentUser,
-        currentBranch?._id,
+        currentUserId,
+        designatedBranchId,
+        currentBranchId,
         selectedDate,
         selectedLo?._id,
         selectedBranch?._id,

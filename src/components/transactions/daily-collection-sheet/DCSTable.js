@@ -2,7 +2,7 @@
 // Columns: MCBU (Target|Actual) | CSF Collection | Regular Loan (Tgt|Adv|Act) | Other Loan (Tgt|Adv|Act)
 //          | Admission (No|Amt) | LRF | CBHB (No|₱200) | Add Hospi | Other Income | Total
 //          | MCBU WD | MCBU Ret (No|Amt) | CSF WD | CSF Ret (No|Amt) | NET
-//          | Renewal (No|Amt) | Offset (No|Amt) | Clients
+//          | Full Payment (No|Amt)
 
 import React from 'react';
 import moment from 'moment';
@@ -34,38 +34,39 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
     if (isAdminAllBranches && hasBranchData) {
         return (
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-xs border-collapse">
-                        <thead>
+                <div className="overflow-auto max-h-[70vh]">
+                    <table className="min-w-full text-xs border-separate border-spacing-0">
+                        <thead className="sticky top-0 z-30 bg-gray-100">
                             <tr>
-                                <th className={th('sticky left-0 z-10 bg-gray-100 min-w-[40px]')} rowSpan={3}>No.</th>
-                                <th className={th('sticky left-[40px] z-10 bg-gray-100 min-w-[120px]')} rowSpan={3}>Branch</th>
+                                <th className={th('sticky left-0 z-40 bg-gray-100 min-w-[40px]')} rowSpan={3}>No.</th>
+                                <th className={th('sticky left-[40px] z-40 bg-gray-100 min-w-[120px]')} rowSpan={3}>Branch</th>
                                 <th className={th()} colSpan={2}>MCBU</th>
                                 <th className={th()} rowSpan={3}>CSF Col.</th>
                                 <th className={th()} colSpan={3}>Regular Loan</th>
-                                <th className={th()} colSpan={3}>Other Loan</th>
+                                <th className={th()} colSpan={3}>Weekly (24 Weeks)</th>
+                                <th className={th()} colSpan={3}>Weekly (12 Weeks)</th>
                                 <th className={th()} colSpan={2}>Admission</th>
                                 <th className={th()} rowSpan={3}>LRF</th>
                                 <th className={th()} colSpan={2}>CBHB</th>
                                 <th className={th()} rowSpan={3}>Add Hospi</th>
                                 <th className={th()} rowSpan={3}>Other Inc.</th>
-                                <th className={th('font-bold')} rowSpan={3}>Total</th>
+                                <th className={th('font-bold')} rowSpan={3}>Total Collection</th>
                                 <th className={th()} rowSpan={3}>MCBU WD</th>
                                 <th className={th()} colSpan={2}>MCBU Ret</th>
                                 <th className={th()} rowSpan={3}>CSF WD</th>
                                 <th className={th()} colSpan={2}>CSF Ret</th>
-                                <th className={th('font-bold text-teal-700')} rowSpan={3}>NET</th>
-                                <th className={th()} colSpan={2}>Renewal</th>
-                                <th className={th()} colSpan={2}>Offset</th>
-                                <th className={th()} rowSpan={3}>Clients</th>
+                                <th className={th('font-bold text-teal-700')} rowSpan={3}>NET Collection</th>
+                                <th className={th()} colSpan={2}>Full Payment</th>
                             </tr>
                             <tr>
                                 <th className={th()}>Tgt</th><th className={th()}>Act</th>
                                 <th className={th()}>Tgt</th><th className={th()}>Adv</th><th className={th()}>Act</th>
                                 <th className={th()}>Tgt</th><th className={th()}>Adv</th><th className={th()}>Act</th>
+                                <th className={th()}>Tgt</th>
+                                <th className={th()}>Adv</th>
+                                <th className={th()}>Act</th>
                                 <th className={th()}>No.</th><th className={th()}>Amt</th>
                                 <th className={th()}>No.</th><th className={th()}>₱200</th>
-                                <th className={th()}>No.</th><th className={th()}>Amt</th>
                                 <th className={th()}>No.</th><th className={th()}>Amt</th>
                                 <th className={th()}>No.</th><th className={th()}>Amt</th>
                                 <th className={th()}>No.</th><th className={th()}>Amt</th>
@@ -99,20 +100,24 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
     // ── Per-LO/group detail view ─────────────────────────────────────────────
     return (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="min-w-full text-xs border-collapse">
-                    <thead>
+            <div className="overflow-auto max-h-[70vh]">
+                <table className="min-w-full text-xs border-separate border-spacing-0">
+                    <thead className="sticky top-0 z-30 bg-gray-100">
                         {/* Row 1 */}
                         <tr>
-                            <th className={th('sticky left-0 z-10 min-w-[32px]')} rowSpan={3}>No.</th>
-                            <th className={th('sticky left-[32px] z-10 min-w-[110px]')} rowSpan={3}>LO</th>
+                            <th className={th('sticky left-0 z-40 min-w-[32px]')} rowSpan={3}>No.</th>
+                            <th className={th('sticky left-[32px] z-40 min-w-[110px]')} rowSpan={3}>LO</th>
                             <th className={th('min-w-[90px]')} rowSpan={3}>Group</th>
+                            {/* Release Without Service Charge */}
+                            <th className={th()} rowSpan={3}>
+                                Release Without SC
+                            </th>
                             {/* MCBU */}
                             <th className={th()} colSpan={2}>MCBU Col.</th>
                             {/* CSF */}
                             <th className={th()} rowSpan={3}>CSF Col.</th>
                             {/* Loan */}
-                            <th className={th()} colSpan={6}>CLIENT'S LOAN COLLECTION</th>
+                            <th className={th()} colSpan={9}>CLIENT'S LOAN COLLECTION</th>
                             {/* Admission */}
                             <th className={th()} colSpan={2}>Admission</th>
                             {/* LRF */}
@@ -124,18 +129,16 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                             {/* Other */}
                             <th className={th()} rowSpan={3}>Other Inc.</th>
                             {/* Total */}
-                            <th className={th('font-bold')} rowSpan={3}>TOTAL</th>
+                            <th className={th('font-bold')} rowSpan={3}>TOTAL Collection</th>
                             {/* Less Returns */}
                             <th className={th()} rowSpan={3}>MCBU WD</th>
                             <th className={th()} colSpan={2}>MCBU Ret.</th>
                             <th className={th()} rowSpan={3}>CSF WD</th>
                             <th className={th()} colSpan={2}>CSF Ret.</th>
                             {/* NET */}
-                            <th className={th('font-bold text-teal-700')} rowSpan={3}>NET</th>
+                            <th className={th('font-bold text-teal-700')} rowSpan={3}>NET Collection</th>
                             {/* Full Payment */}
                             <th className={th()} colSpan={2}>Full Payment</th>
-                            <th className={th()} colSpan={2}>Offset</th>
-                            <th className={th()} rowSpan={3}>Clients</th>
                         </tr>
                         {/* Row 2 */}
                         <tr>
@@ -145,7 +148,8 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                             {/* CSF — already rowspan=3 above */}
                             {/* Loan sub */}
                             <th className={th()} colSpan={3}>Regular (60d)</th>
-                            <th className={th()} colSpan={3}>Other (Wkly)</th>
+                            <th className={th()} colSpan={3}>Weekly (24 Weeks)</th>
+                            <th className={th()} colSpan={3}>Weekly (12 Weeks)</th>
                             {/* Admission sub */}
                             <th className={th()} rowSpan={2}>No.</th>
                             <th className={th()} rowSpan={2}>Amt</th>
@@ -161,14 +165,23 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                             {/* Renewal sub */}
                             <th className={th()} rowSpan={2}>No.</th>
                             <th className={th()} rowSpan={2}>Amt</th>
-                            {/* Offset sub */}
-                            <th className={th()} rowSpan={2}>No.</th>
-                            <th className={th()} rowSpan={2}>Amt</th>
                         </tr>
                         {/* Row 3 */}
                         <tr>
-                            <th className={th()}>Tgt</th><th className={th()}>Adv</th><th className={th()}>Act</th>
-                            <th className={th()}>Tgt</th><th className={th()}>Adv</th><th className={th()}>Act</th>
+                            {/* Regular (60d) */}
+                            <th className={th()}>Tgt</th>
+                            <th className={th()}>Adv</th>
+                            <th className={th()}>Act</th>
+
+                            {/* Weekly (24 Weeks) */}
+                            <th className={th()}>Tgt</th>
+                            <th className={th()}>Adv</th>
+                            <th className={th()}>Act</th>
+
+                            {/* Weekly (12 Weeks) */}
+                            <th className={th()}>Tgt</th>
+                            <th className={th()}>Adv</th>
+                            <th className={th()}>Act</th>
                         </tr>
                     </thead>
 
@@ -189,7 +202,15 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                                     </td>
                                 ) : null}
                                 {/* Group */}
-                                <td className="border border-gray-200 px-1.5 py-1 text-left whitespace-nowrap">{item.groupName}</td>
+                                <td className="border border-gray-200 px-1.5 py-1 text-left whitespace-nowrap">
+                                    {item.groupName}
+                                </td>
+
+                                {/* Release Without Service Charge */}
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.releaseWithoutSC)}
+                                </td>
+
                                 {/* MCBU */}
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.mcbuTarget)}</td>
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.mcbuActual)}</td>
@@ -200,9 +221,27 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.regularLoanAdvance)}</td>
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.regularLoanActual)}</td>
                                 {/* Other Loan */}
-                                <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanTarget)}</td>
-                                <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanAdvance)}</td>
-                                <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanActual)}</td>
+                                {/* Weekly (24 Weeks) */}
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.otherLoanTarget)}
+                                </td>
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.otherLoanAdvance)}
+                                </td>
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.otherLoanActual)}
+                                </td>
+
+                                {/* Weekly (12 Weeks) */}
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.weekly12Target)}
+                                </td>
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.weekly12Advance)}
+                                </td>
+                                <td className="border border-gray-200 px-1.5 py-1 text-right">
+                                    {fmt(item.weekly12Actual)}
+                                </td>
                                 {/* Admission */}
                                 <td className="border border-gray-200 px-1.5 py-1 text-center">{item.admissionNo}</td>
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.admissionAmount)}</td>
@@ -232,11 +271,6 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                                 {/* Renewal */}
                                 <td className="border border-gray-200 px-1.5 py-1 text-center">{item.renewalNo}</td>
                                 <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.renewalAmount)}</td>
-                                {/* Offset */}
-                                <td className="border border-gray-200 px-1.5 py-1 text-center">{item.offsetNo}</td>
-                                <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.offsetAmount)}</td>
-                                {/* Clients */}
-                                <td className="border border-gray-200 px-1.5 py-1 text-center">{item.fullPaymentClients}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -246,6 +280,12 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                             <tr className="bg-yellow-50 font-bold text-red-700 text-xs">
                                 <td className="border px-1.5 py-1.5 text-center sticky left-0 bg-yellow-50" colSpan={2}>TOTAL</td>
                                 <td className="border px-1.5 py-1.5"></td>
+
+                                {/* Release Without Service Charge Total */}
+                                <td className="border px-1.5 py-1.5 text-right">
+                                    {fmt(totals.releaseWithoutSC)}
+                                </td>
+
                                 {/* MCBU */}
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.mcbuTarget)}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.mcbuActual)}</td>
@@ -255,10 +295,15 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.regularLoanTarget)}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.regularLoanAdvance)}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.regularLoanActual)}</td>
-                                {/* Other */}
+                                {/* Weekly (24 Weeks) */}
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.otherLoanTarget)}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.otherLoanAdvance)}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.otherLoanActual)}</td>
+
+                                {/* Weekly (12 Weeks) */}
+                                <td className="border px-1.5 py-1.5 text-right">{fmt(totals.weekly12Target)}</td>
+                                <td className="border px-1.5 py-1.5 text-right">{fmt(totals.weekly12Advance)}</td>
+                                <td className="border px-1.5 py-1.5 text-right">{fmt(totals.weekly12Actual)}</td>
                                 {/* Admission */}
                                 <td className="border px-1.5 py-1.5 text-center">{totals.admissionNo}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.admissionAmount)}</td>
@@ -288,11 +333,6 @@ const DCSTable = ({ data, branchData, totals, isAdminAllBranches, selectedDate }
                                 {/* Renewal */}
                                 <td className="border px-1.5 py-1.5 text-center">{totals.renewalNo}</td>
                                 <td className="border px-1.5 py-1.5 text-right">{fmt(totals.renewalAmount)}</td>
-                                {/* Offset */}
-                                <td className="border px-1.5 py-1.5 text-center">{totals.offsetNo}</td>
-                                <td className="border px-1.5 py-1.5 text-right">{fmt(totals.offsetAmount)}</td>
-                                {/* Clients */}
-                                <td className="border px-1.5 py-1.5 text-center">{totals.fullPaymentClients}</td>
                             </tr>
                         </tfoot>
                     )}
@@ -314,6 +354,16 @@ const BranchCells = ({ item, fmt }) => (
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanTarget)}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanAdvance)}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.otherLoanActual)}</td>
+        {/* Weekly (12 Weeks) */}
+        <td className="border border-gray-200 px-1.5 py-1 text-right">
+            {fmt(item.weekly12Target)}
+        </td>
+        <td className="border border-gray-200 px-1.5 py-1 text-right">
+            {fmt(item.weekly12Advance)}
+        </td>
+        <td className="border border-gray-200 px-1.5 py-1 text-right">
+            {fmt(item.weekly12Actual)}
+        </td>
         <td className="border border-gray-200 px-1.5 py-1 text-center">{item.admissionNo}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.admissionAmount)}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.lrfCollection)}</td>
@@ -331,9 +381,6 @@ const BranchCells = ({ item, fmt }) => (
         <td className="border border-gray-200 px-1.5 py-1 text-right font-bold text-teal-700">{fmt(item.netCollection)}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-center">{item.renewalNo}</td>
         <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.renewalAmount)}</td>
-        <td className="border border-gray-200 px-1.5 py-1 text-center">{item.offsetNo}</td>
-        <td className="border border-gray-200 px-1.5 py-1 text-right">{fmt(item.offsetAmount)}</td>
-        <td className="border border-gray-200 px-1.5 py-1 text-center">{item.fullPaymentClients}</td>
     </>
 );
 
