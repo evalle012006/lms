@@ -36,6 +36,8 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 // Stale-page guard (prevData vs DB). 'off' | 'warn' (log only, default) | 'reject' (409 STALE_DATA).
 const PREVDATA_GUARD_MODE = String(process.env.LMS_PREVDATA_GUARD || 'warn').toLowerCase();
+// Closed-loan guard: 'off' | 'warn' (log only, default) | 'reject' (409). Same convention as LMS_PREVDATA_GUARD.
+const CLOSEDLOAN_GUARD_MODE = String(process.env.LMS_CLOSEDLOAN_GUARD || 'warn').toLowerCase();
 
 // ============================================
 // GRAPH SETUP (same as original)
@@ -199,6 +201,42 @@ async function findStalePrevDataRows(rows) {
         if (fields.length > 0) stale.push({ clientId: r.clientId, loanId: r.loanId, fields });
     }
     return stale;
+}
+
+/**
+ * Closed-loan guard. updateLoan() writes the submitted row over the loan (status, balance, MCBU, ...),
+ * so a row that is NOT a closing row but points at a loan that is already closed silently re-opens it
+ * and corrupts the offset (seen on a weekly Offset: the loan kept its close date and cycle 0 but came
+ * back active with its old balance/MCBU). Only rows that will update a loan are checked; drafts,
+ * tomorrow/pending release rows and totals never update an existing loan here. A row that is itself
+ * 'closed' (an Offset re-sent with the group) is expected and is not flagged.
+ */
+async function findClosedLoanOverwrites(rows) {
+    const candidates = rows.filter(r =>
+        r.loanId && !r.draft && r.status !== 'closed' &&
+        r.status !== 'tomorrow' && r.status !== 'pending' && r.status !== 'totals');
+    if (candidates.length === 0) return [];
+
+    const loanIds = Array.from(new Set(candidates.map(r => r.loanId)));
+    const closedLoans = await graph.query(
+        queryQl(createGraphType('loans', '_id status closedDate')('closed_loans'), {
+            where: { _id: { _in: loanIds }, status: { _eq: 'closed' } }
+        })
+    ).then(r => r.data?.closed_loans ?? []);
+    if (closedLoans.length === 0) return [];
+
+    const closedById = new Map(closedLoans.map(l => [l._id, l]));
+    return candidates
+        .filter(r => closedById.has(r.loanId))
+        .map(r => ({
+            clientId: r.clientId,
+            loanId: r.loanId,
+            fullName: r.fullName,
+            slotNo: r.slotNo,
+            incomingStatus: r.status,
+            remarks: r.remarks?.value,
+            closedDate: closedById.get(r.loanId).closedDate
+        }));
 }
 
 // ============================================
@@ -401,6 +439,38 @@ async function saveWithProtection(req, res) {
             } catch (e) {
                 // the guard must never be the reason a save fails
                 logger.warn({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Stale-page check failed, continuing', error: e.message });
+            }
+        }
+
+        // Step 1d: closed-loan guard (see findClosedLoanOverwrites). Deterministic, never retried.
+        if (CLOSEDLOAN_GUARD_MODE !== 'off') {
+            try {
+                const overwrites = await findClosedLoanOverwrites(csfRows);
+                if (overwrites.length > 0) {
+                    logger.warn({
+                        user_id,
+                        transactionId,
+                        page: 'Cash Collection SaveV2',
+                        message: 'Row would overwrite a loan that is already closed',
+                        mode: CLOSEDLOAN_GUARD_MODE,
+                        rows: overwrites
+                    });
+
+                    if (CLOSEDLOAN_GUARD_MODE === 'reject') {
+                        const names = overwrites.map(o => o.fullName || o.clientId).join(', ');
+                        return res.status(409).json({
+                            success: false,
+                            error: true,
+                            errorCode: 'LOAN_ALREADY_CLOSED',
+                            message: `The loan is already closed for: ${names}. Please refresh the page; nothing was saved.`,
+                            closedLoanRows: overwrites,
+                            transactionId
+                        });
+                    }
+                }
+            } catch (e) {
+                // the guard must never be the reason a save fails
+                logger.warn({ user_id, transactionId, page: 'Cash Collection SaveV2', message: 'Closed-loan check failed, continuing', error: e.message });
             }
         }
 
@@ -908,7 +978,8 @@ async function updateCollection(mutationQL, collections) {
         // An update must never move a row to another date: the page can send a stale dateAdded (e.g. a
         // transfer/tomorrow row loaded with the loan's original date) and rewriting it collides with the
         // loan's own row on that date (uix_cashCollections__loanId_dateAdded).
-        const { dateAdded: _ignoredDateAdded, ...updateFields } = cleanUpCollection(c);
+        // insertedDateTime is fixed at creation for the same reason: the page can send the loan's own insert time.
+        const { dateAdded: _ignoredDateAdded, insertedDateTime: _ignoredInsertedDateTime, ...updateFields } = cleanUpCollection(c);
 
         mutationQL.push(
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
