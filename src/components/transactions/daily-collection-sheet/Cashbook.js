@@ -58,6 +58,7 @@ const emptyRow = (day) => ({
 
   regularLoanCollection: 0,
   otherLoanCollection: 0,
+  weekly12Collection: 0,
 
   staffCbuCollection: 0,
   cashbondCollection: 0,
@@ -421,6 +422,7 @@ const emptyRow = (day) => ({
       Number(row.csfCollection || 0) +
       Number(row.regularLoanCollection || 0) +
       Number(row.otherLoanCollection || 0) +
+      Number(row.weekly12Collection || 0) +
       Number(row.staffCbuCollection || 0) +
       Number(row.cashbondCollection || 0) +
       Number(row.salaryAdvanceCollection || 0) +
@@ -751,6 +753,7 @@ const emptyRow = (day) => ({
 
         regularLoanCollection: summary?.rcptRegularLoan ?? 0,
         otherLoanCollection: summary?.rcptOtherLoan ?? 0,
+        weekly12Collection: summary?.rcptWeekly12 ?? 0,
 
         regularLoanReleasePersons:
           Number(summary?.regularLoanReleasePersons) || 0,
@@ -788,7 +791,7 @@ const emptyRow = (day) => ({
         cbhbAdditional: summary?.rcptAddHospi ?? 0,
 
         cbhbOther:
-          Number(summary?.rcptOtherIncomePassbook || 0) +
+          (Number(summary?.admissionNo || 0) * 50) +
           otherIncomePassbook,
 
         otherIncomePicture:
@@ -935,6 +938,7 @@ const emptyRow = (day) => ({
 
         <td>{money(sumField(sourceRows, "regularLoanCollection"))}</td>
         <td>{money(sumField(sourceRows, "otherLoanCollection"))}</td>
+        <td>{money(sumField(sourceRows, "weekly12Collection"))}</td>
 
         <td>{money(sumField(sourceRows, "staffCbuCollection"))}</td>
         <td>{money(sumField(sourceRows, "cashbondCollection"))}</td>
@@ -1290,7 +1294,7 @@ const emptyRow = (day) => ({
             <tr className="cb-main-group">
               <th
                 className="cb-receipts-title"
-                colSpan={24}
+                colSpan={26}
               >
                 RECEIPTS / DEBIT
               </th>
@@ -1345,9 +1349,15 @@ const emptyRow = (day) => ({
               </th>
 
               <th className="cb-collection">
-                Other Loan Collection
-                <br />
-                (Weekly)
+                  Weekly Collection
+                  <br />
+                  (24 Weeks)
+              </th>
+
+              <th className="cb-collection">
+                  Weekly Collection
+                  <br />
+                  (12 Weeks)
               </th>
 
               <th className="cb-cbu">
@@ -1646,6 +1656,10 @@ const emptyRow = (day) => ({
 
                     <td className="cb-collection">
                       {money(row.otherLoanCollection)}
+                    </td>
+
+                    <td className="cb-collection">
+                        {money(row.weekly12Collection)}
                     </td>
 
                     <td className="cb-cbu">
