@@ -969,35 +969,60 @@ async function healMissingCashCollections({ rows, currentDate, user_id, transact
     if (clientIds.length === 0) return;
 
     const present = await graph.query(
-        queryQl(createGraphType('cashCollections', '_id clientId')('cc_verify'), {
+        queryQl(createGraphType('cashCollections', '_id clientId loanId status paymentCollection')('cc_verify'), {
             where: { clientId: { _in: clientIds }, dateAdded: { _eq: currentDate } }
         })
     ).then(r => r.data?.cc_verify ?? []);
 
-    const have = new Set(present.map(c => c.clientId));
+    // one row per client/day is expected; prefer the one that belongs to the loan we just updated
+    const byClient = new Map();
+    for (const c of present) {
+        const prev = byClient.get(c.clientId);
+        if (!prev) byClient.set(c.clientId, c);
+    }
     const seen = new Set();
-    const missing = rows.filter(r => {
-        if (!r.clientId || have.has(r.clientId) || seen.has(r.clientId)) return false;
+    const missing = [];
+    const stale = []; // row exists but the save never reached it (placeholder still shows old status / amount)
+    for (const r of rows) {
+        if (!r.clientId || seen.has(r.clientId)) continue;
         seen.add(r.clientId);
-        return true;
-    });
-    if (missing.length === 0) return;
+        const cur = present.find(c => c.clientId === r.clientId && c.loanId === r.loanId) || byClient.get(r.clientId);
+        if (!cur) {
+            missing.push(r);
+        } else if (cur.status !== r.status || Number(cur.paymentCollection ?? 0) !== Number(r.paymentCollection ?? 0)) {
+            stale.push({ row: r, current: cur });
+        }
+    }
+    if (missing.length === 0 && stale.length === 0) return;
 
+    const describe = r => ({
+        _id: r._id, loanId: r.loanId, clientId: r.clientId, status: r.status, draft: r.draft,
+        remarks: r.remarks?.value ?? r.remarks ?? null, paymentCollection: r.paymentCollection
+    });
     logger.error({
         user_id, transactionId, page: 'Cash Collection SaveV2',
-        message: 'cashCollections missing after save, re-inserting',
+        message: 'cashCollections not consistent with the loan update after save, repairing',
         currentDate,
-        rows: missing.map(r => ({
-            _id: r._id, loanId: r.loanId, clientId: r.clientId, status: r.status, draft: r.draft,
-            remarks: r.remarks?.value ?? r.remarks ?? null, paymentCollection: r.paymentCollection
-        }))
+        missing: missing.map(describe),
+        stale: stale.map(s => ({ sent: describe(s.row), stored: s.current }))
     });
 
     const mutations = [];
-    await saveCollection(mutations, missing.map(r => ({ ...r, _id: generateUUID(), draft: false })), currentDate);
+    if (missing.length > 0) {
+        await saveCollection(mutations, missing.map(r => ({ ...r, _id: generateUUID(), draft: false })), currentDate);
+    }
+    if (stale.length > 0) {
+        await updateCollection(mutations, stale.map(({ row, current }) => ({
+            ...assignNullValues(row),
+            _id: current._id,
+            draft: false,
+            modifiedBy: user_id,
+            modifiedDateTime: new Date(),
+        })));
+    }
     const result = await graph.mutation(...mutations);
     if (result?.errors?.length) {
-        throw new Error(`Re-insert of missing cashCollections failed: ${result.errors.map(e => e.message).join(', ')}`);
+        throw new Error(`Repair of cashCollections after save failed: ${result.errors.map(e => e.message).join(', ')}`);
     }
 }
 

@@ -80,21 +80,32 @@ async function revert(req, res) {
 
             // graph.query throws on GraphQL errors, so no `.errors` check is needed here.
             const loanHistoryResult = await graph.query(
-                queryQl(createGraphType('loans_history', `_id data`)('loan_history'), {
+                queryQl(createGraphType('loans_history', `_id data created_dt`)('loan_history'), {
                     where: { loan_id: { _eq: loanId } },
-                    limit: 1,
+                    limit: 10,
                     order_by: [{ created_dt: 'desc' }]
                 })
             );
 
-            const loan_history = loanHistoryResult.data?.loan_history?.[0];
+            const snapshots = loanHistoryResult.data?.loan_history ?? [];
+
+            // Reverting a closed / offset row must restore the loan as it was BEFORE it was closed.
+            // A snapshot is taken at the start of every save, so a loan that was saved again after it
+            // closed has a newest snapshot that is already closed. Restoring that one deletes the
+            // cashCollections row and leaves the loan closed (HONDA slots 1 and 5, 2026-11-16).
+            const isClosedRevert = cashCollection.status == 'closed';
+            const loan_history = isClosedRevert
+                ? snapshots.find(h => h?.data && h.data.status !== 'closed' && !h.data.closedDate)
+                : snapshots[0];
 
             if (!loan_history?.data) {
                 blockedItems.push({
                     cashCollectionId: cashCollection._id,
                     loanId,
                     clientId: cashCollection.clientId,
-                    reason: 'No loan history snapshot found to restore from.'
+                    reason: isClosedRevert
+                        ? 'No loan snapshot from before the loan was closed. Reverting would leave the loan closed.'
+                        : 'No loan history snapshot found to restore from.'
                 });
                 continue;
             }
@@ -226,7 +237,10 @@ async function revert(req, res) {
             mutationQL.push(
                 deleteQl(
                     createGraphType('loans_history', `_id`)(`loan_history_${mutationQL.length}`),
-                    { _id: { _eq: loan_history._id } }
+                    isClosedRevert
+                        // also drop the closed-state snapshots taken after it, or the next revert restores them
+                        ? { loan_id: { _eq: loanId }, created_dt: { _gte: loan_history.created_dt } }
+                        : { _id: { _eq: loan_history._id } }
                 )
             );
 
