@@ -131,17 +131,20 @@ const CashCollectionDetailsPage = () => {
             exempt: !!(remarks?.value && LOR_NO_CSF_IN_REMARKS.includes(remarks.value)),
         });
 
-    // Final payoff smaller than one installment (e.g. 300 left on a 500 target): the LO collects the
-    // remaining balance and MCBU is a flat 20 per 100 of the payment (300 -> 60), not the installment minimum.
-    const PARTIAL_PAYOFF_MCBU_PER_100 = 20;
-    const getPartialPayoffMcbu = (payment) => (parseFloat(payment) / 100) * PARTIAL_PAYOFF_MCBU_PER_100;
+    // Final payoff smaller than one installment (e.g. 200 left on a 500 target): the LO collects the
+    // remaining balance and MCBU is pro-rated against the target (75 x 200/500 = 30), same as the
+    // original multi-installment calculation.
+    const getPartialPayoffMcbu = (row, payment, remarks = null) => {
+        const target = row?.activeLoan > 0 ? row.activeLoan : row?.history?.activeLoan;
+        return getWeeklyMinMcbu(row?.group?.weeklyScheduleType, parseFloat(payment) / target, remarks);
+    };
     const isPartialPayoff = (row) => {
         const target = row?.activeLoan > 0 ? row.activeLoan : row?.history?.activeLoan;
         const pay = parseFloat(row?.paymentCollection);
         return pay > 0 && target > 0 && pay < target && !(parseFloat(row?.loanBalance) > 0);
     };
     const getExpectedMcbu = (row, noPayments = 1, remarks = null) => isPartialPayoff(row)
-        ? getPartialPayoffMcbu(row.paymentCollection)
+        ? getPartialPayoffMcbu(row, row.paymentCollection, remarks)
         : getWeeklyMinMcbu(row?.group?.weeklyScheduleType, noPayments, remarks);
 
     const [mcbuInterestLoading, setMcbuInterestLoading] = useState(false);
@@ -1940,7 +1943,7 @@ const CashCollectionDetailsPage = () => {
                 
                 if (cc.groupDay === dayName || cc.offsetTransFlag) {
                     const minGroupDayMcbu = isPartialPayoff(cc)
-                        ? getPartialPayoffMcbu(cc.paymentCollection)
+                        ? getPartialPayoffMcbu(cc, cc.paymentCollection, cc.remarks)
                         : getWeeklyMinMcbu(cc.group?.weeklyScheduleType, 1, cc.remarks);
                     if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < minGroupDayMcbu) {
                         const remarksValue = cc.remarks?.value;
@@ -2479,7 +2482,7 @@ const CashCollectionDetailsPage = () => {
                                     if (parseFloat(payment) === parseFloat(prevLoanBalance)) {
                                         // final payoff smaller than one installment: a payment, not a mispay
                                         temp.mcbu = safeNumber(temp.prevData.mcbu);
-                                        temp.mcbuCol = getPartialPayoffMcbu(payment);
+                                        temp.mcbuCol = getPartialPayoffMcbu(temp, payment);
                                         temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                         temp.mcbu = temp.mcbu + temp.mcbuCol;
                                         temp.mcbuStr = formatPricePhp(temp.mcbu);
