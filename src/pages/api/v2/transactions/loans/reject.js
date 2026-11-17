@@ -24,6 +24,7 @@ import {
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 import { guardReject } from "@/lib/api/loanWriteGuard";
+import { applyLoanAssignmentToClient } from "@/lib/client-assignment";
 
 const groupType = createGraphType("groups", GROUP_FIELDS);
 const loanType = createGraphType("loans", LOAN_FIELDS);
@@ -64,7 +65,7 @@ async function updateLoan(req, res) {
     if (groupData.length > 0) {
         groupData = groupData[0];
         if (loan.status === 'active') {
-            await updateClient(loan.clientId, addToMutationList);
+            await updateClient(loan, groupData, addToMutationList);
             if (loan.coMaker) {
                 if (typeof loan.coMaker === 'string') {
                     loan.coMakerId = loan.coMaker;
@@ -198,12 +199,16 @@ async function updateGroup(group, addToMutationList) {
     return {success: true}
 }
 
-async function updateClient(clientId, addToMutationList) {
+async function updateClient(loan, groupData, addToMutationList) {
+    const clientId = loan.clientId;
     let client = await findClients({ _id: { _eq: clientId }});
 
     if (client.length > 0) {
         client = client[0];
 
+        // A balik/offset client approved here must get the loan's group and LO back,
+        // otherwise it ends up active with a null groupId and pre-save skips it.
+        applyLoanAssignmentToClient(client, loan, groupData?.name);
         client.status = 'active';
         delete client._id;
 
