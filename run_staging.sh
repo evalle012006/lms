@@ -41,7 +41,7 @@ success "Project directory found: $APP_DIR"
 log "Fetching latest code from branch: ${YELLOW}$BRANCH${NC}..."
 git fetch origin
 git checkout "$BRANCH"
-git pull origin "$BRANCH"
+git reset --hard "origin/$BRANCH"   # force-push safe; staging config lives in untracked override files
 success "Code updated to latest on branch: $BRANCH"
 
 # ── Verify Files ───────────────────────────────────────────

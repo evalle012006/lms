@@ -4436,7 +4436,7 @@ const CashCollectionDetailsPage = () => {
                                                 </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     {/* { cc.mcbuColStr } */}
-                                                    { ( cc.allowMcbuCollection
+                                                    { ( cc.allowMcbuCollection && editMode && (!cc?._id || cc?.reverted || cc.draft)
                                                         // !isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode
                                                         // && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
