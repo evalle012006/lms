@@ -626,6 +626,30 @@ async function executeSave(req, user_id, transactionId, user) {
         const qrMergeUpdates = [];
         
         logger.debug({user_id, transactionId, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
+
+        // A cashCollections row can legitimately have _id === loanId (pending/tomorrow release rows are
+        // inserted with the loan id as primary key). `_id !== loanId` alone therefore cannot tell a new row
+        // from an already-saved one: re-submitting such a row INSERTs the same primary key again
+        // ("duplicate key ... cashCollections_pkey"). Look the candidates up once and treat existing ones as updates.
+        const idEqualsLoanIds = [...new Set(
+            data.collection
+                .filter(c => c.status !== 'totals' && c._id && c._id === c.loanId)
+                .map(c => c._id)
+        )];
+        const existingSelfIdCC = new Set();
+        if (idEqualsLoanIds.length > 0) {
+            const found = await graph.query(
+                queryQl(createGraphType('cashCollections', '_id')('cc_self_id'), { where: { _id: { _in: idEqualsLoanIds } } })
+            ).then(r => r.data?.cc_self_id ?? []);
+            found.forEach(x => existingSelfIdCC.add(x._id));
+            if (found.length > 0) {
+                logger.warn({
+                    user_id, transactionId, page: 'Cash Collection SaveV2',
+                    message: 'cashCollections row with _id equal to loanId already exists, updating instead of inserting',
+                    ids: found.map(x => x._id)
+                });
+            }
+        }
         
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
@@ -762,7 +786,7 @@ async function executeSave(req, user_id, transactionId, user) {
                     }
                 }
 
-                if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
+                if (collection.hasOwnProperty('_id') && (collection._id != collection?.loanId || existingSelfIdCC.has(collection._id))) {
                     collection.modifiedBy = user_id;
                     collection.modifiedByName = `${user?.firstName} ${user?.lastName}`;
                     collection.modifiedDateTime = new Date();
