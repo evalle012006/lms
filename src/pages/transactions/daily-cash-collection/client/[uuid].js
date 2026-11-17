@@ -830,6 +830,9 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                         }
 
+                        // loaded as already closed (offset saved earlier): history, never re-sent on Submit
+                        collection.persistedClosed = true;
+
                         if (loanBalance > 0 && !cc?.maturedPD) {
                             collection.transferred = true;
                         }
@@ -1944,7 +1947,9 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty ).map(cc => {
+                // TEMP DEBUG: which rows are _dirty when Submit builds the payload (remove after diagnosing)
+                console.log('[LOR submit] dirty rows:', data.filter(cc => !!cc._dirty).map(cc => ({ slot: cc.slotNo, name: cc.fullName, status: cc.status, persistedClosed: !!cc.persistedClosed, origin: cc.origin ?? null, draft: cc.draft })));
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty && !cc.persistedClosed).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     temp.mcbuCol = temp.mcbuCol ? temp.mcbuCol : 0;
                     if (temp.reverted && !draft) {

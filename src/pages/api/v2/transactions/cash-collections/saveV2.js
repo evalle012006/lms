@@ -357,9 +357,11 @@ async function saveWithProtection(req, res) {
             // close reason in the payload, but it was accepted earlier. Only NEW offsets need a reason.
             const reasonViolations = ruleViolations.filter(v => v.code === 'OFFSET_REASON_REQUIRED');
             if (reasonViolations.length > 0) {
+                // Top-level rows of a transferred-in loan carry the LOAN id in _id; the real cashCollections id is on current[0]
+                const ccId = (r) => r.current?.[0]?._id ?? r._id;
                 const ids = csfRows
-                    .filter(r => reasonViolations.some(v => v.clientId === r.clientId) && r._id && r._id !== r.loanId)
-                    .map(r => r._id);
+                    .filter(r => reasonViolations.some(v => v.clientId === r.clientId) && ccId(r) && ccId(r) !== r.loanId)
+                    .map(ccId);
                 if (ids.length > 0) {
                     const persisted = await graph.query(
                         queryQl(createGraphType('cashCollections', '_id status')('persisted_closed'), {
@@ -367,7 +369,7 @@ async function saveWithProtection(req, res) {
                         })
                     ).then(r => r.data?.persisted_closed ?? []);
                     const persistedIds = new Set(persisted.map(x => x._id));
-                    const okClients = new Set(csfRows.filter(r => persistedIds.has(r._id)).map(r => r.clientId));
+                    const okClients = new Set(csfRows.filter(r => persistedIds.has(ccId(r))).map(r => r.clientId));
                     ruleViolations = ruleViolations.filter(v => !(v.code === 'OFFSET_REASON_REQUIRED' && okClients.has(v.clientId)));
                 }
             }
