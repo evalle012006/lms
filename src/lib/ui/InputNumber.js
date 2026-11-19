@@ -23,9 +23,9 @@ const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, on
     return (
         <>
             <div className={`
-                flex justify-between rounded-md px-4 ${filter ? '' : 'py-1'} border mb-2 bg-white
-                ${value ? 'border border-main' : 'border-slate-400'}
-                ${errors && 'border border-red-400'}
+                flex justify-between rounded-lg px-4 ${filter ? '' : 'py-1'} border mb-2 bg-white shadow-sm transition-all focus-within:border-main focus-within:ring-2 focus-within:ring-main/20
+                ${value ? 'border border-main' : 'border-gray-300'}
+                ${errors && 'border border-red-400 focus-within:!border-red-400 focus-within:ring-red-200'}
             `}>
                 <div className="flex flex-col w-full">
                     <label htmlFor={name}

@@ -17,9 +17,9 @@ function InputPhone({ name, value, label, placeholder, disabled, errors, setFiel
     return (
     <>
             <div className={`
-                flex flex-col rounded-md px-2 py-1 border mb-2 bg-white
-                ${value ? 'border border-main' : 'border-slate-400'}
-                ${errors && 'border border-red-400'}
+                flex flex-col rounded-lg px-2 py-1 border mb-2 bg-white shadow-sm transition-all focus-within:border-main focus-within:ring-2 focus-within:ring-main/20
+                ${value ? 'border border-main' : 'border-gray-300'}
+                ${errors && 'border border-red-400 focus-within:!border-red-400 focus-within:ring-red-200'}
                 `}>
                 <div className="flex justify-between">
                     <label htmlFor={name}
