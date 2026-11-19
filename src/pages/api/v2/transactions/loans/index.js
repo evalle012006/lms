@@ -22,7 +22,7 @@ const fields = `
 
 const loanType = createGraphType("loans", fields)();
 // CHANGED: also fetch loanFor + dateOfRelease so we can detect a release change
-const loanMinType = createGraphType("loans", "groupId slotNo status loanFor dateOfRelease")();
+const loanMinType = createGraphType("loans", "groupId slotNo status loanFor dateOfRelease prevLoanId")();
 const cashCollectionsType = createGraphType("cashCollections", "_id")();
 const cashCollectionsTypeFull = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
 const groupType = createGraphType("groups", GROUP_FIELDS)();
@@ -84,6 +84,37 @@ async function updateLoan(req, res) {
   const newLoanFor = releaseChanged
     ? (loan.loanFor ?? existingLoan?.loanFor)
     : existingLoan?.loanFor;
+
+  // ── Approved loans are locked against release/placement changes ───────────
+  // Once a loan is past 'pending' (approved -> active/completed/...), update-pending-loans has
+  // already closed the previous loan against this release date. Moving the release date/day or
+  // the group/slot afterwards leaves the previous loan closed with no release behind it.
+  if (existingLoan && existingLoan.status !== 'pending' && (releaseChanged || groupChanged)) {
+    res.send({
+      error: true,
+      message: 'This loan is already approved. Its release date, group and slot can no longer be changed.'
+    });
+    return;
+  }
+
+  // ── A reloan whose release day is today has already closed its previous loan ──
+  // update-pending-loans runs when the reloan is CREATED with a release of today (even while the
+  // reloan is still pending), so moving that release to another day afterwards would leave the
+  // previous loan closed with no release behind it. Applies to pending loans too.
+  if (existingLoan && existingLoan.prevLoanId && releaseChanged
+      && normDate(existingLoan.dateOfRelease) === currentDate) {
+    // Only block when the previous loan really is closed (an ops repair may have put it back).
+    const [prevLoan] = (await graph.query(
+      queryQl(loanMinType, { where: { _id: { _eq: existingLoan.prevLoanId } } })
+    )).data?.loans ?? [];
+    if (prevLoan?.status === 'closed') {
+      res.send({
+        error: true,
+        message: 'This reloan releases today and its previous loan is already closed. The release date can no longer be changed.'
+      });
+      return;
+    }
+  }
 
   // ── Pre-fetch and validate group capacity BEFORE mutating the loan ────────
   // If the destination group is full, we bail out here — no loan or group

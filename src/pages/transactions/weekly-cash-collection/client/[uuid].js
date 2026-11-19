@@ -56,6 +56,15 @@ import { restoreRemarkFlags, withClientName } from '@/lib/remark-flags';
 import OfflineUploadControls from '@/components/transactions/offline-upload/OfflineUploadControls';
 import { rowsSignature } from '@/lib/offline-upload/lor-upload-template';
 
+// Snapshot of the user-editable fields. A row loaded from an already submitted collection whose snapshot is
+// unchanged at Submit was not edited, so it is not re-sent (the server only needs what changed).
+const rowEditSig = (cc) => JSON.stringify([
+    cc.paymentCollection, cc.mcbuCol, cc.csfCollection, cc.csfWithdrawal, cc.mcbuWithdrawal, cc.mcbuInterest,
+    cc.mcbuReturnAmt, cc.csfReturnAmt, cc.excess, cc.status, cc.advance, cc.mispayment, cc.excused, cc.delinquent,
+    typeof cc.remarks === 'string' ? cc.remarks : cc.remarks?.value ?? '', cc.closeRemarks ?? '',
+    !!cc.mcbuWithdrawFlag, !!cc.offsetTransFlag, !!cc.mcbuInterestFlag,
+]);
+
 const CashCollectionDetailsPage = () => {
     const isV2TransactionApiEnabled = process.env.NEXT_PUBLIC_TRANSACTION_API_VERSION === 'v2';
     const isStaging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false
@@ -871,6 +880,9 @@ const CashCollectionDetailsPage = () => {
                             editHistory: cc.editHistory ? cc.editHistory : [],
                         }
     
+                        // loaded as already closed (offset saved earlier): history, never re-sent on Submit
+                        collection.persistedClosed = true;
+
                         if (loanBalance > 0) {
                             collection.transferred = true;
                         }
@@ -1047,8 +1059,11 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
+                                // already submitted (draft === false), not a pre-save/QR row: only re-sent if edited
+                                collection._persistedRow = current.draft === false && !current.origin && !collection.qrSourced;
                                 // loans.reverted is only a pending revert until today's collection is resubmitted (non-draft)
-                                if (!current.draft) collection.reverted = false;
+                                // only a SUBMITTED row (draft === false) ends the pending revert; a reverted row comes back as a pre-save row with draft null
+                                if (current.draft === false) collection.reverted = false;
                                 collection.csfCollection = current.csfCollection;
                                 collection.csfCollectionStr = current.csfCollection > 0 ? formatPricePhp(current.csfCollection) : '-';
                                 collection.csfWithdrawal = current.csfWithdrawal;
@@ -1215,6 +1230,7 @@ const CashCollectionDetailsPage = () => {
                 collection.bmRevertCount = cc.bmRevertCount ? cc.bmRevertCount : 0;
 
                 collection.selected = false;
+                if (collection._persistedRow) collection._baseSig = rowEditSig(collection);
                 cashCollection.push(collection);
             });
 
@@ -1233,7 +1249,10 @@ const CashCollectionDetailsPage = () => {
             };
 
             response.data.tomorrowPending.map(loan => {
-                if (!canShowPendingLoan(loan)) {
+                // A loan releasing after the viewed date is not part of this LOR yet; it appears (merged) on its release day
+                const isFutureRelease = loan.dateOfRelease
+                    && moment(loan.dateOfRelease).isAfter(moment(currentDate), 'day');
+                if (isFutureRelease || !canShowPendingLoan(loan)) {
                     if (loan.loanCycle > 1 && !loan.prevLoanId) {
                         console.warn('Hidden pending loan with no prevLoanId (unlinked reloan):', loan._id, loan.slotNo);
                     }
@@ -1906,7 +1925,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add(withClientName(cc, 'Error occured. Please select a remarks for 0 or no payment Actual Collection.'));
                     } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                             && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
-                            && !cc.remarks.value.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
+                            && !cc.remarks.value?.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
                             && !cc.remarks.value?.startsWith('collection-')))) ) {
                         errorMsg.add(withClientName(cc, "Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks."));
                     } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
@@ -1916,8 +1935,8 @@ const CashCollectionDetailsPage = () => {
                             errorMsg.add(withClientName(cc, "Error occured. Amount collection is not divisible by 10"));
                         }
                     } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan 
-                            && (!cc.remarks?.value.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
-                            && !cc.remarks?.value.startsWith('offset-')) {
+                            && (!cc.remarks?.value?.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
+                            && !cc.remarks?.value?.startsWith('offset-')) {
                         errorMsg.add(withClientName(cc, "Actual collection is below the target collection."));
                     } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                         if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
@@ -2056,7 +2075,9 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty).map(cc => {
+                // TEMP DEBUG: which rows are _dirty when Submit builds the payload (remove after diagnosing)
+                // console.log('[LOR submit] dirty rows:', JSON.stringify(data.filter(cc => !!cc._dirty).map(cc => ({ slot: cc.slotNo, name: cc.fullName, status: cc.status, persistedClosed: !!cc.persistedClosed, origin: cc.origin ?? null, draft: cc.draft, persistedRow: !!cc._persistedRow, edited: !!cc._baseSig && rowEditSig(cc) !== cc._baseSig }))));
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty && !cc.persistedClosed && !(cc._baseSig && rowEditSig(cc) === cc._baseSig)).map(cc => {
                     let temp = JSON.parse(JSON.stringify(cc));
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group?.day ?? currentGroup?.day;
@@ -2084,6 +2105,8 @@ const CashCollectionDetailsPage = () => {
                         delete temp.mpdc;
                     }
                     delete temp.dirty;
+                    delete temp._persistedRow;
+                    delete temp._baseSig;
                     delete temp.group;
                     delete temp.pastDueStr;
                     delete temp.groupCashCollections;
@@ -2840,9 +2863,7 @@ const CashCollectionDetailsPage = () => {
     
                         if (temp.status === "completed" && (remarks.value && !(remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
-                        } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
-                            toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
-                        } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
+                        } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value?.startsWith('reloaner'))) {
                             toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
                         } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
@@ -3262,7 +3283,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                     toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                                 }
-                            } else if (remarks.value.startsWith('collection-')) {
+                            } else if (remarks?.value?.startsWith('collection-')) {
                                 temp.error = false;
     
                                 const payment = temp.paymentCollection;
@@ -3421,7 +3442,7 @@ const CashCollectionDetailsPage = () => {
                                         // do nothing...
                                     } else {
                                         // Reset mcbu to previous value if there were previous offset/reloaner remarks
-                                        if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
+                                        if (temp.remarks && (temp?.remarks?.value?.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
                                             if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
                                                 const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
                                                 temp.mcbu = prevMcbu;
@@ -4736,10 +4757,11 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
+                                                {console.log(cc.slotNo, cc.status, cc.fullName, JSON.stringify(cc.remarks))}
                                                 { ( !isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
                                                     && (cc.draft || editMode
                                                         || ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted) 
-                                                        || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
+                                                        || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value?.startsWith('reloaner')))
                                                         || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')))
                                                         || (cc.status == 'completed' && !cc.remarks?.value)
                                                         || (cc.offsetTransFlag && cc.otherDay)  

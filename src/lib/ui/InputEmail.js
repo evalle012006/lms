@@ -9,9 +9,9 @@ const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, se
     return (
         <>
         <div className={`
-            flex justify-between border rounded-md px-4 py-1 mb-2 bg-white
-            ${value ? ' border-main' : ' border-slate-400'}
-            ${errors && ' border-red-400'}
+            flex justify-between border rounded-lg px-4 py-1 mb-2 bg-white shadow-sm transition-all focus-within:border-main focus-within:ring-2 focus-within:ring-main/20
+            ${value ? ' border-main' : ' border-gray-300'}
+            ${errors && ' border-red-400 focus-within:!border-red-400 focus-within:ring-red-200'}
             ${disabled && 'bg-gray-100 border-gray-300'}
         `} style={{ width: width }}>
                 

@@ -218,7 +218,7 @@ function RowActions({ loan, actions, onView, viewingId }) {
                     <ShieldAlert className="w-4 h-4" />
                 </IconBtn>
             )}
-            {actions.canEdit && (
+            {actions.canEdit && loan.status === 'pending' && (
                 <IconBtn label={`Edit loan for ${name}`} onClick={() => actions.onEdit(loan)}>
                     <Pencil className="w-4 h-4" />
                 </IconBtn>
