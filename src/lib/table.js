@@ -745,17 +745,17 @@ const TableComponent = React.memo(({
               <th
                 key={`header-${columnIndex}`}
                 scope="col"
-                className={`px-4 ${dense ? 'py-2' : 'py-3'} whitespace-nowrap ${column.canSort ? 'select-none hover:text-gray-700' : ''} ${column.width || 'w-auto'}`}
+                className={`px-4 ${dense ? 'py-2' : 'py-3'} align-middle ${column.canSort ? 'select-none hover:text-gray-700' : ''} ${column.width || 'w-auto'}`}
                 {...columnProps}
               >
-                <div className="flex items-center gap-1">
-                  {column.render('Header')}
+                <div className="flex items-center gap-1 leading-tight">
+                  <span className="min-w-0 break-words">{column.render('Header')}</span>
                   {column.canSort && (
                     column.isSorted
                       ? (column.isSortedDesc
-                          ? <ChevronDown className="h-3.5 w-3.5 text-main" />
-                          : <ChevronUp className="h-3.5 w-3.5 text-main" />)
-                      : <ChevronsUpDown className="h-3.5 w-3.5 text-gray-300" />
+                          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-main" />
+                          : <ChevronUp className="h-3.5 w-3.5 flex-shrink-0 text-main" />)
+                      : <ChevronsUpDown className="h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
                   )}
                 </div>
               </th>
@@ -773,7 +773,7 @@ const TableComponent = React.memo(({
 
   return (
     <SignedUrlContext.Provider value={urlMap}>
-      <div className={`relative w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
+      <div className={`relative w-full min-w-0 max-w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
         {title && <h2 className="text-lg font-semibold text-gray-900 px-5 py-4 border-b border-gray-100">{title}</h2>}
         <div className="w-full">
           <div className={`overflow-x-auto min-h-[200px] ${noPadding ? 'p-1' : ''}`}>
