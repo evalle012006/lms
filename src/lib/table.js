@@ -543,6 +543,10 @@ const TableComponent = React.memo(({
   serverPagination = null,
   // Tighter rows for dense tables (opt-in)
   dense = false,
+  // Excel-style freeze pane: header row + first column stay visible while the table
+  // scrolls inside its own box (vertical and horizontal).
+  freezePane = false,
+  freezeMaxHeight = 'calc(100vh - 17rem)',
 }) => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [selectAll, setSelectAll] = useState(false);
@@ -729,7 +733,7 @@ const TableComponent = React.memo(({
       return (
         <tr key={`header-group-${groupIndex}`} {...headerGroupProps}>
           {multiSelect && (
-            <th key="header-checkbox" className="px-4 py-3 w-10 bg-gray-50">
+            <th key="header-checkbox" className={`px-4 py-3 w-10 bg-gray-50 ${freezePane ? 'sticky top-0 left-0 z-30 border-b border-gray-200' : ''}`}>
               <CheckBox
                 name="selectAll"
                 value={selectAll}
@@ -745,7 +749,11 @@ const TableComponent = React.memo(({
               <th
                 key={`header-${columnIndex}`}
                 scope="col"
-                className={`px-4 ${dense ? 'py-2' : 'py-3'} align-middle ${column.canSort ? 'select-none hover:text-gray-700' : ''} ${column.width || 'w-auto'}`}
+                className={`px-4 ${dense ? 'py-2' : 'py-3'} align-middle ${column.canSort ? 'select-none hover:text-gray-700' : ''} ${column.width || 'w-auto'} ${
+                  freezePane
+                    ? `sticky top-0 bg-gray-50 border-b border-gray-200 ${columnIndex === 0 ? `z-30 ${multiSelect ? 'left-10' : 'left-0'} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]` : 'z-20'}`
+                    : ''
+                }`}
                 {...columnProps}
               >
                 <div className="flex items-center gap-1 leading-tight">
@@ -762,7 +770,7 @@ const TableComponent = React.memo(({
             );
           })}
           {(hasActionButtons || dropDownActions.length > 0) && (
-            <th key="header-actions" scope="col" className="px-4 py-3 w-24 text-center">
+            <th key="header-actions" scope="col" className={`px-4 py-3 w-24 text-center ${freezePane ? 'sticky top-0 z-20 bg-gray-50 border-b border-gray-200' : ''}`}>
               Actions
             </th>
           )}
@@ -776,8 +784,11 @@ const TableComponent = React.memo(({
       <div className={`relative w-full min-w-0 max-w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
         {title && <h2 className="text-lg font-semibold text-gray-900 px-5 py-4 border-b border-gray-100">{title}</h2>}
         <div className="w-full">
-          <div className={`overflow-x-auto min-h-[200px] ${noPadding ? 'p-1' : ''}`}>
-            <table {...getTableProps()} className="w-full text-sm text-left text-gray-700">
+          <div
+            className={`${freezePane ? 'overflow-auto' : 'overflow-x-auto'} min-h-[200px] ${noPadding ? 'p-1' : ''}`}
+            style={freezePane ? { maxHeight: freezeMaxHeight } : undefined}
+          >
+            <table {...getTableProps()} className={`w-full text-sm text-left text-gray-700 ${freezePane ? 'border-separate border-spacing-0' : ''}`}>
               <thead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
                 {renderHeaderGroups()}
               </thead>
@@ -819,7 +830,7 @@ const TableComponent = React.memo(({
                         style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
                       >
                         {multiSelect && (
-                          <td className="px-4 py-3 w-10">
+                          <td className={`px-4 py-3 w-10 ${freezePane ? 'sticky left-0 z-10 bg-inherit border-b border-gray-100' : ''}`}>
                             <CheckBox
                               name={`select-${i}`}
                               value={row.original.selected}
@@ -833,7 +844,11 @@ const TableComponent = React.memo(({
                           <td
                             {...cell.getCellProps()}
                             key={`row-data-${index}`}
-                            className={`px-4 ${dense ? 'py-1.5' : 'py-3'} ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
+                            className={`px-4 ${dense ? 'py-1.5' : 'py-3'} ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'} ${
+                              freezePane
+                                ? `border-b border-gray-100 ${index === 0 ? `sticky z-10 bg-inherit ${multiSelect ? 'left-10' : 'left-0'} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]` : ''}`
+                                : ''
+                            }`}
                             onClick={() => rowClick && rowClick(row.original)}
                           >
                             <div className="flex items-center space-x-2">
@@ -862,7 +877,7 @@ const TableComponent = React.memo(({
                           </td>
                         ))}
                         {(hasActionButtons || dropDownActions.length > 0) && (
-                          <td className="px-4 py-3 w-24">
+                          <td className={`px-4 py-3 w-24 ${freezePane ? 'border-b border-gray-100' : ''}`}>
                             <div className="flex items-center justify-center space-x-2">
                               {hasActionButtons && !root && !row.original.system && (
                                 <ActionButton

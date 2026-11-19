@@ -1404,11 +1404,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     <Spinner />
                 // </div>
             ) : (
-                <TableComponent columns={columns} data={cashCollectionList} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
+                <TableComponent freezePane columns={columns} data={cashCollectionList} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
             )}
         </React.Fragment>
     );
 }
 
 
-export default ViewCashCollectionPage;
+export default ViewCashCollectionPage;
