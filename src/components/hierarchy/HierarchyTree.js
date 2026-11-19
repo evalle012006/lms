@@ -2,6 +2,36 @@ import React, { useState, useMemo } from 'react';
 import { PlusIcon, ChevronRightIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { BuildingOffice2Icon, MapIcon, HomeModernIcon } from '@heroicons/react/24/outline';
 
+// Strict Roman numeral check (I..MMMCMXCIX) for whole words only.
+const ROMAN_RE = /^(?=[IVXLCDM])M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+
+const romanToInt = (str) => {
+    const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+    const chars = str.split('');
+    return chars.reduce((total, ch, i) => {
+        const val = map[ch];
+        const next = map[chars[i + 1]] || 0;
+        return val < next ? total - val : total + val;
+    }, 0);
+};
+
+// Builds a sort key: trims, uppercases, and swaps Roman numeral words (and digit runs)
+// for zero-padded numbers, so "CEBU SOUTH IV" < "CEBU SOUTH IX" < "DIVISION X".
+const nameSortKey = (name = '') =>
+    name
+        .trim()
+        .toUpperCase()
+        .replace(/[A-Z0-9]+/g, (token) => {
+            if (/^\d+$/.test(token)) return token.padStart(6, '0');
+            if (token.length <= 6 && ROMAN_RE.test(token)) return String(romanToInt(token)).padStart(6, '0');
+            return token;
+        });
+
+// Natural order by name: DIVISION I, II, III ... XV (Roman numerals handled).
+const compareByName = (a, b) =>
+    nameSortKey(a.name).localeCompare(nameSortKey(b.name), undefined, { sensitivity: 'base' });
+
+
 const HierarchyTree = ({
     divisions,
     selectedDivisionId,
@@ -28,22 +58,24 @@ const HierarchyTree = ({
 
     // ── Filtered lists ────────────────────────────────────────────────────────
     const filteredDivisions = useMemo(() =>
-        divisions.filter(d => d.name.toLowerCase().includes(divisionSearch.toLowerCase())),
+        divisions
+            .filter(d => d.name.toLowerCase().includes(divisionSearch.toLowerCase()))
+            .sort(compareByName),
         [divisions, divisionSearch]
     );
 
     const filteredRegions = useMemo(() => {
         if (!selectedDivision?.regions) return [];
-        return selectedDivision.regions.filter(r =>
-            r.name.toLowerCase().includes(regionSearch.toLowerCase())
-        );
+        return selectedDivision.regions
+            .filter(r => r.name.toLowerCase().includes(regionSearch.toLowerCase()))
+            .sort(compareByName);
     }, [selectedDivision, regionSearch]);
 
     // Areas shown as sub-items under selected region, with area search
     const getFilteredAreas = (region) =>
-        (region.areas ?? []).filter(a =>
-            a.name.toLowerCase().includes(areaSearch.toLowerCase())
-        );
+        (region.areas ?? [])
+            .filter(a => a.name.toLowerCase().includes(areaSearch.toLowerCase()))
+            .sort(compareByName);
 
     return (
         <div className="flex h-full min-h-0" style={{ width: '500px', minWidth: '500px' }}>
