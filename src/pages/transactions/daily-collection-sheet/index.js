@@ -68,15 +68,44 @@ const parseRow = (item) => {
         groupId:            item.group_id  || item.groupId,
         groupName:          item.group_name || item.groupName,
 
+        releaseWithoutSCNo:
+            Number(
+                d.releaseWithoutSCNo ??
+                d.release_without_sc_no ??
+                d.releaseWithoutSCCount ??
+                d.release_without_sc_count ??
+                0
+            ),
+
         releaseWithoutSC:
-            Number(d.releaseWithoutSC ?? d.release_without_sc ?? 0),
+            Number(
+                d.releaseWithoutSC ??
+                d.release_without_sc ??
+                0
+            ),
         
         morningRemittance:   parseFloat(item.morning_remittance   || item.morningRemittance)   || 0,
         afternoonRemittance: parseFloat(item.afternoon_remittance || item.afternoonRemittance) || 0,
         denomNetCollection:  parseFloat(item.denom_net_collection  || item.denomNetCollection)  || 0,
         mcbuTarget:          parseFloat(d.mcbuTarget    || d.mcbu_target)    || 0,
         mcbuActual:          parseFloat(d.mcbuActual    || d.mcbu_actual)    || 0,
-        csfCollection:       parseFloat(item.csf_collection || d.csfCollection || d.csf_collection) || 0,
+        csfCollection:
+            Number(
+                item.csf_collection ??
+                d.csfCollection ??
+                d.csf_collection ??
+                0
+            ) || 0,
+
+        csfIn:
+            Number(
+                item.csf_in ??
+                item.csfIn ??
+                d.csfIn ??
+                d.csf_in ??
+                0
+            ) || 0,
+
         regularLoanTarget:   parseFloat(d.regularLoanTarget  || d.regular_loan_target)  || 0,
         regularLoanAdvance:  parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
         regularLoanActual:   parseFloat(d.regularLoanActual  || d.regular_loan_actual)  || 0,
@@ -129,11 +158,14 @@ const calculateTotals = (rows) => {
     const num = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
     const int = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
     return {
+        releaseWithoutSCNo: int('releaseWithoutSCNo'),
         releaseWithoutSC: num('releaseWithoutSC'),
 
         mcbuTarget: num('mcbuTarget'),
         mcbuActual: num('mcbuActual'),
+
         csfCollection: num('csfCollection'),
+        csfIn: num('csfIn'),
         regularLoanTarget: num('regularLoanTarget'), regularLoanAdvance: num('regularLoanAdvance'), regularLoanActual: num('regularLoanActual'),
         otherLoanTarget: num('otherLoanTarget'), otherLoanAdvance: num('otherLoanAdvance'), otherLoanActual: num('otherLoanActual'),
         weekly12Target: num('weekly12Target'),
@@ -184,6 +216,22 @@ const DailyCollectionSheet = () => {
 
     const [cashbookData, setCashbookData] = useState({});
     const [cashbookLoading, setCashbookLoading] = useState(false);
+
+    const [cashbookBeginningBalance, setCashbookBeginningBalance] = useState(null);
+    const handleCashbookBeginningBalance = useCallback(
+        (amount) => {
+            setCashbookBeginningBalance((previous) => {
+                if (previous === amount) {
+                    return previous;
+                }
+
+                return amount;
+            });
+        },
+        []
+    );
+    
+
     const [otherIncomeRefreshKey, setOtherIncomeRefreshKey] = useState(0);
 
     const [activeTab, setActiveTab] = useState('dcs');
@@ -660,7 +708,7 @@ const DailyCollectionSheet = () => {
     );
 
     useEffect(() => {
-        if (activeTab !== 'cashbook') return;
+        if (activeTab !== 'cashbook' && activeTab !== 'dcs') return;
 
         let branchId = null;
         let loId = null;
@@ -840,12 +888,19 @@ const DailyCollectionSheet = () => {
         return currentBranch?.name || 'Branch';
     };
 
-    const handleDateChange   = e  => setSelectedDate(e.target.value);
+    const handleDateChange = (e) => {
+        setCashbookBeginningBalance(null);
+        setCashbookData({});
+        setSelectedDate(e.target.value);
+    };
+
     const handleLoChange     = lo => setSelectedLo(lo);
     const handleBranchChange = branch => {
         setSelectedBranch(branch);
-        setSelectedLo(null);
+        setCashbookBeginningBalance(null);
+        setCashbookData({});
         setLoanOfficers([]);
+        setSelectedLo(null);
         setSummaryData(null);
         setActiveTab('dcs');
         if (branch) setBranchData([]); else setData([]);
@@ -1105,12 +1160,41 @@ const DailyCollectionSheet = () => {
                                             <div className="text-xs text-gray-500 mb-3">
                                                 {getBranchName()} — {moment(selectedDate).format('MMM D, YYYY')} ({moment(selectedDate).format('ddd')})
                                             </div>
+
+                                            {!selectedLo && transactionBranchId && (
+                                                <div style={{ display: "none" }}>
+                                                    <Cashbook
+                                                        key={`${transactionBranchId}-${selectedDate}`}
+                                                        branchId={transactionBranchId}
+                                                        selectedDate={selectedDate}
+                                                        cashbookData={cashbookData}
+                                                        loading={cashbookLoading}
+                                                        otherIncomeRefreshKey={otherIncomeRefreshKey}
+                                                        onBeginningBalanceCalculated={
+                                                            handleCashbookBeginningBalance
+                                                        }
+                                                    />
+                                                </div>
+                                            )}
+
                                             <SummaryPanel
-                                                summaryData={summaryData}
+                                                summaryData={
+                                                    summaryData
+                                                        ? {
+                                                            ...summaryData,
+                                                            rcpt_csf: totals?.csfCollection ?? summaryData.rcpt_csf,
+                                                        }
+                                                        : summaryData
+                                                }
                                                 dcsTotals={totals}
                                                 branchId={transactionBranchId}
                                                 selectedDate={selectedDate}
                                                 otherIncomeRefreshKey={otherIncomeRefreshKey}
+                                                cashbookBeginningBalance={
+                                                    !selectedLo && !cashbookLoading
+                                                        ? cashbookBeginningBalance
+                                                        : null
+                                                }
                                                 canEditBeginningBalance={
                                                     isAdmin &&
                                                     Boolean(transactionBranchId) &&

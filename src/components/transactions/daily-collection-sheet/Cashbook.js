@@ -245,6 +245,7 @@ const emptyRow = (day) => ({
     cashbookData = {},
     loading = false,
     otherIncomeRefreshKey = 0,
+    onBeginningBalanceCalculated,
 }) => {
   const [transactions, setTransactions] = useState([]);
   const [otherIncomeTransactions, setOtherIncomeTransactions] = useState([]);
@@ -777,7 +778,12 @@ const emptyRow = (day) => ({
           Number(summary?.payMcbuReturnNo) || 0,
 
         mcbuReturnAmount:
-          Number(summary?.payMcbuReturn) || 0,
+          Math.round(
+            (
+              (Number(summary?.payMcbuReturn) || 0) -
+              (Number(summary?.payCsfReturn) || 0)
+            ) * 100
+          ) / 100,
 
         csfReturnAmount:
           Number(summary?.payCsfReturn) || 0,
@@ -875,6 +881,41 @@ const emptyRow = (day) => ({
       transactions,
       otherIncomeTransactions,
       otherReceiptsTransactions,
+  ]);
+
+  const selectedDayBeginningBalance = useMemo(() => {
+      if (loading || !selectedDate) {
+          return null;
+      }
+
+      const selectedRow = rows.find(
+          (row) => row.dateKey === selectedDate
+      );
+
+      if (!selectedRow) {
+          return null;
+      }
+
+      if (!cashbookData[selectedDate]) {
+          return null;
+      }
+
+      const amount = Number(selectedRow.beginningBalance);
+
+      return Number.isFinite(amount) ? amount : null;
+  }, [rows, selectedDate, cashbookData, loading]);
+
+  useEffect(() => {
+      if (typeof onBeginningBalanceCalculated !== "function") {
+          return;
+      }
+
+      onBeginningBalanceCalculated(
+          selectedDayBeginningBalance
+      );
+  }, [
+      selectedDayBeginningBalance,
+      onBeginningBalanceCalculated,
   ]);
 
   const isWeekEnd = (row, index) => {
