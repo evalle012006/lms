@@ -434,6 +434,10 @@ const LoginPage = () => {
             if (response.error) {
                 if (response.locked) {
                     toast.error(response.message, { autoClose: 8000, icon: '🔒' });
+                } else if (response.onLeave) {
+                    toast.info(response.message, { autoClose: 10000 });
+                } else if (response.noPassword) {
+                    toast.warning(response.message, { autoClose: 10000 });
                 } else {
                     toast.error(`Error during Authentication. ${response.message}`);
                 }

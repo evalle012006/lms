@@ -57,6 +57,7 @@ biometricDeviceName
 loginAttempts
 lockedUntil
 mustChangePassword
+employee_no
 `)('users');
 
 // Server-only. Read fresh on each non-root login and never cached, merged into
@@ -100,7 +101,7 @@ async function authenticate(req, res) {
     const { username, password } = req.body;
 
     try {
-        const [user] = await graph.query(
+        let [user] = await graph.query(
             queryQl(USER_TYPE, {
                 where: {
                     email:  { _eq: username },
@@ -108,6 +109,39 @@ async function authenticate(req, res) {
                 }
             })
         ).then(r => r.data.users);
+
+        // An account HRIS paused because its owner is on approved leave is 'inactive', so the lookup above
+        // misses it. Find it again so that, AFTER the password is verified, we can explain why access is paused
+        // instead of a misleading "Email or Password is incorrect". Only accounts the HRIS sync itself blocked
+        // (hris_user_sync.access_blocked) qualify, never ones an admin deactivated by hand.
+        let leaveBlocked = false;
+        if (!user) {
+            const [candidate] = await graph.query(
+                queryQl(USER_TYPE, {
+                    where: {
+                        email:       { _eq: username },
+                        status:      { _eq: 'inactive' },
+                        employee_no: { _is_null: false },
+                    }
+                })
+            ).then(r => r.data.users);
+
+            if (candidate) {
+                const [mirror] = await graph.query(
+                    queryQl(createGraphType('hris_user_sync', '_id access_blocked')('mirrors'), {
+                        where: {
+                            employee_no:    { _eq: candidate.employee_no },
+                            access_blocked: { _eq: true },
+                        }
+                    })
+                ).then(r => r.data?.mirrors ?? []);
+
+                if (mirror) {
+                    user = candidate;
+                    leaveBlocked = true;
+                }
+            }
+        }
 
         if (!user) {
             response = { error: true, message: 'Email or Password is incorrect' };
@@ -127,7 +161,18 @@ async function authenticate(req, res) {
         // ────────────────────────────────────────────────────────────────────
 
         if (!user.password) {
-            response = { success: false, error: 'NO_PASS', user: user._id };
+            if (leaveBlocked) {
+                // never start the set-password flow for a paused account
+                response = { error: true, message: 'Email or Password is incorrect' };
+                return sendResponse(res, response, statusCode);
+            }
+            // No self-service set-password here: returning the user id let anyone who knew the email
+            // start a reset for the account. An admin sets the default password instead.
+            response = {
+                error:      true,
+                noPassword: true,
+                message:    'No password has been set for this account yet. Please contact your administrator to set a default password.',
+            };
             return sendResponse(res, response, statusCode);
         }
 
@@ -143,6 +188,17 @@ async function authenticate(req, res) {
         } else if (user.password && typeof password === 'string' && bcrypt.compareSync(password, user.password)) {
             success    = true;
             authMethod = 'user_password';
+        }
+
+        if (success && leaveBlocked) {
+            // Correct credentials, but access is paused: say why, issue no token, change nothing.
+            response = {
+                error:   true,
+                onLeave: true,
+                message: 'Your access is paused while you are on leave. It resumes automatically when your leave ends.',
+            };
+            logger.info({ page: 'login', message: 'Login refused: access paused (on leave)', userId: user._id });
+            return sendResponse(res, response, statusCode);
         }
 
         if (success) {
