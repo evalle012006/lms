@@ -32,7 +32,8 @@ import {
     ReceiptText,
     Eye,
     MessageSquare,
-    Smartphone
+    Smartphone,
+    Copy
 } from 'lucide-react';
 import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
 import Link from "next/link";
@@ -837,6 +838,18 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Eye {...props} />,
                     notActive: (props) => <Eye {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "Duplicate Clients",
+                url: "/settings/duplicate-clients",
+                icon: {
+                    active: (props) => <Copy {...props} />,
+                    notActive: (props) => <Copy {...props} />,
                 },
                 active: false,
                 hasSub: false,
