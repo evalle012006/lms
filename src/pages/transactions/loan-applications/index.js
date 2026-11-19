@@ -2579,15 +2579,16 @@ const LoanApplicationPage = ({ onSwitchView }) => {
 
 const LoanApplicationEntry = () => {
     const currentUser = useSelector(state => state.user.data);
-    const { view, setView, ready, canSwitch } = useLoanApplicationView(currentUser);
+    const { view, ready } = useLoanApplicationView(currentUser);
 
     if (!ready) {
         return <Layout><Spinner /></Layout>;
     }
     if (view === 'v2') {
-        return <LoanApplicationV2Page onSwitchView={() => setView('classic')} />;
+        // The switch back to the classic (v1) view is intentionally hidden.
+        return <LoanApplicationV2Page />;
     }
-    return <LoanApplicationPage onSwitchView={canSwitch ? () => setView('v2') : undefined} />;
+    return <LoanApplicationPage />;
 };
 
 export default LoanApplicationEntry;

@@ -12,10 +12,7 @@
 // the browser, so the page never flashes the wrong version first.
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-    isEligibleForLoanApplicationV2,
-    LOAN_APPLICATION_DEFAULT_VIEW,
-} from '@/lib/loan-application-v2-gate';
+import { isEligibleForLoanApplicationV2 } from '@/lib/loan-application-v2-gate';
 
 const VIEWS = ['classic', 'v2'];
 const storageKey = (userId) => `lms.loanApplicationView.${userId}`;
@@ -44,11 +41,9 @@ export function useLoanApplicationView(currentUser) {
 
     useEffect(() => {
         if (!userId) return;
-        if (!eligible) {
-            setViewState('classic');
-            return;
-        }
-        setViewState(readStoredLoanApplicationView(userId) ?? LOAN_APPLICATION_DEFAULT_VIEW);
+        // v2 is forced for everyone who can open it; there is no switch back to the
+        // classic page any more. Roles outside LOAN_APPLICATION_V2_ROLES still get classic.
+        setViewState(eligible ? 'v2' : 'classic');
     }, [userId, eligible]);
 
     const setView = useCallback((next) => {
@@ -57,5 +52,5 @@ export function useLoanApplicationView(currentUser) {
         setViewState(next);
     }, [userId]);
 
-    return { view, setView, ready: view !== null, canSwitch: eligible };
+    return { view, setView, ready: view !== null, canSwitch: false };
 }
