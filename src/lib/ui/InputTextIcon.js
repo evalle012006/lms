@@ -3,7 +3,7 @@ import React from 'react'
 const InputTextIcon = ({ name, value = '', label, placeholder, disabled, onChange, className = '', icons = []}) => {
     return (
         <>
-            <div className={`flex justify-between items-center rounded-md px-4 py-1 mb-2 border bg-white border-slate-400`}>
+            <div className={`flex justify-between items-center rounded-lg px-4 py-1 mb-2 border bg-white shadow-sm transition-all focus-within:border-main focus-within:ring-2 focus-within:ring-main/20 border-gray-300`}>
                 <div className="flex flex-col w-full">
                     <label htmlFor={name} className={`text-xs font-bold text-gray-500`}>
                         {label}

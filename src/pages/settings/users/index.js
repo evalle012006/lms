@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
-import { setFilteredData, setIsFiltering, setUser, setUserList } from "@/redux/actions/userActions";
+import { setUser } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import { UppercaseFirstLetter } from "@/lib/utils";
@@ -28,9 +28,20 @@ import { PasswordRevealModal } from "@/components/settings/users/AddUpdateUserPa
 const TeamPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.user.list);
     const [loading, setLoading] = useState(true);
+    const branchOptions = useSelector(state => state.branch.list);
+
+    // Users are fetched one page at a time. This stays in local state on purpose:
+    // state.user.list is shared with other screens and must not be replaced by a single page.
     const [userListData, setUserListData] = useState([]);
+    const [listLoading, setListLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [total, setTotal] = useState(0);
+    const [filters, setFilters] = useState({ search: '', role: '', position: '', branch: '' });
+    const [positionOptions, setPositionOptions] = useState([]);
+    const positionsLoaded = useRef(false);
+    const listRequestId = useRef(0);
 
     // NEW: userData is now only needed for the delete confirmation dialog —
     // add/edit no longer need local state since they live on their own pages.
@@ -48,18 +59,42 @@ const TeamPage = () => {
     const router = useRouter();
 
     const getListUsers = async () => {
-        let url = getApiBaseUrl() + 'users/list';
-        // not in used since user list is for root user only
-        if (currentUser.root !== true && currentUser.role.rep === 3) { 
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
-        } else if (currentUser.root !== true && currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-        }
+        const requestId = ++listRequestId.current;
+        setListLoading(true);
 
-        const response = await fetchWrapper.get(url);
-        let users = [];
-        response.users && response.users.filter(u => !u.root).map((user) => {
-            users.push({
+        try {
+            const params = new URLSearchParams({ page, limit: pageSize });
+            if (filters.search) params.set('search', filters.search);
+            if (filters.role) params.set('role', filters.role);
+            if (filters.position) params.set('position', filters.position);
+            if (filters.branch) params.set('branch', filters.branch);
+            if (!positionsLoaded.current) params.set('includePositions', '1');
+
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'users/list-paginated?' + params.toString());
+
+            // A newer request (fast paging / typing) has started — drop this answer
+            if (requestId !== listRequestId.current) return;
+
+            if (!response?.success) {
+                toast.error(response?.message || 'Error retrieving users list.');
+                return;
+            }
+
+            const { pagination } = response;
+
+            // Page no longer exists (e.g. last user on the last page was deleted)
+            if (response.users.length === 0 && pagination.total > 0 && page > pagination.totalPages) {
+                setPage(pagination.totalPages);
+                return;
+            }
+
+            if (response.positions) {
+                setPositionOptions(response.positions);
+                positionsLoaded.current = true;
+            }
+
+            setTotal(pagination.total);
+            setUserListData(response.users.map((user) => ({
                 _id: user._id,
                 name: user.firstName + ' ' + user.lastName,
                 email: user.email,
@@ -83,11 +118,21 @@ const TeamPage = () => {
                 areaId: user.areaId,
                 regionId: user.regionId,
                 divisionId: user.divisionId
-            });
-        });
+            })));
+        } catch (error) {
+            console.log(error);
+            if (requestId === listRequestId.current) toast.error('Error retrieving users list.');
+        } finally {
+            if (requestId === listRequestId.current) {
+                setListLoading(false);
+                setLoading(false);
+            }
+        }
+    }
 
-        dispatch(setUserList(users));
-        setLoading(false);
+    const handleFiltersChange = (nextFilters) => {
+        setFilters(nextFilters);
+        setPage(1);
     }
 
     // if area manager and branch manager status need to popup what branch/es
@@ -114,7 +159,7 @@ const TeamPage = () => {
                     }));
                 }
                 // update list
-                const userList = list.map(o => {
+                setUserListData(prev => prev.map(o => {
                     let obj = { ...o };
                     if (obj.email === tempUser.email) {
                         obj.roleId = selectedRole.rep;
@@ -122,9 +167,7 @@ const TeamPage = () => {
                     }
 
                     return obj;
-                });
-
-                dispatch(setUserList(userList));
+                }));
                 setLoading(false);
             }).catch(error => {
                 console.log(error);
@@ -361,7 +404,6 @@ const TeamPage = () => {
     const fetchData = async () => {
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all([
-                getListUsers(), 
                 getListPlatformRoles(), 
                 getListBranch(),
                 getListArea(),
@@ -386,9 +428,11 @@ const TeamPage = () => {
         };
     }, []);
 
+    // Fetch the current page whenever the page, size or filters change
     useEffect(() => {
-        setUserListData(list);
-    }, [list]);
+        if (currentUser.role && currentUser.role.rep > 2) return;
+        getListUsers();
+    }, [page, pageSize, filters]);
 
     useEffect(() => {
         let rowActionBtn = [];
@@ -428,17 +472,29 @@ const TeamPage = () => {
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        <UserFilters 
-                            userList={list}
-                            setUserListData={setUserListData}
+                        <UserFilters
+                            filters={filters}
+                            onChange={handleFiltersChange}
+                            roleOptions={platformRoles}
+                            positionOptions={positionOptions}
+                            branchOptions={branchOptions}
                         />
-                        <TableComponent 
-                            columns={columns} 
-                            data={userListData} 
-                            showFilters={false} 
-                            hasActionButtons={true} 
-                            rowActionButtons={rowActionButtons} 
-                        />
+                        <div className={listLoading ? 'opacity-50 pointer-events-none transition-opacity' : 'transition-opacity'}>
+                            <TableComponent
+                                columns={columns}
+                                data={userListData}
+                                showFilters={false}
+                                hasActionButtons={true}
+                                rowActionButtons={rowActionButtons}
+                                serverPagination={{
+                                    page,
+                                    pageSize,
+                                    total,
+                                    onPageChange: setPage,
+                                    onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
             </div>
@@ -461,4 +517,4 @@ const TeamPage = () => {
     );
 }
 
-export default TeamPage;
+export default TeamPage;
