@@ -380,7 +380,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             {loading ? (
                 <Spinner />
             ) : (
-                <TableComponent 
+                <TableComponent freezePane 
                     columns={columns} 
                     data={userLOList} 
                     showPagination={false} 
@@ -394,4 +394,4 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
     );
 }
 
-export default ViewByLoanOfficerPage;
+export default ViewByLoanOfficerPage;
