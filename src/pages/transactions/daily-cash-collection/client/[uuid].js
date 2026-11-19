@@ -1191,7 +1191,10 @@ const CashCollectionDetailsPage = () => {
             };
 
             response.data.tomorrowPending.map(loan => {
-                if (!canShowPendingLoan(loan)) {
+                // A loan releasing after the viewed date is not part of this LOR yet; it appears (merged) on its release day
+                const isFutureRelease = loan.dateOfRelease
+                    && moment(loan.dateOfRelease).isAfter(moment(currentDate), 'day');
+                if (isFutureRelease || !canShowPendingLoan(loan)) {
                     if (loan.loanCycle > 1 && !loan.prevLoanId) {
                         console.warn('Hidden pending loan with no prevLoanId (unlinked reloan):', loan._id, loan.slotNo);
                     }
@@ -2717,8 +2720,6 @@ const CashCollectionDetailsPage = () => {
     
                         if (temp.status === "completed" && (remarks.value && !(remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
-                        } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
-                            toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
                         } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
                             toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
                         } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {

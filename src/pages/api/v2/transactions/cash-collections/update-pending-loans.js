@@ -4,11 +4,12 @@ import logger from "@/logger";
 import { getCurrentDate } from "@/lib/date-utils";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
-import { findCashCollections, findLoans } from "@/lib/graph.functions";
+import { findCashCollections, findGroups, findLoans } from "@/lib/graph.functions";
 
 const graph = new GraphProvider();
 const loansType = createGraphType('loans', '_id');
 const ccType = createGraphType('cashCollections', '_id')();
+const groupType = createGraphType('groups', '_id');
 
 export default apiHandler({
     post: save
@@ -95,7 +96,12 @@ async function updatePendingLoan(user_id, collection, currentDate) {
     logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan Sizes: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length});
     logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan CurrentLoans: ${collection.loanId}`, clientId: currentLoan.clientId, loanId: currentLoan._id,  currentLoan: currentLoan, currentLoanClosed: currentLoanClosed});
     // console.log('lengths: ', currentLoan.length, pendingLoan.length, cashCollection.length > 0)
-    if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
+    // Reloaner path: the current loan may only be closed on/after the pending loan's release date.
+    // (The offset path below is unaffected: an offset closes the current loan itself, so the pending
+    // loan must be closed with it regardless of its release date.)
+    const releaseDue = !(pendingLoan.length > 0 && pendingLoan[0].dateOfRelease
+        && moment(pendingLoan[0].dateOfRelease).isAfter(moment(currentDate), 'day'));
+    if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0 && releaseDue) {
         currentLoan = currentLoan[0];
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
@@ -114,7 +120,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
             amountRelease: baseHistory.amountRelease ?? (Number(currentLoan.amountRelease) || 0),
             ...(wasCompleted && !baseHistory.remarks?.value ? { remarks: reloanerRemark } : {}),
         };
-        const ccNeedsReloanerRemark = wasCompleted && !cashCollection.remarks;
+        const ccNeedsReloanerRemark = wasCompleted && (!cashCollection.remarks || cashCollection.remarks === '-');
 
         const toUpdatePendingLoan = {
           advanceTransaction: true,
@@ -193,8 +199,12 @@ async function updatePendingLoan(user_id, collection, currentDate) {
 
       logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan CLOSED`, message: 'Current Loan is already closed', currentLoanClosed: currentLoanClosed});
 
+      // Offset: the current loan was closed by the offset itself, so the pending loan is rejected
+      // (same end state as loans/reject.js for a reloan: loanCycle 0, group slot freed). The previous
+      // loan is NOT reopened here - reject.js would put it back to completed/active.
       const toUpdatePendingLoan = {
-        status: "closed",
+        status: "reject",
+        loanCycle: 0,
         remarks: "Previous loan is already closed"
       };
 
@@ -210,7 +220,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
       delete pendingLoan._id;
       delete cashCollection._id;
 
-      await graph.mutation(
+      const rejectMutations = [
         updateQl(loansType('pending'), {
           set: { ... toUpdatePendingLoan },
           where: { _id: { _eq: pendingLoanId } }
@@ -219,6 +229,23 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           set: { ... toUpdateCollection },
           where: { _id: { _eq: cashCollectionId } }
         })
+      ];
+
+      // free the group slot, only if it is not already free (the offset may have freed it)
+      const [group] = await findGroups({ _id: { _eq: pendingLoan.groupId } });
+      if (group && Array.isArray(group.availableSlots) && !group.availableSlots.includes(pendingLoan.slotNo)) {
+        rejectMutations.push(updateQl(groupType('group'), {
+          set: {
+            availableSlots: [...group.availableSlots, pendingLoan.slotNo].sort((a, b) => a - b),
+            noOfClients: group.noOfClients - 1,
+            status: group.status === 'full' ? 'available' : group.status,
+          },
+          where: { _id: { _eq: group._id } }
+        }));
+      }
+
+      await graph.mutation(
+        ...rejectMutations
       ).catch(err => {
         logger.error(err);
         throw err;

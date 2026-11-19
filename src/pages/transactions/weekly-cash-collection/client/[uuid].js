@@ -1249,7 +1249,10 @@ const CashCollectionDetailsPage = () => {
             };
 
             response.data.tomorrowPending.map(loan => {
-                if (!canShowPendingLoan(loan)) {
+                // A loan releasing after the viewed date is not part of this LOR yet; it appears (merged) on its release day
+                const isFutureRelease = loan.dateOfRelease
+                    && moment(loan.dateOfRelease).isAfter(moment(currentDate), 'day');
+                if (isFutureRelease || !canShowPendingLoan(loan)) {
                     if (loan.loanCycle > 1 && !loan.prevLoanId) {
                         console.warn('Hidden pending loan with no prevLoanId (unlinked reloan):', loan._id, loan.slotNo);
                     }
@@ -1922,7 +1925,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add(withClientName(cc, 'Error occured. Please select a remarks for 0 or no payment Actual Collection.'));
                     } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                             && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
-                            && !cc.remarks.value.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
+                            && !cc.remarks.value?.startsWith('offset-') && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' 
                             && !cc.remarks.value?.startsWith('collection-')))) ) {
                         errorMsg.add(withClientName(cc, "Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks."));
                     } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
@@ -1932,8 +1935,8 @@ const CashCollectionDetailsPage = () => {
                             errorMsg.add(withClientName(cc, "Error occured. Amount collection is not divisible by 10"));
                         }
                     } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan 
-                            && (!cc.remarks?.value.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
-                            && !cc.remarks?.value.startsWith('offset-')) {
+                            && (!cc.remarks?.value?.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed'
+                            && !cc.remarks?.value?.startsWith('offset-')) {
                         errorMsg.add(withClientName(cc, "Actual collection is below the target collection."));
                     } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                         if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
@@ -2860,9 +2863,7 @@ const CashCollectionDetailsPage = () => {
     
                         if (temp.status === "completed" && (remarks.value && !(remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
-                        } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
-                            toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
-                        } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
+                        } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value?.startsWith('reloaner'))) {
                             toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
                         } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
@@ -3282,7 +3283,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                     toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                                 }
-                            } else if (remarks.value.startsWith('collection-')) {
+                            } else if (remarks?.value?.startsWith('collection-')) {
                                 temp.error = false;
     
                                 const payment = temp.paymentCollection;
@@ -3441,7 +3442,7 @@ const CashCollectionDetailsPage = () => {
                                         // do nothing...
                                     } else {
                                         // Reset mcbu to previous value if there were previous offset/reloaner remarks
-                                        if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
+                                        if (temp.remarks && (temp?.remarks?.value?.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
                                             if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
                                                 const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
                                                 temp.mcbu = prevMcbu;
@@ -4756,10 +4757,11 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
+                                                {console.log(cc.slotNo, cc.status, cc.fullName, JSON.stringify(cc.remarks))}
                                                 { ( !isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
                                                     && (cc.draft || editMode
                                                         || ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted) 
-                                                        || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
+                                                        || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value?.startsWith('reloaner')))
                                                         || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')))
                                                         || (cc.status == 'completed' && !cc.remarks?.value)
                                                         || (cc.offsetTransFlag && cc.otherDay)  
