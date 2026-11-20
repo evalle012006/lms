@@ -544,7 +544,7 @@ const TableComponent = React.memo(({
   // Tighter rows for dense tables (opt-in)
   dense = false,
   // Excel-style freeze pane: header row + first column stay visible while the table
-  // scrolls inside its own box (vertical and horizontal).
+  // scrolls inside its own box (vertical and horizontal). 
   freezePane = false,
   freezeMaxHeight = 'calc(100vh - 17rem)',
 }) => {
