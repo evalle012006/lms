@@ -208,7 +208,7 @@ const ViewByRegionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
                     // </div>
-                ) : <TableComponent columns={columns} data={regionCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} showPagination={false} pageSize={100} />}
+                ) : <TableComponent freezePane columns={columns} data={regionCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} showPagination={false} pageSize={100} />}
         </React.Fragment>
     )
 }

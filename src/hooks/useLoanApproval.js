@@ -402,11 +402,10 @@ export function useLoanApproval({
     }, [rejectTarget, currentUser, currentDate, onChanged]);
 
     // ── Print LDF (branch managers, tab 'ldf') ───────────────────────────
-    // Classic printed the selected rows, or every row in the list when nothing was
-    // selected. Same here, with one deliberate difference: loans that cannot be
-    // approved (overdue release date, group closed, missing PN ...) are left off
-    // the sheet, because the sheet is what the release is run from. The count that
-    // was left off is reported. Rows are read-only (detailsOnly) and re-read fresh.
+    // Selected rows only when something is selected; otherwise every loan on the
+    // current tab (respecting the current filters). Blocked loans (group closed,
+    // active loan, overdue ...) are NOT left off: the sheet is a print of the list,
+    // not an approval. Rows are read-only (detailsOnly) and re-read fresh.
     const prepareLdfPrint = useCallback(async () => {
         if (busy) return;
         setBusy('print');
@@ -417,18 +416,8 @@ export function useLoanApproval({
             } else {
                 const all = await fetchAllIds();
                 if (all.ids.length === 0) { toast.info('There are no loans to print.'); return; }
-                const ctx = await loadContext(all.ids);
-                if (!ctx) {
-                    toast.error(lastContextError.current || 'Unable to check which loans can be printed.');
-                    return;
-                }
-                setRawContext((prev) => ({ ...prev, ...ctx }));
-                ids = all.ids.filter((id) => ctx[id] && ctx[id].blockers.length === 0);
-                const left = all.ids.length - ids.length;
-                if (left > 0) {
-                    toast.info(`${left} loan${left === 1 ? ' was' : 's were'} left off the sheet because ${left === 1 ? 'it' : 'they'} cannot be approved.`);
-                }
-                if (all.capped) toast.warning(`Only the first ${all.cap} loans were checked.`);
+                ids = all.ids;
+                if (all.capped) toast.warning(`Only the first ${all.cap} loans were printed.`);
             }
             if (ids.length === 0) { toast.warning('No loans can be printed with the current filters.'); return; }
 
@@ -447,7 +436,7 @@ export function useLoanApproval({
         } finally {
             setBusy(null);
         }
-    }, [busy, selectedIds, fetchAllIds, loadContext]);
+    }, [busy, selectedIds, fetchAllIds]);
 
     // ── Approval details (read-only) ─────────────────────────────────────
     const showDetails = useCallback(async (loan) => {

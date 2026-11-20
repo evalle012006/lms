@@ -103,11 +103,17 @@ async function updateLoan(req, res) {
   // previous loan closed with no release behind it. Applies to pending loans too.
   if (existingLoan && existingLoan.prevLoanId && releaseChanged
       && normDate(existingLoan.dateOfRelease) === currentDate) {
-    res.send({
-      error: true,
-      message: 'This reloan releases today and its previous loan is already closed. The release date can no longer be changed.'
-    });
-    return;
+    // Only block when the previous loan really is closed (an ops repair may have put it back).
+    const [prevLoan] = (await graph.query(
+      queryQl(loanMinType, { where: { _id: { _eq: existingLoan.prevLoanId } } })
+    )).data?.loans ?? [];
+    if (prevLoan?.status === 'closed') {
+      res.send({
+        error: true,
+        message: 'This reloan releases today and its previous loan is already closed. The release date can no longer be changed.'
+      });
+      return;
+    }
   }
 
   // ── Pre-fetch and validate group capacity BEFORE mutating the loan ────────
