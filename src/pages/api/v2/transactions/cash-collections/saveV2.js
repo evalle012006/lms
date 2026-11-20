@@ -918,6 +918,7 @@ async function executeSave(req, user_id, transactionId, user) {
         // Final invariant: every row that updated a loan has a cashCollections row for this date.
         // Independent of how the rows were routed above (insert / update / weekly missing-row insert).
         await healMissingCashCollections({ rows: rowsToVerify, currentDate, user_id, transactionId });
+        await healUnclosedLoans({ rows: rowsToVerify, currentDate, user_id, transactionId });
 
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
         if (reverted.length == 0) {
@@ -1058,6 +1059,41 @@ async function healMissingCashCollections({ rows, currentDate, user_id, transact
     const result = await graph.mutation(...mutations);
     if (result?.errors?.length) {
         throw new Error(`Repair of cashCollections after save failed: ${result.errors.map(e => e.message).join(', ')}`);
+    }
+}
+
+/**
+ * Post-save safety net #2. A closed (Offset) cashCollections row must always have a closed loan.
+ * Seen in production (2026-11-19): after a BM revert + re-submit the closed row was written but the loan
+ * stayed 'completed' and the client/group were never offset, so the register showed a green "completed" row.
+ * Re-applies the same loan/client/group updates the main save performs, only for loans that are still not closed.
+ */
+async function healUnclosedLoans({ rows, currentDate, user_id, transactionId }) {
+    const closedRows = (rows || []).filter(r => r.loanId && r.status === 'closed' && !r.draft);
+    if (closedRows.length === 0) return;
+
+    const loanIds = [...new Set(closedRows.map(r => r.loanId))];
+    const loans = await graph.query(
+        queryQl(createGraphType('loans', '_id status')('heal_loans'), { where: { _id: { _in: loanIds } } })
+    ).then(r => r.data?.heal_loans ?? []);
+    const notClosed = new Set(loans.filter(l => l.status !== 'closed').map(l => l._id));
+    const toHeal = closedRows.filter(r => notClosed.has(r.loanId));
+    if (toHeal.length === 0) return;
+
+    logger.error({
+        user_id, transactionId, page: 'Cash Collection SaveV2',
+        message: 'closed cashCollections row but loan not closed after save, repairing',
+        rows: toHeal.map(r => ({ _id: r._id, loanId: r.loanId, clientId: r.clientId, remarks: r.remarks?.value ?? null }))
+    });
+
+    const mutations = [];
+    for (const r of toHeal) {
+        await updateLoan(user_id, mutations, r, currentDate);
+        await updateClient(user_id, mutations, r);
+    }
+    const result = await graph.mutation(...mutations);
+    if (result?.errors?.length) {
+        throw new Error(`Repair of unclosed loans after save failed: ${result.errors.map(e => e.message).join(', ')}`);
     }
 }
 
