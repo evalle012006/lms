@@ -717,7 +717,8 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         setEditMode(false);
-                    } else if (cc.status === "closed") {
+                    } else if (cc.status === "closed" || cc?.current?.some(cur => cur?.transfer !== true && cur?.status === "closed")) {
+                        // Today's cashCollection is closed (offset) even if the loan row was never flipped to 'closed'
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -800,6 +801,7 @@ const CashCollectionDetailsPage = () => {
                         
                         collection = {
                             ...cc,
+                            status: 'closed',
                             _id: ccId,
                             loanId: loanId,
                             group: cc.group,
