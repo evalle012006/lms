@@ -544,7 +544,7 @@ const TableComponent = React.memo(({
   // Tighter rows for dense tables (opt-in)
   dense = false,
   // Excel-style freeze pane: header row + first column stay visible while the table
-  // scrolls inside its own box (vertical and horizontal).
+  // scrolls inside its own box (vertical and horizontal). 
   freezePane = false,
   freezeMaxHeight = 'calc(100vh - 17rem)',
 }) => {
@@ -781,7 +781,7 @@ const TableComponent = React.memo(({
 
   return (
     <SignedUrlContext.Provider value={urlMap}>
-      <div className={`relative w-full min-w-0 max-w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
+      <div className={`relative isolate w-full min-w-0 max-w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
         {title && <h2 className="text-lg font-semibold text-gray-900 px-5 py-4 border-b border-gray-100">{title}</h2>}
         <div className="w-full">
           <div
