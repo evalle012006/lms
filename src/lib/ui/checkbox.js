@@ -18,7 +18,7 @@ function CheckBox({size, label, name, value, className="", onChange, disabled}) 
           type="checkbox" 
           value={value} 
           checked={value} 
-          className={`cursor-pointer ${size==='lg' ? 'w-6 h-6': 'w-4 h-4'} rounded text-main ${disabled ? 'bg-gray-200 border-gray-200 ring-gray-20' : 'bg-gray-100 border-gray-300 ring-gray-10'}
+          className={`cursor-pointer ${size==='lg' ? 'w-6 h-6': 'w-4 h-4'} rounded text-main transition-colors focus:ring-2 focus:ring-main/30 focus:ring-offset-0 ${disabled ? 'bg-gray-200 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-300 hover:border-main'}
             ${className}`} 
           disabled={disabled}
           readOnly

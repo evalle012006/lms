@@ -14,7 +14,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import moment from 'moment';
-import { ExternalLink, FileText, Info, Loader2, Pencil, ShieldAlert, XCircle } from 'lucide-react';
+import { ExternalLink, FileText, Info, Loader2, Pencil, RotateCcw, ShieldAlert, XCircle } from 'lucide-react';
 import Spinner from '@/components/Spinner';
 import ClientAvatar from '@/components/clients/ClientAvatar';
 import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
@@ -38,7 +38,8 @@ function actionWidthFor(actions) {
         + (actions.canDisclosure ? 1 : 0)
         + (actions.canReviewGuarantor ? 1 : 0)
         + (actions.canDetails ? 1 : 0)
-        + (actions.canReject ? 1 : 0);
+        + (actions.canReject ? 1 : 0)
+        + (actions.canReinstate ? 1 : 0);
     return Math.max(BASE_ACTION_WIDTH, icons * 32 + 4);
 }
 
@@ -88,18 +89,31 @@ function branchLabel(loan) {
     return b ? `${b.code ? `${b.code} - ` : ''}${UppercaseFirstLetter(b.name)}` : '-';
 }
 
-function releaseInfo(dateOfRelease, today) {
+function releaseInfo(dateOfRelease, today, hideHint = false) {
     if (!dateOfRelease) return { label: '-', hint: null };
     const d = moment(dateOfRelease).format('YYYY-MM-DD');
     const label = moment(d).format('MMM D, YYYY');
-    if (!today) return { label, hint: null };
+    if (!today || hideHint) return { label, hint: null };
     if (d < today) return { label, hint: { text: 'Overdue', cls: 'text-amber-600' } };
     if (d === today) return { label, hint: { text: 'Today', cls: 'text-teal-600' } };
     return { label, hint: null };
 }
 
+// Second line under the client name: the reject reason on a rejected loan, the
+// CI reference everywhere else.
+function subLine(loan) {
+    if (loan.status === 'reject') {
+        const reason = (loan.rejectReason || '').trim();
+        return reason
+            ? { text: `Reason: ${reason}`, title: reason, cls: 'text-red-500' }
+            : { text: 'No reason recorded', title: '', cls: 'text-gray-400' };
+    }
+    return { text: loan.ciReferenceCode || 'No CI reference', title: loan.ciReferenceCode || '', cls: 'text-gray-400' };
+}
+
 function flagsFor(loan) {
     const flags = [];
+    if (loan.status === 'reject') flags.push({ text: 'Rejected', cls: 'bg-red-50 text-red-700', title: loan.rejectReason || '' });
     if (loan.ldfApproved) flags.push({ text: 'LDF approved', cls: 'bg-teal-50 text-teal-700' });
     if (loan.client?.duplicate) flags.push({ text: 'Duplicate', cls: 'bg-orange-50 text-orange-700' });
     if (loan.guarantorDuplicate) flags.push({ text: 'Guarantor review', cls: 'bg-red-50 text-red-700' });
@@ -209,6 +223,15 @@ function RowActions({ loan, actions, onView, viewingId }) {
                     <XCircle className="w-4 h-4" />
                 </IconBtn>
             )}
+            {actions.canReinstate && loan.status === 'reject' && (
+                <IconBtn
+                    label={`Reinstate rejected loan for ${name}`}
+                    tone="text-teal-600 hover:bg-teal-50"
+                    onClick={() => actions.onReinstate(loan)}
+                >
+                    <RotateCcw className="w-4 h-4" />
+                </IconBtn>
+            )}
             {actions.canReviewGuarantor && loan.guarantorDuplicate && (
                 <IconBtn
                     label={`Review guarantor flag for ${name}`}
@@ -241,7 +264,8 @@ function RowActions({ loan, actions, onView, viewingId }) {
 }
 
 function DenseRow({ loan, photoUrl, today, onView, onOpenClient, openingId, viewingId, actions, template, selection }) {
-    const release = releaseInfo(loan.dateOfRelease, today);
+    const release = releaseInfo(loan.dateOfRelease, today, loan.status === 'reject');
+    const sub = subLine(loan);
     const branch = branchLabel(loan);
     const groupLo = `${UppercaseFirstLetter(loan.groupName || '-')} · ${loLabel(loan)}`;
     return (
@@ -256,9 +280,7 @@ function DenseRow({ loan, photoUrl, today, onView, onOpenClient, openingId, view
             <ClientAvatar name={clientName(loan)} src={photoUrl} size={32} />
             <div className="min-w-0">
                 <p className="font-medium text-gray-900 truncate" title={clientName(loan)}>{clientName(loan)}</p>
-                <p className="text-xs text-gray-400 truncate" title={loan.ciReferenceCode || ''}>
-                    {loan.ciReferenceCode || 'No CI reference'}
-                </p>
+                <p className={`text-xs truncate ${sub.cls}`} title={sub.title}>{sub.text}</p>
             </div>
             <div className="min-w-0">
                 <p className="text-gray-700 truncate" title={branch}>{branch}</p>
@@ -284,7 +306,8 @@ function DenseRow({ loan, photoUrl, today, onView, onOpenClient, openingId, view
 }
 
 function LoanCard({ loan, photoUrl, today, onView, onOpenClient, openingId, viewingId, actions, selection }) {
-    const release = releaseInfo(loan.dateOfRelease, today);
+    const release = releaseInfo(loan.dateOfRelease, today, loan.status === 'reject');
+    const sub = subLine(loan);
     return (
         <div
             className={`bg-white rounded-xl shadow-sm border border-gray-100 p-3 mb-2 ${
@@ -300,9 +323,7 @@ function LoanCard({ loan, photoUrl, today, onView, onOpenClient, openingId, view
                     <p className="text-xs text-gray-500 truncate">
                         {branchLabel(loan)} · {UppercaseFirstLetter(loan.groupName || '-')}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">
-                        {loan.ciReferenceCode || 'No CI reference'}
-                    </p>
+                    <p className={`text-xs truncate ${sub.cls}`} title={sub.title}>{sub.text}</p>
                 </div>
                 <RowActions loan={loan} actions={actions} onView={onView} viewingId={viewingId} />
             </div>

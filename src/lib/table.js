@@ -7,11 +7,15 @@ import {
   AlertCircle,
   ArrowLeftRight,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ChevronsLeft,
   ChevronsRight,
+  ChevronsUpDown,
   FileText,
+  Inbox,
   Key,
   Lock,
   LockOpen,
@@ -348,7 +352,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
 
   return (
     <React.Fragment>
-      <div className="flex flex-row justify-center">
+      <div className="flex flex-row items-center justify-center gap-0.5">
         {rowActionButtons && rowActionButtons.map((item, index) => {
           if (isFundTransfer && !getFundTransferActionVisibility(item.label)) {
             return null;
@@ -358,25 +362,25 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
             <React.Fragment key={index}>
               {/* ── Fund Transfer Actions ────────────────────────── */}
               {item.label === 'Edit Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                <div className="p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
                   onClick={() => safeCallAction(item, row)} title="Edit Transfer">
                   <Pencil className={`${ic} text-blue-600`} />
                 </div>
               )}
               {item.label === 'Approve Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                <div className="p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
                   onClick={() => safeCallAction(item, row)} title="Approve Transfer">
                   <Check className={`${ic} text-green-600`} />
                 </div>
               )}
               {item.label === 'Reject Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                <div className="p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
                   onClick={() => safeCallAction(item, row)} title="Reject Transfer">
                   <X className={`${ic} text-red-600`} />
                 </div>
               )}
               {item.label === 'Delete Transfer' && (
-                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded"
+                <div className="p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
                   onClick={() => safeCallAction(item, row)} title="Delete Transfer">
                   <Trash2 className={`${ic} text-gray-600`} />
                 </div>
@@ -384,32 +388,32 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
 
               {/* ── Original Actions ─────────────────────────────── */}
               {item.label === 'Approve' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Approve">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Approve">
                   <Check className={ic} />
                 </div>
               )}
               {item.label === 'Reject' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reject">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Reject">
                   <X className={ic} />
                 </div>
               )}
               {(item.label === 'Edit Loan' && status !== 'active') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Edit">
                   <Pencil className={ic} />
                 </div>
               )}
               {(item.label === 'Delete Loan' && status !== 'active') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Delete">
                   <Trash2 className={ic} />
                 </div>
               )}
               {(item.label === 'View Disclosure' && status !== 'active') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Disclosure">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="View Disclosure">
                   <FileText className={ic} />
                 </div>
               )}
               {item.label === 'View LAF' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Loan Application Form">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="View Loan Application Form">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                     className={`${ic} text-indigo-600`}>
                     <path fillRule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0118 9.375v9.375a3 3 0 003-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 00-.673-.05A3 3 0 0015 1.5h-1.5a3 3 0 00-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6zM13.5 3A1.5 1.5 0 0012 4.5h4.5A1.5 1.5 0 0015 3h-1.5z" clipRule="evenodd" />
@@ -418,7 +422,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
                 </div>
               )}
               {(item.label === 'View Approval Details' && row.original.ldfApproved) && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Approval Details">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="View Approval Details">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                     className={`${ic} text-green-600`}>
                     <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
@@ -426,57 +430,57 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
                 </div>
               )}
               {item.label === 'Edit' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Edit">
                   <Pencil className={ic} />
                 </div>
               )}
               {item.label === 'Delete' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Delete">
                   <Trash2 className={ic} />
                 </div>
               )}
               {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Open Transaction">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Open Transaction">
                   <Lock className={ic} />
                 </div>
               )}
               {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Transaction">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Close Transaction">
                   <LockOpen className={ic} />
                 </div>
               )}
               {item.label === 'Reloan' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reloan">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Reloan">
                   <RefreshCw className={ic} />
                 </div>
               )}
               {item.label === 'Close Account' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Account">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Close Account">
                   <XCircle className={ic} />
                 </div>
               )}
               {item.label === 'Reset Password' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reset Password">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Reset Password">
                   <Key className={ic} />
                 </div>
               )}
               {item.label === 'Update' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title={item.title}>
                   <RefreshCw className={ic} />
                 </div>
               )}
               {item.label === 'Revert' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title={item.title}>
                   <Undo2 className={ic} />
                 </div>
               )}
               {item.label === 'Transfer' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title={item.title}>
                   <ArrowLeftRight className={ic} />
                 </div>
               )}
               {item.label === 'Unmark as Duplicate' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title={item.title}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={ic}>
                     <rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
                     <rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
@@ -485,7 +489,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
                 </div>
               )}
               {item.label === 'Lock' && (
-                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Lock">
+                <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Lock">
                   {row.original?.lockTransaction
                     ? <Lock className={ic} />
                     : <LockOpen className={ic} />}
@@ -498,7 +502,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
                 //     —
                 //   </span>
                 // ) : (
-                  <div className="px-2" onClick={() => safeCallAction(item, row)} title="Manage QR Code">
+                  <div className="p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => safeCallAction(item, row)} title="Manage QR Code">
                     <QrCode className={`${ic} text-indigo-600`} />
                   </div>
                 // )
@@ -534,6 +538,15 @@ const TableComponent = React.memo(({
   isWeekend = false,
   isHoliday = false,
   showTotals = false,
+  // Server-side paging: { page (1-based), pageSize, total, onPageChange(page), onPageSizeChange(size) }.
+  // `data` must then be just the current page.
+  serverPagination = null,
+  // Tighter rows for dense tables (opt-in)
+  dense = false,
+  // Excel-style freeze pane: header row + first column stay visible while the table
+  // scrolls inside its own box (vertical and horizontal). 
+  freezePane = false,
+  freezeMaxHeight = 'calc(100vh - 17rem)',
 }) => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [selectAll, setSelectAll] = useState(false);
@@ -544,9 +557,15 @@ const TableComponent = React.memo(({
       data,
       initialState: {
         pageIndex: currentPageIndex,
-        pageSize: initialPageSize,
+        pageSize: serverPagination ? serverPagination.pageSize : initialPageSize,
       },
       autoResetPage: false,
+      ...(serverPagination
+        ? {
+            manualPagination: true,
+            pageCount: Math.max(1, Math.ceil(serverPagination.total / serverPagination.pageSize)),
+          }
+        : {}),
     },
     useFilters,
     useGlobalFilter,
@@ -554,21 +573,6 @@ const TableComponent = React.memo(({
     usePagination
   );
 
-  const profileKeys = useMemo(() => {
-    const imgAccessors = columns
-      .filter((c) => c.imgAccessor)
-      .map((c) => c.imgAccessor);
-    if (imgAccessors.length === 0) return [];
-    const keys = [];
-    data.forEach((row) => {
-      imgAccessors.forEach((accessor) => {
-        if (row[accessor]) keys.push(row[accessor]);
-      });
-    });
-    return keys;
-  }, [data, columns]);
-
-  const { urlMap } = useBulkSignedUrls(profileKeys);
 
   const {
     getTableProps,
@@ -576,6 +580,7 @@ const TableComponent = React.memo(({
     headerGroups,
     prepareRow,
     page,
+    rows,
     canPreviousPage,
     canNextPage,
     pageOptions,
@@ -589,15 +594,35 @@ const TableComponent = React.memo(({
     setGlobalFilter,
   } = tableInstance;
 
+  // Sign photos only for the rows on screen (not the whole data set), so big
+  // client-paged tables don't request hundreds of URLs they never display.
+  const profileKeys = useMemo(() => {
+    const imgAccessors = columns
+      .filter((c) => c.imgAccessor)
+      .map((c) => c.imgAccessor);
+    if (imgAccessors.length === 0) return [];
+    const keys = [];
+    page.forEach((row) => {
+      imgAccessors.forEach((accessor) => {
+        if (row.original[accessor]) keys.push(row.original[accessor]);
+      });
+    });
+    return keys;
+  }, [page, columns]);
+
+  const { urlMap } = useBulkSignedUrls(profileKeys);
+
   const generateEmptyRows = (columnCount) => (
     <tr>
       <td
         colSpan={columnCount + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)}
         className="px-4 py-6 text-center"
       >
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <AlertCircle className="h-8 w-8 text-gray-400" />
-          <span className="text-gray-500 text-lg font-medium">No data collections</span>
+        <div className="flex flex-col items-center justify-center py-8 space-y-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+            <Inbox className="h-6 w-6 text-gray-400" />
+          </div>
+          <span className="text-gray-500 text-base font-medium">No data collections</span>
         </div>
       </td>
     </tr>
@@ -606,7 +631,7 @@ const TableComponent = React.memo(({
   const generateTotalsRow = () => {
     if (!showTotals || data.length === 0) return null;
     return (
-      <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold text-red-600">
+      <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-red-600">
         {multiSelect && <td className="px-4 py-3 w-10"></td>}
         {columns.map((column, index) => {
           const { totalType, totalValue } = column;
@@ -678,13 +703,37 @@ const TableComponent = React.memo(({
     setSelectAll(false);
   }, [setPageSize]);
 
+  const isServerPaged = !!serverPagination;
+  const shownPageIndex = isServerPaged ? serverPagination.page - 1 : currentPageIndex;
+  const shownPageCount = isServerPaged
+    ? Math.max(1, Math.ceil(serverPagination.total / serverPagination.pageSize))
+    : pageOptions.length;
+  const hasPrevPage = isServerPaged ? shownPageIndex > 0 : canPreviousPage;
+  const hasNextPage = isServerPaged ? shownPageIndex < shownPageCount - 1 : canNextPage;
+  const goToPageIndex = (index) => {
+    if (isServerPaged) {
+      setSelectAll(false);
+      serverPagination.onPageChange(index + 1);
+    } else {
+      handleGotoPage(index);
+    }
+  };
+  const changePageSize = (size) => {
+    if (isServerPaged) {
+      setSelectAll(false);
+      serverPagination.onPageSizeChange(size);
+    } else {
+      handleSetPageSize(size);
+    }
+  };
+
   const renderHeaderGroups = () => {
     return headerGroups.map((headerGroup, groupIndex) => {
       const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
       return (
         <tr key={`header-group-${groupIndex}`} {...headerGroupProps}>
           {multiSelect && (
-            <th key="header-checkbox" className="px-4 py-3 w-10">
+            <th key="header-checkbox" className={`px-4 py-3 w-10 bg-gray-50 ${freezePane ? 'sticky top-0 left-0 z-30 border-b border-gray-200' : ''}`}>
               <CheckBox
                 name="selectAll"
                 value={selectAll}
@@ -700,20 +749,28 @@ const TableComponent = React.memo(({
               <th
                 key={`header-${columnIndex}`}
                 scope="col"
-                className={`px-4 py-3 ${column.width || 'w-auto'}`}
+                className={`px-4 ${dense ? 'py-2' : 'py-3'} align-middle ${column.canSort ? 'select-none hover:text-gray-700' : ''} ${column.width || 'w-auto'} ${
+                  freezePane
+                    ? `sticky top-0 bg-gray-50 border-b border-gray-200 ${columnIndex === 0 ? `z-30 ${multiSelect ? 'left-10' : 'left-0'} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]` : 'z-20'}`
+                    : ''
+                }`}
                 {...columnProps}
               >
-                <div className="flex items-center">
-                  {column.render('Header')}
-                  <span>
-                    {column.isSorted ? (column.isSortedDesc ? ' 🔽' : ' 🔼') : ''}
-                  </span>
+                <div className="flex items-center gap-1 leading-tight">
+                  <span className="min-w-0 break-words">{column.render('Header')}</span>
+                  {column.canSort && (
+                    column.isSorted
+                      ? (column.isSortedDesc
+                          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-main" />
+                          : <ChevronUp className="h-3.5 w-3.5 flex-shrink-0 text-main" />)
+                      : <ChevronsUpDown className="h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
+                  )}
                 </div>
               </th>
             );
           })}
           {(hasActionButtons || dropDownActions.length > 0) && (
-            <th key="header-actions" scope="col" className="px-4 py-3 w-24">
+            <th key="header-actions" scope="col" className={`px-4 py-3 w-24 text-center ${freezePane ? 'sticky top-0 z-20 bg-gray-50 border-b border-gray-200' : ''}`}>
               Actions
             </th>
           )}
@@ -724,12 +781,15 @@ const TableComponent = React.memo(({
 
   return (
     <SignedUrlContext.Provider value={urlMap}>
-      <div className="relative w-full shadow-md rounded-lg overflow-hidden">
-        {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
-        <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
-          <div className="overflow-x-auto min-h-[200px]">
-            <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+      <div className={`relative isolate w-full min-w-0 max-w-full bg-white rounded-xl overflow-hidden ${border ? 'border border-gray-300' : 'border border-gray-200'} shadow-sm`}>
+        {title && <h2 className="text-lg font-semibold text-gray-900 px-5 py-4 border-b border-gray-100">{title}</h2>}
+        <div className="w-full">
+          <div
+            className={`${freezePane ? 'overflow-auto' : 'overflow-x-auto'} min-h-[200px] ${noPadding ? 'p-1' : ''}`}
+            style={freezePane ? { maxHeight: freezeMaxHeight } : undefined}
+          >
+            <table {...getTableProps()} className={`w-full text-sm text-left text-gray-700 ${freezePane ? 'border-separate border-spacing-0' : ''}`}>
+              <thead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
                 {renderHeaderGroups()}
               </thead>
               <tbody {...getTableBodyProps()}>
@@ -748,17 +808,17 @@ const TableComponent = React.memo(({
                       ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById)
                       : null;
 
-                    let rowClass = 'bg-white border-b hover:bg-gray-50';
+                    let rowClass = 'bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors';
                     if (delinquent === 'Yes' || error) {
-                      rowClass = 'bg-red-100 border-b hover:bg-red-200';
+                      rowClass = 'bg-red-50 border-b border-red-100 hover:bg-red-100 transition-colors';
                     } else if (status === 'open') {
-                      rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
+                      rowClass = 'bg-blue-50 border-b border-blue-100 hover:bg-blue-100 transition-colors';
                     } else if (ldfApproved) {
-                      rowClass = 'bg-green-100 border-b hover:bg-green-200';
+                      rowClass = 'bg-green-50 border-b border-green-100 hover:bg-green-100 transition-colors';
                     } else if (indicatorType === 'modified') {
-                      rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100';
+                      rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100 transition-colors';
                     } else if (indicatorType === 'new') {
-                      rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
+                      rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100 transition-colors';
                     }
 
                     const { key, ...rowProps } = row.getRowProps();
@@ -770,7 +830,7 @@ const TableComponent = React.memo(({
                         style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
                       >
                         {multiSelect && (
-                          <td className="px-4 py-3 w-10">
+                          <td className={`px-4 py-3 w-10 ${freezePane ? 'sticky left-0 z-10 bg-inherit border-b border-gray-100' : ''}`}>
                             <CheckBox
                               name={`select-${i}`}
                               value={row.original.selected}
@@ -784,7 +844,11 @@ const TableComponent = React.memo(({
                           <td
                             {...cell.getCellProps()}
                             key={`row-data-${index}`}
-                            className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
+                            className={`px-4 ${dense ? 'py-1.5' : 'py-3'} ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'} ${
+                              freezePane
+                                ? `border-b border-gray-100 ${index === 0 ? `sticky z-10 bg-inherit ${multiSelect ? 'left-10' : 'left-0'} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]` : ''}`
+                                : ''
+                            }`}
                             onClick={() => rowClick && rowClick(row.original)}
                           >
                             <div className="flex items-center space-x-2">
@@ -813,7 +877,7 @@ const TableComponent = React.memo(({
                           </td>
                         ))}
                         {(hasActionButtons || dropDownActions.length > 0) && (
-                          <td className="px-4 py-3 w-24">
+                          <td className={`px-4 py-3 w-24 ${freezePane ? 'border-b border-gray-100' : ''}`}>
                             <div className="flex items-center justify-center space-x-2">
                               {hasActionButtons && !root && !row.original.system && (
                                 <ActionButton
@@ -849,41 +913,54 @@ const TableComponent = React.memo(({
           </div>
 
           {/* Pagination */}
-          {showPagination && data.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-700 mr-4">
-                  Page <span className="font-medium">{currentPageIndex + 1}</span> of{' '}
-                  <span className="font-medium">{pageOptions.length}</span>
-                </span>
-                <button onClick={() => handleGotoPage(0)} disabled={!canPreviousPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
-                  <ChevronsLeft className="w-5 h-5" />
-                </button>
-                <button onClick={handlePreviousPage} disabled={!canPreviousPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button onClick={handleNextPage} disabled={!canNextPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <button onClick={() => handleGotoPage(pageCount - 1)} disabled={!canNextPage}
-                  className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
-                  <ChevronsRight className="w-5 h-5" />
-                </button>
-                <select
-                  value={state.pageSize}
-                  onChange={e => handleSetPageSize(Number(e.target.value))}
-                  className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  {[10, 20, 30, 40, 50].map(pageSize => (
-                    <option key={pageSize} value={pageSize}>{pageSize}</option>
-                  ))}
-                </select>
+          {showPagination && data.length > 0 && (() => {
+            const currentPageSize = isServerPaged ? serverPagination.pageSize : state.pageSize;
+            const totalRows = isServerPaged ? serverPagination.total : rows.length;
+            const firstRow = totalRows === 0 ? 0 : shownPageIndex * currentPageSize + 1;
+            const lastRow = totalRows === 0 ? 0 : firstRow + page.length - 1;
+            const sizeOptions = [...new Set([10, 20, 30, 40, 50, currentPageSize])].sort((x, y) => x - y);
+            const navBtn = 'inline-flex items-center justify-center h-8 w-8 text-gray-600 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-main/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors';
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60">
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <span>
+                    Showing <span className="font-medium text-gray-900">{firstRow}–{lastRow}</span> of{' '}
+                    <span className="font-medium text-gray-900">{totalRows}</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">Rows</span>
+                    <select
+                      value={currentPageSize}
+                      onChange={e => changePageSize(Number(e.target.value))}
+                      className="block w-[4.5rem] px-2 py-1 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-main/30 focus:border-main"
+                    >
+                      {sizeOptions.map(pageSize => (
+                        <option key={pageSize} value={pageSize}>{pageSize}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-gray-600 mr-2">
+                    Page <span className="font-medium text-gray-900">{shownPageIndex + 1}</span> of{' '}
+                    <span className="font-medium text-gray-900">{shownPageCount}</span>
+                  </span>
+                  <button onClick={() => goToPageIndex(0)} disabled={!hasPrevPage} className={navBtn} aria-label="First page">
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => goToPageIndex(shownPageIndex - 1)} disabled={!hasPrevPage} className={navBtn} aria-label="Previous page">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => goToPageIndex(shownPageIndex + 1)} disabled={!hasNextPage} className={navBtn} aria-label="Next page">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => goToPageIndex(shownPageCount - 1)} disabled={!hasNextPage} className={navBtn} aria-label="Last page">
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </SignedUrlContext.Provider>

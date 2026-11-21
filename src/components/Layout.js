@@ -33,7 +33,10 @@ const Layout = ({
     const transactionSettingsData = useSelector(state => state.transactionsSettings?.data);
     const isMobile = useIsMobile();
     const [isNavVisible, setIsNavVisible] = useState(!isMobile);
-    const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+    const [isNavCollapsed, setIsNavCollapsed] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        try { return JSON.parse(localStorage.getItem('sidebarCollapsed')) === true; } catch { return false; }
+    });
 
     // Listen for collapse events from NavComponent
     useEffect(() => {

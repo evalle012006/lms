@@ -46,7 +46,7 @@ import LDFApprovalDetailsModal from '@/components/transactions/loan-application/
 import LoanApplicationToolbar from '@/components/transactions/loan-application-v2/LoanApplicationToolbar';
 import LoanApplicationList from '@/components/transactions/loan-application-v2/LoanApplicationList';
 import ApprovalActionBar from '@/components/transactions/loan-application-v2/ApprovalActionBar';
-import { BlockersDialog, RejectLoanDialog } from '@/components/transactions/loan-application-v2/ApprovalDialogs';
+import { BlockersDialog, RejectLoanDialog, ReinstateLoanDialog } from '@/components/transactions/loan-application-v2/ApprovalDialogs';
 import { useLoanApplicationList } from '@/hooks/useLoanApplicationList';
 import { useLoanApproval } from '@/hooks/useLoanApproval';
 import { useExcelExport } from '@/hooks/useExcelExport';
@@ -61,6 +61,8 @@ import { describeScanFilter, otherTabsWithMatches } from '@/lib/qr-scan';
 import {
     approvalMode,
     isEligibleForLoanApplicationV2,
+    canViewRejectedLoans,
+    canReinstateRejectedLoans,
     LOAN_APPLICATION_ADD_PATH,
     loanApplicationEditPath,
     loanApplicationDisclosurePath,
@@ -73,6 +75,7 @@ const TABS = [
     { key: 'application',      label: 'LDF approved',      counted: true },
     { key: 'duplicate',        label: 'Duplicate clients', counted: true, minAccess: 'admin' },
     { key: 'guarantor-review', label: 'Guarantor review',  counted: true, minAccess: 'rep3' },
+    { key: 'rejected',         label: 'Rejected',          counted: true, minAccess: 'rejected' },
     { key: 'history',          label: 'History',           counted: false },
 ];
 
@@ -99,6 +102,8 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
     const [openingClientId, setOpeningClientId] = useState(null);
     const [showClientModal, setShowClientModal] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [reinstateTarget, setReinstateTarget] = useState(null); // rejected loan | null
+    const [reinstating, setReinstating] = useState(false);
     const ldfSheetRef = useRef(null);
     const { exportLoansToExcel } = useExcelExport();
 
@@ -133,7 +138,8 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
     const isBranchManager = mode === 'branch_manager';
     const isApprover = mode !== null;
     const approvalTab = filters.tab === 'ldf' || filters.tab === 'application';
-    const pendingTab = filters.tab !== 'history';
+    // History and Rejected list loans that are no longer pending: no approve / reject / details.
+    const pendingTab = filters.tab !== 'history' && filters.tab !== 'rejected';
 
     const approval = useLoanApproval({
         enabled: isApprover && approvalTab,
@@ -241,9 +247,37 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
         }
     };
 
+    // Reinstate a rejected loan back to pending. The server decides (admin and supervisors
+    // only, scope, slot, client, cycle); the button is just hidden for everyone else.
+    const confirmReinstate = async (reason) => {
+        const target = reinstateTarget;
+        if (!target || reinstating) return;
+        setReinstating(true);
+        try {
+            const res = await fetchWrapper.post(`${getApiBaseUrl()}transactions/loans/reinstate`, {
+                loanId: target._id,
+                reason,
+            });
+            if (res?.success) {
+                toast.success('Loan reinstated. It is pending again (LDF).');
+                setReinstateTarget(null);
+                refresh();
+            } else {
+                toast.error(res?.message || 'The loan could not be reinstated.');
+            }
+        } catch (e) {
+            console.error('[LoanApplicationV2] reinstate failed', e);
+            toast.error('Reinstate failed. Please refresh and check the list.');
+        } finally {
+            setReinstating(false);
+        }
+    };
+
     // Navigation actions (above) + approval actions, both for the list's row icons.
     const rowActions = {
         ...actions,
+        canReinstate: filters.tab === 'rejected' && canReinstateRejectedLoans(currentUser),
+        onReinstate: setReinstateTarget,
         canReject: isBranchManager && pendingTab,
         rejectDisabledReason,
         onReject: approval.openReject,
@@ -266,13 +300,15 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
     // Classic visibility: duplicates were admin only (rep < 2); the guarantor
     // review tab's button was rep <= 3. Loan officers get neither.
     const isRep3OrAbove = currentUser?.root === true || (rep >= 1 && rep <= 3);
+    const canSeeRejected = canViewRejectedLoans(currentUser);
     const visibleTabs = useMemo(
         () => TABS.filter((t) => (
             !t.minAccess
             || (t.minAccess === 'admin' && isAdminLevel)
             || (t.minAccess === 'rep3' && isRep3OrAbove)
+            || (t.minAccess === 'rejected' && canSeeRejected)
         )),
-        [isAdminLevel, isRep3OrAbove]
+        [isAdminLevel, isRep3OrAbove, canSeeRejected]
     );
 
     const handleTab = (key) => {
@@ -537,6 +573,13 @@ export default function LoanApplicationV2Page({ onSwitchView }) {
                 busy={approval.busy === 'reject'}
                 onCancel={approval.closeReject}
                 onConfirm={approval.confirmReject}
+            />
+            <ReinstateLoanDialog
+                key={reinstateTarget?._id || 'none-reinstate'}
+                loan={reinstateTarget}
+                busy={reinstating}
+                onCancel={() => setReinstateTarget(null)}
+                onConfirm={confirmReinstate}
             />
             <BlockersDialog messages={approval.blockersDialog} onClose={approval.closeBlockers} />
             <DisbursementPhotoModal

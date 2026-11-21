@@ -10,6 +10,10 @@ const BLOB_RE = /^blob:/i;
 const _urlCache = new Map();
 const EXPIRY_BUFFER_MS = 60_000;
 
+// signed-url-bulk rejects requests with more than 200 keys, so larger sets are
+// split into batches of this size and requested in parallel.
+const MAX_KEYS_PER_REQUEST = 200;
+
 // One automatic retry after a failed request (flaky connection on first load).
 const MAX_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 1500;
@@ -50,7 +54,7 @@ function buildMap(keys) {
 
 /**
  * Resolves an array of storage keys / legacy DO Spaces URLs to signed URLs
- * in a single POST to /api/signed-url-bulk.
+ * via POST /api/signed-url-bulk (in batches of 200, the endpoint's maximum).
  *
  * Results are cached per-key. On subsequent calls, only keys that are missing
  * or expired are fetched — already-valid URLs are served from cache immediately.
@@ -110,29 +114,40 @@ export function useBulkSignedUrls(keys = []) {
     attempts.current.count += 1;
 
     setLoading(true);
-    fetch("/api/signed-url-bulk", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ keys: deduped }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
-        const fetchedMap = data.urlMap || {};
-        const expiresIn = data.expiresIn ?? 3600;
+    const chunks = [];
+    for (let i = 0; i < deduped.length; i += MAX_KEYS_PER_REQUEST) {
+      chunks.push(deduped.slice(i, i + MAX_KEYS_PER_REQUEST));
+    }
 
-        // ✅ Cache each returned URL individually
-        Object.entries(fetchedMap).forEach(([key, url]) => {
-          setCache(key, url, expiresIn);
+    const requestChunk = (chunkKeys) =>
+      fetch("/api/signed-url-bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ keys: chunkKeys }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((data) => {
+          const expiresIn = data.expiresIn ?? 3600;
+          // ✅ Cache each returned URL individually
+          Object.entries(data.urlMap || {}).forEach(([key, url]) => {
+            setCache(key, url, expiresIn);
+          });
         });
 
+    // allSettled: a failed batch must not throw away the batches that did succeed
+    Promise.allSettled(chunks.map(requestChunk))
+      .then((results) => {
         // Only update what is on screen if these are still the keys on screen
         if (latestKeys.current === keysKey) setUrlMap(buildMap(keys));
+
+        const failed = results.find((r) => r.status === "rejected");
+        if (failed) throw failed.reason;
       })
       .catch((err) => {
         console.error("[useBulkSignedUrls]", err);

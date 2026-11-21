@@ -11,6 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { findHardRuleViolations, hardRuleMessages } from '@/lib/collection-rules';
+import { hasActionablePreSaveRow } from '@/lib/lor-edit-mode';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import { Info } from 'lucide-react';
@@ -717,7 +718,8 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         setEditMode(false);
-                    } else if (cc.status === "closed") {
+                    } else if (cc.status === "closed" || cc?.current?.some(cur => cur?.transfer !== true && cur?.status === "closed")) {
+                        // Today's cashCollection is closed (offset) even if the loan row was never flipped to 'closed'
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -800,6 +802,7 @@ const CashCollectionDetailsPage = () => {
                         
                         collection = {
                             ...cc,
+                            status: 'closed',
                             _id: ccId,
                             loanId: loanId,
                             group: cc.group,
@@ -1759,6 +1762,12 @@ const CashCollectionDetailsPage = () => {
                 if (!groupIsClosed) setEditMode(true); // closed group stays read-only until it is reopened
                 setRevertMode(true);
                 console.log('Reverted Collection found: ', haveReverted)
+            }
+
+            // A pre-save row created after the rest of the group was submitted would otherwise stay locked
+            // (submitted rows turn editMode off). Re-open the register for it; submitted rows stay non-editable.
+            if (!groupIsClosed && hasActionablePreSaveRow(cashCollection, { groupDay: selectedGroup?.day, dayName, isWeekend, isHoliday })) {
+                setEditMode(true);
             }
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));

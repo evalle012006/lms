@@ -210,7 +210,7 @@ export function collectBlockers(row, gates, { today } = {}) {
     if (c.firstName == null || c.lastName == null) {
         add('INVALID_NAME', 'Name missing', `Invalid name: ${who} in group ${group}, please update it in Client page.`);
     }
-    if (!gates.allowApproved) {
+    if (gates.transactionClosed && !gates.allowApproved) { // allowApproved is forced true on staging
         add('GROUP_CLOSED', 'Group closed', `${at} please re-open the LO transaction.`);
     }
     if (gates.hasActiveLoan) {
