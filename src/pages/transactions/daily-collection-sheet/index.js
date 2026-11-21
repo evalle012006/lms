@@ -1,159 +1,214 @@
 //src/pages/transactions/daily-collection-sheet/index.js
-import React, { useState, useEffect, useCallback } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import moment from 'moment';
-import { toast } from 'react-toastify';
-import { Download, Calendar, Building2, User, FileSpreadsheet, BookOpen, Sun, Printer } from 'lucide-react';
-import Select from 'react-select';
+import React, { useState, useEffect, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import moment from "moment";
+import { toast } from "react-toastify";
+import {
+  Download,
+  Calendar,
+  Building2,
+  User,
+  FileSpreadsheet,
+  BookOpen,
+  Sun,
+  Printer,
+} from "lucide-react";
+import Select from "react-select";
 
-import Layout from '@/components/Layout';
-import Spinner from '@/components/Spinner';
-import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { getApiBaseUrl, mapSummaryData } from '@/lib/constants';
-import { DropdownIndicator, borderStyles } from '@/styles/select';
-import { setBranchList } from '@/redux/actions/branchActions';
+import Layout from "@/components/Layout";
+import Spinner from "@/components/Spinner";
+import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { getApiBaseUrl, mapSummaryData } from "@/lib/constants";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
+import { setBranchList } from "@/redux/actions/branchActions";
 
-import DCSTable from '@/components/transactions/daily-collection-sheet/DCSTable';
-import SummaryPanel from '@/components/transactions/daily-collection-sheet/SummaryPanel';
-import TransactionPanel from '@/components/transactions/daily-collection-sheet/TransactionPanel';
+import DCSTable from "@/components/transactions/daily-collection-sheet/DCSTable";
+import SummaryPanel from "@/components/transactions/daily-collection-sheet/SummaryPanel";
+import TransactionPanel from "@/components/transactions/daily-collection-sheet/TransactionPanel";
 
-import OtherReceiptPayment from '@/components/transactions/daily-collection-sheet/OtherReceipt&Payment';
-import MngtExpenses from '@/components/transactions/daily-collection-sheet/MngtExpenses';
-import Cashbook from '@/components/transactions/daily-collection-sheet/Cashbook';
-import Payroll from '@/components/transactions/daily-collection-sheet/Payroll';
-import OtherIncomeMiscIncome from '@/components/transactions/daily-collection-sheet/OtherIncomeMiscIncome';
-import MIS from '@/components/transactions/daily-collection-sheet/MIS';
-import CBHB from '@/components/transactions/daily-collection-sheet/CBHB';
-import CashInBank from '@/components/transactions/daily-collection-sheet/CashInBank';
-import FundTransfer from '@/components/transactions/daily-collection-sheet/fundTransfer';
-import WTaxEEER from '@/components/transactions/daily-collection-sheet/WTaxEEER';
+import OtherReceiptPayment from "@/components/transactions/daily-collection-sheet/OtherReceipt&Payment";
+import MngtExpenses from "@/components/transactions/daily-collection-sheet/MngtExpenses";
+import Cashbook from "@/components/transactions/daily-collection-sheet/Cashbook";
+import Payroll from "@/components/transactions/daily-collection-sheet/Payroll";
+import OtherIncomeMiscIncome from "@/components/transactions/daily-collection-sheet/OtherIncomeMiscIncome";
+import MIS from "@/components/transactions/daily-collection-sheet/MIS";
+import CBHB from "@/components/transactions/daily-collection-sheet/CBHB";
+import CashInBank from "@/components/transactions/daily-collection-sheet/CashInBank";
+import FundTransfer from "@/components/transactions/daily-collection-sheet/fundTransfer";
+import WTaxEEER from "@/components/transactions/daily-collection-sheet/WTaxEEER";
 
 // ── Separated export / print utilities ───────────────────────────────────────
-import { exportDCSExcel } from '@/components/transactions/daily-collection-sheet/exportDCSExcel';
-import { printDCS }       from '@/components/transactions/daily-collection-sheet/printDCS';
+import { exportDCSExcel } from "@/components/transactions/daily-collection-sheet/exportDCSExcel";
+import { printDCS } from "@/components/transactions/daily-collection-sheet/printDCS";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 const selectStyles = {
-    ...borderStyles,
+  ...borderStyles,
 
-    control: (base, state) => ({
-        ...base,
-        minHeight: '38px',
-        borderColor: state.isFocused ? '#14b8a6' : '#d1d5db',
-        boxShadow: state.isFocused ? '0 0 0 1px #14b8a6' : 'none',
-        '&:hover': {
-            borderColor: '#14b8a6'
-        }
-    }),
+  control: (base, state) => ({
+    ...base,
+    minHeight: "38px",
+    borderColor: state.isFocused ? "#14b8a6" : "#d1d5db",
+    boxShadow: state.isFocused ? "0 0 0 1px #14b8a6" : "none",
+    "&:hover": {
+      borderColor: "#14b8a6",
+    },
+  }),
 
-    menu: (base) => ({
-        ...base,
-        zIndex: 9999
-    }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 9999,
+  }),
 
-    menuPortal: (base) => ({
-        ...base,
-        zIndex: 9999
-    }),
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 9999,
+  }),
 };
 
 const parseRow = (item) => {
-    const d = item.data || item;
-    return {
-        loId:               item.lo_id   || item.loId,
-        loName:             item.lo_name || item.loName,
-        groupId:            item.group_id  || item.groupId,
-        groupName:          item.group_name || item.groupName,
+  const d = item.data || item;
 
-        releaseWithoutSC:
-            Number(d.releaseWithoutSC ?? d.release_without_sc ?? 0),
-        
-        morningRemittance:   parseFloat(item.morning_remittance   || item.morningRemittance)   || 0,
-        afternoonRemittance: parseFloat(item.afternoon_remittance || item.afternoonRemittance) || 0,
-        denomNetCollection:  parseFloat(item.denom_net_collection  || item.denomNetCollection)  || 0,
-        mcbuTarget:          parseFloat(d.mcbuTarget    || d.mcbu_target)    || 0,
-        mcbuActual:          parseFloat(d.mcbuActual    || d.mcbu_actual)    || 0,
-        csfCollection:       parseFloat(item.csf_collection || d.csfCollection || d.csf_collection) || 0,
-        regularLoanTarget:   parseFloat(d.regularLoanTarget  || d.regular_loan_target)  || 0,
-        regularLoanAdvance:  parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
-        regularLoanActual:   parseFloat(d.regularLoanActual  || d.regular_loan_actual)  || 0,
-        otherLoanTarget:     parseFloat(d.otherLoanTarget  || d.other_loan_target)  || 0,
-        otherLoanAdvance:    parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0,
-        otherLoanActual:     parseFloat(d.otherLoanActual  || d.other_loan_actual)  || 0,
-        // Weekly (12 Weeks)
-        weekly12Target:
-            Number(d.weekly12Target ?? d.weekly12_target ?? 0),
+  return {
+    loId: item.lo_id || item.loId,
+    loName: item.lo_name || item.loName,
+    groupId: item.group_id || item.groupId,
+    groupName: item.group_name || item.groupName,
 
-        weekly12Advance:
-            Number(d.weekly12Advance ?? d.weekly12_advance ?? 0),
+    releaseWithoutSCNo: Number(
+      d.releaseWithoutSCNo ??
+        d.release_without_sc_no ??
+        d.releaseWithoutSCCount ??
+        d.release_without_sc_count ??
+        0
+    ),
 
-        weekly12Actual:
-            Number(d.weekly12Actual ?? d.weekly12_actual ?? 0),
-        admissionNo:         parseInt(d.admissionNo  || d.admission_no)   || 0,
-        admissionAmount:     parseFloat(d.admissionAmount || d.admission_amount) || 0,
-        lrfCollection:       parseFloat(d.lrfCollection  || d.lrf_collection)  || 0,
-        cbhbNo:              parseInt(d.cbhbNo   || d.cbhb_no)   || 0,
-        cbhbAmount:          parseFloat(d.cbhbAmount  || d.cbhb_amount)  || 0,
-        addHospitalization:  parseFloat(d.addHospitalization || d.add_hospitalization) || 0,
-        otherIncome:         parseFloat(d.otherIncome  || d.other_income)  || 0,
-        totalCollection:     parseFloat(item.total_collection ?? d.totalCollection ?? d.total_collection) || 0,
-        mcbuWithdrawal:      parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0,
-        mcbuReturnNo:        parseInt(d.mcbuReturnNo  || d.mcbu_return_no)  || 0,
-        mcbuReturnAmount:    parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0,
-        csfWithdrawal:       parseFloat(item.csf_withdrawal || d.csfWithdrawal || d.csf_withdrawal) || 0,
-        csfReturnNo:         parseInt(item.csf_return_no   || d.csfReturnNo   || d.csf_return_no)   || 0,
-        csfReturnAmount:     parseFloat(item.csf_return_amount || d.csfReturnAmount || d.csf_return_amount) || 0,
-        netCollection:       parseFloat(item.net_collection ?? d.netCollection ?? d.net_collection) || 0,
-        renewalNo:           parseInt(d.renewalNo  || d.renewal_no)   || 0,
-        renewalAmount:       parseFloat(d.renewalAmount || d.renewal_amount) || 0,
-        offsetNo:            parseInt(d.offsetNo   || d.offset_no)   || 0,
-        offsetAmount:        parseFloat(d.offsetAmount  || d.offset_amount)  || 0,
-        fullPaymentClients:  parseInt(d.fullPaymentClients || d.full_payment_clients) || 0,
-        activeClients:       parseInt(d.activeClients   || d.active_clients)   || 0,
-        activeBorrowers:     parseInt(d.activeBorrowers  || d.active_borrowers) || 0,
-        totalLoanBalance:    parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0,
-        mcbuBalance:         parseFloat(d.mcbuBalance  || d.mcbu_balance)  || 0,
-        csfBalance:          parseFloat(item.csf_balance || d.csfBalance || d.csf_balance) || 0,
-        pastDueNo:           parseInt(d.pastDueNo   || d.past_due_no)   || 0,
-        pastDueAmount:       parseFloat(d.pastDueAmount || d.past_due_amount) || 0,
-        mispayCount:         parseInt(d.mispayCount  || d.mispay_count) || 0,
-        pendingClients:      parseInt(d.pendingClients || d.pending_clients) || 0,
-        transferClients:     parseInt(d.transferClients || d.transfer_clients) || 0,
-    };
+    releaseWithoutSC: Number(d.releaseWithoutSC ?? d.release_without_sc ?? 0),
+
+    morningRemittance:
+      parseFloat(item.morning_remittance || item.morningRemittance) || 0,
+    afternoonRemittance:
+      parseFloat(item.afternoon_remittance || item.afternoonRemittance) || 0,
+    denomNetCollection:
+      parseFloat(item.denom_net_collection || item.denomNetCollection) || 0,
+    mcbuTarget: parseFloat(d.mcbuTarget || d.mcbu_target) || 0,
+    mcbuActual: parseFloat(d.mcbuActual || d.mcbu_actual) || 0,
+    csfCollection:
+      Number(item.csf_collection ?? d.csfCollection ?? d.csf_collection ?? 0) ||
+      0,
+
+    csfIn: Number(item.csf_in ?? item.csfIn ?? d.csfIn ?? d.csf_in ?? 0) || 0,
+
+    regularLoanTarget:
+      parseFloat(d.regularLoanTarget || d.regular_loan_target) || 0,
+    regularLoanAdvance:
+      parseFloat(d.regularLoanAdvance || d.regular_loan_advance) || 0,
+    regularLoanActual:
+      parseFloat(d.regularLoanActual || d.regular_loan_actual) || 0,
+    otherLoanTarget: parseFloat(d.otherLoanTarget || d.other_loan_target) || 0,
+    otherLoanAdvance:
+      parseFloat(d.otherLoanAdvance || d.other_loan_advance) || 0,
+    otherLoanActual: parseFloat(d.otherLoanActual || d.other_loan_actual) || 0,
+    // Weekly (12 Weeks)
+    weekly12Target: Number(d.weekly12Target ?? d.weekly12_target ?? 0),
+
+    weekly12Advance: Number(d.weekly12Advance ?? d.weekly12_advance ?? 0),
+
+    weekly12Actual: Number(d.weekly12Actual ?? d.weekly12_actual ?? 0),
+    admissionNo: parseInt(d.admissionNo || d.admission_no) || 0,
+    admissionAmount: parseFloat(d.admissionAmount || d.admission_amount) || 0,
+    lrfCollection: parseFloat(d.lrfCollection || d.lrf_collection) || 0,
+    cbhbNo: parseInt(d.cbhbNo || d.cbhb_no) || 0,
+    cbhbAmount: parseFloat(d.cbhbAmount || d.cbhb_amount) || 0,
+    addHospitalization:
+      parseFloat(d.addHospitalization || d.add_hospitalization) || 0,
+    otherIncome: parseFloat(d.otherIncome || d.other_income) || 0,
+    totalCollection:
+      parseFloat(
+        item.total_collection ?? d.totalCollection ?? d.total_collection
+      ) || 0,
+    mcbuWithdrawal: parseFloat(d.mcbuWithdrawal || d.mcbu_withdrawal) || 0,
+    mcbuReturnNo: parseInt(d.mcbuReturnNo || d.mcbu_return_no) || 0,
+    mcbuReturnAmount:
+      parseFloat(d.mcbuReturnAmount || d.mcbu_return_amount) || 0,
+    csfWithdrawal:
+      parseFloat(item.csf_withdrawal || d.csfWithdrawal || d.csf_withdrawal) ||
+      0,
+    csfReturnNo:
+      parseInt(item.csf_return_no || d.csfReturnNo || d.csf_return_no) || 0,
+    csfReturnAmount:
+      parseFloat(
+        item.csf_return_amount || d.csfReturnAmount || d.csf_return_amount
+      ) || 0,
+    netCollection:
+      parseFloat(item.net_collection ?? d.netCollection ?? d.net_collection) ||
+      0,
+    renewalNo: parseInt(d.renewalNo || d.renewal_no) || 0,
+    renewalAmount: parseFloat(d.renewalAmount || d.renewal_amount) || 0,
+    offsetNo: parseInt(d.offsetNo || d.offset_no) || 0,
+    offsetAmount: parseFloat(d.offsetAmount || d.offset_amount) || 0,
+    fullPaymentClients:
+      parseInt(d.fullPaymentClients || d.full_payment_clients) || 0,
+    activeClients: parseInt(d.activeClients || d.active_clients) || 0,
+    activeBorrowers: parseInt(d.activeBorrowers || d.active_borrowers) || 0,
+    totalLoanBalance:
+      parseFloat(d.totalLoanBalance || d.total_loan_balance) || 0,
+    mcbuBalance: parseFloat(d.mcbuBalance || d.mcbu_balance) || 0,
+    csfBalance:
+      parseFloat(item.csf_balance || d.csfBalance || d.csf_balance) || 0,
+    pastDueNo: parseInt(d.pastDueNo || d.past_due_no) || 0,
+    pastDueAmount: parseFloat(d.pastDueAmount || d.past_due_amount) || 0,
+    mispayCount: parseInt(d.mispayCount || d.mispay_count) || 0,
+    pendingClients: parseInt(d.pendingClients || d.pending_clients) || 0,
+    transferClients: parseInt(d.transferClients || d.transfer_clients) || 0,
+  };
 };
 
 const calculateTotals = (rows) => {
-    const num = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
-    const int = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
-    return {
-        releaseWithoutSC: num('releaseWithoutSC'),
+  const num = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+  const int = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+  return {
+    releaseWithoutSCNo: int("releaseWithoutSCNo"),
+    releaseWithoutSC: num("releaseWithoutSC"),
 
-        mcbuTarget: num('mcbuTarget'),
-        mcbuActual: num('mcbuActual'),
-        csfCollection: num('csfCollection'),
-        regularLoanTarget: num('regularLoanTarget'), regularLoanAdvance: num('regularLoanAdvance'), regularLoanActual: num('regularLoanActual'),
-        otherLoanTarget: num('otherLoanTarget'), otherLoanAdvance: num('otherLoanAdvance'), otherLoanActual: num('otherLoanActual'),
-        weekly12Target: num('weekly12Target'),
-        weekly12Advance: num('weekly12Advance'),
-        weekly12Actual: num('weekly12Actual'),
-        admissionNo: int('admissionNo'), admissionAmount: num('admissionAmount'),
-        lrfCollection: num('lrfCollection'),
-        cbhbNo: int('cbhbNo'), cbhbAmount: num('cbhbAmount'),
-        addHospitalization: num('addHospitalization'),
-        otherIncome: num('otherIncome'),
-        totalCollection: num('totalCollection'),
-        mcbuWithdrawal: num('mcbuWithdrawal'),
-        mcbuReturnNo: int('mcbuReturnNo'), mcbuReturnAmount: num('mcbuReturnAmount'),
-        csfWithdrawal: num('csfWithdrawal'),
-        csfReturnNo: int('csfReturnNo'), csfReturnAmount: num('csfReturnAmount'),
-        netCollection: num('netCollection'),
-        renewalNo: int('renewalNo'), renewalAmount: num('renewalAmount'),
-        offsetNo: int('offsetNo'), offsetAmount: num('offsetAmount'),
-        fullPaymentClients: int('fullPaymentClients'),
-    };
+    mcbuTarget: num("mcbuTarget"),
+    mcbuActual: num("mcbuActual"),
+
+    csfCollection: num("csfCollection"),
+    csfIn: num("csfIn"),
+    regularLoanTarget: num("regularLoanTarget"),
+    regularLoanAdvance: num("regularLoanAdvance"),
+    regularLoanActual: num("regularLoanActual"),
+    otherLoanTarget: num("otherLoanTarget"),
+    otherLoanAdvance: num("otherLoanAdvance"),
+    otherLoanActual: num("otherLoanActual"),
+    weekly12Target: num("weekly12Target"),
+    weekly12Advance: num("weekly12Advance"),
+    weekly12Actual: num("weekly12Actual"),
+    admissionNo: int("admissionNo"),
+    admissionAmount: num("admissionAmount"),
+    lrfCollection: num("lrfCollection"),
+    cbhbNo: int("cbhbNo"),
+    cbhbAmount: num("cbhbAmount"),
+    addHospitalization: num("addHospitalization"),
+    otherIncome: num("otherIncome"),
+    totalCollection: num("totalCollection"),
+    mcbuWithdrawal: num("mcbuWithdrawal"),
+    mcbuReturnNo: int("mcbuReturnNo"),
+    mcbuReturnAmount: num("mcbuReturnAmount"),
+    csfWithdrawal: num("csfWithdrawal"),
+    csfReturnNo: int("csfReturnNo"),
+    csfReturnAmount: num("csfReturnAmount"),
+    netCollection: num("netCollection"),
+    renewalNo: int("renewalNo"),
+    renewalAmount: num("renewalAmount"),
+    offsetNo: int("offsetNo"),
+    offsetAmount: num("offsetAmount"),
+    fullPaymentClients: int("fullPaymentClients"),
+  };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,1114 +216,1176 @@ const calculateTotals = (rows) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DailyCollectionSheet = () => {
-    const dispatch = useDispatch();
-    const currentUser = useSelector(state => state.user.data);
-    const currentBranch = useSelector(state => state.branch.data);
-    const branchList = useSelector(state => state.branch.list);
+  const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.user.data);
+  const currentBranch = useSelector((state) => state.branch.data);
+  const branchList = useSelector((state) => state.branch.list);
 
-    const currentUserId = currentUser?._id;
-    const designatedBranchId = currentUser?.designatedBranchId;
-    const currentBranchId = currentBranch?._id;
+  const currentUserId = currentUser?._id;
+  const designatedBranchId = currentUser?.designatedBranchId;
+  const currentBranchId = currentBranch?._id;
 
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState([]);
-    const [branchData, setBranchData] = useState([]);
-    const [totals, setTotals] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
-    const [selectedLo, setSelectedLo] = useState(null);
-    const [loanOfficers, setLoanOfficers] = useState([]);
-    const [selectedBranch, setSelectedBranch] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState([]);
+  const [branchData, setBranchData] = useState([]);
+  const [totals, setTotals] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(
+    moment().format("YYYY-MM-DD")
+  );
+  const [selectedLo, setSelectedLo] = useState(null);
+  const [loanOfficers, setLoanOfficers] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState(null);
 
-    const [summaryData, setSummaryData] = useState(null);
-    const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
-    const [cashbookData, setCashbookData] = useState({});
-    const [cashbookLoading, setCashbookLoading] = useState(false);
-    const [otherIncomeRefreshKey, setOtherIncomeRefreshKey] = useState(0);
+  const [cashbookData, setCashbookData] = useState({});
+  const [cashbookLoading, setCashbookLoading] = useState(false);
 
-    const [activeTab, setActiveTab] = useState('dcs');
-    const roleRep = Number(currentUser?.role?.rep);
-    const isAdmin = roleRep === 1;
+  const [cashbookBeginningBalance, setCashbookBeginningBalance] =
+    useState(null);
+  const handleCashbookBeginningBalance = useCallback((amount) => {
+    setCashbookBeginningBalance((previous) => {
+      if (previous === amount) {
+        return previous;
+      }
 
-    const isAreaManager =
-        roleRep === 2 &&
-        String(currentUser?.role?.shortCode || '')
-            .trim()
-            .toLowerCase() === 'area_admin';
+      return amount;
+    });
+  }, []);
 
-    const isLoanOfficer = roleRep === 4;
-    const isBranchManager = roleRep === 3;
-    const canSelectBranch = isAdmin || isAreaManager;
-    const isAdminAllBranches = isAdmin && !selectedBranch;
+  const [otherIncomeRefreshKey, setOtherIncomeRefreshKey] = useState(0);
 
-    const transactionBranchId =
-        isLoanOfficer || isBranchManager
-            ? currentUser?.designatedBranchId
-            : canSelectBranch
-                ? selectedBranch?._id
-                : currentBranch?._id;
+  const [activeTab, setActiveTab] = useState("dcs");
+  const roleRep = Number(currentUser?.role?.rep);
+  const isAdmin = roleRep === 1;
 
-    // ── Branch list ──────────────────────────────────────────────────────────
-    const getListBranch = useCallback(async () => {
-        if (!currentUser) return;
-        try {
-            let url = getApiBaseUrl() + 'branches/list';
-            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-                url += '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
-            }
-            const response = await fetchWrapper.get(url);
-            if (response.success) dispatch(setBranchList(response.branches || []));
-        } catch (error) {
-            console.error('Error fetching branches:', error);
+  const isAreaManager =
+    roleRep === 2 &&
+    String(currentUser?.role?.shortCode || "")
+      .trim()
+      .toLowerCase() === "area_admin";
+
+  const isLoanOfficer = roleRep === 4;
+  const isBranchManager = roleRep === 3;
+  const canSelectBranch = isAdmin || isAreaManager;
+  const isAdminAllBranches = isAdmin && !selectedBranch;
+
+  const transactionBranchId =
+    isLoanOfficer || isBranchManager
+      ? currentUser?.designatedBranchId
+      : canSelectBranch
+      ? selectedBranch?._id
+      : currentBranch?._id;
+
+  // ── Branch list ──────────────────────────────────────────────────────────
+  const getListBranch = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      let url = getApiBaseUrl() + "branches/list";
+      if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+        url +=
+          "?" +
+          new URLSearchParams({ branchCode: currentUser.designatedBranch });
+      }
+      const response = await fetchWrapper.get(url);
+      if (response.success) dispatch(setBranchList(response.branches || []));
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    }
+  }, [currentUser, dispatch]);
+
+  useEffect(() => {
+    if (!canSelectBranch || !currentUser?._id) return;
+
+    getListBranch();
+  }, [canSelectBranch, currentUser?._id, getListBranch]);
+
+  // ── Loan officers ────────────────────────────────────────────────────────
+  const fetchLoanOfficers = useCallback(async (branchId) => {
+    if (!branchId) return;
+    try {
+      const response = await fetchWrapper.get(
+        getApiBaseUrl() + "users/list?" + new URLSearchParams({ branchId })
+      );
+      if (response.success) {
+        setLoanOfficers(
+          (response.users || [])
+            .filter((u) => u.role.rep === 4)
+            .map((lo) => ({
+              ...lo,
+              value: lo._id,
+              label: `${lo.firstName} ${lo.lastName}`,
+            }))
+            .sort((a, b) => (a.loNo || 0) - (b.loNo || 0))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching loan officers:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isBranchManager && currentUser?.designatedBranchId) {
+      fetchLoanOfficers(currentUser.designatedBranchId);
+    } else if (canSelectBranch && selectedBranch?._id) {
+      fetchLoanOfficers(selectedBranch._id);
+    } else if (
+      !canSelectBranch &&
+      !isBranchManager &&
+      !isLoanOfficer &&
+      currentBranch?._id
+    ) {
+      fetchLoanOfficers(currentBranch._id);
+    }
+  }, [
+    isBranchManager,
+    isLoanOfficer,
+    canSelectBranch,
+    currentUser?.designatedBranchId,
+    selectedBranch?._id,
+    currentBranch?._id,
+    fetchLoanOfficers,
+  ]);
+
+  // ── Fetch summary ────────────────────────────────────────────────────────
+  const fetchSummary = useCallback(async (branchId, date, loId = null) => {
+    setSummaryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        branch_id: branchId,
+        selected_date: date,
+      });
+      if (loId) params.append("lo_id", loId);
+      params.set("_name", "get_daily_collection_summary");
+
+      const response = await fetchWrapper.get(
+        getApiBaseUrl() + "dcs?" + params.toString()
+      );
+      const item = Array.isArray(response.data)
+        ? response.data[0]
+        : response.data;
+      setSummaryData(item || null);
+    } catch (error) {
+      console.error("Error fetching summary data:", error);
+      setSummaryData(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  const fetchCashbookMonth = useCallback(
+    async (branchId, selectedMonthDate, loId = null) => {
+      if (!branchId || !selectedMonthDate) {
+        setCashbookData({});
+        return;
+      }
+
+      try {
+        setCashbookLoading(true);
+
+        const monthStart = moment(selectedMonthDate).startOf("month");
+        const monthEnd = moment(selectedMonthDate);
+
+        const workingDates = [];
+
+        const cursor = monthStart.clone();
+
+        while (cursor.isSameOrBefore(monthEnd, "day")) {
+          const dayOfWeek = cursor.day();
+
+          // Skip Sunday = 0
+          // Skip Saturday = 6
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            workingDates.push(cursor.format("YYYY-MM-DD"));
+          }
+
+          cursor.add(1, "day");
         }
-    }, [currentUser, dispatch]);
 
-    useEffect(() => {
-        if (!canSelectBranch || !currentUser?._id) return;
-
-        getListBranch();
-    }, [canSelectBranch, currentUser?._id, getListBranch]);
-
-    // ── Loan officers ────────────────────────────────────────────────────────
-    const fetchLoanOfficers = useCallback(async (branchId) => {
-        if (!branchId) return;
-        try {
-            const response = await fetchWrapper.get(
-                getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchId })
-            );
-            if (response.success) {
-                setLoanOfficers(
-                    (response.users || [])
-                        .filter(u => u.role.rep === 4)
-                        .map(lo => ({ ...lo, value: lo._id, label: `${lo.firstName} ${lo.lastName}` }))
-                        .sort((a, b) => (a.loNo || 0) - (b.loNo || 0))
-                );
-            }
-        } catch (error) {
-            console.error('Error fetching loan officers:', error);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isBranchManager && currentUser?.designatedBranchId) {
-            fetchLoanOfficers(currentUser.designatedBranchId);
-        } else if (canSelectBranch && selectedBranch?._id) {
-            fetchLoanOfficers(selectedBranch._id);
-        } else if (
-            !canSelectBranch &&
-            !isBranchManager &&
-            !isLoanOfficer &&
-            currentBranch?._id
-        ) {
-            fetchLoanOfficers(currentBranch._id);
-        }
-    }, [
-        isBranchManager,
-        isLoanOfficer,
-        canSelectBranch,
-        currentUser?.designatedBranchId,
-        selectedBranch?._id,
-        currentBranch?._id,
-        fetchLoanOfficers,
-    ]);
-
-    // ── Fetch summary ────────────────────────────────────────────────────────
-    const fetchSummary = useCallback(async (branchId, date, loId = null) => {
-        setSummaryLoading(true);
-        try {
-            const params = new URLSearchParams({ branch_id: branchId, selected_date: date });
-            if (loId) params.append('lo_id', loId);
-            params.set('_name', 'get_daily_collection_summary');
-
-            const response = await fetchWrapper.get(
-                getApiBaseUrl() + 'dcs?' + params.toString()
-            );
-            const item = Array.isArray(response.data) ? response.data[0] : response.data;
-            setSummaryData(item || null);
-        } catch (error) {
-            console.error('Error fetching summary data:', error);
-            setSummaryData(null);
-        } finally {
-            setSummaryLoading(false);
-        }
-    }, []);
-
-    const fetchCashbookMonth = useCallback(
-        async (branchId, selectedMonthDate, loId = null) => {
-            if (!branchId || !selectedMonthDate) {
-                setCashbookData({});
-                return;
-            }
-
+        const entries = await Promise.all(
+          workingDates.map(async (date) => {
             try {
-                setCashbookLoading(true);
-
-                const monthStart = moment(selectedMonthDate).startOf('month');
-                const monthEnd = moment(selectedMonthDate);
-
-                const workingDates = [];
-
-                const cursor = monthStart.clone();
-
-                while (cursor.isSameOrBefore(monthEnd, 'day')) {
-                    const dayOfWeek = cursor.day();
-
-                    // Skip Sunday = 0
-                    // Skip Saturday = 6
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                        workingDates.push(cursor.format('YYYY-MM-DD'));
-                    }
-
-                    cursor.add(1, 'day');
-                }
-
-                const entries = await Promise.all(
-                    workingDates.map(async (date) => {
-                        try {
-                            const params = new URLSearchParams({
-                                branch_id: branchId,
-                                selected_date: date,
-                            });
-
-                            if (loId) {
-                                params.append('lo_id', loId);
-                            }
-
-                            params.set('_name', 'get_daily_collection_summary');
-
-                            const response = await fetchWrapper.get(
-                                getApiBaseUrl() +
-                                    'dcs?' +
-                                    params.toString()
-                            );
-
-                            const raw = Array.isArray(response.data)
-                                ? response.data[0]
-                                : response.data;
-
-                            const mappedSummary = mapSummaryData(raw);
-                            // =========================================================
-                            // CASHBOOK - OTHER INCOME (PICTURE)
-                            // ₱50 PER LOAN RELEASE
-                            // =========================================================
-
-                            const pictureLoanReleaseCount =
-                                Number(mappedSummary?.payLoanReleaseNo) || 0;
-
-                            const cashbookOtherIncomePicture =
-                                pictureLoanReleaseCount * 50;
-
-                            // =========================================================
-                            // CASHBOOK - AUTOMATIC LOAN RELEASES
-                            // =========================================================
-
-                            let cashbookLoanReleases = {
-                                regularLoanReleasePersons: 0,
-                                regularLoanReleasePrincipal: 0,
-                                otherLoanReleasePersons: 0,
-                                otherLoanReleasePrincipal: 0,
-                            };
-
-                            try {
-                                const loanReleaseParams = new URLSearchParams({
-                                    branch_id: branchId,
-                                    selected_date: date,
-                                });
-
-                                loanReleaseParams.set(
-                                    '_name',
-                                    'get_cashbook_loan_releases'
-                                );
-
-                                const loanReleaseResponse = await fetchWrapper.get(
-                                    getApiBaseUrl() +
-                                    'dcs?' +
-                                    loanReleaseParams.toString()
-                                );
-
-                                const loanReleaseRaw = Array.isArray(
-                                    loanReleaseResponse?.data
-                                )
-                                    ? loanReleaseResponse.data[0]
-                                    : loanReleaseResponse?.data;
-
-                                if (loanReleaseResponse?.success === false) {
-                                    throw new Error(
-                                        loanReleaseResponse?.message ||
-                                        'Unable to retrieve Cashbook loan releases'
-                                    );
-                                }
-
-                                if (!loanReleaseRaw) {
-                                    throw new Error(
-                                        `No Cashbook loan-release result for ${date}`
-                                    );
-                                }
-
-                                cashbookLoanReleases = {
-                                    regularLoanReleasePersons:
-                                        Number(
-                                            loanReleaseRaw.regular_loan_release_persons
-                                        ) || 0,
-
-                                    regularLoanReleasePrincipal:
-                                        Number(
-                                            loanReleaseRaw.regular_loan_release_principal
-                                        ) || 0,
-
-                                    otherLoanReleasePersons:
-                                        Number(
-                                            loanReleaseRaw.other_loan_release_persons
-                                        ) || 0,
-
-                                    otherLoanReleasePrincipal:
-                                        Number(
-                                            loanReleaseRaw.other_loan_release_principal
-                                        ) || 0,
-                                };
-
-                            } catch (error) {
-                                console.error(
-                                    `Cashbook loan releases error for ${date}:`,
-                                    error
-                                );
-
-                                cashbookLoanReleases = {
-                                    regularLoanReleasePersons: null,
-                                    regularLoanReleasePrincipal: null,
-                                    otherLoanReleasePersons: null,
-                                    otherLoanReleasePrincipal: null,
-                                    loanReleaseError: true,
-                                };
-                            }
-
-                            let cashbookCollectionTotals = null;
-
-                            try {
-                                    const dcsParams = new URLSearchParams({
-                                        branch_id: branchId,
-                                        selected_date: date,
-                                    });
-
-                                    if (loId) {
-                                        dcsParams.append('lo_id', loId);
-                                    }
-
-                                    dcsParams.set('_name', 'get_daily_collection_sheet_v2');
-
-                                    const dcsResponse = await fetchWrapper.get(
-                                        getApiBaseUrl() + 'dcs?' + dcsParams.toString()
-                                    );
-
-                                    if (
-                                        dcsResponse?.success === false ||
-                                        !Array.isArray(dcsResponse?.data)
-                                    ) {
-                                        throw new Error(
-                                            dcsResponse?.message ||
-                                            `Unable to retrieve DCS collections for ${date}`
-                                        );
-                                    }
-
-                                    const dcsRows = dcsResponse.data.map(parseRow);
-
-                                    cashbookCollectionTotals = calculateTotals(dcsRows);
-
-                                } catch (error) {
-                                    console.error(
-                                        `Cashbook collection totals error for ${date}:`,
-                                        error
-                                    );
-                                }
-
-                            let effectiveBeginningBalance = null;
-                            let beginningBalanceSource = 'historical';
-
-                            if (mappedSummary) {
-                                try {
-                                    const balanceParams = new URLSearchParams({
-                                        branch_id: branchId,
-                                        selected_date: date,
-                                    });
-
-                                    const balanceResponse = await fetchWrapper.get(
-                                        `${getApiBaseUrl()}dcs/beginning-balance?${balanceParams.toString()}`
-                                    );
-
-                                    if (!balanceResponse?.success) {
-                                        throw new Error(
-                                            balanceResponse?.message ||
-                                            `Unable to load Beginning Balance for ${date}`
-                                        );
-                                    }
-
-                                    beginningBalanceSource =
-                                        balanceResponse.source || 'historical';
-
-                                    if (
-                                        balanceResponse.beginningBalance !== null &&
-                                        balanceResponse.beginningBalance !== undefined
-                                    ) {
-                                        const parsedBalance = Number(
-                                            balanceResponse.beginningBalance
-                                        );
-
-                                        if (!Number.isFinite(parsedBalance)) {
-                                            throw new Error(
-                                                `Invalid Beginning Balance for ${date}`
-                                            );
-                                        }
-
-                                        effectiveBeginningBalance = parsedBalance;
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        `Beginning Balance error for ${date}:`,
-                                        error
-                                    );
-
-                                    return [date, null];
-                                }
-                            }
-
-                            return [
-                                date,
-                                mappedSummary
-                                    ? {
-                                        ...mappedSummary,
-
-                                        // Automatically calculated Picture income
-                                        rcptOtherReceiptsPicture:
-                                            cashbookOtherIncomePicture,
-
-                                        // CASHBOOK LOAN RELEASES
-                                        ...cashbookLoanReleases,
-
-                                        // Cashbook Receipts - Other Income CSF
-                                        rcptOtherIncomeCsf:
-                                            Number(mappedSummary.rcptOtherIncomeCsf) || 0,
-
-                                        // Cashbook Receipts - Fund Transfer
-                                        // Source: DCS Summary Panel Receipts #15
-                                        rcptFundTransferIn:
-                                            Number(mappedSummary.rcptFundTransferIn) || 0,
-                                        
-                                        // CASHBOOK - ADMISSION COUNT
-                                        // Number of new members for this specific date
-                                        admissionNo:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.admissionNo) || 0
-                                                : Number(mappedSummary.rcptAdminFeesNo) || 0,
-
-                                        // MCBU Collection
-                                        rcptMcbu:
-                                            cashbookCollectionTotals !== null
-                                                ? cashbookCollectionTotals.mcbuActual
-                                                : mappedSummary.rcptMcbu,
-
-                                        // CSF Collection
-                                        rcptCsf:
-                                            cashbookCollectionTotals !== null
-                                                ? cashbookCollectionTotals.csfCollection
-                                                : mappedSummary.rcptCsf,
-
-                                        // Regular Loan Collection (Daily / 60 Days)
-                                        rcptRegularLoan:
-                                            cashbookCollectionTotals !== null
-                                                ? cashbookCollectionTotals.regularLoanActual
-                                                : mappedSummary.rcptRegularLoan,
-
-                                        // Other Loan Collection (Weekly)
-                                        // Includes both 24 Weeks and 12 Weeks
-                                        // Weekly Collection (24 Weeks)
-                                        rcptOtherLoan:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.otherLoanActual) || 0
-                                                : Number(mappedSummary.rcptOtherLoan) || 0,
-
-                                        // Weekly Collection (12 Weeks)
-                                        rcptWeekly12:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.weekly12Actual) || 0
-                                                : Number(mappedSummary.rcptWeekly12) || 0,
-
-                                        // MCBU Withdrawal
-                                        payMcbuWithdrawal:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.mcbuWithdrawal) || 0
-                                                : Number(mappedSummary.payMcbuWithdrawal) || 0,
-
-                                        // CSF Withdrawal
-                                        payCsfWithdrawal:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.csfWithdrawal) || 0
-                                                : Number(mappedSummary.payCsfWithdrawal) || 0,
-
-                                        payMcbuReturn:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.mcbuReturnAmount) || 0
-                                                : mappedSummary.payMcbuReturn,
-
-                                        // MCBU Return - Number of Persons
-                                        payMcbuReturnNo:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.mcbuReturnNo) || 0
-                                                : Number(mappedSummary.payMcbuReturnNo) || 0,
-
-                                        payCsfReturn:
-                                            cashbookCollectionTotals !== null
-                                                ? Number(cashbookCollectionTotals.csfReturnAmount) || 0
-                                                : mappedSummary.payCsfReturn,
-
-                                        beginningBalance:
-                                            effectiveBeginningBalance !== null
-                                                ? effectiveBeginningBalance
-                                                : mappedSummary.beginningBalance,
-
-                                        beginningBalanceSource,
-
-                                        rawLoanReleaseData: raw,
-                                    }
-                                    : null,
-                            ];
-                        } catch (error) {
-                            console.error(
-                                `Cashbook summary error for ${date}:`,
-                                error
-                            );
-
-                            return [date, null];
-                        }
-                    })
-                );
-
-                const monthData = {};
-
-                entries.forEach(([date, summary]) => {
-                    monthData[date] = summary;
+              const params = new URLSearchParams({
+                branch_id: branchId,
+                selected_date: date,
+              });
+
+              if (loId) {
+                params.append("lo_id", loId);
+              }
+
+              params.set("_name", "get_daily_collection_summary");
+
+              const response = await fetchWrapper.get(
+                getApiBaseUrl() + "dcs?" + params.toString()
+              );
+
+              const raw = Array.isArray(response.data)
+                ? response.data[0]
+                : response.data;
+
+              const mappedSummary = mapSummaryData(raw);
+              // =========================================================
+              // CASHBOOK - OTHER INCOME (PICTURE)
+              // ₱50 PER LOAN RELEASE
+              // =========================================================
+
+              const pictureLoanReleaseCount =
+                Number(mappedSummary?.payLoanReleaseNo) || 0;
+
+              const cashbookOtherIncomePicture = pictureLoanReleaseCount * 50;
+
+              // =========================================================
+              // CASHBOOK - AUTOMATIC LOAN RELEASES
+              // =========================================================
+
+              let cashbookLoanReleases = {
+                regularLoanReleasePersons: 0,
+                regularLoanReleasePrincipal: 0,
+                otherLoanReleasePersons: 0,
+                otherLoanReleasePrincipal: 0,
+              };
+
+              try {
+                const loanReleaseParams = new URLSearchParams({
+                  branch_id: branchId,
+                  selected_date: date,
                 });
 
-                setCashbookData(monthData);
+                loanReleaseParams.set("_name", "get_cashbook_loan_releases");
+
+                const loanReleaseResponse = await fetchWrapper.get(
+                  getApiBaseUrl() + "dcs?" + loanReleaseParams.toString()
+                );
+
+                const loanReleaseRaw = Array.isArray(loanReleaseResponse?.data)
+                  ? loanReleaseResponse.data[0]
+                  : loanReleaseResponse?.data;
+
+                if (loanReleaseResponse?.success === false) {
+                  throw new Error(
+                    loanReleaseResponse?.message ||
+                      "Unable to retrieve Cashbook loan releases"
+                  );
+                }
+
+                if (!loanReleaseRaw) {
+                  throw new Error(
+                    `No Cashbook loan-release result for ${date}`
+                  );
+                }
+
+                cashbookLoanReleases = {
+                  regularLoanReleasePersons:
+                    Number(loanReleaseRaw.regular_loan_release_persons) || 0,
+
+                  regularLoanReleasePrincipal:
+                    Number(loanReleaseRaw.regular_loan_release_principal) || 0,
+
+                  otherLoanReleasePersons:
+                    Number(loanReleaseRaw.other_loan_release_persons) || 0,
+
+                  otherLoanReleasePrincipal:
+                    Number(loanReleaseRaw.other_loan_release_principal) || 0,
+                };
+              } catch (error) {
+                console.error(
+                  `Cashbook loan releases error for ${date}:`,
+                  error
+                );
+
+                cashbookLoanReleases = {
+                  regularLoanReleasePersons: null,
+                  regularLoanReleasePrincipal: null,
+                  otherLoanReleasePersons: null,
+                  otherLoanReleasePrincipal: null,
+                  loanReleaseError: true,
+                };
+              }
+
+              let cashbookCollectionTotals = null;
+
+              try {
+                const dcsParams = new URLSearchParams({
+                  branch_id: branchId,
+                  selected_date: date,
+                });
+
+                if (loId) {
+                  dcsParams.append("lo_id", loId);
+                }
+
+                dcsParams.set("_name", "get_daily_collection_sheet_v2");
+
+                const dcsResponse = await fetchWrapper.get(
+                  getApiBaseUrl() + "dcs?" + dcsParams.toString()
+                );
+
+                if (
+                  dcsResponse?.success === false ||
+                  !Array.isArray(dcsResponse?.data)
+                ) {
+                  throw new Error(
+                    dcsResponse?.message ||
+                      `Unable to retrieve DCS collections for ${date}`
+                  );
+                }
+
+                const dcsRows = dcsResponse.data.map(parseRow);
+
+                cashbookCollectionTotals = calculateTotals(dcsRows);
+              } catch (error) {
+                console.error(
+                  `Cashbook collection totals error for ${date}:`,
+                  error
+                );
+              }
+
+              let effectiveBeginningBalance = null;
+              let beginningBalanceSource = "historical";
+
+              if (mappedSummary) {
+                try {
+                  const balanceParams = new URLSearchParams({
+                    branch_id: branchId,
+                    selected_date: date,
+                  });
+
+                  const balanceResponse = await fetchWrapper.get(
+                    `${getApiBaseUrl()}dcs/beginning-balance?${balanceParams.toString()}`
+                  );
+
+                  if (!balanceResponse?.success) {
+                    throw new Error(
+                      balanceResponse?.message ||
+                        `Unable to load Beginning Balance for ${date}`
+                    );
+                  }
+
+                  beginningBalanceSource =
+                    balanceResponse.source || "historical";
+
+                  if (
+                    balanceResponse.beginningBalance !== null &&
+                    balanceResponse.beginningBalance !== undefined
+                  ) {
+                    const parsedBalance = Number(
+                      balanceResponse.beginningBalance
+                    );
+
+                    if (!Number.isFinite(parsedBalance)) {
+                      throw new Error(`Invalid Beginning Balance for ${date}`);
+                    }
+
+                    effectiveBeginningBalance = parsedBalance;
+                  }
+                } catch (error) {
+                  console.error(`Beginning Balance error for ${date}:`, error);
+
+                  return [date, null];
+                }
+              }
+
+              return [
+                date,
+                mappedSummary
+                  ? {
+                      ...mappedSummary,
+
+                      // Automatically calculated Picture income
+                      rcptOtherReceiptsPicture: cashbookOtherIncomePicture,
+
+                      // CASHBOOK LOAN RELEASES
+                      ...cashbookLoanReleases,
+
+                      // Cashbook Receipts - Other Income CSF
+                      rcptOtherIncomeCsf:
+                        Number(mappedSummary.rcptOtherIncomeCsf) || 0,
+
+                      // Cashbook Receipts - Fund Transfer
+                      // Source: DCS Summary Panel Receipts #15
+                      rcptFundTransferIn:
+                        Number(mappedSummary.rcptFundTransferIn) || 0,
+
+                      // CASHBOOK - ADMISSION COUNT
+                      // Number of new members for this specific date
+                      admissionNo:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.admissionNo) || 0
+                          : Number(mappedSummary.rcptAdminFeesNo) || 0,
+
+                      // MCBU Collection
+                      rcptMcbu:
+                        cashbookCollectionTotals !== null
+                          ? cashbookCollectionTotals.mcbuActual
+                          : mappedSummary.rcptMcbu,
+
+                      // CSF Collection
+                      rcptCsf:
+                        cashbookCollectionTotals !== null
+                          ? cashbookCollectionTotals.csfCollection
+                          : mappedSummary.rcptCsf,
+
+                      // Regular Loan Collection (Daily / 60 Days)
+                      rcptRegularLoan:
+                        cashbookCollectionTotals !== null
+                          ? cashbookCollectionTotals.regularLoanActual
+                          : mappedSummary.rcptRegularLoan,
+
+                      // Other Loan Collection (Weekly)
+                      // Includes both 24 Weeks and 12 Weeks
+                      // Weekly Collection (24 Weeks)
+                      rcptOtherLoan:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.otherLoanActual) ||
+                            0
+                          : Number(mappedSummary.rcptOtherLoan) || 0,
+
+                      // Weekly Collection (12 Weeks)
+                      rcptWeekly12:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.weekly12Actual) || 0
+                          : Number(mappedSummary.rcptWeekly12) || 0,
+
+                      // MCBU Withdrawal
+                      payMcbuWithdrawal:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.mcbuWithdrawal) || 0
+                          : Number(mappedSummary.payMcbuWithdrawal) || 0,
+
+                      // CSF Withdrawal
+                      payCsfWithdrawal:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.csfWithdrawal) || 0
+                          : Number(mappedSummary.payCsfWithdrawal) || 0,
+
+                      payMcbuReturn:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.mcbuReturnAmount) ||
+                            0
+                          : mappedSummary.payMcbuReturn,
+
+                      // MCBU Return - Number of Persons
+                      payMcbuReturnNo:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.mcbuReturnNo) || 0
+                          : Number(mappedSummary.payMcbuReturnNo) || 0,
+
+                      payCsfReturn:
+                        cashbookCollectionTotals !== null
+                          ? Number(cashbookCollectionTotals.csfReturnAmount) ||
+                            0
+                          : mappedSummary.payCsfReturn,
+
+                      beginningBalance:
+                        effectiveBeginningBalance !== null
+                          ? effectiveBeginningBalance
+                          : mappedSummary.beginningBalance,
+
+                      beginningBalanceSource,
+
+                      rawLoanReleaseData: raw,
+                    }
+                  : null,
+              ];
             } catch (error) {
-                console.error('Error fetching Cashbook month:', error);
-                setCashbookData({});
-            } finally {
-                setCashbookLoading(false);
+              console.error(`Cashbook summary error for ${date}:`, error);
+
+              return [date, null];
             }
-        },
-        []
-    );
+          })
+        );
 
-    useEffect(() => {
-        if (activeTab !== 'cashbook') return;
+        const monthData = {};
 
-        let branchId = null;
-        let loId = null;
+        entries.forEach(([date, summary]) => {
+          monthData[date] = summary;
+        });
 
-        if (isLoanOfficer) {
-            branchId = currentUser?.designatedBranchId;
-            loId = currentUser?._id;
-        } else if (isBranchManager) {
-            branchId = currentUser?.designatedBranchId;
+        setCashbookData(monthData);
+      } catch (error) {
+        console.error("Error fetching Cashbook month:", error);
+        setCashbookData({});
+      } finally {
+        setCashbookLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (activeTab !== "cashbook" && activeTab !== "dcs") return;
+
+    let branchId = null;
+    let loId = null;
+
+    if (isLoanOfficer) {
+      branchId = currentUser?.designatedBranchId;
+      loId = currentUser?._id;
+    } else if (isBranchManager) {
+      branchId = currentUser?.designatedBranchId;
+      loId = selectedLo?._id || null;
+    } else if (canSelectBranch) {
+      branchId = selectedBranch?._id || null;
+      loId = selectedLo?._id || null;
+    } else {
+      branchId = currentBranch?._id;
+      loId = selectedLo?._id || null;
+    }
+
+    if (!branchId) {
+      setCashbookData({});
+      return;
+    }
+
+    fetchCashbookMonth(branchId, selectedDate, null);
+  }, [
+    activeTab,
+    selectedDate,
+    selectedLo?._id,
+    selectedBranch?._id,
+    currentBranch?._id,
+    currentUser?._id,
+    currentUser?.designatedBranchId,
+    isLoanOfficer,
+    isBranchManager,
+    canSelectBranch,
+    fetchCashbookMonth,
+  ]);
+
+  // ── Main DCS data fetch ──────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser) return;
+      if (
+        isAdmin &&
+        !selectedBranch &&
+        (!branchList || branchList.length === 0)
+      ) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setSummaryData(null);
+
+      try {
+        if (isAdmin && !selectedBranch && branchList?.length > 0) {
+          const branchResults = [];
+          for (const branch of branchList) {
+            try {
+              const params = new URLSearchParams({
+                branch_id: branch._id,
+                selected_date: selectedDate,
+              });
+              params.set("_name", "get_daily_collection_sheet_v2");
+
+              const response = await fetchWrapper.get(
+                getApiBaseUrl() + "dcs?" + params.toString()
+              );
+              if (response.data?.length > 0) {
+                const t = calculateTotals(response.data.map(parseRow));
+                branchResults.push({
+                  branchId: branch._id,
+                  branchCode: branch.code || "-",
+                  branchName: branch.name,
+                  ...t,
+                });
+              }
+            } catch {
+              /* skip failed branch */
+            }
+          }
+          branchResults.sort((a, b) =>
+            (a.branchCode || "").localeCompare(b.branchCode || "")
+          );
+          setBranchData(branchResults);
+          setData([]);
+          setTotals(calculateTotals(branchResults));
+        } else {
+          let branchId = null,
+            loId = null;
+          if (isLoanOfficer) {
+            branchId = currentUser.designatedBranchId;
+            loId = currentUser._id;
+          } else if (isBranchManager) {
+            branchId = currentUser.designatedBranchId;
             loId = selectedLo?._id || null;
-        } else if (canSelectBranch) {
+          } else if (canSelectBranch) {
             branchId = selectedBranch?._id || null;
             loId = selectedLo?._id || null;
-        } else {
+          } else {
             branchId = currentBranch?._id;
             loId = selectedLo?._id || null;
-        }
+          }
 
-        if (!branchId) {
-            setCashbookData({});
-            return;
-        }
-
-        fetchCashbookMonth(
-            branchId,
-            selectedDate,
-            null
-        );
-    }, [
-        activeTab,
-        selectedDate,
-        selectedLo?._id,
-        selectedBranch?._id,
-        currentBranch?._id,
-        currentUser?._id,
-        currentUser?.designatedBranchId,
-        isLoanOfficer,
-        isBranchManager,
-        canSelectBranch,
-        fetchCashbookMonth,
-    ]);
-
-    // ── Main DCS data fetch ──────────────────────────────────────────────────
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!currentUser) return;
-            if (isAdmin && !selectedBranch && (!branchList || branchList.length === 0)) {
-                setLoading(false);
-                return;
-            }
-            setLoading(true);
+          if (!branchId) {
+            setData([]);
+            setBranchData([]);
+            setTotals(null);
             setSummaryData(null);
+            return;
+          }
 
-            try {
-                if (isAdmin && !selectedBranch && branchList?.length > 0) {
-                    const branchResults = [];
-                    for (const branch of branchList) {
-                        try {
-                            const params = new URLSearchParams({ branch_id: branch._id, selected_date: selectedDate });
-                            params.set('_name', 'get_daily_collection_sheet_v2');
+          const params = new URLSearchParams({
+            branch_id: branchId,
+            selected_date: selectedDate,
+          });
+          if (loId) params.append("lo_id", loId);
 
-                            const response = await fetchWrapper.get(
-                                getApiBaseUrl() + 'dcs?' + params.toString()
-                            );
-                            if (response.data?.length > 0) {
-                                const t = calculateTotals(response.data.map(parseRow));
-                                branchResults.push({
-                                    branchId:   branch._id,
-                                    branchCode: branch.code || '-',
-                                    branchName: branch.name,
-                                    ...t,
-                                });
-                            }
-                        } catch { /* skip failed branch */ }
-                    }
-                    branchResults.sort((a, b) => (a.branchCode || '').localeCompare(b.branchCode || ''));
-                    setBranchData(branchResults);
-                    setData([]);
-                    setTotals(calculateTotals(branchResults));
+          params.set("_name", "get_daily_collection_sheet_v2");
 
-                } else {
-                    let branchId = null, loId = null;
-                    if (isLoanOfficer) {
-                        branchId = currentUser.designatedBranchId;
-                        loId     = currentUser._id;
-                    } else if (isBranchManager) {
-                        branchId = currentUser.designatedBranchId;
-                        loId     = selectedLo?._id || null;
-                    } else if (canSelectBranch) {
-                        branchId = selectedBranch?._id || null;
-                        loId     = selectedLo?._id || null;
-                    } else {
-                        branchId = currentBranch?._id;
-                        loId     = selectedLo?._id || null;
-                    }
+          const response = await fetchWrapper.get(
+            getApiBaseUrl() + "dcs?" + params.toString()
+          );
+          fetchSummary(branchId, selectedDate, loId);
 
-                    if (!branchId) {
-                        setData([]);
-                        setBranchData([]);
-                        setTotals(null);
-                        setSummaryData(null);
-                        return;
-                    }
+          if (response.data?.length > 0) {
+            const processed = response.data.map(parseRow);
+            const loMap = {};
+            processed.forEach((item) => {
+              if (!loMap[item.loId])
+                loMap[item.loId] = {
+                  loId: item.loId,
+                  loName: item.loName,
+                  groups: [],
+                };
+              loMap[item.loId].groups.push(item);
+            });
+            const flat = [];
+            Object.values(loMap).forEach((lo) => {
+              lo.groups.forEach((group, idx) => {
+                flat.push({
+                  ...group,
+                  groupNo: idx + 1,
+                  isFirstInLo: idx === 0,
+                  loRowSpan: lo.groups.length,
+                });
+              });
+            });
 
-                    const params = new URLSearchParams({ branch_id: branchId, selected_date: selectedDate });
-                    if (loId) params.append('lo_id', loId);
-
-                    params.set('_name', 'get_daily_collection_sheet_v2');
-
-                    const response = await fetchWrapper.get(
-                        getApiBaseUrl() + 'dcs?' + params.toString()
-                    );
-                    fetchSummary(branchId, selectedDate, loId);
-
-                    if (response.data?.length > 0) {
-                        const processed = response.data.map(parseRow);
-                        const loMap = {};
-                        processed.forEach(item => {
-                            if (!loMap[item.loId]) loMap[item.loId] = { loId: item.loId, loName: item.loName, groups: [] };
-                            loMap[item.loId].groups.push(item);
-                        });
-                        const flat = [];
-                        Object.values(loMap).forEach(lo => {
-                            lo.groups.forEach((group, idx) => {
-                                flat.push({ ...group, groupNo: idx + 1, isFirstInLo: idx === 0, loRowSpan: lo.groups.length });
-                            });
-                        });
-
-                        setBranchData([]);
-                        setData(flat);
-                        setTotals(calculateTotals(flat));
-                    } else {
-                        setData([]); setBranchData([]); setTotals(null);
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching DCS data:', error);
-                toast.error('Error fetching daily collection data');
-                setData([]); setBranchData([]); setTotals(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [
-        currentUserId,
-        designatedBranchId,
-        currentBranchId,
-        selectedDate,
-        selectedLo?._id,
-        selectedBranch?._id,
-        isAdmin,
-        canSelectBranch,
-        branchList,
-        fetchSummary,
-    ]);
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    const getBranchName = () => {
-        if (isLoanOfficer || isBranchManager) {
-            return (
-                currentUser?.designatedBranch?.name ||
-                currentUser?.designatedBranchName ||
-                'Branch'
-            );
+            setBranchData([]);
+            setData(flat);
+            setTotals(calculateTotals(flat));
+          } else {
+            setData([]);
+            setBranchData([]);
+            setTotals(null);
+          }
         }
-
-        if (isAdmin) {
-            return selectedBranch?.name || 'All Branches';
-        }
-
-        if (isAreaManager) {
-            return selectedBranch?.name || 'Select a Branch';
-        }
-
-        return currentBranch?.name || 'Branch';
+      } catch (error) {
+        console.error("Error fetching DCS data:", error);
+        toast.error("Error fetching daily collection data");
+        setData([]);
+        setBranchData([]);
+        setTotals(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const handleDateChange   = e  => setSelectedDate(e.target.value);
-    const handleLoChange     = lo => setSelectedLo(lo);
-    const handleBranchChange = branch => {
-        setSelectedBranch(branch);
-        setSelectedLo(null);
-        setLoanOfficers([]);
-        setSummaryData(null);
-        setActiveTab('dcs');
-        if (branch) setBranchData([]); else setData([]);
-    };
+    fetchData();
+  }, [
+    currentUserId,
+    designatedBranchId,
+    currentBranchId,
+    selectedDate,
+    selectedLo?._id,
+    selectedBranch?._id,
+    isAdmin,
+    canSelectBranch,
+    branchList,
+    fetchSummary,
+  ]);
 
-    const hasDetailData = data?.length > 0;
-    const hasBranchData = branchData?.length > 0;
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const getBranchName = () => {
+    if (isLoanOfficer || isBranchManager) {
+      return (
+        currentUser?.designatedBranch?.name ||
+        currentUser?.designatedBranchName ||
+        "Branch"
+      );
+    }
 
-    // ── Action handlers (delegate to utility files) ───────────────────────────
-    const handleExport = () => exportDCSExcel({
-        data,
-        branchData,
-        totals,
-        summaryData,
-        selectedDate,
-        getBranchName,
-        isAdmin,
-        selectedBranch,
-        currentBranch,
+    if (isAdmin) {
+      return selectedBranch?.name || "All Branches";
+    }
+
+    if (isAreaManager) {
+      return selectedBranch?.name || "Select a Branch";
+    }
+
+    return currentBranch?.name || "Branch";
+  };
+
+  const handleDateChange = (e) => {
+    setCashbookBeginningBalance(null);
+    setCashbookData({});
+    setSelectedDate(e.target.value);
+  };
+
+  const handleLoChange = (lo) => setSelectedLo(lo);
+  const handleBranchChange = (branch) => {
+    setSelectedBranch(branch);
+    setCashbookBeginningBalance(null);
+    setCashbookData({});
+    setLoanOfficers([]);
+    setSelectedLo(null);
+    setSummaryData(null);
+    setActiveTab("dcs");
+    if (branch) setBranchData([]);
+    else setData([]);
+  };
+
+  const hasDetailData = data?.length > 0;
+  const hasBranchData = branchData?.length > 0;
+
+  // ── Action handlers (delegate to utility files) ───────────────────────────
+  const handleExport = () =>
+    exportDCSExcel({
+      data,
+      branchData,
+      totals,
+      summaryData,
+      selectedDate,
+      getBranchName,
+      isAdmin,
+      selectedBranch,
+      currentBranch,
     });
 
-    const handlePrint = () => printDCS({
-        data,
-        branchData,
-        totals,
-        summaryData,
-        selectedDate,
-        getBranchName,
-        selectedLo,
-        isLoanOfficer,
-        currentUser,
+  const handlePrint = () =>
+    printDCS({
+      data,
+      branchData,
+      totals,
+      summaryData,
+      selectedDate,
+      getBranchName,
+      selectedLo,
+      isLoanOfficer,
+      currentUser,
     });
 
-    // ── Tab button ───────────────────────────────────────────────────────────
-    const TabBtn = ({ id, label, icon: Icon }) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            className={`flex flex-shrink-0 items-center space-x-1.5 px-4 py-2.5 text-sm whitespace-nowrap font-medium border-b-2 transition-colors ${
-                activeTab === id
-                    ? 'border-teal-500 text-teal-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-        >
-            <Icon className="w-4 h-4" />
-            <span>{label}</span>
-        </button>
-    );
+  // ── Tab button ───────────────────────────────────────────────────────────
+  const TabBtn = ({ id, label, icon: Icon }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`flex flex-shrink-0 items-center space-x-1.5 px-4 py-2.5 text-sm whitespace-nowrap font-medium border-b-2 transition-colors ${
+        activeTab === id
+          ? "border-teal-500 text-teal-600"
+          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+      <span>{label}</span>
+    </button>
+  );
 
-    // ── Render ───────────────────────────────────────────────────────────────
-    return (
-        <Layout header={false} noPad={true}>
-            {loading ? <Spinner /> : (
-                <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50">
-
-                    {/* ── Header ── */}
-                    <div className="bg-white px-6 py-4 shadow-sm border-b border-gray-200 flex-shrink-0">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                                <FileSpreadsheet className="w-8 h-8 text-teal-600" />
-                                <div>
-                                    <h1 className="text-xl font-bold text-gray-800">Daily Collection Sheet</h1>
-                                    <p className="text-sm text-gray-500">
-                                        {isLoanOfficer ? 'View your daily collection report' : 'Daily collection reports by loan officer'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <button
-                                    onClick={handlePrint}
-                                    disabled={!hasDetailData && !hasBranchData}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <Printer className="w-4 h-4" />
-                                    <span>Print</span>
-                                </button>
-                                <button
-                                    onClick={handleExport}
-                                    disabled={!hasDetailData && !hasBranchData}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    <span>Export Excel</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Filters */}
-                        <div className="flex flex-wrap items-center gap-4 bg-gray-50 rounded-lg p-4">
-                            <div className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm font-medium text-gray-700">Date:</span>
-                                <input
-                                    type="date"
-                                    value={selectedDate}
-                                    max={moment().format('YYYY-MM-DD')}
-                                    onChange={handleDateChange}
-                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 h-10 px-3 w-40"
-                                />
-                            </div>
-
-                            {canSelectBranch && (
-                                <div className="flex items-center space-x-2">
-                                    <Building2 className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-700">Branch:</span>
-                                    <div className="w-52">
-                                        <Select
-                                            options={branchList?.map(b => ({ ...b, value: b._id, label: b.name })) || []}
-                                            value={selectedBranch ? { ...selectedBranch, value: selectedBranch._id, label: selectedBranch.name } : null}
-                                            styles={selectStyles}
-                                            components={{ DropdownIndicator }}
-                                            onChange={handleBranchChange}
-                                            isClearable={isAdmin}
-                                            placeholder={isAdmin ? "All Branches" : "Select a Branch"}
-                                            menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                                            menuPosition="fixed"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {(isBranchManager || (canSelectBranch && selectedBranch)) && (
-                                <div className="flex items-center space-x-2">
-                                    <User className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-700">Loan Officer:</span>
-                                    <div className="w-48">
-                                        <Select
-                                            options={[{ value: '', label: 'All Loan Officers', _id: null }, ...loanOfficers]}
-                                            value={selectedLo}
-                                            styles={selectStyles}
-                                            components={{ DropdownIndicator }}
-                                            onChange={handleLoChange}
-                                            isClearable
-                                            placeholder="All Loan Officers"
-                                            menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                                            menuPosition="fixed"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {!canSelectBranch && (
-                                <div className="flex items-center space-x-2 ml-auto">
-                                    <Building2 className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm text-gray-600">
-                                        Branch: <span className="font-semibold">{getBranchName()}</span>
-                                    </span>
-                                    {isLoanOfficer && (
-                                        <span className="text-sm text-gray-500 ml-2">
-                                            | LO: <span className="font-semibold">{currentUser?.firstName} {currentUser?.lastName}</span>
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {!isAdminAllBranches && (!isAreaManager || selectedBranch) && (
-                            <div className="flex space-x-1 mt-3 border-b border-gray-200 overflow-x-auto">
-                                <TabBtn
-                                    id="dcs"
-                                    label="DCS Table"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="other-receipts"
-                                    label="Other Receipts & Payments Summary"
-                                    icon={BookOpen}
-                                />
-
-                                <TabBtn
-                                    id="management-expenses"
-                                    label="Management Expenses"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="transaction"
-                                    label="Transaction"
-                                    icon={BookOpen}
-                                />
-
-                                <TabBtn
-                                    id="cashbook"
-                                    label="Cashbook"
-                                    icon={BookOpen}
-                                />
-
-                                <TabBtn
-                                    id="mis"
-                                    label="MIS"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="cash-in-bank"
-                                    label="Cash in Bank"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="cbhb"
-                                    label="CBHB"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="payroll"
-                                    label="Payroll"
-                                    icon={FileSpreadsheet}
-                                />
-                                
-                                <TabBtn
-                                    id="fundtransfer"
-                                    label="Fund Transfer"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="other-income-misc"
-                                    label="Other Income - Misc Income"
-                                    icon={FileSpreadsheet}
-                                />
-
-                                <TabBtn
-                                    id="wtax-ee-er"
-                                    label="WTax, EE & ER"
-                                    icon={FileSpreadsheet}
-                                />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ── Content ── */}
-                    <div className="flex-1 overflow-auto min-h-0">
-                        {activeTab === 'dcs' || isAdminAllBranches ? (
-                            <div className="flex h-full">
-                                <div className="flex-1 overflow-auto p-6 min-w-0">
-                                    <DCSTable
-                                        data={data}
-                                        branchData={branchData}
-                                        totals={totals}
-                                        isAdminAllBranches={isAdminAllBranches}
-                                        selectedDate={selectedDate}
-                                    />
-                                </div>
-
-                                {!isAdminAllBranches && (
-                                    <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
-                                        <div className="p-4">
-                                            <div className="flex items-center space-x-2 mb-3">
-                                                <BookOpen className="w-4 h-4 text-teal-600" />
-                                                <span className="text-sm font-bold text-gray-800">Summary</span>
-                                                {summaryLoading && (
-                                                    <span className="text-xs text-gray-400 animate-pulse ml-1">Loading…</span>
-                                                )}
-                                            </div>
-                                            <div className="text-xs text-gray-500 mb-3">
-                                                {getBranchName()} — {moment(selectedDate).format('MMM D, YYYY')} ({moment(selectedDate).format('ddd')})
-                                            </div>
-                                            <SummaryPanel
-                                                summaryData={summaryData}
-                                                dcsTotals={totals}
-                                                branchId={transactionBranchId}
-                                                selectedDate={selectedDate}
-                                                otherIncomeRefreshKey={otherIncomeRefreshKey}
-                                                canEditBeginningBalance={
-                                                    isAdmin &&
-                                                    Boolean(transactionBranchId) &&
-                                                    !selectedLo
-                                                }
-                                                onBeginningBalanceSaved={() => {
-                                                    if (!transactionBranchId) return;
-
-                                                    fetchSummary(
-                                                        transactionBranchId,
-                                                        selectedDate,
-                                                        selectedLo?._id || null
-                                                    );
-
-                                                    fetchCashbookMonth(
-                                                        transactionBranchId,
-                                                        selectedDate,
-                                                        null
-                                                    );
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : activeTab === 'other-receipts' ? (
-                            <div className="p-6">
-                                <OtherReceiptPayment
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'management-expenses' ? (
-                            <div className="p-6">
-                                <MngtExpenses
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'transaction' ? (
-                            <div className="p-6">
-                                <TransactionPanel
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                    onOtherIncomeChanged={() => {
-                                        setOtherIncomeRefreshKey((previous) => previous + 1);
-
-                                        if (!transactionBranchId) return;
-
-                                        fetchSummary(
-                                            transactionBranchId,
-                                            selectedDate,
-                                            selectedLo?._id || null
-                                        );
-
-                                        fetchCashbookMonth(
-                                            transactionBranchId,
-                                            selectedDate,
-                                            null
-                                        );
-                                    }}
-                                />
-                            </div>
-
-                        ) : activeTab === 'cashbook' ? (
-                            <div className="p-6">
-                                <Cashbook
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                    cashbookData={cashbookData}
-                                    loading={cashbookLoading}
-                                    otherIncomeRefreshKey={otherIncomeRefreshKey}
-                                />
-                            </div>
-
-                        ) : activeTab === 'mis' ? (
-                            <div className="p-6">
-                                <MIS
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'cash-in-bank' ? (
-                            <div className="p-6">
-                                <CashInBank
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'cbhb' ? (
-                            <div className="p-6">
-                                <CBHB
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'payroll' ? (
-                            <div className="p-6">
-                                {(isAdmin || isBranchManager) && transactionBranchId ? (
-                                    <Payroll
-                                        branchId={transactionBranchId}
-                                        branchName={getBranchName()}
-                                        currentUser={currentUser}
-                                        selectedDate={selectedDate}
-                                    />
-                                ) : (
-                                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
-                                        <h3 className="text-lg font-semibold text-yellow-800">
-                                            {isAdmin && !transactionBranchId
-                                                ? "Please Select a Branch"
-                                                : "Payroll Access Restricted"}
-                                        </h3>
-
-                                        <p className="mt-2 text-sm text-yellow-700">
-                                            {isAdmin && !transactionBranchId
-                                                ? "Please select a branch from the Branch filter above to view or edit its payroll."
-                                                : "Only Administrators and Branch Managers can manually enter and edit payroll."}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                        ) : activeTab === 'fundtransfer' ? (
-                            <div className="p-6">
-                                <FundTransfer
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : activeTab === 'other-income-misc' ? (
-                            <div className="p-6">
-                                <OtherIncomeMiscIncome
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-                        
-                        ) : activeTab === 'wtax-ee-er' ? (
-                            <div className="p-6">
-                                <WTaxEEER
-                                    branchId={transactionBranchId}
-                                    selectedDate={selectedDate}
-                                />
-                            </div>
-
-                        ) : null}
-                    </div>
-
+  // ── Render ───────────────────────────────────────────────────────────────
+  return (
+    <Layout header={false} noPad={true}>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50">
+          {/* ── Header ── */}
+          <div className="bg-white px-6 py-4 shadow-sm border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <FileSpreadsheet className="w-8 h-8 text-teal-600" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-800">
+                    Daily Collection Sheet
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {isLoanOfficer
+                      ? "View your daily collection report"
+                      : "Daily collection reports by loan officer"}
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handlePrint}
+                  disabled={!hasDetailData && !hasBranchData}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print</span>
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={!hasDetailData && !hasBranchData}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export Excel</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-4 bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Date:</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={moment().format("YYYY-MM-DD")}
+                  onChange={handleDateChange}
+                  className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 h-10 px-3 w-40"
+                />
+              </div>
+
+              {canSelectBranch && (
+                <div className="flex items-center space-x-2">
+                  <Building2 className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Branch:
+                  </span>
+                  <div className="w-52">
+                    <Select
+                      options={
+                        branchList?.map((b) => ({
+                          ...b,
+                          value: b._id,
+                          label: b.name,
+                        })) || []
+                      }
+                      value={
+                        selectedBranch
+                          ? {
+                              ...selectedBranch,
+                              value: selectedBranch._id,
+                              label: selectedBranch.name,
+                            }
+                          : null
+                      }
+                      styles={selectStyles}
+                      components={{ DropdownIndicator }}
+                      onChange={handleBranchChange}
+                      isClearable={isAdmin}
+                      placeholder={isAdmin ? "All Branches" : "Select a Branch"}
+                      menuPortalTarget={
+                        typeof document !== "undefined" ? document.body : null
+                      }
+                      menuPosition="fixed"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {(isBranchManager || (canSelectBranch && selectedBranch)) && (
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Loan Officer:
+                  </span>
+                  <div className="w-48">
+                    <Select
+                      options={[
+                        { value: "", label: "All Loan Officers", _id: null },
+                        ...loanOfficers,
+                      ]}
+                      value={selectedLo}
+                      styles={selectStyles}
+                      components={{ DropdownIndicator }}
+                      onChange={handleLoChange}
+                      isClearable
+                      placeholder="All Loan Officers"
+                      menuPortalTarget={
+                        typeof document !== "undefined" ? document.body : null
+                      }
+                      menuPosition="fixed"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!canSelectBranch && (
+                <div className="flex items-center space-x-2 ml-auto">
+                  <Building2 className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm text-gray-600">
+                    Branch:{" "}
+                    <span className="font-semibold">{getBranchName()}</span>
+                  </span>
+                  {isLoanOfficer && (
+                    <span className="text-sm text-gray-500 ml-2">
+                      | LO:{" "}
+                      <span className="font-semibold">
+                        {currentUser?.firstName} {currentUser?.lastName}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {!isAdminAllBranches && (!isAreaManager || selectedBranch) && (
+              <div className="flex space-x-1 mt-3 border-b border-gray-200 overflow-x-auto">
+                <TabBtn id="dcs" label="DCS Table" icon={FileSpreadsheet} />
+
+                <TabBtn
+                  id="other-receipts"
+                  label="Other Receipts & Payments Summary"
+                  icon={BookOpen}
+                />
+
+                <TabBtn
+                  id="management-expenses"
+                  label="Management Expenses"
+                  icon={FileSpreadsheet}
+                />
+
+                <TabBtn id="transaction" label="Transaction" icon={BookOpen} />
+
+                <TabBtn id="cashbook" label="Cashbook" icon={BookOpen} />
+
+                <TabBtn id="mis" label="MIS" icon={FileSpreadsheet} />
+
+                <TabBtn
+                  id="cash-in-bank"
+                  label="Cash in Bank"
+                  icon={FileSpreadsheet}
+                />
+
+                <TabBtn id="cbhb" label="CBHB" icon={FileSpreadsheet} />
+
+                <TabBtn id="payroll" label="Payroll" icon={FileSpreadsheet} />
+
+                <TabBtn
+                  id="fundtransfer"
+                  label="Fund Transfer"
+                  icon={FileSpreadsheet}
+                />
+
+                <TabBtn
+                  id="other-income-misc"
+                  label="Other Income - Misc Income"
+                  icon={FileSpreadsheet}
+                />
+
+                <TabBtn
+                  id="wtax-ee-er"
+                  label="WTax, EE & ER"
+                  icon={FileSpreadsheet}
+                />
+              </div>
             )}
-        </Layout>
-    );
+          </div>
+
+          {/* ── Content ── */}
+          <div className="flex-1 overflow-auto min-h-0">
+            {activeTab === "dcs" || isAdminAllBranches ? (
+              <div className="flex h-full">
+                <div className="flex-1 overflow-auto p-6 min-w-0">
+                  <DCSTable
+                    data={data}
+                    branchData={branchData}
+                    totals={totals}
+                    isAdminAllBranches={isAdminAllBranches}
+                    selectedDate={selectedDate}
+                  />
+                </div>
+
+                {!isAdminAllBranches && (
+                  <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
+                    <div className="p-4">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <BookOpen className="w-4 h-4 text-teal-600" />
+                        <span className="text-sm font-bold text-gray-800">
+                          Summary
+                        </span>
+                        {summaryLoading && (
+                          <span className="text-xs text-gray-400 animate-pulse ml-1">
+                            Loading…
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-3">
+                        {getBranchName()} —{" "}
+                        {moment(selectedDate).format("MMM D, YYYY")} (
+                        {moment(selectedDate).format("ddd")})
+                      </div>
+
+                      {!selectedLo && transactionBranchId && (
+                        <div style={{ display: "none" }}>
+                          <Cashbook
+                            key={`${transactionBranchId}-${selectedDate}`}
+                            branchId={transactionBranchId}
+                            selectedDate={selectedDate}
+                            cashbookData={cashbookData}
+                            loading={cashbookLoading}
+                            otherIncomeRefreshKey={otherIncomeRefreshKey}
+                            onBeginningBalanceCalculated={
+                              handleCashbookBeginningBalance
+                            }
+                          />
+                        </div>
+                      )}
+
+                      <SummaryPanel
+                        summaryData={
+                          summaryData
+                            ? {
+                                ...summaryData,
+                                rcpt_csf:
+                                  totals?.csfCollection ?? summaryData.rcpt_csf,
+                              }
+                            : summaryData
+                        }
+                        dcsTotals={totals}
+                        branchId={transactionBranchId}
+                        selectedDate={selectedDate}
+                        otherIncomeRefreshKey={otherIncomeRefreshKey}
+                        cashbookBeginningBalance={
+                          !selectedLo && !cashbookLoading
+                            ? cashbookBeginningBalance
+                            : null
+                        }
+                        canEditBeginningBalance={
+                          isAdmin && Boolean(transactionBranchId) && !selectedLo
+                        }
+                        onBeginningBalanceSaved={() => {
+                          if (!transactionBranchId) return;
+
+                          fetchSummary(
+                            transactionBranchId,
+                            selectedDate,
+                            selectedLo?._id || null
+                          );
+
+                          fetchCashbookMonth(
+                            transactionBranchId,
+                            selectedDate,
+                            null
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === "other-receipts" ? (
+              <div className="p-6">
+                <OtherReceiptPayment
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "management-expenses" ? (
+              <div className="p-6">
+                <MngtExpenses
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "transaction" ? (
+              <div className="p-6">
+                <TransactionPanel
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                  onOtherIncomeChanged={() => {
+                    setOtherIncomeRefreshKey((previous) => previous + 1);
+
+                    if (!transactionBranchId) return;
+
+                    fetchSummary(
+                      transactionBranchId,
+                      selectedDate,
+                      selectedLo?._id || null
+                    );
+
+                    fetchCashbookMonth(transactionBranchId, selectedDate, null);
+                  }}
+                />
+              </div>
+            ) : activeTab === "cashbook" ? (
+              <div className="p-6">
+                <Cashbook
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                  cashbookData={cashbookData}
+                  loading={cashbookLoading}
+                  otherIncomeRefreshKey={otherIncomeRefreshKey}
+                />
+              </div>
+            ) : activeTab === "mis" ? (
+              <div className="p-6">
+                <MIS
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "cash-in-bank" ? (
+              <div className="p-6">
+                <CashInBank
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "cbhb" ? (
+              <div className="p-6">
+                <CBHB
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "payroll" ? (
+              <div className="p-6">
+                {(isAdmin || isBranchManager) && transactionBranchId ? (
+                  <Payroll
+                    branchId={transactionBranchId}
+                    branchName={getBranchName()}
+                    currentUser={currentUser}
+                    selectedDate={selectedDate}
+                  />
+                ) : (
+                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+                    <h3 className="text-lg font-semibold text-yellow-800">
+                      {isAdmin && !transactionBranchId
+                        ? "Please Select a Branch"
+                        : "Payroll Access Restricted"}
+                    </h3>
+
+                    <p className="mt-2 text-sm text-yellow-700">
+                      {isAdmin && !transactionBranchId
+                        ? "Please select a branch from the Branch filter above to view or edit its payroll."
+                        : "Only Administrators and Branch Managers can manually enter and edit payroll."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === "fundtransfer" ? (
+              <div className="p-6">
+                <FundTransfer
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "other-income-misc" ? (
+              <div className="p-6">
+                <OtherIncomeMiscIncome
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : activeTab === "wtax-ee-er" ? (
+              <div className="p-6">
+                <WTaxEEER
+                  branchId={transactionBranchId}
+                  selectedDate={selectedDate}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
 };
 
 export default DailyCollectionSheet;

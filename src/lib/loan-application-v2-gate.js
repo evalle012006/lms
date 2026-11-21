@@ -63,6 +63,20 @@ export function approvalMode(user) {
     return null;
 }
 
+// Rejected tab: every role that can open the page can LOOK at rejected loans, within
+// the same scope as the other tabs (supervisors: their branches, branch managers: their
+// branch, loan officers: only their own loans). The list endpoint checks this too.
+export function canViewRejectedLoans(user) {
+    return isEligibleForLoanApplicationV2(user);
+}
+
+// Reinstating a rejected loan (later step): admin and the supervisors only, never branch
+// managers or loan officers. Enforce it in the API as well as the UI.
+export function canReinstateRejectedLoans(user) {
+    if (!user) return false;
+    return user.root === true || SUPERVISOR_APPROVER_ROLES.includes(user.role?.shortCode);
+}
+
 export function isEligibleForLoanApplicationV2(currentUser) {
     if (!currentUser) return false;
     if (currentUser.root === true) return true;

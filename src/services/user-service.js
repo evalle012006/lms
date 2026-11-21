@@ -30,17 +30,12 @@ function login(username, password) {
     return fetchWrapper.post(apiURL, { username, password })
         .then(data => {
             // user login logic here!!
-            if (!data.success && data.error == 'NO_PASS') {
-                const redirect = `/forgot-password?action=reset&id=${data.user}`;
-                Router.push(redirect);
-            } else {
-                // save to local storage
-                localStorage.setItem('acuser', JSON.stringify(data.user));
-                localStorage.setItem('api_version', data.user?.__api_version ?? '');
+            // save to local storage
+            localStorage.setItem('acuser', JSON.stringify(data.user));
+            localStorage.setItem('api_version', data.user?.__api_version ?? '');
 
-                // set subject 
-                userSubject.next(data);
-            }
+            // set subject 
+            userSubject.next(data);
             return data;
         });
 }

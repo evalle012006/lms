@@ -199,6 +199,11 @@ const getBranchDcsTotals = async (branchId, selectedDate) => {
             'other_loan_actual'
         ),
 
+        weekly12Actual: sum(
+            'weekly12Actual',
+            'weekly_12_actual'
+        ),
+
         mcbuReturnAmount: sum(
             'mcbuReturnAmount',
             'mcbu_return_amount'
@@ -319,7 +324,10 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
         dcsTotals.regularLoanActual - originalRegularLoan;
 
     const otherLoanDifference =
-        dcsTotals.otherLoanActual - originalOtherLoan;
+        (
+            dcsTotals.otherLoanActual +
+            dcsTotals.weekly12Actual
+        ) - originalOtherLoan;
 
     // DCS PAYMENT ADJUSTMENTS
     const mcbuReturnDifference =
@@ -345,6 +353,39 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
     const payments = roundMoney(
         originalPayments + totalPaymentDifference
     );
+
+    if (
+        selectedDate === "2026-11-03" ||
+        selectedDate === "2026-11-04"
+    ) {
+        console.log("[DCS BEGINNING BALANCE DEBUG]", {
+            branchId,
+            selectedDate,
+
+            originalReceipts,
+            originalPayments,
+
+            originalMcbu,
+            originalCsf,
+            originalRegularLoan,
+            originalOtherLoan,
+
+            originalMcbuReturn,
+            originalCsfReturn,
+
+            dcsTotals,
+
+            totalCollectionDifference,
+            totalPaymentDifference,
+
+            calculatedReceipts: receipts,
+            calculatedPayments: payments,
+
+            netCashMovement: roundMoney(
+                receipts - payments
+            ),
+        });
+    }
 
     return {
         receipts,
