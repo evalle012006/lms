@@ -7,6 +7,7 @@
 //   confidence  'exact' | 'high' | 'possible'            (comma-separated allowed)
 //   scenario    cross_branch | same_branch_diff_lo | same_lo_diff_group | same_group  (comma-separated allowed)
 //   severity    both_active | one_active | no_active
+//   review      'pending' (default, not yet reviewed) | 'confirmed' | 'not_duplicate' | 'all'
 //   branchId / loId / groupId                            group kept if ANY member matches
 //   search      name, client id, or contact number
 //   all         'true' to return every filtered group (Excel export, capped at EXPORT_MAX)
@@ -27,6 +28,7 @@ const VIEWS = ['active', 'closed', 'same_client'];
 const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `
   _id view confidence severity scenarios reasons active_count member_count
   exact_closed_vs_active members first_detected_at last_seen_at
+  review_status review_note reviewed_by_name reviewed_at
 `);
 const BRANCH_TYPE = createGraphType('branches', `_id name`)('branches');
 
@@ -68,8 +70,15 @@ async function list(req, res) {
             ],
         });
     }
+    // Reviewed groups: 'not_duplicate' is hidden from the default view; 'confirmed' stays visible under its own filter.
+    const review = ['pending', 'confirmed', 'not_duplicate', 'all'].includes(q.review) ? q.review : 'pending';
+    const reviewCond = review === 'pending' ? [{ review_status: { _is_null: true } }]
+        : review === 'all' ? [] : [{ review_status: { _eq: review } }];
+    and.push(...reviewCond);
+
     const where = { _and: and };
-    const base = [{ status: { _eq: 'open' } }, { view: { _eq: view } }];
+    const base = [{ status: { _eq: 'open' } }, { view: { _eq: view } }, ...reviewCond];
+    const viewBase = [{ status: { _eq: 'open' } }, { view: { _eq: view } }];
 
     const T = (alias) => CLUSTER_TYPE(alias);
     const agg = (alias, extra = []) => aggregateQl(
@@ -88,6 +97,9 @@ async function list(req, res) {
         agg('highAgg', [{ confidence: { _eq: 'high' } }]),
         agg('possibleAgg', [{ confidence: { _eq: 'possible' } }]),
         agg('bothActiveAgg', [{ severity: { _eq: 'both_active' } }]),
+        aggregateQl(T('pendingReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _is_null: true } }] }),
+        aggregateQl(T('confirmedReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _eq: 'confirmed' } }] }),
+        aggregateQl(T('notDupReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _eq: 'not_duplicate' } }] }),
         queryQl(BRANCH_TYPE, { order_by: [{ name: 'asc' }] }),
     ).then(r => r.data);
 
@@ -105,6 +117,11 @@ async function list(req, res) {
             high: data.highAgg.aggregate.count,
             possible: data.possibleAgg.aggregate.count,
             bothActive: data.bothActiveAgg.aggregate.count,
+        },
+        reviewCounts: {
+            pending: data.pendingReviewAgg.aggregate.count,
+            confirmed: data.confirmedReviewAgg.aggregate.count,
+            not_duplicate: data.notDupReviewAgg.aggregate.count,
         },
         branches: data.branches ?? [],
         lastRun: run && {
@@ -128,5 +145,9 @@ function toApiCluster(c) {
         exactClosedVsActive: c.exact_closed_vs_active,
         members: c.members,
         firstDetectedAt: c.first_detected_at,
+        reviewStatus: c.review_status,
+        reviewNote: c.review_note,
+        reviewedByName: c.reviewed_by_name,
+        reviewedAt: c.reviewed_at,
     };
 }

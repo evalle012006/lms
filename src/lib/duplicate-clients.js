@@ -244,7 +244,7 @@ const isClosedStatus = (s) => ['offset', 'completed', 'closed'].includes(s);
  * @param {Set<string>} activeLoanClientIds  clientIds that currently own a loan with status 'active'
  * @returns {{ clusters: Array, stats: object }}
  */
-export function detectDuplicates(clients, activeLoanClientIds = new Set()) {
+export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = []) {
     const prepared = clients.map(prepareClient);
     const byId = new Map(prepared.map(c => [c._id, c]));
 
@@ -268,6 +268,20 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set()) {
                 if (pairs.has(key)) continue;
                 pairs.set(key, scorePair(a, b));    // null cached too -> never rescored
             }
+        }
+    }
+
+    // Extra evidence from outside the text engine (e.g. face matches): {idA, idB, confidence, reasons}.
+    for (const e of extraPairs) {
+        const a = byId.get(e.idA), b = byId.get(e.idB);
+        if (!a || !b) continue;
+        const key = a._id < b._id ? `${a._id}|${b._id}` : `${b._id}|${a._id}`;
+        const prev = pairs.get(key);
+        if (prev) {
+            prev.reasons = [...new Set([...prev.reasons, ...e.reasons])];
+            if (CONFIDENCE_RANK[e.confidence] > CONFIDENCE_RANK[prev.confidence]) prev.confidence = e.confidence;
+        } else {
+            pairs.set(key, { confidence: e.confidence, scenario: scenarioOf(a, b), reasons: e.reasons });
         }
     }
 

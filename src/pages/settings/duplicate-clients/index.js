@@ -30,6 +30,13 @@ const CONFIDENCE_STYLE = {
     possible: 'bg-yellow-100 text-yellow-700 border-yellow-200',
 };
 
+const REVIEW_LABELS = {
+    pending: 'Needs review',
+    confirmed: 'Confirmed duplicates',
+    not_duplicate: 'Marked not duplicate',
+    all: 'All',
+};
+
 const isAdmin = (u) => !!u && (u.root === true || u.role?.rep === 1);
 
 // Fields compared across members; a differing value is highlighted so the
@@ -45,15 +52,21 @@ const DuplicateClientsPage = () => {
     const [summary, setSummary] = useState(null);
     const [branches, setBranches] = useState([]);
     const [lastRun, setLastRun] = useState(null);
+    const [reviewCounts, setReviewCounts] = useState({ pending: 0, confirmed: 0, not_duplicate: 0 });
+    const [reviewTarget, setReviewTarget] = useState(null);   // { cluster, decision }
+    const [mergeTarget, setMergeTarget] = useState(null);     // cluster
     const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
+    const [metrics, setMetrics] = useState(null);          // { groups, byLo, byBranch } — loaded on demand
+    const [metricsOpen, setMetricsOpen] = useState(false);
+    const [metricsLoading, setMetricsLoading] = useState(false);
 
     const [page, setPage] = useState(1);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState({ confidence: '', scenario: '', severity: '', branchId: '' });
+    const [filters, setFilters] = useState({ confidence: '', scenario: '', severity: '', branchId: '', review: 'pending' });
 
     // Selection is by cluster and survives paging/filtering; keep the cluster
     // objects so "export selected" works for rows that are no longer on screen.
@@ -75,6 +88,21 @@ const DuplicateClientsPage = () => {
         return p;
     }, [view, search, filters]);
 
+    const toggleMetrics = async () => {
+        const next = !metricsOpen;
+        setMetricsOpen(next);
+        if (!next || metrics) return;
+        setMetricsLoading(true);
+        try {
+            const res = await fetchWrapper.get(getApiBaseUrl() + 'clients/duplicates/metrics');
+            if (res?.success) setMetrics(res); else toast.error(res?.message || 'Could not load metrics.');
+        } catch (e) {
+            toast.error(e.message || 'Could not load metrics.');
+        } finally {
+            setMetricsLoading(false);
+        }
+    };
+
     const load = useCallback(async ({ silent = false } = {}) => {
         if (!silent) setLoading(true);
         try {
@@ -89,6 +117,7 @@ const DuplicateClientsPage = () => {
             setSummary(res.summary);
             setBranches(res.branches);
             setLastRun(res.lastRun);
+            setReviewCounts(res.reviewCounts);
         } catch (e) {
             toast.error('Failed to load duplicate clients.');
         } finally {
@@ -136,6 +165,7 @@ const DuplicateClientsPage = () => {
     const filtersNote = useMemo(() => {
         const parts = [`View: ${TABS.find(t => t.value === view)?.label}`];
         if (search) parts.push(`Search: ${search}`);
+        parts.push(`Review: ${REVIEW_LABELS[filters.review]}`);
         if (filters.confidence) parts.push(`Confidence: ${CONFIDENCE_LABELS[filters.confidence]}`);
         if (filters.scenario) parts.push(`Scenario: ${SCENARIO_LABELS[filters.scenario]}`);
         if (filters.severity) parts.push(`Severity: ${SEVERITY_LABELS[filters.severity]}`);
@@ -243,7 +273,43 @@ const DuplicateClientsPage = () => {
                     </div>
                 )}
 
-                <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div className="mb-4">
+                    <button type="button" onClick={toggleMetrics} className="text-sm text-blue-600 hover:text-blue-800">
+                        {metricsOpen ? 'Hide' : 'Show'} who is creating duplicates (by LO / branch)
+                    </button>
+                    {metricsOpen && (
+                        <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4">
+                            {metricsLoading || !metrics ? <p className="text-sm text-gray-400">Loading…</p> : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {[['Loan officers', metrics.byLo, r => `${r.loName}${r.branchName ? ' · ' + r.branchName : ''}`],
+                                      ['Branches', metrics.byBranch, r => r.branchName]].map(([title, rows, label]) => (
+                                        <div key={title}>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{title} — newer record of each open group</p>
+                                            <table className="w-full text-sm">
+                                                <thead><tr className="text-xs text-gray-500 text-left">
+                                                    <th className="py-1">Name</th><th className="text-right">Groups</th><th className="text-right">Both active</th><th className="text-right">Exact/High</th>
+                                                </tr></thead>
+                                                <tbody>
+                                                    {rows.map((r, i) => (
+                                                        <tr key={i} className="border-t border-gray-100">
+                                                            <td className="py-1">{label(r)}</td>
+                                                            <td className="text-right">{r.groups}</td>
+                                                            <td className="text-right text-red-600">{r.bothActive}</td>
+                                                            <td className="text-right">{r.exactOrHigh}</td>
+                                                        </tr>
+                                                    ))}
+                                                    {rows.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-400">No data.</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 md:grid-cols-7 gap-3">
                     <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
                         placeholder="Name, client ID or contact no."
                         className="md:col-span-2 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -261,6 +327,13 @@ const DuplicateClientsPage = () => {
                     )}
                     <Select value={filters.branchId} onChange={(v) => changeFilter('branchId', v)}
                         placeholder="All branches" options={branches.map(b => [b._id, b.name])} />
+                    <select value={filters.review} onChange={(e) => changeFilter('review', e.target.value)}
+                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white">
+                        <option value="pending">Needs review ({reviewCounts.pending})</option>
+                        <option value="confirmed">Confirmed ({reviewCounts.confirmed})</option>
+                        <option value="not_duplicate">Not duplicate ({reviewCounts.not_duplicate})</option>
+                        <option value="all">All</option>
+                    </select>
                 </div>
 
                 <div className="flex items-center justify-between mb-2 text-sm text-gray-600">
@@ -281,7 +354,9 @@ const DuplicateClientsPage = () => {
                     <div className="space-y-3">
                         {clusters.map(c => (
                             <ClusterCard key={c.clusterId} cluster={c} checked={selected.has(c.clusterId)}
-                                onToggle={() => toggle(c)} />
+                                onToggle={() => toggle(c)}
+                                onReview={(decision) => setReviewTarget({ cluster: c, decision })}
+                                onMerge={() => setMergeTarget(c)} />
                         ))}
                     </div>
                 )}
@@ -296,6 +371,14 @@ const DuplicateClientsPage = () => {
                     </div>
                 )}
             </div>
+            {reviewTarget && (
+                <ReviewModal target={reviewTarget} onClose={() => setReviewTarget(null)}
+                    onDone={() => { setReviewTarget(null); load({ silent: true }); }} />
+            )}
+            {mergeTarget && (
+                <MergeModal cluster={mergeTarget} onClose={() => setMergeTarget(null)}
+                    onDone={() => { setMergeTarget(null); setSelected(new Map()); load(); }} />
+            )}
         </Layout>
     );
 };
@@ -315,7 +398,7 @@ const Select = ({ value, onChange, placeholder, options }) => (
     </select>
 );
 
-const ClusterCard = ({ cluster, checked, onToggle }) => {
+const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
     const differs = (field) => new Set(cluster.members.map(m => m[field] ?? '')).size > 1;
     const diff = Object.fromEntries(DIFF_FIELDS.map(f => [f, differs(f)]));
     const cell = (f) => (diff[f] ? 'bg-amber-50 text-amber-800 font-medium' : '');
@@ -327,6 +410,13 @@ const ClusterCard = ({ cluster, checked, onToggle }) => {
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${CONFIDENCE_STYLE[cluster.confidence]}`}>
                     {CONFIDENCE_LABELS[cluster.confidence]}
                 </span>
+                {cluster.reviewStatus && (
+                    <span title={`${cluster.reviewedByName ?? ''} · ${cluster.reviewedAt ? moment(cluster.reviewedAt).format('MMM D, YYYY h:mm A') : ''}${cluster.reviewNote ? ` · ${cluster.reviewNote}` : ''}`}
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${cluster.reviewStatus === 'confirmed'
+                            ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                        {cluster.reviewStatus === 'confirmed' ? 'Confirmed duplicate' : 'Not a duplicate'}
+                    </span>
+                )}
                 {cluster.severity === 'both_active' && (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-600 text-white">
                         {cluster.activeCount} active loans
@@ -403,7 +493,163 @@ const ClusterCard = ({ cluster, checked, onToggle }) => {
                     ))}
                 </div>
             )}
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-t border-gray-100 bg-gray-50">
+                {cluster.view !== 'same_client' && cluster.memberCount >= 2 && (
+                    <button type="button" onClick={onMerge}
+                        className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                        Merge…
+                    </button>
+                )}
+                {cluster.reviewStatus !== 'confirmed' && (
+                    <button type="button" onClick={() => onReview('confirmed')}
+                        className="px-3 py-1 text-xs font-medium border border-red-200 text-red-700 bg-white rounded-lg hover:bg-red-50">
+                        Confirm duplicate
+                    </button>
+                )}
+                {cluster.reviewStatus !== 'not_duplicate' && (
+                    <button type="button" onClick={() => onReview('not_duplicate')}
+                        className="px-3 py-1 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-100">
+                        Not a duplicate
+                    </button>
+                )}
+                {cluster.reviewStatus && (
+                    <button type="button" onClick={() => onReview('clear')}
+                        className="px-3 py-1 text-xs text-gray-500 hover:text-gray-800 underline">
+                        Clear review
+                    </button>
+                )}
+                {cluster.reviewNote && <span className="text-xs text-gray-500 ml-auto truncate max-w-md">Note: {cluster.reviewNote}</span>}
+            </div>
         </div>
+    );
+};
+
+const ModalShell = ({ title, onClose, children }) => (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-gray-900 mb-3">{title}</h2>
+            {children}
+        </div>
+    </div>
+);
+
+const REVIEW_TITLES = {
+    confirmed: 'Confirm as duplicate',
+    not_duplicate: 'Mark as not a duplicate',
+    clear: 'Clear review',
+};
+
+const ReviewModal = ({ target, onClose, onDone }) => {
+    const { cluster, decision } = target;
+    const [note, setNote] = useState('');
+    const [saving, setSaving] = useState(false);
+    const needsNote = decision === 'not_duplicate';
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/duplicates/review',
+                { clusterId: cluster.clusterId, decision, note });
+            if (!res?.success) { toast.error(res?.message || 'Could not save the review.'); return; }
+            toast.success('Review saved.');
+            onDone();
+        } catch (e) {
+            toast.error('Could not save the review.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ModalShell title={REVIEW_TITLES[decision]} onClose={onClose}>
+            <p className="text-sm text-gray-600 mb-3">
+                {decision === 'not_duplicate'
+                    ? 'This group will be hidden from "Needs review". It comes back automatically if a new matching record joins it.'
+                    : decision === 'confirmed'
+                        ? 'Marks these records as the same person so they can be merged or followed up. It does not change any client data.'
+                        : 'Removes the earlier decision and puts the group back under "Needs review".'}
+            </p>
+            {decision !== 'clear' && (
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={500}
+                    placeholder={needsNote ? 'Why is this not a duplicate? (required)' : 'Note (optional)'}
+                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            )}
+            <div className="flex justify-end gap-2">
+                <button type="button" onClick={onClose} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">Cancel</button>
+                <button type="button" onClick={submit} disabled={saving || (needsNote && !note.trim())}
+                    className="px-3 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50">
+                    {saving ? 'Saving…' : 'Save'}
+                </button>
+            </div>
+        </ModalShell>
+    );
+};
+
+const memberLabel = (m) => `${m.lastName}, ${m.firstName} ${m.middleName ?? ''} · ${m.branchName ?? '—'} · ${m.hasActiveLoan ? 'active loan' : m.status}`;
+
+const MergeModal = ({ cluster, onClose, onDone }) => {
+    const members = cluster.members;
+    // Default master: the record with an active loan, else the oldest (members are already sorted that way).
+    const [masterId, setMasterId] = useState(members[0]._id);
+    const others = members.filter(m => m._id !== masterId);
+    const [duplicateId, setDuplicateId] = useState(others[0]?._id);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!others.find(m => m._id === duplicateId)) setDuplicateId(others[0]?._id);
+    }, [masterId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const master = members.find(m => m._id === masterId);
+    const dup = members.find(m => m._id === duplicateId);
+    const bothActive = !!master?.hasActiveLoan && !!dup?.hasActiveLoan;
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/merge', { masterId, duplicateId });
+            if (!res?.success) { toast.error(res?.message || 'Merge failed.'); return; }
+            toast.success(res.message || 'Merged.');
+            onDone();
+        } catch (e) {
+            toast.error('Merge failed.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ModalShell title="Merge client records" onClose={onClose}>
+            <p className="text-sm text-gray-600 mb-3">
+                All loans, collections, MCBU withdrawals, transfers and bad-debt records of the duplicate move to the
+                master. The duplicate is archived. <strong>This cannot be undone.</strong>
+            </p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Keep (master)</p>
+            <div className="space-y-1 mb-3">
+                {members.map(m => (
+                    <label key={m._id} className="flex items-start gap-2 text-sm">
+                        <input type="radio" name="master" checked={masterId === m._id} onChange={() => setMasterId(m._id)} className="mt-1" />
+                        <span>{memberLabel(m)}<span className="block text-xs text-gray-400">{m._id}</span></span>
+                    </label>
+                ))}
+            </div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Merge into master (archived)</p>
+            <select value={duplicateId ?? ''} onChange={(e) => setDuplicateId(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white mb-3">
+                {others.map(m => <option key={m._id} value={m._id}>{memberLabel(m)}</option>)}
+            </select>
+            {bothActive && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                    Both records have an active loan. Offset or close one loan first — merging now would leave one client with two active loans.
+                </p>
+            )}
+            <div className="flex justify-end gap-2">
+                <button type="button" onClick={onClose} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">Cancel</button>
+                <button type="button" onClick={submit} disabled={saving || bothActive || !duplicateId}
+                    className="px-3 py-2 text-sm text-white bg-red-600 rounded-lg disabled:opacity-50">
+                    {saving ? 'Merging…' : 'Merge'}
+                </button>
+            </div>
+        </ModalShell>
     );
 };
 

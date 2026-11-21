@@ -12,6 +12,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { logAudit } from '@/lib/audit';
+import { findFaceMatches } from '@/lib/duplicate-faces';
 import {
     detectDuplicates, detectMultiActiveLoans, clusterKey, normalizeText, normalizePhone,
 } from '@/lib/duplicate-clients';
@@ -35,8 +36,9 @@ const CLIENT_TYPE = createGraphType('client', `
 const LOAN_TYPE = createGraphType('loans', `
   _id clientId status loanCycle principalLoan loanBalance slotNo dateGranted closedDate groupId
 `)('loans');
+const FACE_TYPE = createGraphType('client', `_id faceTemplate`)('faceClients');
 const USER_TYPE = createGraphType('users', `_id firstName lastName`)('users');
-const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `_id status`);
+const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `_id status review_status reviewed_member_ids`);
 const RUN_TYPE = createGraphType('duplicate_scan_runs', `_id status started_at finished_at stats error trigger`);
 
 const UPSERT_COLUMNS = [
@@ -109,7 +111,23 @@ async function runScan(runId, req) {
         t = lap('fetchActiveLoansMs', t);
 
         const activeIds = new Set(activeLoans.map(l => l.clientId));
-        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds);
+        // Phase 4: face evidence. Fails soft — a face-pass error must not lose the text-based results.
+        let facePairs = [];
+        try {
+            const faceClients = await fetchAll(FACE_TYPE, {
+                faceTemplate: { _is_null: false },
+                status: { _nin: ['merged', 'archived'] },
+            });
+            facePairs = findFaceMatches(faceClients, activeIds);
+            timings.faceClients = faceClients.length;
+            timings.facePairs = facePairs.length;
+        } catch (e) {
+            console.error('[duplicate-scan] face pass skipped', e);
+            timings.faceError = String(e?.message ?? e).slice(0, 200);
+        }
+        t = lap('faceMs', t);
+
+        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs);
         const sameClient = detectMultiActiveLoans(clients, activeLoans);
         t = lap('detectMs', t);
 
@@ -177,7 +195,7 @@ const clusterId = clusterKey;
 
 async function persist(clusters, scanStartedAt) {
     const existing = await fetchAll(CLUSTER_TYPE('duplicate_client_clusters'), {});
-    const existingById = new Map(existing.map(e => [e._id, e.status]));
+    const existingById = new Map(existing.map(e => [e._id, e]));
 
     const nowIso = new Date().toISOString();
     const rows = clusters.map(c => {
@@ -211,7 +229,7 @@ async function persist(clusters, scanStartedAt) {
     const inserted = [];
     let reopened = 0;
     rows.forEach((row, i) => {
-        const prev = existingById.get(row._id);
+        const prev = existingById.get(row._id)?.status;
         if (prev === undefined) inserted.push(clusters[i]);
         else if (prev === 'resolved') { reopened += 1; inserted.push(clusters[i]); }
     });
@@ -224,6 +242,23 @@ async function persist(clusters, scanStartedAt) {
                 // first_detected_at is deliberately NOT updated.
                 update_columns: UPSERT_COLUMNS,
             },
+        }));
+    }
+
+    // A 'not_duplicate' decision only holds for the records that were reviewed. If a NEW record has joined
+    // the group since, bring it back for review. ('confirmed' decisions always stay.)
+    const resetIds = rows.filter(r => {
+        const e = existingById.get(r._id);
+        return e?.review_status === 'not_duplicate' && Array.isArray(e.reviewed_member_ids)
+            && r.members.some(m => !e.reviewed_member_ids.includes(m._id));
+    }).map(r => r._id);
+    for (let i = 0; i < resetIds.length; i += ID_CHUNK) {
+        await graph.mutation(updateQl(CLUSTER_TYPE('rv'), {
+            set: {
+                review_status: null, review_note: null, reviewed_by: null,
+                reviewed_by_name: null, reviewed_at: null, reviewed_member_ids: null,
+            },
+            where: { _id: { _in: resetIds.slice(i, i + ID_CHUNK) } },
         }));
     }
 

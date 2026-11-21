@@ -1,0 +1,46 @@
+import { findFaceMatches, parseFaceTemplate } from '@/lib/duplicate-faces';
+import { detectDuplicates } from '@/lib/duplicate-clients';
+
+const vec = (seed, jitter = 0) => Array.from({ length: 128 }, (_, i) => Math.sin(seed * (i + 1)) * 0.2 + (jitter ? jitter / Math.sqrt(128) : 0));
+
+describe('face matching', () => {
+    test('parses string / array templates, rejects bad ones', () => {
+        expect(parseFaceTemplate(JSON.stringify(vec(1)))).toHaveLength(128);
+        expect(parseFaceTemplate(vec(1))).toHaveLength(128);
+        expect(parseFaceTemplate('nope')).toBeNull();
+        expect(parseFaceTemplate([1, 2, 3])).toBeNull();
+        expect(parseFaceTemplate([...vec(1).slice(1), NaN])).toBeNull();
+    });
+    test('close faces match, distinct faces do not; tier by distance', () => {
+        const clients = [
+            { _id: 'A', faceTemplate: JSON.stringify(vec(1)) },
+            { _id: 'B', faceTemplate: JSON.stringify(vec(1, 0.3)) },   // distance 0.3 -> high
+            { _id: 'C', faceTemplate: JSON.stringify(vec(1, 0.45)) },  // distance 0.45 -> possible
+            { _id: 'D', faceTemplate: JSON.stringify(vec(7)) },        // different person
+        ];
+        const m = findFaceMatches(clients, new Set(['A']));
+        const byPair = Object.fromEntries(m.map(x => [`${x.idA}${x.idB}`, x]));
+        expect(byPair.AB.confidence).toBe('high');
+        expect(byPair.AC.confidence).toBe('possible');
+        expect(m.some(x => x.idB === 'D' || x.idA === 'D')).toBe(false);
+    });
+    test('pairs with no active-loan client are skipped; each pair reported once', () => {
+        const clients = [{ _id: 'A', faceTemplate: vec(1) }, { _id: 'B', faceTemplate: vec(1) }];
+        expect(findFaceMatches(clients, new Set())).toHaveLength(0);
+        expect(findFaceMatches(clients, new Set(['A', 'B']))).toHaveLength(1);
+    });
+    test('a face match joins two differently-named records into one cluster', () => {
+        const base = { birthdate: '', contactNumber: '', address: '', branchId: 'b1', groupId: 'g1', loId: 'l1', status: 'active', dateAdded: '2026-01-01' };
+        const clients = [
+            { ...base, _id: 'A', firstName: 'Maria', lastName: 'Santos' },
+            { ...base, _id: 'B', firstName: 'Zenaida', lastName: 'Quimpo', groupId: 'g2', loId: 'l2' },
+        ];
+        const pairs = findFaceMatches(
+            [{ _id: 'A', faceTemplate: vec(2) }, { _id: 'B', faceTemplate: vec(2, 0.2) }], new Set(['A', 'B']));
+        expect(detectDuplicates(clients, new Set(['A', 'B'])).clusters).toHaveLength(0);
+        const { clusters } = detectDuplicates(clients, new Set(['A', 'B']), pairs);
+        expect(clusters).toHaveLength(1);
+        expect(clusters[0].severity).toBe('both_active');
+        expect(clusters[0].reasons.join(' ')).toMatch(/Face match/);
+    });
+});
