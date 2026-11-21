@@ -17,6 +17,7 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { requireApprover } from '@/lib/api/loanApprovalGates';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 const LOOKUP_TYPE = createGraphType('loans', '_id ldfApproved');
@@ -70,6 +71,18 @@ async function ldfUnapprove(req, res) {
                     },
                 })
             );
+        }
+
+        if (toUpdate.length > 0) {
+            logAudit(req, {
+                action: 'LOAN_LDF_UNAPPROVED',
+                category: 'LOAN',
+                severity: 'WARNING',
+                entityType: 'loan',
+                entityId: toUpdate.length === 1 ? toUpdate[0] : null,
+                description: `LDF approval removed from ${toUpdate.length} loan(s)`,
+                metadata: { loanIds: toUpdate.slice(0, 200), notApproved, missing },
+            });
         }
 
         return res.status(200).json({ success: true, updated: toUpdate.length, notApproved, missing });

@@ -263,6 +263,7 @@ async function preSaveForLoanOfficer(loId, currentDate) {
         targetCollection: loan.activeLoan, 
         amountRelease: loan.amountRelease,
         loanBalance: loan.loanBalance,
+        advanceDays: loan.advanceDays ? Number(loan.advanceDays) : 0, // carry the loan's running advance into the new row (loans are reset every Sunday PHT; cc rows are never touched)
         loanTerms: toText(loan.loanTerms),
         noMispayment: loan.mispayment,
         paymentCollection: 0,

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const CATEGORIES = ['', 'CI', 'LAF', 'BIOMETRIC', 'LOAN', 'QR', 'AUTH'];
+const CATEGORIES = ['', 'CI', 'LAF', 'BIOMETRIC', 'LOAN', 'QR', 'AUTH', 'GROUP', 'BRANCH', 'TRANSFER', 'COLLECTION', 'SAVINGS'];
 const SEVERITIES  = ['', 'INFO', 'WARNING', 'CRITICAL'];
 
 const CATEGORY_COLORS = {
@@ -25,6 +25,11 @@ const CATEGORY_COLORS = {
     LOAN:      'bg-green-100 text-green-700',
     QR:        'bg-indigo-100 text-indigo-700',
     AUTH:      'bg-gray-100 text-gray-700',
+    GROUP:      'bg-orange-100 text-orange-700',
+    BRANCH:     'bg-cyan-100 text-cyan-700',
+    TRANSFER:   'bg-yellow-100 text-yellow-700',
+    COLLECTION: 'bg-rose-100 text-rose-700',
+    SAVINGS:    'bg-emerald-100 text-emerald-700',
 };
 
 const SEVERITY_CONFIG = {

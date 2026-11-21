@@ -1,5 +1,6 @@
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
+import { logAudit } from "@/lib/audit";
 import {
   findCashCollections,
   findLoans,
@@ -206,6 +207,15 @@ async function repair(req, res) {
 
     if (promise) {
         response = { success: true };
+        logAudit(req, {
+            action: 'TRANSFER_REPAIRED',
+            category: 'TRANSFER',
+            severity: 'WARNING',
+            entityType: 'transfer',
+            entityId: _id,
+            clientId: transferClients?.[0]?.selectedClientId,
+            description: 'Transfer repair run',
+        });
     }
 
     res.send(response);

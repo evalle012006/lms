@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
   CASH_COLLECTIONS_FIELDS,
@@ -150,6 +151,16 @@ async function revertTransfer(req, res) {
         );
 
         response = { success: true, message: "Selected transfer were properly reverted!" };
+        logAudit(req, {
+            action: 'TRANSFER_REVERTED',
+            category: 'TRANSFER',
+            severity: 'WARNING',
+            entityType: 'transfer',
+            entityId: transferId,
+            clientId: transferData.selectedClientId,
+            description: 'Approved transfer reverted',
+            metadata: { newLoanId: newLoan?._id, newCashCollectionId: newCC?._id, sourceGroupId: transferData.sourceGroupId, targetGroupId: transferData.targetGroupId },
+        });
     } else {
         response = { error: true, message: "No transfer transaction found." };
     }

@@ -1,6 +1,8 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { handleCron } from '@/lib/cron-guard';
+import { withRetry } from '@/lib/retry';
 import logger from '@/logger';
 import { LOAN_FIELDS } from '@/lib/graph.fields';
 
@@ -8,74 +10,35 @@ const graph = new GraphProvider();
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)('loans');
 const LOAN_MUTATION_TYPE = createGraphType('loans', `_id`);
 
+const BATCH_SIZE = 2000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Hasura cron: zero out advanceDays on every loan that has some. Runs in the background; result in cron_runs.
 export default apiHandler({
-    post: updateLoans
+    post: (req, res) => handleCron(req, res, 'update-advance-days-loan', updateLoans, {
+        background: true, staleMinutes: 60, message: 'update loans run in background',
+    }),
 });
 
-async function updateLoans(req, res) {
-    let response;
-    let statusCode = 200;
+async function updateLoans() {
+    logger.debug({ cron: 'start fetching loans' });
+    const loans = await withRetry(() => graph.query(
+        queryQl(LOAN_TYPE, { where: { advanceDays: { _gt: 0 } } })
+    )).then(r => r.data.loans ?? []);
+    logger.debug({ cron: 'fetch loans count', count: loans.length });
 
-    logger.debug({cron: `start fetching loans`});
-    const loans = await graph.query(
-        queryQl(LOAN_TYPE, {
-            where: {
-                advanceDays: { _gt: 0 }
-            }
-        })
-    ).then(res => res.data.loans ?? []);
+    let errors = 0;
+    for (let i = 0; i < loans.length; i += BATCH_SIZE) {
+        const batch = loans.slice(i, i + BATCH_SIZE).map((loan, n) =>
+            updateQl(LOAN_MUTATION_TYPE('loan_update_' + n), { set: { advanceDays: 0 }, where: { _id: { _eq: loan._id } } })
+        );
+        logger.debug({ cron: 'start update batch loans', batch_count: batch.length });
+        const res = await withRetry(() => graph.mutation(...batch));
+        errors += res.errors?.length ?? 0;
+        logger.debug({ cron: 'done update batch loans', error_count: res.errors?.length ?? 0 });
+        await sleep(500);
+    }
 
-    logger.debug({cron: `fetch loans count`, count: loans.length});
-    logger.debug({cron: 'start loans update'});
-
-    (async () => {
-        let batch_update = [];
-
-        for(const loan of loans) {
-            batch_update.push(
-                updateQl(LOAN_MUTATION_TYPE('loan_update_' + batch_update.length), {
-                    set: {
-                        advanceDays: 0
-                    },
-                    where: {
-                        _id: { _eq: loan._id }
-                    }
-                })
-            );
-
-            if(batch_update.length == 2000) {
-                logger.debug({cron: 'start upddate batch loans', batch_count: batch_update.length});
-                const update_res = await graph.mutation(
-                    ... batch_update
-                )
-                batch_update = [];
-                await sleep(500);
-
-                logger.debug({cron: 'done update batch loans', error_count: update_res.errors?.length ?? 0 });
-            }
-
-        }
-
-        if(batch_update.length > 0) {
-            logger.debug({cron: 'start upddate batch loans', batch_count: batch_update.length});
-            const update_res = await graph.mutation(
-                ... batch_update
-            )
-            batch_update = [];
-            await sleep(500);
-
-            logger.debug({cron: 'done update batch loans', error_count: update_res.errors?.length ?? 0 });
-        }
-
-        logger.debug({cron: 'completed batch update loans'});
-    })();
-    
-    
-    response = { success: true, message: 'update loans run in background' };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    logger.debug({ cron: 'completed batch update loans' });
+    return { loans: loans.length, errors };
 }

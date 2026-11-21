@@ -4,6 +4,7 @@ import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions'; // CONFIRM this import path for findUserById
 import { resolveCohEditPermission } from '@/lib/coh-permissions';
 import { apiHandler } from '@/services/api-handler';
+import { logAudit } from '@/lib/audit';
 import { validateBranchCode } from '@/lib/branch-code';
 
 const graph = new GraphProvider();
@@ -155,6 +156,17 @@ async function updateBranch(req, res) {
     }
 
     response = { success: true, branch: branch };
+
+    logAudit(req, {
+        action: branchlock ? 'BRANCH_LOCK_UPDATED' : 'BRANCH_UPDATED',
+        category: 'BRANCH',
+        entityType: 'branch',
+        entityId: branchId,
+        branchId,
+        description: `Branch updated: ${Object.keys(branch).join(', ')}`,
+        afterData: branch,
+        metadata: { lockOnly: branchlock },
+    });
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

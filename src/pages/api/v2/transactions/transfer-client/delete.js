@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { findTransferClients } from '@/lib/graph.functions';
 import { createGraphType, deleteQl } from '@/lib/graph/graph.util';
 import { TRANSFER_CLIENT_FIELDS } from '@/lib/graph.fields';
@@ -27,6 +28,15 @@ async function deleteTransfer(req, res) {
       );
 
       response = { success: true };
+      logAudit(req, {
+        action: 'TRANSFER_DELETED',
+        category: 'TRANSFER',
+        entityType: 'transfer',
+        entityId: transferClient[0]._id,
+        clientId: transferClient[0].selectedClientId,
+        description: 'Pending transfer request deleted',
+        beforeData: { status: transferClient[0].status, sourceGroupId: transferClient[0].sourceGroupId, targetGroupId: transferClient[0].targetGroupId },
+      });
     }
   } else {
     response = {

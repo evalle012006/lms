@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { updateQl, createGraphType, insertQl, queryQl } from "@/lib/graph/graph.util";
 import { CASH_COLLECTIONS_FIELDS, MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS, GROUP_FIELDS } from "@/lib/graph.fields";
@@ -90,6 +91,28 @@ async function bulkApprove(req, res) {
         }
       }
     }
+
+    results.forEach(r => logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_APPROVED',
+      category: 'SAVINGS',
+      entityType: 'mcbu_withdrawal',
+      entityId: r.id,
+      clientId: r.data?.client_id,
+      branchId: r.data?.branch_id,
+      description: `Withdrawal approved: MCBU ${r.mcbu_withdrawal_amount || 0}, CSF ${r.csf_withdrawal_amount || 0}`,
+      afterData: { mcbu_withdrawal_amount: r.mcbu_withdrawal_amount || 0, csf_withdrawal_amount: r.csf_withdrawal_amount || 0, status: 'approved' },
+      metadata: { loanId: r.data?.loan_id, groupId: r.data?.group_id },
+    }));
+    errors.forEach(e => logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_APPROVE_FAILED',
+      category: 'SAVINGS',
+      severity: 'WARNING',
+      entityType: 'mcbu_withdrawal',
+      entityId: e.withdrawal?.id,
+      description: e.message,
+      success: false,
+      failReason: e.message,
+    }));
 
     // Return results with success/error status
     return res.status(200).json({

@@ -4,6 +4,7 @@ import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
+import { logAudit } from '@/lib/audit';
 import moment from 'moment'
 import { validateBranchCode } from '@/lib/branch-code';
 
@@ -65,6 +66,16 @@ async function save(req, res) {
             success: true,
             branch: branch
         }
+        logAudit(req, {
+            action: 'BRANCH_CREATED',
+            category: 'BRANCH',
+            entityType: 'branch',
+            entityId: branch?._id,
+            branchId: branch?._id,
+            branchName: name,
+            description: `Branch "${name}" (${code}) created`,
+            afterData: { name, code, areaId, regionId, divisionId },
+        });
     }
 
     res.status(statusCode)

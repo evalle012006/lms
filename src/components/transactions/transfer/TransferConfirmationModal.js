@@ -39,6 +39,7 @@ const TransferConfirmationModal = ({
         sourceOccurence: sourceGroup?.occurence,
         targetOccurence: targetGroup?.occurence,
         targetWeeklyScheduleType: targetGroup?.weeklyScheduleType,
+        currentWeeklyScheduleType: loan.weeklyScheduleType,
         targetLoanTerms,
         amountRelease,
         loanBalance,
@@ -54,9 +55,12 @@ const TransferConfirmationModal = ({
             <div className="p-4 space-y-4">
                 {preview.recalculated && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                        This client is moving from a {occurenceLabel(sourceGroup?.occurence)} to a{' '}
-                        {occurenceLabel(targetGroup?.occurence)} group. Because there is still a loan
-                        balance, the installment amount will be recalculated below.
+                        {preview.occurenceChanged
+                            ? <>This client is moving from a {occurenceLabel(sourceGroup?.occurence)} to a{' '}
+                                {occurenceLabel(targetGroup?.occurence)} group.</>
+                            : <>This client is moving to a weekly group with a different schedule
+                                ({targetGroup?.weeklyScheduleType === 'accelerated' ? 'accelerated, 12 weeks' : 'standard, 24 weeks'}).</>}
+                        {' '}Because there is still a loan balance, the installment amount will be recalculated below.
                     </div>
                 )}
 

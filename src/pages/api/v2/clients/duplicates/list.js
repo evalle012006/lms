@@ -127,6 +127,7 @@ async function list(req, res) {
         lastRun: run && {
             status: run.status, trigger: run.trigger, startedAt: run.started_at,
             finishedAt: run.finished_at, error: run.error, running: isRunActive(run),
+            progress: run.stats?.progress ?? null, failedPhase: run.stats?.failedPhase ?? null,
         },
     });
 }

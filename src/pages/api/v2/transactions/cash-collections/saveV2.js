@@ -15,6 +15,8 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
+import { logAudit } from '@/lib/audit';
+import { buildLorAuditEvents, MAX_LOR_EVENTS } from '@/lib/audit-lor';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
@@ -573,6 +575,15 @@ async function saveWithProtection(req, res) {
             });
         }
 
+        try {
+            const auditRows = Array.isArray(data.collection) ? data.collection.filter(c => c.status !== 'totals') : [];
+            const events = buildLorAuditEvents(auditRows, {
+                transactionId, currentDate, attempts: attempt,
+                draft: auditRows.length > 0 && auditRows.every(c => c.draft),
+            });
+            events.slice(0, MAX_LOR_EVENTS).forEach(e => logAudit(req, e));
+        } catch (auditErr) { /* audit must never break a save */ }
+
         return res.status(200).json({
             success: true,
             transactionId,
@@ -917,8 +928,8 @@ async function executeSave(req, user_id, transactionId, user) {
 
         // Final invariant: every row that updated a loan has a cashCollections row for this date.
         // Independent of how the rows were routed above (insert / update / weekly missing-row insert).
-        await healMissingCashCollections({ rows: rowsToVerify, currentDate, user_id, transactionId });
-        await healUnclosedLoans({ rows: rowsToVerify, currentDate, user_id, transactionId });
+        await healMissingCashCollections({ rows: rowsToVerify, currentDate, user_id, transactionId, req });
+        await healUnclosedLoans({ rows: rowsToVerify, currentDate, user_id, transactionId, req });
 
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
         if (reverted.length == 0) {
@@ -998,7 +1009,7 @@ const assignNullValues = (obj, origin) => {
  * (seen in production: 4 Offset loans closed on 2026-11-16, no cashCollections for those clients, totals short).
  * After the main mutation, verify by clientId + date and insert whatever is missing, and log it loudly.
  */
-async function healMissingCashCollections({ rows, currentDate, user_id, transactionId }) {
+async function healMissingCashCollections({ rows, currentDate, user_id, transactionId, req }) {
     if (!rows || rows.length === 0) return;
 
     const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))];
@@ -1043,6 +1054,13 @@ async function healMissingCashCollections({ rows, currentDate, user_id, transact
         stale: stale.map(s => ({ sent: describe(s.row), stored: s.current }))
     });
 
+    logAudit(req, {
+        action: 'COLLECTION_AUTO_HEALED', category: 'COLLECTION', severity: 'CRITICAL',
+        entityType: 'cashCollection', entityId: (missing[0] || stale[0]?.row)?._id ?? null,
+        description: `cashCollections out of sync after save: ${missing.length} missing, ${stale.length} stale — repaired`,
+        metadata: { transactionId, currentDate, missing: missing.map(describe).slice(0, 50), stale: stale.map(s => ({ sent: describe(s.row), stored: s.current })).slice(0, 50) },
+    });
+
     const mutations = [];
     if (missing.length > 0) {
         await saveCollection(mutations, missing.map(r => ({ ...r, _id: generateUUID(), draft: false })), currentDate);
@@ -1068,7 +1086,7 @@ async function healMissingCashCollections({ rows, currentDate, user_id, transact
  * stayed 'completed' and the client/group were never offset, so the register showed a green "completed" row.
  * Re-applies the same loan/client/group updates the main save performs, only for loans that are still not closed.
  */
-async function healUnclosedLoans({ rows, currentDate, user_id, transactionId }) {
+async function healUnclosedLoans({ rows, currentDate, user_id, transactionId, req }) {
     const closedRows = (rows || []).filter(r => r.loanId && r.status === 'closed' && !r.draft);
     if (closedRows.length === 0) return;
 
@@ -1084,6 +1102,13 @@ async function healUnclosedLoans({ rows, currentDate, user_id, transactionId }) 
         user_id, transactionId, page: 'Cash Collection SaveV2',
         message: 'closed cashCollections row but loan not closed after save, repairing',
         rows: toHeal.map(r => ({ _id: r._id, loanId: r.loanId, clientId: r.clientId, remarks: r.remarks?.value ?? null }))
+    });
+
+    logAudit(req, {
+        action: 'LOAN_AUTO_HEALED_CLOSE', category: 'LOAN', severity: 'CRITICAL',
+        entityType: 'loan', entityId: toHeal[0].loanId, clientId: toHeal[0].clientId,
+        description: `${toHeal.length} closed cashCollections row(s) had a loan that was not closed — repaired`,
+        metadata: { transactionId, currentDate, loanIds: toHeal.map(r => r.loanId).slice(0, 50) },
     });
 
     const mutations = [];

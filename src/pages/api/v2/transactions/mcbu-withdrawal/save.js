@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { insertQl, createGraphType, queryQl } from "@/lib/graph/graph.util";
 import { MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS } from "@/lib/graph.fields";
@@ -289,6 +290,18 @@ async function save(req, res) {
       }
     }
     
+    logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_REQUESTED',
+      category: 'SAVINGS',
+      entityType: 'mcbu_withdrawal',
+      entityId: savedWithdrawal?._id,
+      clientId: savedWithdrawal?.client_id,
+      branchId: savedWithdrawal?.branch_id,
+      description: `Withdrawal requested: MCBU ${mcbuAmount}, CSF ${csfAmount}`,
+      afterData: { mcbu_withdrawal_amount: mcbuAmount, csf_withdrawal_amount: csfAmount, status: savedWithdrawal?.status },
+      metadata: { loanId: savedWithdrawal?.loan_id, groupId: savedWithdrawal?.group_id },
+    });
+
     return res.status(200).json({
       success: true,
       message: "MCBU Withdrawal successfully saved",
