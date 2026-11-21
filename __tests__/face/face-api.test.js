@@ -126,6 +126,27 @@ describe('clients/enroll-face', () => {
         expect(graph.mutation).not.toHaveBeenCalled();
     });
 
+    it('blocks first enrollment when the face matches a client with an active loan; allows it when the match is inactive', async () => {
+        const match = { _id: 'other', firstName: 'Bea', lastName: 'Lim', branchName: 'X', status: 'active', faceTemplate: JSON.stringify(ZERO) };
+        answer(fx({ matches: [match], loans: [{ _id: 'l9', clientId: 'other', status: 'active' }] }));
+        const blocked = await run(enrollFace.post, req());
+        expect(blocked).toMatchObject({ success: false, code: 'DUPLICATE_FACE' });
+        expect(graph.mutation).not.toHaveBeenCalled();
+
+        jest.clearAllMocks();
+        answer(fx({ matches: [match], loans: [] }));
+        expect((await run(enrollFace.post, req())).success).toBe(true);
+        expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ faceDuplicateCheck: 'matched_inactive', faceMatchIds: ['other'] });
+    });
+
+    it('switch OFF: no face look-up, enrollment proceeds and the audit says disabled', async () => {
+        const match = { _id: 'other', firstName: 'Bea', lastName: 'Lim', branchName: 'X', status: 'active', faceTemplate: JSON.stringify(ZERO) };
+        answer(fx({ faceUniquenessSetting: [{ enforceFaceUniqueness: false }], matches: [match], loans: [{ _id: 'l9', clientId: 'other', status: 'active' }] }));
+        expect((await run(enrollFace.post, req())).success).toBe(true);
+        expect(queryFor('matches')).toBeUndefined();
+        expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ faceDuplicateCheck: 'disabled' });
+    });
+
     it('first enrollment: v1 row + client update + attempt relink in ONE mutation', async () => {
         answer(fx());
         const body = await run(enrollFace.post, req());
@@ -283,8 +304,25 @@ describe('clients/recapture-face', () => {
         await run(recaptureFace.post, req());
         const audit = logAudit.mock.calls[0][1];
         expect(audit).toMatchObject({ action: 'CLIENT_FACE_RECAPTURED', category: 'BIOMETRIC', severity: 'WARNING', clientId: 'c1' });
-        expect(audit.metadata).toMatchObject({ duplicateCheck: 'skipped', mismatchCount: 2, version: 2, loanId: 'l1' });
+        // pgvector look-up answered with no match -> 'passed' (it is 'skipped' only when the DB function is unavailable)
+        expect(audit.metadata).toMatchObject({ duplicateCheck: 'passed', mismatchCount: 2, version: 2, loanId: 'l1' });
         expect(JSON.stringify(audit)).not.toContain('1,1,1,1,1');
+    });
+
+    it('switch OFF: re-enrollment skips the face look-up', async () => {
+        answer(fx({ faceUniquenessSetting: [{ enforceFaceUniqueness: false }], matches: [{ _id: 'other', firstName: 'Bea', lastName: 'Lim', status: 'active', faceTemplate: JSON.stringify(ZERO) }] }));
+        const body = await run(recaptureFace.post, req());
+        expect(body.code).not.toBe('DUPLICATE_FACE');
+        expect(queryFor('matches')).toBeUndefined();
+        expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ duplicateCheck: 'disabled' });
+    });
+
+    it('blocks re-enrollment when the new face matches another client (pgvector)', async () => {
+        answer(fx({ matches: [{ _id: 'other', firstName: 'Bea', lastName: 'Lim', branchName: 'X', status: 'active', faceTemplate: JSON.stringify(ZERO) }] }));
+        const body = await run(recaptureFace.post, req());
+        expect(body).toMatchObject({ success: false, code: 'DUPLICATE_FACE' });
+        expect(body.matches[0]).toMatchObject({ clientId: 'other', name: 'Lim, Bea' });
+        expect(logAudit).not.toHaveBeenCalled();
     });
 });
 

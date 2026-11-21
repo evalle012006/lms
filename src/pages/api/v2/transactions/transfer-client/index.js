@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import {
   createGraphType,
   insertQl,
@@ -40,6 +41,7 @@ async function saveUpdate(req, res) {
           set: { ...clientData, insertedDateTime: new Date() }
         }));
         response = { success: true };
+        logAudit(req, { action: 'TRANSFER_UPDATED', category: 'TRANSFER', entityType: 'transfer', entityId: transferId, clientId: clientData.selectedClientId, description: 'Transfer request updated', afterData: { sourceGroupId: clientData.sourceGroupId, targetGroupId: clientData.targetGroupId, status: clientData.status } });
     } else {
         const exist = await findTransferClients({
           selectedClientId: { _eq: clientData.selectedClientId },
@@ -47,8 +49,10 @@ async function saveUpdate(req, res) {
         });
 
         if (exist.length === 0) {
-            await graph.mutation(insertQl(transferClientsType, { objects: [{ ...clientData, _id: generateUUID(), modifiedDateTime: new Date()}]}))
+            const newTransferId = generateUUID();
+            await graph.mutation(insertQl(transferClientsType, { objects: [{ ...clientData, _id: newTransferId, modifiedDateTime: new Date()}]}))
             response = { success: true };
+            logAudit(req, { action: 'TRANSFER_REQUESTED', category: 'TRANSFER', entityType: 'transfer', entityId: newTransferId, clientId: clientData.selectedClientId, description: 'Transfer requested', afterData: { sourceGroupId: clientData.sourceGroupId, targetGroupId: clientData.targetGroupId } });
         } else {
             response = { error: true, message: "Client has an existing pending transfer." };
         }

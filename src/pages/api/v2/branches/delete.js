@@ -1,4 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
+import { logAudit } from '@/lib/audit';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl } from '@/lib/graph/graph.util';
 
@@ -48,6 +49,16 @@ async function deleteBranch(req, res) {
             response = {
                 success: true
             }
+            logAudit(req, {
+                action: 'BRANCH_DELETED',
+                category: 'BRANCH',
+                severity: 'CRITICAL',
+                entityType: 'branch',
+                entityId: _id,
+                branchId: _id,
+                description: `Branch ${branch.code} deleted`,
+                beforeData: { code: branch.code },
+            });
         }
     }
 

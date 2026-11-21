@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { 
     UserPlus, Wallet, Banknote, Scale, AlertTriangle, DollarSign, Users, TrendingUp, 
-    Search, Filter, Calendar, ChevronDown,ShieldAlert,
+    Search, Filter, Calendar, ChevronDown,ShieldAlert, Copy,
 } from 'lucide-react';
 
 import ClientSearchTool from './ClientSearchTool';
@@ -20,6 +20,7 @@ import Spinner from "../Spinner";
 import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/date-utils';
 import CustomSelect from './CustomSelect';
 import DelinquentAlertsModal from './DelinquentAlertsModal';
+import DuplicateAlertsModal from './DuplicateAlertsModal';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -407,6 +408,33 @@ const DashboardPage = () => {
             fetchDelinquentAlerts();
         }
     }, [currentUser, currentDate]);
+
+    // Duplicate Alerts (same audience/placement as Delinquent Alerts): >1 active loan for the same person, from the stored scan.
+    const [duplicateAlerts, setDuplicateAlerts] = useState([]);
+    const [duplicateTotal, setDuplicateTotal] = useState(0);
+    const [duplicateLoading, setDuplicateLoading] = useState(false);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const isAdminUser = currentUser?.root === true || currentUser?.role?.rep === 1;
+
+    useEffect(() => {
+        if (!canSeeDelinquentAlerts) return;
+        let cancelled = false;
+        (async () => {
+            setDuplicateLoading(true);
+            try {
+                const res = await fetchWrapper.get(getApiBaseUrl() + 'clients/duplicates/alerts');
+                if (!cancelled && res?.success) {
+                    setDuplicateAlerts(res.alerts || []);
+                    setDuplicateTotal(res.total || 0);
+                }
+            } catch (e) {
+                console.error('Failed to fetch duplicate alerts:', e);
+            } finally {
+                if (!cancelled) setDuplicateLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [currentUser]);
 
     const handleDelinquentNavigate = (alert) => {
         return;
@@ -1393,6 +1421,18 @@ const DashboardPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
+            {/* DUPLICATE ALERTS MODAL */}
+            {showDuplicateModal && (
+                <DuplicateAlertsModal
+                    alerts={duplicateAlerts}
+                    total={duplicateTotal}
+                    loading={duplicateLoading}
+                    isAdmin={isAdminUser}
+                    onClose={() => setShowDuplicateModal(false)}
+                    onOpenPage={() => { setShowDuplicateModal(false); router.push('/settings/duplicate-clients'); }}
+                />
+            )}
+
             {/* DELINQUENT ALERTS MODAL */}
             {showDelinquentModal && (
                 <DelinquentAlertsModal
@@ -1428,11 +1468,28 @@ const DashboardPage = () => {
                             <span className="text-sm font-medium">{isSearchVisible ? 'Hide Search' : 'Search Client'}</span>
                         </button>
 
-                        {/* ── DELINQUENT ALERTS BUTTON — rightmost ── */}
+                        {/* ── DUPLICATE ALERTS BUTTON — just left of Delinquent Alerts ── */}
+                        {canSeeDelinquentAlerts && (
+                            <button
+                                onClick={() => setShowDuplicateModal(true)}
+                                className={`relative ml-auto flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200
+                                    ${duplicateTotal > 0
+                                        ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+                                        : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                <Copy className={`w-4 h-4 ${duplicateTotal > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+                                <span>Duplicate Alerts</span>
+                                {duplicateTotal > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white bg-red-500">{duplicateTotal}</span>
+                                )}
+                            </button>
+                        )}
+
+                        {/* ── DELINQUENT ALERTS BUTTON ── */}
                         {canSeeDelinquentAlerts && (
                             <button
                                 onClick={() => setShowDelinquentModal(true)}
-                                className={`relative ml-auto flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200
+                                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200
                                     ${totalAlertCount > 0
                                         ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
                                         : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'

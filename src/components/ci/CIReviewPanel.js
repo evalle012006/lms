@@ -45,12 +45,12 @@ function compressToBase64(file, maxWidth = 800, quality = 0.7) {
     });
 }
 
-const CIQuestion = ({ question, index, answer, onChange }) => (
+const CIQuestion = ({ question, index, answer, onChange, requiredActive = true }) => (
     <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
             {index + 1}. {question.question}
-            {question.required && <span className="ml-1 text-red-500 text-xs">*</span>}
-            {!question.required && <span className="ml-1 text-gray-400 text-xs font-normal">(optional)</span>}
+            {question.required && requiredActive && <span className="ml-1 text-red-500 text-xs">*</span>}
+            {(!question.required || !requiredActive) && <span className="ml-1 text-gray-400 text-xs font-normal">(optional)</span>}
         </label>
         {question.answerType === 'yesno' ? (
             <div className="flex gap-4">
@@ -97,6 +97,10 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const [declineReason,    setDeclineReason]    = useState(investigationData?.declineReason    || '');
     const [selfieFile,       setSelfieFile]       = useState(null);
     const [saving,           setSaving]           = useState(false);
+    // Promotion blocked by the duplicate-client guard: { matches, canOverride, investigation }
+    const [dupBlock,         setDupBlock]         = useState(null);
+    const [overrideReason,   setOverrideReason]   = useState('');
+    const [overriding,       setOverriding]       = useState(false);
     const [previewOpen,      setPreviewOpen]      = useState(false);
     const [previewUrl,       setPreviewUrl]       = useState(null);
     const [faceCapture, setFaceCapture] = useState(null); // { faceTemplate, livenessScore } once captured
@@ -214,17 +218,19 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
         }
         if (!decision) { toast.error('Please select Approve or Decline.'); return; }
 
-        // FIX: businessVerified and addressVerified are required before saving
-        if (!businessVerified) {
+        // Verification and required questions apply only when approving.
+        if (decision === 'approved' && !businessVerified) {
             toast.error('Please confirm that the business has been verified.');
             return;
         }
-        if (!addressVerified) {
+        if (decision === 'approved' && !addressVerified) {
             toast.error('Please confirm that the address has been verified.');
             return;
         }
 
-        const unanswered = ciQuestions.filter(q => q.required && !answers[q.id]?.trim());
+        const unanswered = decision === 'approved'
+            ? ciQuestions.filter(q => q.required && !answers[q.id]?.trim())
+            : [];
         if (unanswered.length > 0) {
             toast.error(`Please answer all required questions: ${unanswered.map((q, i) => `${i + 1}. ${q.question}`).join(', ')}`);
             return;
@@ -308,6 +314,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                             ? 'Member record updated and promoted.'
                             : 'Client created and promoted to pending.';
                         toast.success(`CI approved. ${label}`);
+                    } else if (promoteRes.code === 'DUPLICATE_CLIENT_BLOCKED') {
+                        // Keep the panel open so the reviewer can read the matches / override. onSaved fires after they decide.
+                        setOverrideReason('');
+                        setDupBlock({ matches: promoteRes.matches ?? [], canOverride: !!promoteRes.canOverride, investigation: res.investigation });
+                        return;
                     } else {
                         console.warn('[CI] Promote blocked:', promoteRes.message);
                         toast.warning(promoteRes.message || 'CI saved but promotion was blocked.');
@@ -331,8 +342,85 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
         selfieFile, investigationData, ciQuestions, needsFaceEnrollment, faceCapture,
         answers, isOnline, buildPayload, saveDraft, onSaved, application, canDecide]);
 
+    const closeDupBlock = () => {
+        const inv = dupBlock?.investigation;
+        setDupBlock(null);
+        onSaved?.({ offline: false, investigation: inv });
+    };
+
+    const overridePromote = async () => {
+        if (overrideReason.trim().length < 10) {
+            toast.error('Enter a reason of at least 10 characters.');
+            return;
+        }
+        setOverriding(true);
+        try {
+            const r = await fetchWrapper.post(
+                getApiBaseUrl() + `laf/promote/${encodeURIComponent(application.ciReferenceCode)}`,
+                { overrideDuplicate: true, overrideReason: overrideReason.trim() }
+            );
+            if (r.success) {
+                toast.success('Promoted with duplicate override (recorded in the audit log).');
+                closeDupBlock();
+            } else {
+                toast.error(r.message || 'Promotion failed.');
+            }
+        } catch (e) {
+            toast.error(e.message || 'Promotion failed.');
+        } finally {
+            setOverriding(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
+
+            {dupBlock && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black bg-opacity-40" />
+                    <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-5 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            <h3 className="font-bold text-gray-900">Possible duplicate client</h3>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                            The CI was saved, but this person matches an existing client with an active or pending loan, so a new client was not created.
+                        </p>
+                        <ul className="divide-y divide-gray-100 border border-red-200 rounded-lg text-sm">
+                            {dupBlock.matches.map(m => (
+                                <li key={m.clientId} className="px-3 py-2">
+                                    <p className="font-medium text-gray-900">{m.name}</p>
+                                    <p className="text-xs text-gray-500">
+                                        {[m.branchName, m.birthdate, m.hasActiveLoan ? 'Active loan' : m.hasPendingLoan ? 'Pending loan' : null].filter(Boolean).join(' · ')}
+                                    </p>
+                                    <p className="text-xs text-red-600">{(m.reasons ?? []).join('; ')}</p>
+                                </li>
+                            ))}
+                        </ul>
+                        {dupBlock.canOverride ? (
+                            <>
+                                <label className="block text-xs font-medium text-gray-700">
+                                    If this is a different person, enter the reason (recorded in the audit log)
+                                </label>
+                                <textarea rows={3} value={overrideReason} onChange={e => setOverrideReason(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                            </>
+                        ) : (
+                            <p className="text-xs text-gray-500">Only a supervisor or admin can override. Ask them, or link the application to the existing client.</p>
+                        )}
+                        <div className="flex justify-end gap-2 pt-1">
+                            <button type="button" onClick={closeDupBlock} disabled={overriding}
+                                className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Close without promoting</button>
+                            {dupBlock.canOverride && (
+                                <button type="button" onClick={overridePromote} disabled={overriding}
+                                    className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                                    {overriding ? 'Promoting…' : 'Promote anyway'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* LAF photo */}
             {lafPhotoUrl && (
@@ -358,6 +446,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                     {ciQuestions.map((q, i) => (
                         <CIQuestion key={q.id} question={q} index={i}
                             answer={answers[q.id] || ''}
+                            requiredActive={decision !== 'declined'}
                             onChange={val => handleAnswerChange(q.id, val)} />
                     ))}
                 </div>
@@ -372,9 +461,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
             <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     Verification
-                    <span className="ml-1 text-red-500 normal-case font-normal text-xs">
-                        * both required
-                    </span>
+                    {decision === 'declined' ? (
+                        <span className="ml-1 text-gray-400 normal-case font-normal text-xs">(optional when declining)</span>
+                    ) : (
+                        <span className="ml-1 text-red-500 normal-case font-normal text-xs">* both required</span>
+                    )}
                 </p>
                 <div className="flex gap-3 flex-wrap">
                     {/* Business verified */}
@@ -418,7 +509,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                     </label>
                 </div>
                 {/* Hint when either is unchecked */}
-                {(!businessVerified || !addressVerified) && (
+                {decision !== 'declined' && (!businessVerified || !addressVerified) && (
                     <p className="text-xs text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                         Both must be confirmed before the investigation can be saved.

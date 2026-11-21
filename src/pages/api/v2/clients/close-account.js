@@ -1,4 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
+import { logAudit } from '@/lib/audit';
 
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -48,6 +49,18 @@ async function updateClient(req, res) {
         updateGroup(loan);
 
         response = { success: true, client: clientResp };
+        logAudit(req, {
+            action: 'CLIENT_ACCOUNT_CLOSED',
+            category: 'LOAN',
+            severity: 'WARNING',
+            entityType: 'client',
+            entityId: client._id,
+            clientId: client._id,
+            branchId: loan.branchId,
+            description: `Client account closed (status -> offset), loan ${loan._id ?? loan.loanId ?? ''}`,
+            afterData: { status: 'offset' },
+            metadata: { loanId: loan._id ?? loan.loanId, groupId: loan.groupId },
+        });
     }
 
     res.status(statusCode)

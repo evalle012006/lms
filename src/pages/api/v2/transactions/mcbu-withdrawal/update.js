@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { updateQl, createGraphType, queryQl } from "@/lib/graph/graph.util";
 import { MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS } from "@/lib/graph.fields";
@@ -209,6 +210,17 @@ async function update(req, res) {
       });
     }
     
+    logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_UPDATED',
+      category: 'SAVINGS',
+      entityType: 'mcbu_withdrawal',
+      entityId: updatedWithdrawal._id,
+      clientId: updatedWithdrawal.client_id,
+      branchId: updatedWithdrawal.branch_id,
+      description: `Withdrawal updated: MCBU ${updatedWithdrawal.mcbu_withdrawal_amount}, CSF ${updatedWithdrawal.csf_withdrawal_amount || 0}`,
+      afterData: { mcbu_withdrawal_amount: updatedWithdrawal.mcbu_withdrawal_amount, csf_withdrawal_amount: updatedWithdrawal.csf_withdrawal_amount || 0, status: updatedWithdrawal.status },
+    });
+
     return res.status(200).json({
       success: true,
       message: "MCBU Withdrawal updated successfully",

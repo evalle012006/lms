@@ -1,37 +1,13 @@
-import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, deleteQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
-import moment from 'node_modules/moment/moment';
+import { handleCron } from '@/lib/cron-guard';
+import { runLogRetention } from '@/lib/log-retention';
 
-const graph = new GraphProvider();
-
+// Hasura cron: log retention — lms_logs 7d, audit_logs 365d (noise actions 30d), user_activity_logs 90d, face_verify_attempts 30d.
+// Archived tables are dumped to Spaces (gzipped NDJSON) before deletion; see lib/log-retention.js.
 export default apiHandler({
-    post: updateLoans
+    post: (req, res) => handleCron(
+        req, res, 'clean-up-logs',
+        () => runLogRetention({ scheduledTime: req.body?.scheduled_time }),
+        { background: true, staleMinutes: 60, message: 'done clean up logs in background' }
+    ),
 });
-
-async function updateLoans(req, res) {
-    let response;
-    let statusCode = 200;
-
-    // FIX: Use scheduled_time from payload — avoids locale string parsing
-    const scheduledTime = req.body?.scheduled_time;
-    const currentDate = scheduledTime
-        ? moment(scheduledTime).utcOffset('+08:00').format('YYYY-MM-DD')
-        : moment().utcOffset('+08:00').format('YYYY-MM-DD');
-
-    const to_date = moment(currentDate).subtract(3, 'd').format('YYYY-MM-DD');
-
-    await graph.mutation(
-        deleteQl(createGraphType('lms_logs', 'id')('result'), {
-            created_dt: {
-                _lt: to_date
-            }
-        })
-    );
-
-    response = { success: true, message: 'done clean up logs in background' };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}

@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
+import { logAudit } from '@/lib/audit';
 import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { BRANCH_FIELDS, CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
@@ -414,6 +415,19 @@ async function save(req, res) {
     }
 
     if (processingFailed && response.success) response.processingFailed = true;
+    if (response?.success && response.loan) {
+        logAudit(req, {
+            action: 'LOAN_CREATED',
+            category: 'LOAN',
+            entityType: 'loan',
+            entityId: response.loan._id,
+            clientId: response.loan.clientId,
+            branchId: response.loan.branchId,
+            description: `Loan application created (cycle ${response.loan.loanCycle}, slot ${response.loan.slotNo})`,
+            afterData: { status: response.loan.status, loanCycle: response.loan.loanCycle, groupId: response.loan.groupId, loanTerms: response.loan.loanTerms },
+            metadata: { processingFailed: !!processingFailed },
+        });
+    }
     res.send(response);
 }
 

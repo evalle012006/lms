@@ -3,6 +3,8 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
+import { logAudit } from '@/lib/audit';
+import { buildRevertAuditEvents } from '@/lib/audit-lor';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 
@@ -28,6 +30,7 @@ async function revert(req, res) {
     const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     
     const mutationQL = [];
+    const revertSnapshot = Array.isArray(cashCollections) ? cashCollections.map(c => ({ _id: c._id, loanId: c.loanId, clientId: c.clientId, groupId: c.groupId, branchId: c.branchId, status: c.status, loanCycle: c.loanCycle, remarks: c.remarks?.value ?? c.remarks ?? null, loanBalance: c.loanBalance, mcbu: c.mcbu, mcbuReturnAmt: c.mcbuReturnAmt, csfReturnAmt: c.csfReturnAmt, paymentCollection: c.paymentCollection })) : [];
     const promise = await new Promise(async (resolve) => {
         const response = await Promise.all(cashCollections.map(async (cc) => {
             let cashCollection = {...cc};
@@ -278,6 +281,7 @@ async function revert(req, res) {
 
     if (promise) {
         response = { success: true };
+        try { buildRevertAuditEvents(revertSnapshot, { currentDate }).forEach(e => logAudit(req, e)); } catch (e) { /* audit must never break a revert */ }
     }
 
     res.status(statusCode)

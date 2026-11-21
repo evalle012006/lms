@@ -25,6 +25,7 @@ import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
 import { guardReject } from "@/lib/api/loanWriteGuard";
 import { applyLoanAssignmentToClient } from "@/lib/client-assignment";
+import { logAudit } from "@/lib/audit";
 
 const groupType = createGraphType("groups", GROUP_FIELDS);
 const loanType = createGraphType("loans", LOAN_FIELDS);
@@ -178,6 +179,19 @@ async function updateLoan(req, res) {
         await graph.mutation(
           ... mutationList
         );
+
+        logAudit(req, {
+          action: loan.status === 'reject' ? 'LOAN_REJECTED' : 'LOAN_APPROVED',
+          category: 'LOAN',
+          severity: loan.status === 'reject' ? 'WARNING' : 'INFO',
+          entityType: 'loan',
+          entityId: loanId,
+          clientId: loan.clientId,
+          branchId: loan.branchId,
+          description: `Loan ${loan.status === 'reject' ? 'rejected' : 'approved'} (cycle ${loan.loanCycle}, group ${loan.groupId})`,
+          afterData: { status: loan.status, loanCycle: loan.loanCycle, groupId: loan.groupId },
+          metadata: { reloan: loan.loanCycle > 1, loanCycle: loan.loanCycle },
+        });
 
         response = { success: true };   
     } else {

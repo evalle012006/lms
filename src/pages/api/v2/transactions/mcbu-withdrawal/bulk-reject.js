@@ -1,5 +1,6 @@
 // transactions/mcbu-withdrawal/bulk-reject.js
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { updateQl, createGraphType } from "@/lib/graph/graph.util";
 import { MCBU_WITHDRAWAL_FIELDS } from "@/lib/graph.fields";
@@ -91,6 +92,18 @@ async function bulkReject(req, res) {
       }
     }
     
+    results.forEach(r => logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_REJECTED',
+      category: 'SAVINGS',
+      severity: 'WARNING',
+      entityType: 'mcbu_withdrawal',
+      entityId: r.id,
+      clientId: r.data?.client_id,
+      branchId: r.data?.branch_id,
+      description: `Withdrawal rejected${r.data?.reason ? `: ${r.data.reason}` : ''}`,
+      afterData: { status: 'rejected', reason: r.data?.reason ?? null },
+    }));
+
     // Return results with success/error status
     return res.status(200).json({
       success: errors.length === 0,

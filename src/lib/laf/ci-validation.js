@@ -19,11 +19,13 @@ export function validateCIPayload(
     if (decision !== 'approved' && decision !== 'declined') {
         return 'Invalid decision.';
     }
+    if (decision === 'declined') {
+        // Declining only needs a reason: verification and required questions
+        // are not enforced, since the CI may be declined before they can be done.
+        return isBlank(declineReason) ? 'A decline reason is required.' : null;
+    }
     if (!businessVerified || !addressVerified) {
         return 'Business and address verification are required.';
-    }
-    if (decision === 'declined' && isBlank(declineReason)) {
-        return 'A decline reason is required.';
     }
 
     const answerByQuestionId = new Map(

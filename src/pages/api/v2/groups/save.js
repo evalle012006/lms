@@ -1,5 +1,6 @@
 import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
+import { logAudit } from '@/lib/audit';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { getCurrentDate } from '@/lib/date-utils';
@@ -76,6 +77,16 @@ async function save(req, res) {
             success: true,
             group: group
         }
+
+        logAudit(req, {
+            action: 'GROUP_CREATED',
+            category: 'GROUP',
+            entityType: 'group',
+            entityId: group?._id,
+            branchId: groupData.branchId,
+            description: `Group "${groupData.name}" created`,
+            afterData: { name: groupData.name, occurence: groupData.occurence, day: groupData.day, capacity: groupData.capacity, weeklyScheduleType: groupData.weeklyScheduleType, loanOfficerId: groupData.loanOfficerId },
+        });
     }
 
     res.status(statusCode)

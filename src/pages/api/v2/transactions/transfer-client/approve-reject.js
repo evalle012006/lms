@@ -11,11 +11,12 @@ import {
   TRANSFER_CLIENT_FIELDS,
 } from "@/lib/graph.fields";
 import logger from "@/logger";
+import { logAudit } from "@/lib/audit";
 import { generateUUID } from "@/lib/utils";
 import { logGraphQLError } from "@/lib/graphql-utils";
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
-import { recalculateLoanForTransfer } from "@/lib/transfer-recalculation";
+import { recalculateLoanForTransfer, needsTransferRecalculation } from "@/lib/transfer-recalculation";
 
 const groupsType = createGraphType("groups", GROUP_FIELDS);
 const loansType = createGraphType("loans", LOAN_FIELDS);
@@ -37,6 +38,19 @@ async function approveReject(req, res) {
     const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
     const errorMsg = new Set();
+    // Snapshot before the loop below mutates/deletes fields on each transfer.
+    const auditRows = (Array.isArray(transfers) ? transfers : []).map(t => ({
+        transferId: t._id,
+        clientId: t.selectedClientId,
+        status: t.status,
+        sourceGroupId: t.sourceGroupId ?? t.sourceGroup?._id,
+        targetGroupId: t.targetGroupId ?? t.targetGroup?._id,
+        sourceGroupName: t.sourceGroup?.name,
+        targetGroupName: t.targetGroup?.name,
+        sourceOccurence: t.sourceGroup?.occurence,
+        targetOccurence: t.targetGroup?.occurence,
+        targetWeeklyScheduleType: t.targetGroup?.weeklyScheduleType ?? null,
+    }));
     try {
         await Promise.all(transfers.map(async (transfer) => {
             if (transfer.status === "approved") {
@@ -161,7 +175,12 @@ async function approveReject(req, res) {
                             // so the source group's closing cash_collection record (built from
                             // `loan` in saveCashCollection below) keeps its original daily/weekly
                             // figures untouched, per the "source stays intact" decision.
-                            if (sourceGroup.occurence !== targetGroup.occurence && parseFloat(updatedLoan.loanBalance) > 0) {
+                            if (needsTransferRecalculation({
+                                sourceOccurence: sourceGroup.occurence,
+                                targetOccurence: targetGroup.occurence,
+                                targetWeeklyScheduleType: targetGroup.weeklyScheduleType,
+                                currentWeeklyScheduleType: updatedLoan.weeklyScheduleType,
+                            }) && parseFloat(updatedLoan.loanBalance) > 0) {
                                 const recalculated = recalculateLoanForTransfer({
                                     amountRelease: parseFloat(updatedLoan.amountRelease),
                                     loanBalance: parseFloat(updatedLoan.loanBalance),
@@ -262,6 +281,18 @@ async function approveReject(req, res) {
             const result = await graph.mutation(...mutationList);
             
             const errors = Array.from(errorMsg);
+
+            auditRows.forEach(r => logAudit(req, {
+                action: r.status === 'approved' ? 'TRANSFER_APPROVED' : 'TRANSFER_REJECTED',
+                category: 'TRANSFER',
+                severity: errors.length > 0 ? 'WARNING' : 'INFO',
+                entityType: 'transfer',
+                entityId: r.transferId,
+                clientId: r.clientId,
+                description: `Transfer ${r.status === 'approved' ? 'approved' : 'rejected'}: ${r.sourceGroupName ?? r.sourceGroupId} -> ${r.targetGroupName ?? r.targetGroupId}`,
+                afterData: { status: r.status },
+                metadata: { ...r, warnings: errors.length ? errors : undefined },
+            }));
             const response = errors.length > 0 
                 ? { success: true, message: errors.join('<br/>')}
                 : { success: true };

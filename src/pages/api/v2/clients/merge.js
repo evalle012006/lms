@@ -24,6 +24,9 @@ import {
 
 import moment        from 'moment';
 import { logAudit } from '@/lib/audit';
+import { findUserById } from '@/lib/graph.functions';
+import { canDecideCI, isBranchInScope } from '@/lib/ci-scope';
+import { onClientMerged } from '@/lib/duplicate-clients-store';
 
 const graph = new GraphProvider();
 
@@ -38,7 +41,12 @@ const TEMP_TYPE      = createGraphType('temporaryLoanApplications', TEMP_LOAN_AP
 export default apiHandler({ post: mergeClients });
 
 async function mergeClients(req, res) {
-    const currentUser = req.auth;
+    // Merge is destructive and irreversible: only the roles that may decide a CI (admin, supervisors,
+    // branch managers) can do it. Previously any authenticated user could call this endpoint.
+    const currentUser = await findUserById(req.auth?.sub);
+    if (!currentUser || !canDecideCI(currentUser)) {
+        return res.status(200).json({ success: false, message: 'You are not allowed to merge clients.' });
+    }
     let { masterId, duplicateId, ciReferenceCode } = req.body;
 
     if (!masterId || !duplicateId) {
@@ -75,6 +83,33 @@ async function mergeClients(req, res) {
         return res.status(200).json({
             success: false,
             message: 'The duplicate client is already marked as merged.',
+        });
+    }
+
+    // The caller must be able to see at least one side (cross-branch duplicates are the whole point of
+    // a merge, so we do not require both to be in scope).
+    const [aInScope, bInScope] = await Promise.all([
+        isBranchInScope(currentUser, clientA.branchId),
+        isBranchInScope(currentUser, clientB.branchId),
+    ]);
+    if (!aInScope && !bInScope) {
+        return res.status(200).json({ success: false, message: 'Neither client is in your scope.' });
+    }
+
+    // Merging moves ALL loans onto the master. If both records have an ACTIVE loan the merged client
+    // would own two active loans at once — block it; one loan must be offset/closed first.
+    const [aActive, bActive] = await Promise.all([masterId, duplicateId].map(id =>
+        graph.query(queryQl(LOAN_AGG_TYPE, {
+            where: { clientId: { _eq: id }, status: { _eq: 'active' } },
+            limit: 1,
+        })).then(r => r.data?.loans ?? [])
+    ));
+    if (aActive.length > 0 && bActive.length > 0) {
+        return res.status(200).json({
+            success: false,
+            code: 'BOTH_HAVE_ACTIVE_LOAN',
+            message: 'Cannot merge: both records have an active loan. Offset or close one of the loans first, '
+                + 'otherwise the merged client would have two active loans.',
         });
     }
 
@@ -234,6 +269,23 @@ async function mergeClients(req, res) {
         ));
     }
 
+    // ── Re-link QR entries, unclaimed amounts and disbursement photos ──────────────
+    // Bulk where-updates (no per-row reads). Both only change the owner column; the loans they belong to
+    // were re-linked above, so the records stay consistent with the loan.
+    push(alias => updateQl(
+        createGraphType('qr_cash_collection_entries', '_id')(alias),
+        { where: { clientId: { _eq: finalDuplicate._id } }, set: { clientId: masterId } }
+    ));
+    // Unclaimed-amount rows are money tied to the client's loans/collections (which moved above).
+    push(alias => updateQl(
+        createGraphType('unclaimed_amount_transactions', '_id')(alias),
+        { where: { client_id: { _eq: finalDuplicate._id } }, set: { client_id: masterId } }
+    ));
+    push(alias => updateQl(
+        createGraphType('disbursement_client_photos', '_id')(alias),
+        { where: { client_id: { _eq: finalDuplicate._id } }, set: { client_id: masterId } }
+    ));
+
     // ── Update master client with LAF data ─────────────────────────────────
     if (Object.keys(lafUpdates).length > 0) {
         push(alias => updateQl(
@@ -293,6 +345,10 @@ async function mergeClients(req, res) {
     if (mutationList.length > 0) {
         await graph.mutation(...mutationList);
     }
+
+    // Keep the stored duplicate groups in sync (best-effort — the next scan would fix it anyway).
+    await onClientMerged({ duplicateId: finalDuplicate._id })
+        .catch(err => console.error('[merge] could not update stored duplicate groups:', err.message));
 
     // ── Audit ──────────────────────────────────────────────────────────────
     await logAudit(req, {

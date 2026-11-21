@@ -1,4 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
+import { logAudit } from "@/lib/audit";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { deleteQl, createGraphType } from "@/lib/graph/graph.util";
 import { MCBU_WITHDRAWAL_FIELDS } from "@/lib/graph.fields";
@@ -50,6 +51,15 @@ async function remove(req, res) {
       });
     }
     
+    logAudit(req, {
+      action: 'SAVINGS_WITHDRAWAL_DELETED',
+      category: 'SAVINGS',
+      severity: 'WARNING',
+      entityType: 'mcbu_withdrawal',
+      entityId: id,
+      description: 'Withdrawal request deleted',
+    });
+
     return res.status(200).json({
       success: true,
       message: "MCBU Withdrawal deleted successfully",
