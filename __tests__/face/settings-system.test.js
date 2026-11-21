@@ -108,6 +108,25 @@ describe('POST: allowFaceRecapture validation', () => {
     });
 });
 
+describe('POST: enforceFaceUniqueness', () => {
+    it('is a root-only switch', () => {
+        expect(ROOT_ONLY_SETTINGS).toContain('enforceFaceUniqueness');
+    });
+    it.each([['no'], [0], [null], [{}]])('root sending %p is refused', async (value) => {
+        const res = await post(body({ enforceFaceUniqueness: value }));
+        expect(res).toMatchObject({ success: false, message: 'enforceFaceUniqueness must be true or false.' });
+        expect(graph.mutation).not.toHaveBeenCalled();
+    });
+    it('root can switch it off; a non-root caller cannot', async () => {
+        expect((await post(body({ enforceFaceUniqueness: false }))).success).toBe(true);
+        expect(written().set.enforceFaceUniqueness).toBe(false);
+        graph.mutation.mockClear();
+        const res = await post(body({ enforceFaceUniqueness: false, companyName: 'X' }), user('branch_manager'));
+        expect(res.success).toBe(true);
+        expect(written().set).not.toHaveProperty('enforceFaceUniqueness');
+    });
+});
+
 describe('POST: audit of switch changes', () => {
     it('records each switch that actually changed — who, key, from, to', async () => {
         await post(body());   // allowFaceRecapture false→true, requireClientBiometric true→false, others unchanged

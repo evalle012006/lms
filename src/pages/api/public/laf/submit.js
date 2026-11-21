@@ -9,6 +9,7 @@ import moment from 'moment';
 import crypto from 'crypto';
 // CHANGED: shared with check-duplicate.js so the two endpoints can't drift apart
 import { compareMiddle, compareBirthdate } from '@/lib/laf/name-match';
+import { findDuplicateMatches } from '@/lib/duplicate-clients-guard';
 // FIX: whitespace-only values are blank — "   " is truthy so `x || null` and
 // `.filter(Boolean)` let it through. Server is the real enforcement point.
 import { isBlank, trimText, orNull, escapeLike } from '@/lib/validation-utils';
@@ -454,6 +455,27 @@ async function submitLAF(req, res) {
                         ...nameChangeClients.map(c => c._id),
                     ])];
                 }
+            }
+
+            // CASE 4 — same matching rules as the nightly scan (contact number, swapped first/last name,
+            // typos, birthdate typos). SOFT FLAG ONLY: routes to admin review (pending_validation) like
+            // CASE 1/3 and never hard-blocks or reveals anything to the public caller.
+            // Fails open — a lookup problem must never block a submission.
+            try {
+                const engineMatches = await findDuplicateMatches({
+                    firstName, middleName, lastName, birthdate, contactNumber,
+                    addressStreetNo, addressBarangayDistrict, addressMunicipalityCity,
+                });
+                const strong = engineMatches.filter(m => m.confidence === 'exact' || m.confidence === 'high');
+                if (strong.length > 0) {
+                    isDuplicateFlagged    = true;
+                    duplicateCandidateIds = [...new Set([
+                        ...duplicateCandidateIds,
+                        ...strong.map(m => m.client._id),
+                    ])];
+                }
+            } catch (err) {
+                console.error('[laf-submit] duplicate engine check failed, continuing:', err.message);
             }
         }
     }
