@@ -6,6 +6,7 @@ import { gql } from 'node_modules/apollo-boost/lib/index';
 import moment from 'moment';
 import { randomUUID } from 'crypto';
 import logger from '@/logger';
+import { logAudit } from '@/lib/audit';
 import { notifyTransactionClosed, notifyBranchTransactionApproved, isNotificationEnabled } from '@/lib/notification-service';
 import { findBranches, findUserById } from '@/lib/graph.functions';
 // ADDED: shared list of required closing document types
@@ -171,6 +172,23 @@ async function processGroupTransactionStatus(req, res) {
         result.body.context = { loId, branchId, mode, date: currentDate };
     }
     result.body.requestId = requestId;
+
+    try {
+        const isBranchLevel = !!branchId && !loId;
+        const ok = !result.body.error;
+        logAudit(req, {
+            action: `${isBranchLevel ? 'BRANCH' : 'LO'}_TRANSACTIONS_${mode === 'close' ? 'CLOSED' : 'OPENED'}`,
+            category: isBranchLevel ? 'BRANCH' : 'COLLECTION',
+            severity: ok ? (mode === 'open' ? 'WARNING' : 'INFO') : 'WARNING',
+            entityType: isBranchLevel ? 'branch' : 'user',
+            entityId: isBranchLevel ? branchId : loId,
+            branchId,
+            description: `${isBranchLevel ? 'Branch' : 'Loan officer'} transactions ${mode === 'close' ? 'closed' : 'reopened'} for ${currentDate}${ok ? '' : ' (blocked)'}`,
+            metadata: { mode, currentDate, loId, branchId, requestId, httpStatus: result.status, code: result.body.code, issueCodes: result.body.issues?.map(i => i.code) },
+            success: ok,
+            failReason: ok ? null : (result.body.message || result.body.code || null),
+        });
+    } catch (e) { /* audit must never break approval */ }
 
     res.status(result.status)
         .setHeader('Content-Type', 'application/json')

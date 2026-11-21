@@ -4,6 +4,7 @@ import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 import { findUserById } from '@/lib/graph.functions';
 import { canManageGroups } from '@/lib/group-permissions';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
@@ -197,6 +198,21 @@ async function updateGroup(req, res) {
     );
 
     response = { success: true, group: { ...existingGroup, ...set, _id: groupId } };
+
+    const changed = Object.keys(set).filter(k => JSON.stringify(set[k]) !== JSON.stringify(existingGroup[k]));
+    if (changed.length > 0) {
+        const pick = (o) => Object.fromEntries(changed.map(k => [k, o[k] ?? null]));
+        logAudit(req, {
+            action: 'GROUP_UPDATED',
+            category: 'GROUP',
+            entityType: 'group',
+            entityId: groupId,
+            branchId: existingGroup.branchId,
+            description: `Group "${existingGroup.name}" updated: ${changed.join(', ')}`,
+            beforeData: pick(existingGroup),
+            afterData: pick(set),
+        });
+    }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

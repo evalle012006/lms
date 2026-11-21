@@ -22,6 +22,7 @@ import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
 import { validateCIPayload, normalizeCIAnswers } from '@/lib/laf/ci-validation';
 import { trimText } from '@/lib/validation-utils';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
@@ -146,6 +147,20 @@ async function saveInvestigation(req, res) {
             where: { ciReferenceCode: { _eq: ciReferenceCode } },
         })
     );
+
+    logAudit(req, {
+        action: decision === 'approved' ? 'CI_APPROVED' : 'CI_DECLINED',
+        category: 'CI',
+        severity: decision === 'declined' ? 'WARNING' : 'INFO',
+        entityType: 'temporaryLoanApplication',
+        entityId: application._id,
+        branchId: application.branchId,
+        userName: picUserName,
+        description: `CI ${decision} for ${ciReferenceCode}`,
+        beforeData: { status: application.status },
+        afterData: { status: decision === 'approved' ? 'ci_approved' : 'ci_declined', groupLeader: !!groupLeader, declineReason: decision === 'declined' ? cleanDeclineReason : null },
+        metadata: { ciReferenceCode, businessVerified: !!businessVerified, addressVerified: !!addressVerified },
+    });
 
     // Send SMS notification — non-blocking
     try {

@@ -2,6 +2,7 @@ import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { logAudit } from '@/lib/audit';
 
 const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', `
@@ -44,6 +45,16 @@ async function deleteGroup(req, res) {
         response = {
             success: true
         }
+        logAudit(req, {
+            action: 'GROUP_DELETED',
+            category: 'GROUP',
+            severity: 'CRITICAL',
+            entityType: 'group',
+            entityId: _id,
+            branchId: group.branchId,
+            description: `Group "${group.name}" deleted`,
+            beforeData: { name: group.name, occurence: group.occurence, day: group.day, loanOfficerId: group.loanOfficerId },
+        });
     }
     
 

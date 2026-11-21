@@ -1,5 +1,6 @@
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
+import { logAudit } from "@/lib/audit";
 import {
   createGraphType,
   insertQl,
@@ -307,6 +308,21 @@ async function processData(req, res) {
       };
     }
   }
+
+  try {
+    const ids = (Array.isArray(loanData) ? loanData : []).map(l => l?._id).filter(Boolean);
+    logAudit(req, {
+      action: origin === 'ldf' ? 'LOAN_LDF_APPROVED' : 'LOAN_FINAL_APPROVED',
+      category: 'LOAN',
+      severity: response?.withError ? 'WARNING' : 'INFO',
+      entityType: 'loan',
+      entityId: ids.length === 1 ? ids[0] : null,
+      description: `${origin === 'ldf' ? 'LDF approval' : 'Final approval'} of ${ids.length} loan(s)`,
+      metadata: { origin, loanIds: ids.slice(0, 200), count: ids.length, errorMsg: response?.errorMsg, skippedClientIds },
+      success: !!response?.success && !response?.withError,
+      failReason: response?.withError ? JSON.stringify(response.errorMsg).slice(0, 500) : null,
+    });
+  } catch (e) { /* audit must never break approval */ }
 
   res.send(response);
 }

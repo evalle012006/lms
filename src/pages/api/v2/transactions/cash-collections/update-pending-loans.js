@@ -1,6 +1,7 @@
 import { apiHandler } from "@/services/api-handler";
 import moment from "moment";
 import logger from "@/logger";
+import { logAudit } from "@/lib/audit";
 import { getCurrentDate } from "@/lib/date-utils";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
@@ -19,6 +20,24 @@ async function save(req, res) {
     let data = req.body;
     logger.debug({page: `Update Cash Collection For Pending Loans - Group ID: ${data[0].groupId}`});
     await savePendingLoans(req?.auth?.sub, data)
+    try {
+        const rows = Array.isArray(data) ? data : [];
+        const remarkOf = c => String(c?.remarks?.value ?? (typeof c?.remarks === 'string' ? c.remarks : '') ?? '');
+        const offsets = rows.filter(c => remarkOf(c).startsWith('offset'));
+        const reloaners = rows.filter(c => remarkOf(c).startsWith('reloaner'));
+        logAudit(req, {
+            action: 'PENDING_LOANS_UPDATED',
+            category: 'LOAN',
+            entityType: 'group',
+            entityId: rows[0]?.groupId ?? null,
+            branchId: rows[0]?.branchId ?? null,
+            description: `Pending-loan update for ${rows.length} row(s): ${reloaners.length} reloaner, ${offsets.length} offset (offset closes the current loan and rejects its pending loan)`,
+            metadata: {
+                reloaners: reloaners.map(c => ({ clientId: c.clientId, loanId: c.loanId })).slice(0, 100),
+                offsets: offsets.map(c => ({ clientId: c.clientId, loanId: c.loanId })).slice(0, 100),
+            },
+        });
+    } catch (e) { /* audit must never break the save */ }
     res.send({ success: true });
 }
 
