@@ -45,12 +45,12 @@ function compressToBase64(file, maxWidth = 800, quality = 0.7) {
     });
 }
 
-const CIQuestion = ({ question, index, answer, onChange }) => (
+const CIQuestion = ({ question, index, answer, onChange, requiredActive = true }) => (
     <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
             {index + 1}. {question.question}
-            {question.required && <span className="ml-1 text-red-500 text-xs">*</span>}
-            {!question.required && <span className="ml-1 text-gray-400 text-xs font-normal">(optional)</span>}
+            {question.required && requiredActive && <span className="ml-1 text-red-500 text-xs">*</span>}
+            {(!question.required || !requiredActive) && <span className="ml-1 text-gray-400 text-xs font-normal">(optional)</span>}
         </label>
         {question.answerType === 'yesno' ? (
             <div className="flex gap-4">
@@ -214,17 +214,19 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
         }
         if (!decision) { toast.error('Please select Approve or Decline.'); return; }
 
-        // FIX: businessVerified and addressVerified are required before saving
-        if (!businessVerified) {
+        // Verification and required questions apply only when approving.
+        if (decision === 'approved' && !businessVerified) {
             toast.error('Please confirm that the business has been verified.');
             return;
         }
-        if (!addressVerified) {
+        if (decision === 'approved' && !addressVerified) {
             toast.error('Please confirm that the address has been verified.');
             return;
         }
 
-        const unanswered = ciQuestions.filter(q => q.required && !answers[q.id]?.trim());
+        const unanswered = decision === 'approved'
+            ? ciQuestions.filter(q => q.required && !answers[q.id]?.trim())
+            : [];
         if (unanswered.length > 0) {
             toast.error(`Please answer all required questions: ${unanswered.map((q, i) => `${i + 1}. ${q.question}`).join(', ')}`);
             return;
@@ -358,6 +360,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                     {ciQuestions.map((q, i) => (
                         <CIQuestion key={q.id} question={q} index={i}
                             answer={answers[q.id] || ''}
+                            requiredActive={decision !== 'declined'}
                             onChange={val => handleAnswerChange(q.id, val)} />
                     ))}
                 </div>
@@ -372,9 +375,11 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
             <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     Verification
-                    <span className="ml-1 text-red-500 normal-case font-normal text-xs">
-                        * both required
-                    </span>
+                    {decision === 'declined' ? (
+                        <span className="ml-1 text-gray-400 normal-case font-normal text-xs">(optional when declining)</span>
+                    ) : (
+                        <span className="ml-1 text-red-500 normal-case font-normal text-xs">* both required</span>
+                    )}
                 </p>
                 <div className="flex gap-3 flex-wrap">
                     {/* Business verified */}
@@ -418,7 +423,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
                     </label>
                 </div>
                 {/* Hint when either is unchecked */}
-                {(!businessVerified || !addressVerified) && (
+                {decision !== 'declined' && (!businessVerified || !addressVerified) && (
                     <p className="text-xs text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                         Both must be confirmed before the investigation can be saved.
