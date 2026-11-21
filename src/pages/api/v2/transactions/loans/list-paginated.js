@@ -15,6 +15,7 @@
 //   duplicate         status=pending AND client.duplicate        (rep 1 / root only)
 //   guarantor-review  status=pending AND guarantorDuplicate      (rep 1 / root only)
 //   history           status<>pending AND dateGrantedMonthYear = MM/YYYY
+//   rejected          status=reject                         (read-only; same scope as the other tabs)
 //
 // Default sort (all tabs): modifiedDateTime DESC, then dateOfRelease DESC.
 //
@@ -27,6 +28,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById, loadSettingsSystemDate } from '@/lib/graph.functions';
 import { resolveLoanBranchScope } from '@/lib/api/resolveLoanBranchScope';
+import { canViewRejectedLoans } from '@/lib/loan-application-v2-gate';
 
 const graph = new GraphProvider();
 const TZ = 'Asia/Manila';
@@ -38,7 +40,7 @@ const LOAN_TYPE = createGraphType('loans', `
     fullName pnNumber principalLoan amountRelease dateOfRelease dateAdded modifiedDateTime
     occurence weeklyScheduleType groupName ciName ciReferenceCode
     ldfApproved ldfApprovedDate preApproved
-    guarantorDuplicate coMakerPending coMakerPendingName
+    guarantorDuplicate coMakerPending coMakerPendingName rejectReason
     client { _id fullName profile duplicate }
     branch { _id code name }
     loanOfficer { _id firstName lastName loNo }
@@ -75,7 +77,10 @@ const PENDING_TABS = ['ldf', 'tomorrow', 'application'];
 // branch managers — loan officers do not get it).
 const ADMIN_ONLY_TABS = ['duplicate'];
 const REP3_UP_TABS = ['guarantor-review'];
-const ALL_TABS = [...PENDING_TABS, ...ADMIN_ONLY_TABS, ...REP3_UP_TABS, 'history'];
+// Rejected loans: every role that can open the page, read-only. Scope is the same as
+// the other tabs (a loan officer only ever sees their own loans).
+const SUPERVISOR_TABS = ['rejected'];
+const ALL_TABS = [...PENDING_TABS, ...ADMIN_ONLY_TABS, ...REP3_UP_TABS, ...SUPERVISOR_TABS, 'history'];
 
 // Lower bound excludes '' / junk strings if dateOfRelease is a text column,
 // and is harmless if it is a date column (unlike `_neq: ''`, which would
@@ -128,9 +133,11 @@ async function listPaginated(req, res) {
             return res.status(200).json({ success: false, message: `Invalid tab "${q.tab}".` });
         }
         const canSeeGuarantorTab = currentUser.root === true || (rep >= 1 && rep <= 3);
+        const canSeeRejectedTab = canViewRejectedLoans(currentUser);
         if (
             (ADMIN_ONLY_TABS.includes(q.tab) && !isAdminLevel) ||
-            (REP3_UP_TABS.includes(q.tab) && !canSeeGuarantorTab)
+            (REP3_UP_TABS.includes(q.tab) && !canSeeGuarantorTab) ||
+            (SUPERVISOR_TABS.includes(q.tab) && !canSeeRejectedTab)
         ) {
             return res.status(200).json({ success: false, message: 'This tab is not available for your role.' });
         }
@@ -144,6 +151,7 @@ async function listPaginated(req, res) {
             ...PENDING_TABS,
             ...(isAdminLevel ? ADMIN_ONLY_TABS : []),
             ...(canSeeGuarantorTab ? REP3_UP_TABS : []),
+            ...(canSeeRejectedTab ? SUPERVISOR_TABS : []),
         ];
 
         // ── Scope ────────────────────────────────────────────────────────
@@ -271,6 +279,9 @@ async function listPaginated(req, res) {
                     ],
                 };
             }
+            if (tab === 'rejected') {
+                return { _and: [{ status: { _eq: 'reject' } }, ...filters] };
+            }
             return { _and: [{ status: { _eq: 'pending' } }, TAB_COND[tab], ...filters] };
         };
 
@@ -323,7 +334,8 @@ async function listPaginated(req, res) {
         ];
         // Co-maker pending count for the active (pending-type) tab. Always
         // returned, because it depends on the tab AND the filters.
-        const needsCoMakerAgg = q.tab !== 'history' && !q.coMakerPending;
+        const coMakerApplies = q.tab !== 'history' && q.tab !== 'rejected';
+        const needsCoMakerAgg = coMakerApplies && !q.coMakerPending;
         if (needsCoMakerAgg) {
             parts.push(aggregateQl(
                 LOAN_TYPE('agg_comaker'),
@@ -348,7 +360,7 @@ async function listPaginated(req, res) {
         const totalPages = Math.ceil(total / limit);
 
         let coMakerPendingCount = null;
-        if (q.tab !== 'history') {
+        if (coMakerApplies) {
             coMakerPendingCount = q.coMakerPending ? total : (data.agg_comaker?.aggregate?.count ?? 0);
         }
 
