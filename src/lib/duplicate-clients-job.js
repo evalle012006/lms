@@ -14,6 +14,7 @@ import { generateUUID } from '@/lib/utils';
 import { logAudit } from '@/lib/audit';
 import { findFaceMatches } from '@/lib/duplicate-faces';
 import { withRetry, describeError } from '@/lib/retry';
+import { beginCronRun, finishCronRun } from '@/lib/cron-guard';
 import {
     detectDuplicates, detectMultiActiveLoans, clusterKey, normalizeText, normalizePhone,
 } from '@/lib/duplicate-clients';
@@ -90,13 +91,25 @@ export async function startDuplicateScan({ trigger, triggeredBy = null, req = nu
     const latest = await getLatestRun();
     if (isRunActive(latest)) return { started: false, reason: 'already_running', runId: latest._id };
 
+    // Atomic lock (cron_runs partial unique index): the check above is only a fast path — two triggers (or
+    // app containers) can both pass it. Fails open if cron_runs is missing, like the other cron jobs.
+    const lock = await beginCronRun('detect-duplicate-clients', { trigger, staleMinutes: Math.ceil(STALE_RUN_MS / 60000) });
+    if (!lock.started) return { started: false, reason: 'already_running' };
+
     const runId = generateUUID();
-    await rawGraph.mutation(insertQl(RUN_TYPE('runs'), {
-        objects: [{ _id: runId, trigger, triggered_by: triggeredBy, status: 'running' }],
-    }));
+    try {
+        await rawGraph.mutation(insertQl(RUN_TYPE('runs'), {
+            objects: [{ _id: runId, trigger, triggered_by: triggeredBy, status: 'running' }],
+        }));
+    } catch (err) {
+        await finishCronRun(lock.runId, { ok: false, error: describeError(err) });
+        throw err;
+    }
 
     // Intentionally not awaited — the caller returns immediately and polls the run row.
-    runScan(runId, req).catch(err => console.error('[duplicate-scan] unexpected failure:', err));
+    runScan(runId, req)
+        .catch(err => console.error('[duplicate-scan] unexpected failure:', err))
+        .finally(() => finishCronRun(lock.runId, { ok: true, stats: { scanRunId: runId } }));
     return { started: true, runId };
 }
 
