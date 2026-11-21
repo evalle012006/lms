@@ -269,12 +269,17 @@ async function mergeClients(req, res) {
         ));
     }
 
-    // ── Re-link QR collection entries and disbursement photos ──────────────
+    // ── Re-link QR entries, unclaimed amounts and disbursement photos ──────────────
     // Bulk where-updates (no per-row reads). Both only change the owner column; the loans they belong to
     // were re-linked above, so the records stay consistent with the loan.
     push(alias => updateQl(
         createGraphType('qr_cash_collection_entries', '_id')(alias),
         { where: { clientId: { _eq: finalDuplicate._id } }, set: { clientId: masterId } }
+    ));
+    // Unclaimed-amount rows are money tied to the client's loans/collections (which moved above).
+    push(alias => updateQl(
+        createGraphType('unclaimed_amount_transactions', '_id')(alias),
+        { where: { client_id: { _eq: finalDuplicate._id } }, set: { client_id: masterId } }
     ));
     push(alias => updateQl(
         createGraphType('disbursement_client_photos', '_id')(alias),

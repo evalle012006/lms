@@ -11,6 +11,7 @@ import { canDecideCI }                                  from '@/lib/ci-scope';
 import { resolveClientInScope }                         from '@/lib/client-scope';
 import { logAudit }                                     from '@/lib/audit';
 import { generateUUID }                                 from '@/lib/utils';
+import { findFaceDuplicates }                        from '@/lib/face-duplicate';
 import { sanitizeLiveness, sanitizeEnrolledAt }         from '@/lib/face-recapture-utils';
 
 const graph = new GraphProvider();
@@ -20,7 +21,7 @@ const ATTEMPT_TYPE     = createGraphType('face_verify_attempts', FACE_VERIFY_ATT
 
 export default apiHandler({ post: enrollClientFace });
 
-const fail = (res, message) => res.status(200).json({ success: false, message });
+const fail = (res, message, extra = {}) => res.status(200).json({ success: false, message, ...extra });
 
 async function enrollClientFace(req, res) {
     const { clientId, faceTemplate, faceEnrolledAt, livenessScore, photoKey, loanId } = req.body;
@@ -49,6 +50,17 @@ async function enrollClientFace(req, res) {
     // Enrollment only: this endpoint must never replace an existing template
     if (client.faceTemplate || enrollments?.length) {
         return fail(res, 'This client already has a face template on file.');
+    }
+
+    // Same face already on another client? Block only when that client has an active/pending loan (same policy
+    // as the text guard); otherwise enroll and leave a WARNING audit entry for the duplicate review.
+    const dup = await findFaceDuplicates(faceTemplate, clientId);
+    const blockers = dup.matches.filter(m => m.hasActiveLoan || m.hasPendingLoan);
+    if (blockers.length) {
+        return fail(res, 'This face matches another client who has an active or pending loan. Enrollment blocked — resolve the duplicate first.', {
+            code: 'DUPLICATE_FACE',
+            matches: blockers.slice(0, 3).map(({ clientId: id, name, branchName, distance }) => ({ clientId: id, name, branchName, distance })),
+        });
     }
 
     const enrollmentId = generateUUID();
@@ -94,7 +106,7 @@ async function enrollClientFace(req, res) {
         userId: currentUser._id,
         userName: `${currentUser.firstName} ${currentUser.lastName}`,
         afterData: { version: 1, photoKey: safePhotoKey },
-        metadata: { clientId, loanId: loanId ?? null, enrollmentId },
+        metadata: { clientId, loanId: loanId ?? null, enrollmentId, faceDuplicateCheck: dup.available ? (dup.matches.length ? 'matched_inactive' : 'passed') : 'skipped', faceMatchIds: dup.matches.map(m => m.clientId) },
     });
 
     return res.status(200).json({ success: true, message: 'Face enrolled and disbursement can proceed.' });
