@@ -308,6 +308,7 @@ export const SETTINGS_FIELDS = `
   qrAllowedEndTime
   passwordLoginEnabled
   allowFaceRecapture
+  enforceFaceUniqueness
   allowOfflineUpload
   `;
 

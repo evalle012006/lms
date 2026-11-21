@@ -12,6 +12,7 @@ import { resolveClientInScope }                         from '@/lib/client-scope
 import { logAudit }                                     from '@/lib/audit';
 import { generateUUID }                                 from '@/lib/utils';
 import { findFaceDuplicates }                        from '@/lib/face-duplicate';
+import { isFaceUniquenessEnforced }                  from '@/lib/face-uniqueness-settings';
 import { sanitizeLiveness, sanitizeEnrolledAt }         from '@/lib/face-recapture-utils';
 
 const graph = new GraphProvider();
@@ -54,7 +55,9 @@ async function enrollClientFace(req, res) {
 
     // Same face already on another client? Block only when that client has an active/pending loan (same policy
     // as the text guard); otherwise enroll and leave a WARNING audit entry for the duplicate review.
-    const dup = await findFaceDuplicates(faceTemplate, clientId);
+    // System Settings → Enforce Face Uniqueness (default ON). Off = no look-up, enrollment proceeds as before.
+    const enforceUniqueness = await isFaceUniquenessEnforced();
+    const dup = enforceUniqueness ? await findFaceDuplicates(faceTemplate, clientId) : { available: false, matches: [] };
     const blockers = dup.matches.filter(m => m.hasActiveLoan || m.hasPendingLoan);
     if (blockers.length) {
         return fail(res, 'This face matches another client who has an active or pending loan. Enrollment blocked — resolve the duplicate first.', {
@@ -106,7 +109,7 @@ async function enrollClientFace(req, res) {
         userId: currentUser._id,
         userName: `${currentUser.firstName} ${currentUser.lastName}`,
         afterData: { version: 1, photoKey: safePhotoKey },
-        metadata: { clientId, loanId: loanId ?? null, enrollmentId, faceDuplicateCheck: dup.available ? (dup.matches.length ? 'matched_inactive' : 'passed') : 'skipped', faceMatchIds: dup.matches.map(m => m.clientId) },
+        metadata: { clientId, loanId: loanId ?? null, enrollmentId, faceDuplicateCheck: !enforceUniqueness ? 'disabled' : dup.available ? (dup.matches.length ? 'matched_inactive' : 'passed') : 'skipped', faceMatchIds: dup.matches.map(m => m.clientId) },
     });
 
     return res.status(200).json({ success: true, message: 'Face enrolled and disbursement can proceed.' });

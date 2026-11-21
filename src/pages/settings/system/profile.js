@@ -521,6 +521,60 @@ const FeatureEnablementCard = ({ values, setFieldValue, currentUser }) => (
                 </div>
             </div>
 
+            {/* Enforce Face Uniqueness Toggle */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-start space-x-4">
+                        <div className="p-2 bg-rose-100 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-rose-600">
+                                <path strokeLinecap="round" strokeLinejoin="round"
+                                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-base font-semibold text-gray-900">
+                                Enforce Face Uniqueness
+                            </label>
+                            <p className="text-sm text-gray-500 mt-1">
+                                When enabled, saving a client's face (first enrollment at disbursement, or a
+                                re-enrollment) is checked against every other client's saved face. A match
+                                with a client who has an active or pending loan blocks the enrollment; a
+                                re-enrollment is blocked on any match. When disabled, no check is made and
+                                enrollments proceed as before. The nightly duplicate scan is not affected.
+                            </p>
+                            {!values.enforceFaceUniqueness && (
+                                <div className="mt-2 p-2 bg-rose-50 rounded-lg text-xs text-rose-700">
+                                    Duplicate faces will not be detected at enrollment while this is off.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {currentUser?.root ? (
+                        <button
+                            type="button"
+                            onClick={() => setFieldValue('enforceFaceUniqueness', !values.enforceFaceUniqueness)}
+                            className={`ml-4 relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer
+                                rounded-full border-2 border-transparent transition-colors duration-200
+                                ease-in-out focus:outline-none focus:ring-2 focus:ring-rose-600
+                                focus:ring-offset-2 ${values.enforceFaceUniqueness ? 'bg-rose-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-6 w-6 transform
+                                rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                ${values.enforceFaceUniqueness ? 'translate-x-7' : 'translate-x-0'}`} />
+                        </button>
+                    ) : (
+                        <span className={`ml-4 flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                            values.enforceFaceUniqueness
+                                ? 'bg-rose-100 text-rose-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {values.enforceFaceUniqueness ? 'Enabled' : 'Disabled'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* Allow Offline Collection Upload Toggle */}
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <div className="flex items-center justify-between">
@@ -704,6 +758,7 @@ const ProfileSettingsPage = (props) => {
         requireStaffBiometric:  state.requireStaffBiometric  ?? true,
         requireLoanVerificationAtClosing: state.requireLoanVerificationAtClosing ?? true,
         allowFaceRecapture: state.allowFaceRecapture ?? false,
+        enforceFaceUniqueness: state.enforceFaceUniqueness ?? true,
         allowOfflineUpload: state.allowOfflineUpload ?? false,
         qrAllowedStartTime: state.qrAllowedStartTime || '06:00',
         qrAllowedEndTime:   state.qrAllowedEndTime   || '22:00',

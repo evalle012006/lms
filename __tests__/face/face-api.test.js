@@ -139,6 +139,14 @@ describe('clients/enroll-face', () => {
         expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ faceDuplicateCheck: 'matched_inactive', faceMatchIds: ['other'] });
     });
 
+    it('switch OFF: no face look-up, enrollment proceeds and the audit says disabled', async () => {
+        const match = { _id: 'other', firstName: 'Bea', lastName: 'Lim', branchName: 'X', status: 'active', faceTemplate: JSON.stringify(ZERO) };
+        answer(fx({ faceUniquenessSetting: [{ enforceFaceUniqueness: false }], matches: [match], loans: [{ _id: 'l9', clientId: 'other', status: 'active' }] }));
+        expect((await run(enrollFace.post, req())).success).toBe(true);
+        expect(queryFor('matches')).toBeUndefined();
+        expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ faceDuplicateCheck: 'disabled' });
+    });
+
     it('first enrollment: v1 row + client update + attempt relink in ONE mutation', async () => {
         answer(fx());
         const body = await run(enrollFace.post, req());
@@ -299,6 +307,14 @@ describe('clients/recapture-face', () => {
         // pgvector look-up answered with no match -> 'passed' (it is 'skipped' only when the DB function is unavailable)
         expect(audit.metadata).toMatchObject({ duplicateCheck: 'passed', mismatchCount: 2, version: 2, loanId: 'l1' });
         expect(JSON.stringify(audit)).not.toContain('1,1,1,1,1');
+    });
+
+    it('switch OFF: re-enrollment skips the face look-up', async () => {
+        answer(fx({ faceUniquenessSetting: [{ enforceFaceUniqueness: false }], matches: [{ _id: 'other', firstName: 'Bea', lastName: 'Lim', status: 'active', faceTemplate: JSON.stringify(ZERO) }] }));
+        const body = await run(recaptureFace.post, req());
+        expect(body.code).not.toBe('DUPLICATE_FACE');
+        expect(queryFor('matches')).toBeUndefined();
+        expect(logAudit.mock.calls[0][1].metadata).toMatchObject({ duplicateCheck: 'disabled' });
     });
 
     it('blocks re-enrollment when the new face matches another client (pgvector)', async () => {

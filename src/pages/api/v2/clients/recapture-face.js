@@ -5,6 +5,7 @@
 import { apiHandler }                                                from '@/services/api-handler';
 import { GraphProvider }                                             from '@/lib/graph/graph.provider';
 import { findFaceDuplicates } from '@/lib/face-duplicate';
+import { isFaceUniquenessEnforced } from '@/lib/face-uniqueness-settings';
 import { createGraphType, queryQl, aggregateQl, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { CLIENT_FACE_ENROLLMENT_FIELDS, FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
 import { findUserById }                                              from '@/lib/graph.functions';
@@ -124,14 +125,16 @@ async function recaptureFace(req, res) {
         return fail(res, 'This capture matches the existing face record. Retry verification instead of replacing it.', { code: 'ALREADY_MATCHES' });
     }
 
-    const dup = await findFaceDuplicates(faceTemplate, clientId);
+    // System Settings → Enforce Face Uniqueness (default ON). Off = no look-up.
+    const enforceUniqueness = await isFaceUniquenessEnforced();
+    const dup = enforceUniqueness ? await findFaceDuplicates(faceTemplate, clientId) : { available: false, matches: [] };
     if (dup.matches.length) {
         return fail(res, 'This face matches another client on record. Re-enrollment blocked.', {
             code: 'DUPLICATE_FACE',
             matches: dup.matches.slice(0, 3).map(({ clientId: id, name, branchName, distance }) => ({ clientId: id, name, branchName, distance })),
         });
     }
-    const duplicateCheck = dup.available ? 'passed' : 'skipped';
+    const duplicateCheck = !enforceUniqueness ? 'disabled' : dup.available ? 'passed' : 'skipped';
 
     // ── Atomic swap: one request = one transaction ───────────────────────
     const now     = moment().toISOString();
