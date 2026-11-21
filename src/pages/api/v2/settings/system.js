@@ -16,6 +16,7 @@ const settingsType = createGraphType('settings', SETTINGS_FIELDS)();
 // must never reach the audit log.)
 export const ROOT_ONLY_SETTINGS = [
     'allowFaceRecapture',
+    'enforceFaceUniqueness',
     'requireClientBiometric',
     'requireStaffBiometric',
     'requireLoanVerificationAtClosing',
@@ -61,6 +62,9 @@ async function updateSystemSettings(req, res) {
 
     if ('allowFaceRecapture' in system && typeof system.allowFaceRecapture !== 'boolean') {
         return refuse(res, 'allowFaceRecapture must be true or false.');
+    }
+    if ('enforceFaceUniqueness' in system && typeof system.enforceFaceUniqueness !== 'boolean') {
+        return refuse(res, 'enforceFaceUniqueness must be true or false.');
     }
     if ('allowOfflineUpload' in system && typeof system.allowOfflineUpload !== 'boolean') {
         return refuse(res, 'allowOfflineUpload must be true or false.');

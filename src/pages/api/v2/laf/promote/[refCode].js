@@ -36,6 +36,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions';
 import { canPromoteCI, isBranchInScope } from '@/lib/ci-scope';
+import { isAboveBranchLevel } from '@/lib/ci-roles';
+import { findDuplicateMatches, isBlockingMatch, toMatchSummary } from '@/lib/duplicate-clients-guard';
+import { logAudit } from '@/lib/audit';
 import moment from 'moment';
 
 const graph = new GraphProvider();
@@ -108,6 +111,58 @@ async function promoteApplication(req, res) {
                 success: false,
                 message: "The selected group is not in this application's branch.",
             });
+        }
+    }
+
+    // ── Duplicate guard (new clients only) ────────────────────────────────
+    // A NEW client row is about to be created. If it matches an existing client that has an active or
+    // pending loan, stop here — BEFORE the atomic claim below, so nothing has changed and it can be retried.
+    // Skipped when an admin already reviewed this application at the duplicate-validation step
+    // (duplicateValidatedBy), since that review already decided "different person".
+    if (!application.existingClientId && !application.duplicateValidatedBy) {
+        let blockers = [];
+        try {
+            const matches = await findDuplicateMatches({
+                firstName: application.firstName, middleName: application.middleName, lastName: application.lastName,
+                birthdate: application.birthdate, contactNumber: application.contactNumber,
+                addressStreetNo: application.addressStreetNo,
+                addressBarangayDistrict: application.addressBarangayDistrict,
+                addressMunicipalityCity: application.addressMunicipalityCity,
+                branchId: application.branchId,
+            });
+            blockers = matches.filter(isBlockingMatch);
+        } catch (err) {
+            // Fail open: a lookup failure must never stop a legitimate promotion; the nightly scan is the safety net.
+            console.error('[promote] duplicate guard failed, continuing:', err.message);
+        }
+
+        if (blockers.length) {
+            const { overrideDuplicate, overrideReason } = req.body || {};
+            const reason = String(overrideReason ?? '').trim();
+            const mayOverride = isAboveBranchLevel(user);
+            if (overrideDuplicate === true && mayOverride && reason.length >= 10) {
+                logAudit(req, {
+                    action: 'DUPLICATE_BLOCK_OVERRIDDEN',
+                    category: 'CI',
+                    severity: 'WARNING',
+                    entityType: 'client',
+                    entityId: blockers[0].client._id,
+                    userId: user._id,
+                    userName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+                    description: `Promoted ${refCode} as a NEW client despite a matching client. Reason: ${reason.slice(0, 300)}`,
+                    metadata: { ciReferenceCode: refCode, matches: blockers.slice(0, 5).map(toMatchSummary) },
+                });
+            } else {
+                return res.status(200).json({
+                    success: false,
+                    code: 'DUPLICATE_CLIENT_BLOCKED',
+                    message: 'Cannot create a new client — this person matches an existing client that has an active or pending loan. '
+                        + 'Link the application to the existing client (reloan / balik) or resolve it in the duplicate review.'
+                        + (mayOverride ? ' You can override with a written reason if this is a different person.' : ''),
+                    canOverride: mayOverride,
+                    matches: blockers.slice(0, 5).map(toMatchSummary),
+                });
+            }
         }
     }
 

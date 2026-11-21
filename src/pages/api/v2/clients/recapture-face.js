@@ -4,6 +4,8 @@
 // Never overwrites: the current reference becomes a 'superseded' version row.
 import { apiHandler }                                                from '@/services/api-handler';
 import { GraphProvider }                                             from '@/lib/graph/graph.provider';
+import { findFaceDuplicates } from '@/lib/face-duplicate';
+import { isFaceUniquenessEnforced } from '@/lib/face-uniqueness-settings';
 import { createGraphType, queryQl, aggregateQl, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { CLIENT_FACE_ENROLLMENT_FIELDS, FACE_VERIFY_ATTEMPT_FIELDS } from '@/lib/graph.fields';
 import { findUserById }                                              from '@/lib/graph.functions';
@@ -32,12 +34,6 @@ const fail = (res, message, extra = {}) => res.status(200).json({ success: false
 const isTemplate = (t) => Array.isArray(t) && t.length === 128 && t.every(Number.isFinite);
 const euclid = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2; return Math.sqrt(s); };
 const parseTemplate = (raw) => { try { const t = JSON.parse(raw); return isTemplate(t) ? t : null; } catch { return null; } };
-
-// pgvector duplicate-face detection is staging-only today (faceTemplateVec is not in production).
-// When it ships, call it here and block on a hit. Until then the audit entry records 'skipped'.
-async function findDuplicateFace(/* template, excludeClientId */) {
-    return { available: false, match: null };
-}
 
 async function recaptureFace(req, res) {
     const { clientId, loanId, ciReferenceCode, faceTemplate, livenessScore, photoKey, reason } = req.body;
@@ -129,11 +125,16 @@ async function recaptureFace(req, res) {
         return fail(res, 'This capture matches the existing face record. Retry verification instead of replacing it.', { code: 'ALREADY_MATCHES' });
     }
 
-    const dup = await findDuplicateFace(faceTemplate, clientId);
-    if (dup.available && dup.match) {
-        return fail(res, 'This face matches another client on record. Re-enrollment blocked.', { code: 'DUPLICATE_FACE' });
+    // System Settings → Enforce Face Uniqueness (default ON). Off = no look-up.
+    const enforceUniqueness = await isFaceUniquenessEnforced();
+    const dup = enforceUniqueness ? await findFaceDuplicates(faceTemplate, clientId) : { available: false, matches: [] };
+    if (dup.matches.length) {
+        return fail(res, 'This face matches another client on record. Re-enrollment blocked.', {
+            code: 'DUPLICATE_FACE',
+            matches: dup.matches.slice(0, 3).map(({ clientId: id, name, branchName, distance }) => ({ clientId: id, name, branchName, distance })),
+        });
     }
-    const duplicateCheck = dup.available ? 'passed' : 'skipped';
+    const duplicateCheck = !enforceUniqueness ? 'disabled' : dup.available ? 'passed' : 'skipped';
 
     // ── Atomic swap: one request = one transaction ───────────────────────
     const now     = moment().toISOString();
