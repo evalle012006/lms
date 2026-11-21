@@ -34,7 +34,8 @@ const SummaryPanel = ({
     selectedDate,
     otherIncomeRefreshKey = 0,
     canEditBeginningBalance = false,
-    onBeginningBalanceSaved
+    onBeginningBalanceSaved,
+    cashbookBeginningBalance = null,
 }) => {
     const d = mapSummaryData(rawData);
     console.log("12b Database Other Income:", d?.rcptOtherIncome);
@@ -300,10 +301,37 @@ const SummaryPanel = ({
         };
     }, [branchId, selectedDate]);
 
-    const effectiveBeginningBalance =
-        beginningBalanceOverride !== null
-            ? beginningBalanceOverride
-            : Number(d?.beginningBalance || 0);
+    // =========================================================
+    // BEGINNING BALANCE
+    // Use Cashbook calculation for automatic carry-forward.
+    // Preserve manually entered beginning balances.
+    // =========================================================
+
+    const effectiveBeginningBalance = (() => {
+        // Manual balance always takes priority.
+        if (
+            balanceSource === "manual" &&
+            beginningBalanceOverride !== null
+        ) {
+            return Number(beginningBalanceOverride);
+        }
+
+        // Use the Cashbook's calculated beginning balance.
+        if (
+            cashbookBeginningBalance !== null &&
+            cashbookBeginningBalance !== undefined &&
+            Number.isFinite(Number(cashbookBeginningBalance))
+        ) {
+            return Number(cashbookBeginningBalance);
+        }
+
+        // Fallback while Cashbook data is loading.
+        if (beginningBalanceOverride !== null) {
+            return Number(beginningBalanceOverride);
+        }
+
+        return Number(d?.beginningBalance || 0);
+    })();
 
     const handleSaveBeginningBalance = async () => {
         if (!canEditBeginningBalance || !branchId || !selectedDate) {
@@ -366,7 +394,11 @@ const SummaryPanel = ({
             ? Number(dcsTotals.mcbuActual) || 0
             : d.rcptMcbu,
 
-        rcptCsf: Number(d.rcptCsf) || 0,
+        // CSF Collection
+        // Use the same DCS totals as the DCS Table and Cashbook.
+        rcptCsf: dcsTotals
+            ? Number(dcsTotals.csfCollection) || 0
+            : Number(d.rcptCsf) || 0,
 
         // Regular Loan Collection (60 Days)
         rcptRegularLoan: dcsTotals
@@ -429,13 +461,16 @@ const SummaryPanel = ({
         payLoanRelease: d.payLoanRelease,
         payMcbuWithdrawal: d.payMcbuWithdrawal,
         payCsfWithdrawal: d.payCsfWithdrawal,
+        // MCBU Return - remove the CSF Return included in the total
         payMcbuReturn: dcsTotals
-            ? Number(dcsTotals.mcbuReturnAmount) || 0
-            : d.payMcbuReturn,
+            ? (Number(dcsTotals.mcbuReturnAmount) || 0) -
+            (Number(dcsTotals.csfReturnAmount) || 0)
+            : Number(d.payMcbuReturn) || 0,
 
+        // CSF Return - keep its own amount
         payCsfReturn: dcsTotals
             ? Number(dcsTotals.csfReturnAmount) || 0
-            : d.payCsfReturn,
+            : Number(d.payCsfReturn) || 0,
         payStaffLoanRelease: d.payStaffLoanRelease,
         payMngtExpenses: d.payMngtExpenses,
         payCbhbDisbursed: d.payCbhbDisbursed,
