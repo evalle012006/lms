@@ -1193,7 +1193,7 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
 const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [state, localDispatch] = useReducer(reducer, initialState);
+  const [state, localDispatch] = useReducer(reducer, initialState, (init) => ({ ...init, isCollapsed: getStoredCollapseState() }));
   const { activePath, isCollapsed, openSubmenus, collapsedDropdown } = state;
   const userState = useSelector(state => state.user.data);
   const systemSettings = useSelector(state => state.systemSettings?.data);
@@ -1334,6 +1334,30 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
       });
     }
     
+    if (!page) {
+      // Detail/child routes (e.g. /transactions/cash-collection/users/[id]) are not menu entries:
+      // fall back to the closest menu entry whose path is a prefix of the current path.
+      const pathOnly = (u) => normUrl(u).split('?')[0];
+      const cur = pathOnly(currentPath);
+      const candidates = [];
+      MenuItems.forEach(menu => {
+        candidates.push({ item: menu, menu: null });
+        (menu.subMenuItems || []).forEach(sub => candidates.push({ item: sub, menu }));
+      });
+      let best = null;
+      candidates.forEach(({ item, menu }) => {
+        const u = pathOnly(item.url);
+        if (!u || u.startsWith('#') || u === '/' || u === '__null__') return;
+        if (cur === u || cur.startsWith(u + '/')) {
+          if (!best || u.length > best.len) best = { item, menu, len: u.length };
+        }
+      });
+      if (best) {
+        page = best.item;
+        parentMenu = best.menu;
+      }
+    }
+
     if (page) {
       dispatch(setCurrentPage(page.url));
       dispatch(setCurrentPageTitle(page.label));

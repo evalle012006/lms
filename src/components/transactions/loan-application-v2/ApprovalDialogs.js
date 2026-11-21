@@ -1,6 +1,7 @@
 // src/components/transactions/loan-application-v2/ApprovalDialogs.js
 // Small self-contained dialogs for the approval flow:
 //   RejectLoanDialog  — required reason, then confirm
+//   ReinstateLoanDialog — required reason, then put a rejected loan back to pending
 //   BlockersDialog    — the loans in a selection that cannot be approved, and why
 // Both close on Escape and on a click outside the panel.
 
@@ -88,6 +89,66 @@ export function RejectLoanDialog({ loan, busy, onCancel, onConfirm }) {
                 >
                     {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                     Reject loan
+                </button>
+            </div>
+        </Shell>
+    );
+}
+
+export function ReinstateLoanDialog({ loan, busy, onCancel, onConfirm }) {
+    const [reason, setReason] = useState('');
+    if (!loan) return null;
+
+    const name = UppercaseFirstLetter(loan.client?.fullName || loan.fullName || 'this client');
+
+    return (
+        <Shell title="Reinstate rejected loan" onClose={busy ? () => {} : onCancel}>
+            <div className="px-5 py-4 overflow-y-auto">
+                <p className="text-sm text-gray-600 mb-2">
+                    Reinstate the loan for <span className="font-medium text-gray-900">{name}</span>
+                    {loan.groupName ? ` (${UppercaseFirstLetter(loan.groupName)}, slot ${loan.slotNo})` : ''}.
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                    The loan goes back to <span className="font-medium">pending</span> and must be LDF-approved and
+                    approved again. Its group slot is taken again, so this fails if the slot is no longer free. If the
+                    release date has passed, the branch manager has to change it before approving. This is recorded in the audit log.
+                </p>
+                {loan.rejectReason && (
+                    <p className="text-xs text-red-600 mb-3" title={loan.rejectReason}>
+                        Rejected because: {loan.rejectReason}
+                    </p>
+                )}
+                <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="reinstate-reason">
+                    Reason for reinstating (required)
+                </label>
+                <textarea
+                    id="reinstate-reason"
+                    rows={4}
+                    autoFocus
+                    value={reason}
+                    maxLength={500}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Why is this loan being reinstated?"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-100">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={busy}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onConfirm(reason)}
+                    disabled={busy || !reason.trim()}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-600 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Reinstate loan
                 </button>
             </div>
         </Shell>
