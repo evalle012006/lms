@@ -21,7 +21,7 @@
  * still owed. Do not change one formula without re-deriving the other.
  *
  * ONLY call recalculateLoanForTransfer when:
- *   - sourceGroup.occurence !== targetGroup.occurence, AND
+ *   - needsTransferRecalculation(...) is true (occurence changed, or weekly standard <-> accelerated), AND
  *   - loanBalance > 0 (a balance of 0 means the loan is already fully paid —
  *     there is nothing left to re-amortize, leave it alone)
  */
@@ -80,10 +80,24 @@ export function recalculateLoanForTransfer({
  * figures or the original (unchanged) figures so callers don't need an
  * if/else at every call site.
  */
+const scheduleOf = (t) => (t === 'accelerated' ? 'accelerated' : 'standard');
+
+/**
+ * A transfer must re-amortize the loan when the occurence changes OR when it stays weekly but the loan's
+ * weekly schedule differs from the target group's (standard 24 wks <-> accelerated 12 wks). Legacy weekly
+ * loans with no schedule type count as standard. currentWeeklyScheduleType is the LOAN's frozen value.
+ */
+export function needsTransferRecalculation({ sourceOccurence, targetOccurence, targetWeeklyScheduleType, currentWeeklyScheduleType }) {
+    if (sourceOccurence !== targetOccurence) return true;
+    if (targetOccurence !== 'weekly') return false;
+    return scheduleOf(currentWeeklyScheduleType) !== scheduleOf(targetWeeklyScheduleType);
+}
+
 export function getTransferPreview({
     sourceOccurence,
     targetOccurence,
     targetWeeklyScheduleType,
+    currentWeeklyScheduleType,
     targetLoanTerms,
     amountRelease,
     loanBalance,
@@ -92,9 +106,10 @@ export function getTransferPreview({
     currentNoOfPayments,
 }) {
     const occurenceChanged = sourceOccurence !== targetOccurence;
+    const needsRecalc = needsTransferRecalculation({ sourceOccurence, targetOccurence, targetWeeklyScheduleType, currentWeeklyScheduleType });
     const hasBalance = Number(loanBalance) > 0;
 
-    if (!occurenceChanged || !hasBalance) {
+    if (!needsRecalc || !hasBalance) {
         return {
             recalculated: false,
             loanTerms: currentLoanTerms,
@@ -111,5 +126,5 @@ export function getTransferPreview({
         targetLoanTerms,
     });
 
-    return { recalculated: true, ...result };
+    return { recalculated: true, occurenceChanged, ...result };
 }

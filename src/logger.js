@@ -36,6 +36,7 @@ class DBLoggerTransport extends Transport {
     if(process.env.ENABLE_DB_LOGGING === 'true') {
       const { user_id } = log_info;
       graph.mutation(insertQl(LMS_LOG_TYPE, { objects: [{ info: log_info, user_id: user_id ?? null }] }))
+      .catch(() => { /* never let a failed log write break the request (and never log from here: recursion) */ })
       .finally(() => {
         callback();
       })
@@ -66,7 +67,8 @@ logs.on('rotate', function(oldFilename, newFilename) {
   // do something fun
 });
 
-var dbLogger = new DBLoggerTransport();
+// Only info and above reach the DB (debug stays in the rotating files): ~70 files log at debug level.
+var dbLogger = new DBLoggerTransport({ level: 'info' });
 
 const logger = winston.createLogger({
   level: "debug",
@@ -80,7 +82,7 @@ const logger = winston.createLogger({
   transports: [
     logs,
     errors,
-    // dbLogger,
+    dbLogger,
   ]
 });
 

@@ -15,7 +15,7 @@ import { generateUUID } from "@/lib/utils";
 import { logGraphQLError } from "@/lib/graphql-utils";
 import { getWeeklyMcbuTargetConfig } from "@/lib/mcbu-withdrawal-utils";
 import { resolveWeeklyMcbuMinimum } from "@/lib/mcbu-target-utils";
-import { recalculateLoanForTransfer } from "@/lib/transfer-recalculation";
+import { recalculateLoanForTransfer, needsTransferRecalculation } from "@/lib/transfer-recalculation";
 
 const groupsType = createGraphType("groups", GROUP_FIELDS);
 const loansType = createGraphType("loans", LOAN_FIELDS);
@@ -161,7 +161,12 @@ async function approveReject(req, res) {
                             // so the source group's closing cash_collection record (built from
                             // `loan` in saveCashCollection below) keeps its original daily/weekly
                             // figures untouched, per the "source stays intact" decision.
-                            if (sourceGroup.occurence !== targetGroup.occurence && parseFloat(updatedLoan.loanBalance) > 0) {
+                            if (needsTransferRecalculation({
+                                sourceOccurence: sourceGroup.occurence,
+                                targetOccurence: targetGroup.occurence,
+                                targetWeeklyScheduleType: targetGroup.weeklyScheduleType,
+                                currentWeeklyScheduleType: updatedLoan.weeklyScheduleType,
+                            }) && parseFloat(updatedLoan.loanBalance) > 0) {
                                 const recalculated = recalculateLoanForTransfer({
                                     amountRelease: parseFloat(updatedLoan.amountRelease),
                                     loanBalance: parseFloat(updatedLoan.loanBalance),

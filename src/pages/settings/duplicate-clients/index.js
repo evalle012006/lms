@@ -212,9 +212,9 @@ const DuplicateClientsPage = () => {
                             Possible and confirmed duplicate client records across branches, LOs and groups.
                             <span className="ml-1">
                                 {scanning
-                                    ? 'Scan running… results will refresh automatically.'
+                                    ? `Scan running — ${lastRun?.progress?.label ?? 'starting'}${lastRun?.progress?.count != null ? ` (${Number(lastRun.progress.count).toLocaleString()}${lastRun.progress.total ? ` / ${Number(lastRun.progress.total).toLocaleString()}` : ''})` : ''}…`
                                     : lastRun?.status === 'failed'
-                                        ? 'Last scan failed — showing results from the previous successful scan.'
+                                        ? `Last scan failed${lastRun?.error ? ` — ${lastRun.error}` : ''}. Showing results from the previous successful scan.`
                                         : lastRun?.finishedAt
                                             ? `Last scan ${moment(lastRun.finishedAt).format('MMM D, h:mm A')}.`
                                             : 'No scan has run yet — click Re-scan.'}
