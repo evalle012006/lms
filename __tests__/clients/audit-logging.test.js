@@ -15,6 +15,10 @@ describe('lms_logs filter', () => {
         expect(shouldPersistLog({ level: 'debug', user_id: 'u1', message: { page: 'p' } })).toBe(true);
         expect(shouldPersistLog({ level: 'debug', message: { user_id: 'u1' } })).toBe(true);
     });
+    test('accepts userId as well as user_id', () => {
+        expect(shouldPersistLog({ level: 'info', userId: 'u1', page: 'login' })).toBe(true);
+        expect(shouldPersistLog({ level: 'debug', message: { userId: 'u1' } })).toBe(true);
+    });
     test('drops debug/info noise without a user_id', () => {
         expect(shouldPersistLog({ level: 'debug', message: 'Processing' })).toBe(false);
         expect(shouldPersistLog({ level: 'info', message: { page: 'p' } })).toBe(false);

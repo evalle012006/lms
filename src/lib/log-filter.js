@@ -4,6 +4,6 @@ export const shouldPersistLog = (info) => {
   if (!info) return false;
   if (info.level === 'warn' || info.level === 'error') return true;
   const m = info.message;
-  const userId = info.user_id ?? (m && typeof m === 'object' ? m.user_id : undefined);
-  return !!userId;
+  const inner = m && typeof m === 'object' ? m : {};
+  return !!(info.user_id ?? info.userId ?? inner.user_id ?? inner.userId);
 };

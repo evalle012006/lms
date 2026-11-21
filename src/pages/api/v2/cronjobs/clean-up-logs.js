@@ -1,26 +1,13 @@
-import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, deleteQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 import { handleCron } from '@/lib/cron-guard';
-import { withRetry } from '@/lib/retry';
-import moment from 'node_modules/moment/moment';
+import { runLogRetention } from '@/lib/log-retention';
 
-const graph = new GraphProvider();
-
-// Hasura cron: delete lms_logs older than 3 days. (The DB logger transport is currently disabled in logger.js,
-// so this only clears rows written before that.)
+// Hasura cron: log retention — lms_logs 7d, audit_logs 365d (noise actions 30d), user_activity_logs 90d, face_verify_attempts 30d.
+// Archived tables are dumped to Spaces (gzipped NDJSON) before deletion; see lib/log-retention.js.
 export default apiHandler({
-    post: (req, res) => handleCron(req, res, 'clean-up-logs', () => cleanUp(req), { message: 'done clean up logs in background' }),
+    post: (req, res) => handleCron(
+        req, res, 'clean-up-logs',
+        () => runLogRetention({ scheduledTime: req.body?.scheduled_time }),
+        { background: true, staleMinutes: 60, message: 'done clean up logs in background' }
+    ),
 });
-
-async function cleanUp(req) {
-    // scheduled_time comes from the Hasura payload — avoids locale string parsing
-    const scheduledTime = req.body?.scheduled_time;
-    const currentDate = (scheduledTime ? moment(scheduledTime) : moment()).utcOffset('+08:00').format('YYYY-MM-DD');
-    const to_date = moment(currentDate).subtract(3, 'd').format('YYYY-MM-DD');
-
-    await withRetry(() => graph.mutation(
-        deleteQl(createGraphType('lms_logs', 'id')('result'), { created_dt: { _lt: to_date } })
-    ));
-    return { before: to_date };
-}

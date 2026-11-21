@@ -54,7 +54,7 @@ class DBLoggerTransport extends Transport {
         delete log_info.message;
       }
       if (this.buffer.length < DB_BUFFER_CAP) {
-        this.buffer.push({ info: log_info, user_id: log_info.user_id ?? null });
+        this.buffer.push({ info: log_info, user_id: log_info.user_id ?? log_info.userId ?? null });
         if (this.buffer.length >= DB_FLUSH_MAX) this.flush(); else this.schedule(false);
       }
     }
