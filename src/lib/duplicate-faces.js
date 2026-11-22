@@ -49,22 +49,68 @@ export function findFaceMatches(faceClients, activeLoanClientIds = new Set(), th
     // No "seen" set (it would hold millions of keys): an active-vs-active pair is compared only from the
     // lower-indexed side; an active-vs-inactive pair can only be reached from the active side.
     const out = [];
+    for (let i = 0; i < parsed.length; i++) compareRow(parsed, i, limitSq, out);
+    return out;
+}
+
+function compareRow(parsed, i, limitSq, out, maxPerRow = Infinity) {
+    const a = parsed[i];
+    if (!a.active) return;
+    let rowPairs = [];
+    let raw = 0;
+    for (let j = 0; j < parsed.length; j++) {
+        if (i === j) continue;
+        const b = parsed[j];
+        if (b.active && j < i) continue;
+        const dsq = distSqWithin(a.v, b.v, limitSq);
+        if (dsq === Infinity) continue;
+        rowPairs.push({ idA: a.id, idB: b.id, dsq });
+        raw++;
+        // Many identical templates (placeholder / copied faces) would otherwise produce millions of pairs and
+        // exhaust the heap: keep only the closest few per client — they still link the whole group.
+        if (rowPairs.length > maxPerRow * 4) { rowPairs.sort((x, y) => x.dsq - y.dsq); rowPairs.length = maxPerRow; }
+    }
+    if (rowPairs.length > maxPerRow) { rowPairs.sort((x, y) => x.dsq - y.dsq); rowPairs.length = maxPerRow; }
+    for (const r of rowPairs) {
+        const distance = Math.sqrt(r.dsq);
+        out.push({
+            idA: r.idA, idB: r.idB, distance,
+            confidence: distance < FACE_HIGH_THRESHOLD ? 'high' : 'possible',
+            reasons: [`Face match (distance ${distance.toFixed(2)})`],
+        });
+    }
+    return raw;
+}
+
+const tick = () => new Promise(resolve => setImmediate(resolve));
+
+/**
+ * Same result as findFaceMatches, but hands control back to the event loop regularly so a big scan never freezes
+ * the app process (a full pass over ~100k faces is CPU-bound for many minutes), and gives up after `maxMs`.
+ * @returns {Promise<{pairs:Array, timedOut:boolean, capped:boolean, compared:number, total:number}>}
+ */
+export async function findFaceMatchesAsync(faceClients, activeLoanClientIds = new Set(),
+    { threshold = FACE_MATCH_THRESHOLD, yieldEvery = 5, maxMs = 0, onProgress = null, maxPerRow = 10, maxPairs = 300000 } = {}) {
+    const parsed = [];
+    for (const c of faceClients) {
+        const v = c.v ?? parseFaceTemplate(c.faceTemplate);   // c.v: already parsed by the caller (saves memory)
+        if (v) parsed.push({ id: c._id, v, active: activeLoanClientIds.has(c._id) });
+    }
+    const limitSq = threshold * threshold;
+    const started = Date.now();
+    const out = [];
+    let compared = 0;
+    let rawMatches = 0;
     for (let i = 0; i < parsed.length; i++) {
-        const a = parsed[i];
-        if (!a.active) continue;
-        for (let j = 0; j < parsed.length; j++) {
-            if (i === j) continue;
-            const b = parsed[j];
-            if (b.active && j < i) continue;
-            const dsq = distSqWithin(a.v, b.v, limitSq);
-            if (dsq === Infinity) continue;
-            const distance = Math.sqrt(dsq);
-            out.push({
-                idA: a.id, idB: b.id, distance,
-                confidence: distance < FACE_HIGH_THRESHOLD ? 'high' : 'possible',
-                reasons: [`Face match (distance ${distance.toFixed(2)})`],
-            });
+        if (!parsed[i].active) continue;
+        rawMatches += compareRow(parsed, i, limitSq, out, maxPerRow) ?? 0;
+        compared++;
+        if (out.length >= maxPairs) return { pairs: out, timedOut: false, capped: true, compared, rawMatches, total: parsed.length };
+        if (compared % yieldEvery === 0) {
+            await tick();
+            if (maxMs && Date.now() - started > maxMs) return { pairs: out, timedOut: true, compared, rawMatches, total: parsed.length };
+            if (onProgress && compared % (yieldEvery * 100) === 0) await onProgress(compared);
         }
     }
-    return out;
+    return { pairs: out, timedOut: false, capped: false, compared, rawMatches, total: parsed.length };
 }

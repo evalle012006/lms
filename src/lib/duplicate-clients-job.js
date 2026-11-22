@@ -12,7 +12,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { logAudit } from '@/lib/audit';
-import { findFaceMatches } from '@/lib/duplicate-faces';
+import { findFaceMatchesAsync, parseFaceTemplate } from '@/lib/duplicate-faces';
 import { withRetry, describeError } from '@/lib/retry';
 import { beginCronRun, finishCronRun } from '@/lib/cron-guard';
 import {
@@ -69,6 +69,22 @@ async function fetchAll(type, where, onPage) {
         if (rows.length < PAGE_SIZE) break;
     }
     return out;
+}
+
+/** Like fetchAll but hands each page to `onRows` and keeps nothing — for big result sets we only need a slim form of. */
+async function fetchEach(type, where, onRows, onPage) {
+    const key = type.alias ?? type.name;
+    let total = 0;
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+        const rows = await graph.query(
+            queryQl(type, { where, order_by: [{ _id: 'asc' }], limit: PAGE_SIZE, offset })
+        ).then(r => r.data?.[key] ?? []);
+        onRows(rows);
+        total += rows.length;
+        if (onPage) await onPage(total);
+        if (rows.length < PAGE_SIZE) break;
+    }
+    return total;
 }
 
 /** Latest run row, or null. Used by the list API and the lock check. */
@@ -148,14 +164,33 @@ async function runScan(runId, req) {
         // Phase 4: face evidence. Fails soft — a face-pass error must not lose the text-based results.
         let facePairs = [];
         await report('faces', 'Comparing faces');
-        try {
-            const faceClients = await fetchAll(FACE_TYPE, {
+        if (process.env.DUPLICATE_SCAN_FACES === 'off') timings.faceSkipped = true;
+        else try {
+            // Parse each page into a 512-byte Float32Array right away and drop the ~3 KB template string:
+            // ~100k faces as strings + parsed copies was a big part of the heap.
+            const faceClients = [];
+            await fetchEach(FACE_TYPE, {
                 faceTemplate: { _is_null: false },
                 status: { _nin: ['merged', 'archived'] },
+            }, rows => {
+                for (const r of rows) {
+                    const v = parseFaceTemplate(r.faceTemplate);
+                    if (v) faceClients.push({ _id: r._id, v });
+                }
             }, n => report('faces', 'Comparing faces', { count: n }));
-            facePairs = findFaceMatches(faceClients, activeIds);
+            // Cooperative + time-boxed: never freezes the app process, and a runaway pass is abandoned (fail-soft).
+            const maxMs = Number(process.env.DUPLICATE_SCAN_FACE_MAX_MS) || 15 * 60 * 1000;
+            const faceRes = await findFaceMatchesAsync(faceClients, activeIds, {
+                maxMs,
+                onProgress: n => report('faces', 'Comparing faces', { compared: n, of: activeIds.size }),
+            });
+            facePairs = faceRes.pairs;
             timings.faceClients = faceClients.length;
             timings.facePairs = facePairs.length;
+            if (faceRes.timedOut) timings.faceTimedOut = true;
+            if (faceRes.capped) timings.faceCapped = true;
+            timings.faceRawMatches = faceRes.rawMatches;   // matches under the threshold before the caps: how noisy it is
+            timings.faceActiveCompared = faceRes.compared;
         } catch (e) {
             console.error('[duplicate-scan] face pass skipped', e);
             timings.faceError = String(e?.message ?? e).slice(0, 200);
