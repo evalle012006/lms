@@ -9,7 +9,7 @@ jest.mock('@/lib/graph/graph.util', () => ({
 }));
 jest.mock('@/lib/utils', () => { let n = 0; return { generateUUID: () => `id-${++n}` }; });
 jest.mock('@/lib/audit', () => ({ logAudit: jest.fn() }));
-jest.mock('@/lib/duplicate-faces', () => ({ findFaceMatches: () => [] }));
+jest.mock('@/lib/duplicate-faces', () => ({ findFaceMatches: () => [], findFaceMatchesAsync: async () => ({ pairs: [], timedOut: false, compared: 0, total: 0 }) }));
 jest.mock('@/lib/duplicate-clients', () => ({ detectDuplicates: () => ({ clusters: [], stats: {} }), detectMultiActiveLoans: () => [], clusterKey: () => '', normalizeText: x => x, normalizePhone: x => x }));
 
 const { startDuplicateScan } = require('@/lib/duplicate-clients-job');

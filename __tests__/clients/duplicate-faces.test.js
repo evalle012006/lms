@@ -1,4 +1,4 @@
-import { findFaceMatches, parseFaceTemplate } from '@/lib/duplicate-faces';
+import { findFaceMatches, findFaceMatchesAsync, parseFaceTemplate } from '@/lib/duplicate-faces';
 import { detectDuplicates } from '@/lib/duplicate-clients';
 
 const vec = (seed, jitter = 0) => Array.from({ length: 128 }, (_, i) => Math.sin(seed * (i + 1)) * 0.2 + (jitter ? jitter / Math.sqrt(128) : 0));
@@ -42,5 +42,53 @@ describe('face matching', () => {
         expect(clusters).toHaveLength(1);
         expect(clusters[0].severity).toBe('both_active');
         expect(clusters[0].reasons.join(' ')).toMatch(/Face match/);
+    });
+});
+
+describe('findFaceMatchesAsync (cooperative, time-boxed)', () => {
+    const clients = [
+        { _id: 'A', faceTemplate: JSON.stringify(vec(1)) },
+        { _id: 'B', faceTemplate: JSON.stringify(vec(1, 0.3)) },
+        { _id: 'D', faceTemplate: JSON.stringify(vec(7)) },
+    ];
+    test('gives the same pairs as the sync version', async () => {
+        const sync = findFaceMatches(clients, new Set(['A']));
+        const { pairs, timedOut } = await findFaceMatchesAsync(clients, new Set(['A']), { yieldEvery: 1 });
+        expect(timedOut).toBe(false);
+        expect(pairs).toEqual(sync);
+    });
+    test('yields to the event loop while working', async () => {
+        let ticks = 0;
+        const timer = setInterval(() => { ticks++; }, 0);
+        const many = Array.from({ length: 300 }, (_, i) => ({ _id: 'C' + i, faceTemplate: JSON.stringify(vec(i + 20)) }));
+        await findFaceMatchesAsync(many, new Set(many.map(c => c._id)), { yieldEvery: 5 });
+        clearInterval(timer);
+        expect(ticks).toBeGreaterThan(0);
+    });
+    test('gives up after the time budget and reports it', async () => {
+        const many = Array.from({ length: 400 }, (_, i) => ({ _id: 'C' + i, faceTemplate: JSON.stringify(vec(i + 20)) }));
+        const res = await findFaceMatchesAsync(many, new Set(many.map(c => c._id)), { yieldEvery: 1, maxMs: 1 });
+        expect(res.timedOut).toBe(true);
+        expect(res.compared).toBeLessThan(400);
+    });
+    test('identical templates cannot explode the pair count (per-client cap), group stays connected', async () => {
+        const same = Array.from({ length: 60 }, (_, i) => ({ _id: 'S' + i, faceTemplate: JSON.stringify(vec(3)) }));
+        const res = await findFaceMatchesAsync(same, new Set(same.map(c => c._id)), { yieldEvery: 1, maxPerRow: 3 });
+        expect(res.pairs.length).toBeLessThanOrEqual(60 * 3);
+        const linked = new Set(res.pairs.flatMap(p => [p.idA, p.idB]));
+        expect(linked.size).toBeGreaterThan(50);
+    });
+    test('global pair cap stops the pass and reports it', async () => {
+        const same = Array.from({ length: 60 }, (_, i) => ({ _id: 'S' + i, faceTemplate: JSON.stringify(vec(3)) }));
+        const res = await findFaceMatchesAsync(same, new Set(same.map(c => c._id)), { yieldEvery: 1, maxPerRow: 3, maxPairs: 10 });
+        expect(res.capped).toBe(true);
+    });
+    test('accepts pre-parsed vectors (no raw template string needed)', async () => {
+        const pre = [
+            { _id: 'A', v: parseFaceTemplate(vec(1)) },
+            { _id: 'B', v: parseFaceTemplate(vec(1, 0.3)) },
+        ];
+        const { pairs } = await findFaceMatchesAsync(pre, new Set(['A']), { yieldEvery: 1 });
+        expect(pairs).toHaveLength(1);
     });
 });
