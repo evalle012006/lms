@@ -13,6 +13,7 @@ import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.
 import { generateUUID } from '@/lib/utils';
 import { logAudit } from '@/lib/audit';
 import { findFaceMatchesAsync, parseFaceTemplate } from '@/lib/duplicate-faces';
+import { heapGuard, heapStats } from '@/lib/heap-guard';
 import { withRetry, describeError } from '@/lib/retry';
 import { beginCronRun, finishCronRun } from '@/lib/cron-guard';
 import {
@@ -123,6 +124,8 @@ export async function startDuplicateScan({ trigger, triggeredBy = null, req = nu
     }
 
     // Intentionally not awaited — the caller returns immediately and polls the run row.
+    // Which of the app containers is running it (HOSTNAME = the short container id from `docker ps`).
+    console.log('[duplicate-scan] started', JSON.stringify({ runId, trigger, host: process.env.HOSTNAME ?? null }));
     runScan(runId, req)
         .catch(err => console.error('[duplicate-scan] unexpected failure:', err))
         .finally(() => finishCronRun(lock.runId, { ok: true, stats: { scanRunId: runId } }));
@@ -136,10 +139,12 @@ async function runScan(runId, req) {
 
     // Live progress for the page (polls every 5 s) — stored in duplicate_scan_runs.stats.progress.
     let phase = 'starting';
+    const guard = heapGuard();
     const report = (p, label, detail = {}) => {
         phase = p;
+        guard(p);   // throws (-> failed run) instead of letting the container run out of memory
         return graph.mutation(updateQl(RUN_TYPE('r'), {
-            set: { stats: { progress: { phase: p, label, ...detail, at: new Date().toISOString() }, timings: { ...timings } } },
+            set: { stats: { progress: { phase: p, label, ...detail, heapMb: heapStats().usedMb, at: new Date().toISOString() }, timings: { ...timings } } },
             where: { _id: { _eq: runId } },
         })).catch(() => {});   // progress is best-effort; never fail the scan over it
     };
@@ -198,7 +203,7 @@ async function runScan(runId, req) {
         t = lap('faceMs', t);
 
         await report('detect', 'Finding duplicate groups');
-        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs);
+        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard });
         const sameClient = detectMultiActiveLoans(clients, activeLoans);
         t = lap('detectMs', t);
 
@@ -220,7 +225,7 @@ async function runScan(runId, req) {
         }
 
         await report('save', 'Saving results', { total: clusters.length });
-        const { inserted, reopened, resolved } = await persist(clusters, scanStartedAt);
+        const { inserted, reopened, resolved } = await persist(clusters, scanStartedAt, guard);
         lap('persistMs', t);
 
         // Alert only on NEW groups where more than one loan is active at the same time.
@@ -270,7 +275,7 @@ async function runScan(runId, req) {
 
 const clusterId = clusterKey;
 
-async function persist(clusters, scanStartedAt) {
+async function persist(clusters, scanStartedAt, guard = () => {}) {
     const existing = await fetchAll(CLUSTER_TYPE('duplicate_client_clusters'), {});
     const existingById = new Map(existing.map(e => [e._id, e]));
 
@@ -312,6 +317,7 @@ async function persist(clusters, scanStartedAt) {
     });
 
     for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+        guard('save');
         await graph.mutation(insertQl(CLUSTER_TYPE('c'), {
             objects: rows.slice(i, i + UPSERT_CHUNK),
             on_conflict: {

@@ -244,29 +244,41 @@ const isClosedStatus = (s) => ['offset', 'completed', 'closed'].includes(s);
  * @param {Set<string>} activeLoanClientIds  clientIds that currently own a loan with status 'active'
  * @returns {{ clusters: Array, stats: object }}
  */
-export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = []) {
+export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = [], { onTick = null } = {}) {
     const prepared = clients.map(prepareClient);
+    for (const c of prepared) c._keys = blockingKeys(c);
     const byId = new Map(prepared.map(c => [c._id, c]));
 
     const buckets = new Map();
     for (const c of prepared) {
-        for (const k of blockingKeys(c)) {
+        for (const k of c._keys) {
             if (!buckets.has(k)) buckets.set(k, []);
             buckets.get(k).push(c);
         }
     }
 
-    const pairs = new Map();             // "idA|idB" -> pair result
+    // Only MATCHED pairs are stored. (Caching the null results of every candidate pair cost ~400 bytes each and
+    // ran the scan out of memory at ~700k clients.) A pair that shares several blocking keys is still scored once:
+    // only in the first shared key whose bucket is actually processed.
+    const pairs = new Map();             // "idA|idB" -> pair result (matches only)
+    let candidatePairs = 0;
     let skippedBuckets = 0;
-    for (const [, members] of buckets) {
+    const usable = (k) => { const n = buckets.get(k)?.length ?? 0; return n >= 2 && n <= MAX_BUCKET_SIZE; };
+    let tick = 0;
+    for (const [bucketKey, members] of buckets) {
+        if (onTick && (++tick % 200 === 0)) onTick('detect');
         if (members.length < 2) continue;
         if (members.length > MAX_BUCKET_SIZE) { skippedBuckets++; continue; }
         for (let i = 0; i < members.length; i++) {
             for (let j = i + 1; j < members.length; j++) {
                 const a = members[i], b = members[j];
-                const key = a._id < b._id ? `${a._id}|${b._id}` : `${b._id}|${a._id}`;
-                if (pairs.has(key)) continue;
-                pairs.set(key, scorePair(a, b));    // null cached too -> never rescored
+                let first = null;
+                for (const k of a._keys) { if (usable(k) && b._keys.includes(k)) { first = k; break; } }
+                if (first !== bucketKey) continue;           // scored in an earlier shared bucket
+                candidatePairs++;
+                const res = scorePair(a, b);
+                if (!res) continue;
+                pairs.set(a._id < b._id ? `${a._id}|${b._id}` : `${b._id}|${a._id}`, res);
             }
         }
     }
@@ -362,7 +374,7 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set(), extra
         clusters,
         stats: {
             clientsScanned: clients.length,
-            candidatePairs: pairs.size,
+            candidatePairs,
             matchedPairs: goodPairs.length,
             skippedBuckets,
         },
@@ -424,6 +436,6 @@ export function detectMultiActiveLoans(clients, activeLoans) {
 }
 
 function stripPrepared(c) {
-    const { _n, ...rest } = c;
+    const { _n, _keys, ...rest } = c;
     return rest;
 }
