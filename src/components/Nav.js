@@ -793,7 +793,7 @@ const MenuItems = [
         },
         active: false,
         hasSub: false,
-        hidden: false,
+        hidden: true,
         roles: []
     },
     {
