@@ -7,6 +7,7 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
+import { canManageDuplicates } from '@/lib/duplicate-access';
 
 const graph = new GraphProvider();
 const MAX_CLUSTERS = 20000;
@@ -37,8 +38,8 @@ export function tallyNewerRecords(clusters) {
 
 async function metrics(req, res) {
     const user = await findUserById(req.auth.sub);
-    if (!user || !(user.root || user.role?.rep === 1)) {
-        return res.status(200).json({ success: false, message: 'Admin access required.' });
+    if (!user || !canManageDuplicates(user)) {
+        return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
     const rows = await graph.query(queryQl(CLUSTER_TYPE('clusters'), {
         where: {

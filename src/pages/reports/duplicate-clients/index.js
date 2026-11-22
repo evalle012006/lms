@@ -1,9 +1,10 @@
-// src/pages/settings/duplicate-clients/index.js
-// Admin-only (rep=1 / root) review page for possible & confirmed duplicate clients.
-// Read-only: list, filter, select, export to Excel, jump to the client record.
+// src/pages/reports/duplicate-clients/index.js
+// Reports > Duplicate Clients. Admin / root: everything (Re-scan, Merge, review, Not same person).
+// Branch manager, area, regional manager, division head: read-only and limited to their own branches
+// (lib/duplicate-access.js; the API does the scoping). List, filter, compare profiles, statistics, Excel export.
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import moment from 'moment';
@@ -14,6 +15,11 @@ import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import HierarchyFilters from '@/components/settings/duplicate-clients/HierarchyFilters';
+import CompareProfilesModal from '@/components/settings/duplicate-clients/CompareProfilesModal';
+import ClientDetailPage from '@/components/clients/ClientDetailPage';
+import Modal from '@/lib/ui/Modal';
+import { setClient } from '@/redux/actions/clientActions';
+import { duplicateAccess } from '@/lib/duplicate-access';
 import {
     exportDuplicateClientsExcel, SCENARIO_LABELS, CONFIDENCE_LABELS, SEVERITY_LABELS,
 } from '@/components/settings/duplicate-clients/exportDuplicateClientsExcel';
@@ -39,7 +45,7 @@ const REVIEW_LABELS = {
     all: 'All',
 };
 
-const isAdmin = (u) => !!u && (u.root === true || u.role?.rep === 1);
+const hasAccess = (u) => !!duplicateAccess(u);
 
 // Fields compared across members; a differing value is highlighted so the
 // reviewer sees at a glance *what* is different between the two records.
@@ -48,6 +54,13 @@ const DIFF_FIELDS = ['birthdate', 'contactNumber', 'branchId', 'effLoId', 'effGr
 const DuplicateClientsPage = () => {
     const currentUser = useSelector((s) => s.user.data);
     const router = useRouter();
+    const dispatch = useDispatch();
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(null);   // client id being opened
+    // Server-confirmed value comes with every list response; until then use the role-based answer.
+    const [canManageApi, setCanManageApi] = useState(null);
+    const canManage = canManageApi ?? duplicateAccess(currentUser) === 'full';
+    const [compareTarget, setCompareTarget] = useState(null);   // clusterId
 
     const [view, setView] = useState('active');
     const [clusters, setClusters] = useState([]);
@@ -77,10 +90,10 @@ const DuplicateClientsPage = () => {
     const [selected, setSelected] = useState(() => new Map());
 
     useEffect(() => {
-        if (currentUser && !isAdmin(currentUser)) router.replace('/');
+        if (currentUser && !hasAccess(currentUser)) router.replace('/');
     }, [currentUser, router]);
 
-    // Drill-down from the statistics page: /settings/duplicate-clients?view=active&branchId=...&loId=...
+    // Drill-down from the statistics page: /reports/duplicate-clients?view=active&branchId=...&loId=...
     useEffect(() => {
         if (!router.isReady) return;
         const q = router.query;
@@ -130,6 +143,7 @@ const DuplicateClientsPage = () => {
             setSummary(res.summary);
             setBranches(res.branches);
             setHierarchy(res.hierarchy);
+            setCanManageApi(!!res.access?.canManage);
             setLastRun(res.lastRun);
             setReviewCounts(res.reviewCounts);
         } catch (e) {
@@ -139,7 +153,7 @@ const DuplicateClientsPage = () => {
         }
     }, [buildParams, page]);
 
-    useEffect(() => { if (isAdmin(currentUser)) load(); }, [load, currentUser]);
+    useEffect(() => { if (hasAccess(currentUser)) load(); }, [load, currentUser]);
 
     // While a scan is running, poll quietly; reload the list once it finishes.
     const scanning = !!lastRun?.running;
@@ -157,6 +171,22 @@ const DuplicateClientsPage = () => {
             load({ silent: true });
         } catch (e) {
             toast.error('Could not start the scan.');
+        }
+    };
+
+    // Same client modal as Loan Approval / LOR (ClientDetailPage reads the client from the store).
+    const openProfile = async (clusterId, clientId) => {
+        if (profileLoading) return;
+        setProfileLoading(clientId);
+        try {
+            const res = await fetchWrapper.get(getApiBaseUrl() + `clients/duplicates/client?clusterId=${encodeURIComponent(clusterId)}&clientId=${encodeURIComponent(clientId)}`);
+            if (!res?.success) { toast.error(res?.message || 'Could not open this client.'); return; }
+            dispatch(setClient({ ...res.client, profile: res.client.profile ? res.client.profile : '' }));
+            setProfileOpen(true);
+        } catch (e) {
+            toast.error(e.message || 'Could not open this client.');
+        } finally {
+            setProfileLoading(null);
         }
     };
 
@@ -219,7 +249,7 @@ const DuplicateClientsPage = () => {
         }
     };
 
-    if (!isAdmin(currentUser)) return null;
+    if (!hasAccess(currentUser)) return null;
 
     return (
         <Layout>
@@ -228,7 +258,7 @@ const DuplicateClientsPage = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Duplicate Clients</h1>
                         <p className="text-sm text-gray-500 mt-1">
-                            Possible and confirmed duplicate client records across branches, LOs and groups.
+                            {canManage ? 'Possible and confirmed duplicate client records across branches, LOs and groups.' : 'Possible duplicate client records in your branches (view only).'}
                             <span className="ml-1">
                                 {scanning
                                     ? `Scan running — ${lastRun?.progress?.label ?? 'starting'}${lastRun?.progress?.count != null ? ` (${Number(lastRun.progress.count).toLocaleString()}${lastRun.progress.total ? ` / ${Number(lastRun.progress.total).toLocaleString()}` : ''})` : ''}…`
@@ -236,15 +266,17 @@ const DuplicateClientsPage = () => {
                                         ? `Last scan failed${lastRun?.error ? ` — ${lastRun.error}` : ''}. Showing results from the previous successful scan.`
                                         : lastRun?.finishedAt
                                             ? `Last scan ${moment(lastRun.finishedAt).format('MMM D, h:mm A')}.`
-                                            : 'No scan has run yet — click Re-scan.'}
+                                            : (canManage ? 'No scan has run yet — click Re-scan.' : 'No scan has run yet.')}
                             </span>
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <button type="button" onClick={startRescan} disabled={scanning}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                            <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} /> {scanning ? 'Scanning…' : 'Re-scan'}
-                        </button>
+                        {canManage && (
+                            <button type="button" onClick={startRescan} disabled={scanning}
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                                <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} /> {scanning ? 'Scanning…' : 'Re-scan'}
+                            </button>
+                        )}
                         <div className="relative">
                             <button type="button" onClick={() => setExportOpen(o => !o)} disabled={exporting}
                                 className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
@@ -293,13 +325,15 @@ const DuplicateClientsPage = () => {
                 )}
 
                 <div className="mb-4">
-                    <button type="button" onClick={toggleMetrics} className="text-sm text-blue-600 hover:text-blue-800">
-                        {metricsOpen ? 'Hide' : 'Show'} who is creating duplicates (by LO / branch)
-                    </button>
-                    <Link href="/settings/duplicate-clients/stats" className="ml-4 text-sm text-blue-600 hover:text-blue-800">
+                    {canManage && (
+                        <button type="button" onClick={toggleMetrics} className="text-sm text-blue-600 hover:text-blue-800">
+                            {metricsOpen ? 'Hide' : 'Show'} who is creating duplicates (by LO / branch)
+                        </button>
+                    )}
+                    <Link href="/reports/duplicate-clients/stats" className={`${canManage ? 'ml-4 ' : ''}text-sm text-blue-600 hover:text-blue-800`}>
                         Statistics by group, LO, branch, area, region &amp; division →
                     </Link>
-                    {metricsOpen && (
+                    {canManage && metricsOpen && (
                         <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4">
                             {metricsLoading || !metrics ? <p className="text-sm text-gray-400">Loading…</p> : (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -386,7 +420,9 @@ const DuplicateClientsPage = () => {
                                 onToggle={() => toggle(c)}
                                 onReview={(decision) => setReviewTarget({ cluster: c, decision })}
                                 onMerge={() => setMergeTarget(c)}
-                                onNotSame={(member) => setNotSameTarget({ cluster: c, member })} />
+                                onNotSame={(member) => setNotSameTarget({ cluster: c, member })}
+                                onCompare={() => setCompareTarget(c.clusterId)} canManage={canManage}
+                                onOpenProfile={(clientId) => openProfile(c.clusterId, clientId)} profileLoading={profileLoading} />
                         ))}
                     </div>
                 )}
@@ -401,6 +437,11 @@ const DuplicateClientsPage = () => {
                     </div>
                 )}
             </div>
+            {compareTarget && <CompareProfilesModal clusterId={compareTarget} onClose={() => setCompareTarget(null)}
+                onOpenProfile={(clientId) => openProfile(compareTarget, clientId)} profileLoading={profileLoading} />}
+            <Modal title="Client Detail Info" show={profileOpen} onClose={() => setProfileOpen(false)} width="70rem">
+                <ClientDetailPage />
+            </Modal>
             {reviewTarget && (
                 <ReviewModal target={reviewTarget} onClose={() => setReviewTarget(null)}
                     onDone={() => { setReviewTarget(null); load({ silent: true }); }} />
@@ -459,7 +500,7 @@ const Remark = ({ m, members }) => {
     );
 };
 
-const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame }) => {
+const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame, onCompare, canManage, onOpenProfile, profileLoading }) => {
     const hasRemarks = cluster.members.some(m => m.match);
     const differs = (field) => new Set(cluster.members.map(m => m[field] ?? '')).size > 1;
     const diff = Object.fromEntries(DIFF_FIELDS.map(f => [f, differs(f)]));
@@ -507,10 +548,14 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame 
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {cluster.members.map(m => (
-                            <tr key={m._id}>
+                            <tr key={m._id} className={m.inScope === false ? 'bg-gray-50/60' : ''}>
                                 <td className="px-3 py-2">
                                     <p className="font-medium text-gray-900">
                                         {m.lastName}, {m.firstName} {m.middleName ?? ''}
+                                        {m.inScope === false && (
+                                            <span title="This record belongs to a branch outside your scope. Details are shown so you can see who this client duplicates."
+                                                className="ml-2 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">Other branch</span>
+                                        )}
                                     </p>
                                     <p className="text-xs text-gray-400">{m._id}</p>
                                 </td>
@@ -538,17 +583,21 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame 
                                 </td>
                                 {hasRemarks && <td className="px-3 py-2 align-top"><Remark m={m} members={cluster.members} /></td>}
                                 <td className="px-3 py-2 whitespace-nowrap">
-                                    {cluster.view !== 'same_client' && (
+                                    {canManage && cluster.view !== 'same_client' && (
                                         <button type="button" onClick={() => onNotSame(m)}
                                             title="This record is a different person from the rest of the group"
                                             className="mr-2 text-xs text-gray-500 hover:text-red-700 underline">
                                             Not same person
                                         </button>
                                     )}
-                                    <a href={`/clients/edit/${m._id}`} target="_blank" rel="noreferrer"
-                                        className="text-blue-600 hover:text-blue-800" title="Open client">
-                                        <ExternalLink className="w-4 h-4" />
-                                    </a>
+                                    {m.inScope === false ? (
+                                        <span className="text-xs text-gray-400" title="Records of other branches: use Compare profiles to see their details">Other branch</span>
+                                    ) : (
+                                        <button type="button" onClick={() => onOpenProfile(m._id)} disabled={!!profileLoading}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50" title="Open the client profile">
+                                            {profileLoading === m._id ? 'Opening…' : 'View profile'} <ExternalLink className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -566,25 +615,31 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame 
                 </div>
             )}
             <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-t border-gray-100 bg-gray-50">
-                {cluster.view !== 'same_client' && cluster.memberCount >= 2 && (
+                {cluster.view !== 'same_client' && cluster.members.filter(m => m.inScope !== false).length >= 1 && (
+                    <button type="button" onClick={onCompare}
+                        className="px-3 py-1 text-xs font-medium border border-blue-200 text-blue-700 bg-white rounded-lg hover:bg-blue-50">
+                        Compare profiles
+                    </button>
+                )}
+                {canManage && cluster.view !== 'same_client' && cluster.memberCount >= 2 && (
                     <button type="button" onClick={onMerge}
                         className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                         Merge…
                     </button>
                 )}
-                {cluster.reviewStatus !== 'confirmed' && (
+                {canManage && cluster.reviewStatus !== 'confirmed' && (
                     <button type="button" onClick={() => onReview('confirmed')}
                         className="px-3 py-1 text-xs font-medium border border-red-200 text-red-700 bg-white rounded-lg hover:bg-red-50">
                         Confirm duplicate
                     </button>
                 )}
-                {cluster.reviewStatus !== 'not_duplicate' && (
+                {canManage && cluster.reviewStatus !== 'not_duplicate' && (
                     <button type="button" onClick={() => onReview('not_duplicate')}
                         className="px-3 py-1 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-100">
                         Not a duplicate
                     </button>
                 )}
-                {cluster.reviewStatus && (
+                {canManage && cluster.reviewStatus && (
                     <button type="button" onClick={() => onReview('clear')}
                         className="px-3 py-1 text-xs text-gray-500 hover:text-gray-800 underline">
                         Clear review

@@ -1,5 +1,6 @@
-// src/pages/settings/duplicate-clients/stats.js
-// Admin-only statistics: how many duplicate clients each Group / LO / Branch / Area / Region / Division has.
+// src/pages/reports/duplicate-clients/stats.js
+// Reports > Duplicate Clients > Statistics. Admin: everything; branch manager..division head: own branches only (the API scopes it).
+// Statistics: how many duplicate clients each Group / LO / Branch / Area / Region / Division has.
 // Data comes from the stored scan (clients/duplicates/stats); definitions are in lib/duplicate-stats.js.
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -14,6 +15,7 @@ import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import HierarchyFilters from '@/components/settings/duplicate-clients/HierarchyFilters';
+import { duplicateAccess, statsLevelsFor } from '@/lib/duplicate-access';
 
 const LEVELS = [
     { value: 'division', label: 'Division', filter: 'divisionId' },
@@ -24,7 +26,7 @@ const LEVELS = [
     { value: 'group', label: 'Group', filter: 'groupId' },
 ];
 
-const isAdmin = (u) => !!u && (u.root === true || u.role?.rep === 1);
+const hasAccess = (u) => !!duplicateAccess(u);
 
 const Stat = ({ label, value, tone = 'text-gray-900', hint }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-4" title={hint}>
@@ -39,7 +41,11 @@ const StatsPage = () => {
     const currentUser = useSelector((s) => s.user.data);
     const router = useRouter();
 
+    const allowed = statsLevelsFor(currentUser);
     const [level, setLevel] = useState('branch');
+    useEffect(() => {
+        if (allowed.length && !allowed.includes(level)) setLevel(allowed.includes('branch') ? 'branch' : allowed[0]);
+    }, [allowed.join(','), level]); // eslint-disable-line react-hooks/exhaustive-deps
     const [includeClosed, setIncludeClosed] = useState(false);
     const [hf, setHf] = useState({ divisionId: '', regionId: '', areaId: '', branchId: '' });
     const [data, setData] = useState(null);
@@ -48,7 +54,7 @@ const StatsPage = () => {
     const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
-        if (currentUser && !isAdmin(currentUser)) router.replace('/');
+        if (currentUser && !hasAccess(currentUser)) router.replace('/');
     }, [currentUser, router]);
 
     const params = useCallback((extra = {}) => {
@@ -72,7 +78,7 @@ const StatsPage = () => {
         }
     }, [params]);
 
-    useEffect(() => { if (isAdmin(currentUser)) load(); }, [load, currentUser]);
+    useEffect(() => { if (hasAccess(currentUser)) load(); }, [load, currentUser]);
 
     const levelInfo = LEVELS.find(l => l.value === level);
 
@@ -81,7 +87,7 @@ const StatsPage = () => {
         const q = new URLSearchParams({ view: 'active', [levelInfo.filter]: row.key });
         // Keep the hierarchy filters that are not the level being drilled into.
         Object.entries(hf).forEach(([k, v]) => v && k !== levelInfo.filter && q.set(k, v));
-        return `/settings/duplicate-clients?${q.toString()}`;
+        return `/reports/duplicate-clients?${q.toString()}`;
     };
 
     const exportExcel = async () => {
@@ -113,14 +119,14 @@ const StatsPage = () => {
         }
     };
 
-    if (!isAdmin(currentUser)) return null;
+    if (!hasAccess(currentUser)) return null;
 
     return (
         <Layout>
             <div className="w-full">
                 <div className="flex items-start justify-between mb-4 gap-4">
                     <div>
-                        <Link href="/settings/duplicate-clients" className="text-sm text-blue-600 hover:text-blue-800">← Duplicate Clients</Link>
+                        <Link href="/reports/duplicate-clients" className="text-sm text-blue-600 hover:text-blue-800">← Duplicate Clients</Link>
                         <h1 className="text-2xl font-bold text-gray-900 mt-1">Duplicate Client Statistics</h1>
                         <p className="text-sm text-gray-500 mt-1 max-w-3xl">
                             In every duplicate group the oldest record is the original; each other record is a <b>duplicate client</b>,
@@ -151,7 +157,7 @@ const StatsPage = () => {
                 </div>
 
                 <div className="flex gap-1 mb-2 border-b border-gray-200">
-                    {LEVELS.map(l => (
+                    {LEVELS.filter(l => allowed.includes(l.value)).map(l => (
                         <button key={l.value} type="button" onClick={() => setLevel(l.value)}
                             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${level === l.value
                                 ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>

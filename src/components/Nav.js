@@ -274,7 +274,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager", "loan_officer"]
             },
             {
                 label: "Prospect Clients",
@@ -770,6 +770,18 @@ const MenuItems = [
                 hidden: false,
                 roles: []
             },
+            {
+                label: "Duplicate Clients",
+                url: "/reports/duplicate-clients",
+                icon: {
+                    active: (props) => <Copy {...props} />,
+                    notActive: (props) => <Copy {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+            },
         ]
     },
     {
@@ -838,18 +850,6 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Eye {...props} />,
                     notActive: (props) => <Eye {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["admin"]
-            },
-            {
-                label: "Duplicate Clients",
-                url: "/settings/duplicate-clients",
-                icon: {
-                    active: (props) => <Copy {...props} />,
-                    notActive: (props) => <Copy {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -1081,7 +1081,9 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
     }
   };
 
-  const isActive = normUrl(activePath) === normUrl(item.url);
+  const _a = normUrl(activePath), _u = normUrl(item.url);
+  // Sub-pages (e.g. /reports/duplicate-clients/stats) keep their parent menu item highlighted.
+  const isActive = _a === _u || (_u === '/reports/duplicate-clients' && _a.split('?')[0].startsWith(_u + '/'));
   const IconComponent = isActive ? item.icon?.active : item.icon?.notActive;
   const displayLabel = item.displayLabel || item.label;
 

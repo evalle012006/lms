@@ -14,10 +14,16 @@ import { canDecideCI, resolveBranchWhere, branchWhereAllows } from '@/lib/ci-sco
 const graph = new GraphProvider();
 
 const CLIENT_TYPE = createGraphType('client', `
-    _id firstName lastName middleName birthdate
+    _id firstName lastName middleName birthdate contactNumber address
     branchName status profile groupLeader
     governmentIdType governmentIdNumber
 `)('clients');
+
+// Closed loans only: loans.remarks holds the close-account remarks entered when the
+// loan was offset (copied from cashCollections.closeRemarks at save time).
+const CLOSED_LOAN_TYPE = createGraphType(
+    'loans', '_id clientId status closedDate remarks loanCycle'
+)('loans');
 
 const APP_TYPE = createGraphType(
     'temporaryLoanApplications', '_id branchId duplicateCandidateIds existingClientId promotedClientId'
@@ -69,5 +75,26 @@ async function getByIds(req, res) {
         queryQl(CLIENT_TYPE, { where: { _id: { _in: wanted } } })
     ).then(r => r.data?.clients ?? []);
 
-    return res.status(200).json({ success: true, clients });
+    // Latest closed loan per client -> why/when the client was closed (offset)
+    const closedLoans = await graph.query(
+        queryQl(CLOSED_LOAN_TYPE, {
+            where: { clientId: { _in: wanted }, status: { _eq: 'closed' } },
+            order_by: [{ closedDate: 'desc_nulls_last' }],
+        })
+    ).then(r => r.data?.loans ?? []).catch(() => []);
+    const lastClosed = {};
+    for (const l of closedLoans) if (!lastClosed[l.clientId]) lastClosed[l.clientId] = l;
+
+    const enriched = clients.map(c => {
+        const l = lastClosed[c._id];
+        const remarks = l?.remarks;
+        return {
+            ...c,
+            lastClosedDate: l?.closedDate ?? null,
+            // remarks is free text for closed loans; ignore any non-string shape
+            closeRemarks: typeof remarks === 'string' && remarks.trim() ? remarks.trim() : null,
+        };
+    });
+
+    return res.status(200).json({ success: true, clients: enriched });
 }

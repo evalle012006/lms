@@ -18,6 +18,13 @@ module.exports = {
       { protocol: 'https', hostname: 'ambercashph.sgp1.digitaloceanspaces.com' },
     ],
   },
+  // Duplicate Clients moved from Settings to Reports (2026-11-22); keep old bookmarks and links working.
+  async redirects() {
+    return [
+      { source: '/settings/duplicate-clients', destination: '/reports/duplicate-clients', permanent: false },
+      { source: '/settings/duplicate-clients/stats', destination: '/reports/duplicate-clients/stats', permanent: false },
+    ];
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = { ...config.resolve.fallback, fs: false, path: false, os: false };

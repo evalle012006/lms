@@ -1,6 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { X, Upload, FileText } from 'lucide-react';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
+
+const MAX_FILES = 10;
 
 /**
  * Modal component for uploading MCBU/CSF form document
@@ -15,97 +19,122 @@ export default function ClaimTransactionModal({
     isBatch = false
 }) {
     const [uploading, setUploading] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [preview, setPreview] = useState(null);
+    const [files, setFiles] = useState([]); // [{ id, file, preview }]
     const fileInputRef = useRef(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [processedCount, setProcessedCount] = useState(0);
 
+    const readPreview = (file, id) => {
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFiles(prev => prev.map(f => (f.id === id ? { ...f, preview: reader.result } : f)));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const picked = Array.from(e.target.files || []);
+        // Reset input so the same file can be re-picked after removal
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (picked.length === 0) return;
 
-        // Validate file size (max 10MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
-            toast.error('File size must be less than 10MB');
-            return;
-        }
-
-        // Validate file type (images and PDFs)
+        const maxSize = 10 * 1024 * 1024; // 10MB per file
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
-        if (!allowedTypes.includes(file.type)) {
-            toast.error('Please select an image (JPG, PNG, GIF) or PDF file');
-            return;
+
+        const accepted = [];
+        let rejectedSize = 0;
+        let rejectedType = 0;
+        let rejectedLimit = 0;
+
+        for (const file of picked) {
+            if (files.length + accepted.length >= MAX_FILES) {
+                rejectedLimit++;
+                continue;
+            }
+            if (file.size > maxSize) {
+                rejectedSize++;
+                continue;
+            }
+            if (!allowedTypes.includes(file.type)) {
+                rejectedType++;
+                continue;
+            }
+            accepted.push({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                file,
+                preview: null,
+            });
         }
 
-        setSelectedFile(file);
+        if (rejectedSize) toast.error(`${rejectedSize} file(s) skipped: each file must be less than 10MB`);
+        if (rejectedType) toast.error(`${rejectedType} file(s) skipped: only JPG, PNG, GIF or PDF allowed`);
+        if (rejectedLimit) toast.error(`Maximum of ${MAX_FILES} files per claim`);
 
-        // Create preview for images
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setPreview(null);
-        }
+        if (accepted.length === 0) return;
+        setFiles(prev => [...prev, ...accepted]);
+        accepted.forEach(f => readPreview(f.file, f.id));
     };
 
     const handleUploadClick = () => {
         fileInputRef.current?.click();
     };
 
-    const handleRemoveFile = () => {
-        setSelectedFile(null);
-        setPreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+    const handleRemoveFile = (id) => {
+        setFiles(prev => prev.filter(f => f.id !== id));
+    };
+
+    const resetFiles = () => {
+        setFiles([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleSubmit = async () => {
-        if (!selectedFile) {
-            toast.error('Please select a document to upload');
+        if (files.length === 0) {
+            toast.error('Please select at least one document to upload');
             return;
         }
 
         setUploading(true);
         setUploadProgress(0);
 
+        // Declared outside try so the catch block can roll back partial uploads
+        const fileKeys = [];
+        let claimSubmitted = false;
+
         try {
-            // For batch mode, upload the document once and use it for all transactions
             const targetTransaction = isBatch ? transactions[0] : transaction;
-            
-            // Upload file to DigitalOcean Spaces
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('origin', 'unclaimed-transactions');
-            formData.append('uuid', targetTransaction.cashCollectionId);
 
-            setUploadProgress(30);
+            // Upload sequentially. /api/upload removes any existing file inside
+            // its origin/uuid folder, so every file MUST get its own uuid
+            // folder or each upload would delete the previous one.
+            for (let i = 0; i < files.length; i++) {
+                const formData = new FormData();
+                formData.append('file', files[i].file);
+                formData.append('origin', 'unclaimed-transactions');
+                formData.append('uuid', `${targetTransaction.cashCollectionId}-${i + 1}`);
+                // Don't delete old files yet; the server removes them after the claim is saved
+                formData.append('keepExisting', 'true');
 
-            const uploadResponse = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+                const uploadResponse = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
 
-            if (!uploadResponse.ok) {
-                throw new Error('Failed to upload document');
+                if (!uploadResponse.ok) {
+                    throw new Error(`Failed to upload "${files[i].file.name}"`);
+                }
+
+                const uploadResult = await uploadResponse.json();
+                if (!uploadResult.fileKey) {
+                    throw new Error(`No file key returned for "${files[i].file.name}"`);
+                }
+
+                fileKeys.push(uploadResult.fileKey);
+                setUploadProgress(60 * ((i + 1) / files.length));
             }
-
-            const uploadResult = await uploadResponse.json();
-
-            // ✅ API now returns fileKey (storage path), not a public URL
-            if (!uploadResult.fileKey) {
-                throw new Error('No file key returned from upload');
-            }
-
-            setUploadProgress(60);
 
             if (isBatch) {
-                // Batch mode: prepare payload with only required fields
                 const transactionsWithDoc = transactions.map(tx => ({
                     cashCollectionId: tx.cashCollectionId,
                     clientId: tx.clientId,
@@ -115,7 +144,7 @@ export default function ClaimTransactionModal({
                     regionId: tx.regionId,
                     divisionId: tx.divisionId,
                     loanId: tx.loanId,
-                    documentUrl: uploadResult.fileKey  // ✅ store key, not public URL
+                    documentUrls: fileKeys // storage keys, not public URLs
                 }));
 
                 setProcessedCount(0);
@@ -124,10 +153,11 @@ export default function ClaimTransactionModal({
                     setUploadProgress(60 + (40 * (i + 1) / transactionsWithDoc.length));
                 }
 
+                claimSubmitted = true;
                 await onClaim(transactionsWithDoc);
             } else {
-                // Single mode: send only required fields
                 setUploadProgress(90);
+                claimSubmitted = true;
                 await onClaim({
                     cashCollectionId: transaction.cashCollectionId,
                     clientId: transaction.clientId,
@@ -137,19 +167,30 @@ export default function ClaimTransactionModal({
                     regionId: transaction.regionId,
                     divisionId: transaction.divisionId,
                     loanId: transaction.loanId,
-                    documentUrl: uploadResult.fileKey  // ✅ store key, not public URL
+                    documentUrls: fileKeys // storage keys, not public URLs
                 });
             }
 
             setUploadProgress(100);
-
-            // Reset state
-            handleRemoveFile();
+            resetFiles();
             onClose();
 
         } catch (error) {
             console.error('Error uploading document:', error);
-            toast.error('Failed to upload document. Please try again.');
+
+            // Roll back: if not every file uploaded, nothing was claimed, so the
+            // files that did upload are orphans. Delete only in that case.
+            if (!claimSubmitted && fileKeys.length > 0) {
+                try {
+                    await fetchWrapper.post(
+                        `${getApiBaseUrl()}transactions/unclaimed-transactions/discard-uploads`,
+                        { keys: fileKeys }
+                    );
+                } catch (cleanupError) {
+                    console.error('Failed to clean up partial uploads:', cleanupError);
+                }
+            }
+            toast.error(error?.message || 'Failed to upload document. Please try again.');
         } finally {
             setUploading(false);
             setUploadProgress(0);
@@ -158,7 +199,7 @@ export default function ClaimTransactionModal({
     };
 
     const handleCancel = () => {
-        handleRemoveFile();
+        resetFiles();
         onClose();
     };
 
@@ -254,10 +295,10 @@ export default function ClaimTransactionModal({
                         {/* Upload Section */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Upload MCBU and CSF Form <span className="text-red-500">*</span>
+                                Upload MCBU and CSF Form(s) <span className="text-red-500">*</span>
                             </label>
                             <p className="text-sm text-gray-500 mb-4">
-                                Please upload a clear photo or PDF of the signed MCBU and CSF form document.
+                                Please upload clear photos or PDFs of the signed MCBU and CSF form document. You can attach multiple files.
                             </p>
 
                             {/* File Input (hidden) */}
@@ -265,12 +306,12 @@ export default function ClaimTransactionModal({
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*,.pdf"
+                                multiple
                                 onChange={handleFileSelect}
                                 className="hidden"
                             />
 
-                            {/* Upload Area */}
-                            {!selectedFile ? (
+                            {files.length === 0 ? (
                                 <button
                                     type="button"
                                     onClick={handleUploadClick}
@@ -278,57 +319,53 @@ export default function ClaimTransactionModal({
                                 >
                                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
                                     <p className="mt-2 text-sm text-gray-600">
-                                        Click to upload or drag and drop
+                                        Click to upload one or more files
                                     </p>
                                     <p className="mt-1 text-xs text-gray-500">
-                                        PNG, JPG, GIF, PDF up to 10MB
+                                        PNG, JPG, GIF, PDF up to 10MB each (max {MAX_FILES} files)
                                     </p>
                                 </button>
                             ) : (
                                 <div className="border border-gray-300 rounded-lg p-4">
-                                    {/* Preview */}
-                                    {preview ? (
-                                        <div className="mb-4">
-                                            <img 
-                                                src={preview} 
-                                                alt="Preview" 
-                                                className="max-h-64 mx-auto rounded-lg"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="mb-4 flex items-center justify-center p-8 bg-gray-50 rounded-lg">
-                                            <FileText className="h-16 w-16 text-gray-400" />
-                                        </div>
-                                    )}
-
-                                    {/* File Info */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">
-                                                {selectedFile.name}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleRemoveFile}
-                                            disabled={uploading}
-                                            className="ml-4 text-red-600 hover:text-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Remove
-                                        </button>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-72 overflow-y-auto">
+                                        {files.map(({ id, file, preview }) => (
+                                            <div key={id} className="relative border border-gray-200 rounded-lg p-2">
+                                                {preview ? (
+                                                    <img
+                                                        src={preview}
+                                                        alt={file.name}
+                                                        className="h-24 w-full object-cover rounded"
+                                                    />
+                                                ) : (
+                                                    <div className="h-24 flex items-center justify-center bg-gray-50 rounded">
+                                                        <FileText className="h-10 w-10 text-gray-400" />
+                                                    </div>
+                                                )}
+                                                <p className="mt-2 text-xs font-medium text-gray-900 truncate" title={file.name}>
+                                                    {file.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveFile(id)}
+                                                    disabled={uploading}
+                                                    className="mt-1 text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
 
-                                    {/* Change File Button */}
                                     <button
                                         type="button"
                                         onClick={handleUploadClick}
-                                        disabled={uploading}
+                                        disabled={uploading || files.length >= MAX_FILES}
                                         className="mt-3 w-full px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                                     >
-                                        Change File
+                                        Add More Files ({files.length}/{MAX_FILES})
                                     </button>
                                 </div>
                             )}
@@ -338,8 +375,8 @@ export default function ClaimTransactionModal({
                         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                             <p className="text-sm text-blue-800">
                                 <strong>Note:</strong> {isBatch 
-                                    ? `This document will be applied to all ${transactions.length} selected transactions. The process cannot be undone.`
-                                    : 'Once you proceed, the transaction will be marked as claimed and cannot be undone. Make sure the document is clear and properly filled out.'}
+                                    ? `These documents will be applied to all ${transactions.length} selected transactions. The process cannot be undone.`
+                                    : 'Once you proceed, the transaction will be marked as claimed and cannot be undone. Make sure the documents are clear and properly filled out.'}
                             </p>
                         </div>
 
@@ -378,7 +415,7 @@ export default function ClaimTransactionModal({
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            disabled={uploading || !selectedFile}
+                            disabled={uploading || files.length === 0}
                             className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {uploading ? (

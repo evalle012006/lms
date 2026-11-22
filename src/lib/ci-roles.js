@@ -19,3 +19,15 @@ export const canDecideCI = (user) =>
 // Admin / supervisors: can decide CI but are not branch-level (no designated branch)
 export const isAboveBranchLevel = (user) =>
     canDecideCI(user) && getShortCode(user) !== 'branch_manager';
+
+// ── Loan officer access ─────────────────────────────────────────────────────
+// LOs can always VIEW (and print the LAF of) CIs for their own groups, read-only.
+// They can submit an investigation only while the system setting allowLoCI is on.
+export const isLoanOfficer = (user) =>
+    user?.root !== true && getShortCode(user) === 'loan_officer';
+
+export const canViewCI = (user) => canDecideCI(user) || isLoanOfficer(user);
+
+// allowLoCI comes from system settings (client: redux, server: settings table).
+export const canInvestigateCI = (user, allowLoCI) =>
+    canDecideCI(user) || (isLoanOfficer(user) && allowLoCI === true);

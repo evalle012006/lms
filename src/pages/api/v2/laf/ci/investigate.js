@@ -16,7 +16,7 @@ import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions';
-import { canDecideCI, isBranchInScope } from '@/lib/ci-scope';
+import { canInvestigateCI, getAllowLoCI, isApplicationInScope } from '@/lib/ci-scope';
 import moment from 'moment';
 import { sendCIApprovedSMS, sendCIDeclinedSMS } from '@/lib/sms-service';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
@@ -39,7 +39,9 @@ async function saveInvestigation(req, res) {
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
-    if (!canDecideCI(user)) {
+    // Loan officers may investigate only while the allowLoCI system setting is on
+    // (and only for groups under them; see the scope check below).
+    if (!canInvestigateCI(user, await getAllowLoCI())) {
         return res.status(200).json({
             success: false,
             message: 'You are not allowed to approve or reject a CI investigation.',
@@ -84,7 +86,7 @@ async function saveInvestigation(req, res) {
     ).then(r => r.data?.temporaryLoanApplications ?? []);
 
     // Out-of-scope is reported exactly like not-found so CI codes can't be probed
-    if (!application || !(await isBranchInScope(user, application.branchId))) {
+    if (!application || !(await isApplicationInScope(user, application))) {
         return res.status(200).json({ success: false, message: 'Application not found.' });
     }
 
