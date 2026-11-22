@@ -66,3 +66,21 @@ describe('clustering does not chain different people', () => {
         expect(cm.match.differs).toContain('Birthdate');
     });
 });
+
+describe('reviewer exclusions ("not the same person")', () => {
+    it('an excluded pair never ends up in the same group, even though they match', () => {
+        const mkd = (id, extra = {}) => mk({ _id: id, middleName: 'S', birthdate: '1970-02-18', contactNumber: '09511573069', ...extra });
+        const a = mkd('a'), b = mkd('b'), c = mkd('c');
+        const withoutEx = detectDuplicates([a, b, c], new Set(['a', 'b'])).clusters;
+        expect(idsOf(withoutEx[0])).toEqual(['a', 'b', 'c']);
+
+        const ex = new Set(['b|c']);
+        const { clusters } = detectDuplicates([a, b, c], new Set(['a', 'b']), [], { exclusions: ex });
+        for (const cl of clusters) {
+            const ids = idsOf(cl);
+            expect(ids.includes('b') && ids.includes('c')).toBe(false);
+        }
+        // b and c are still each linked to a, but only one of them can join it
+        expect(clusters.length).toBeGreaterThan(0);
+    });
+});

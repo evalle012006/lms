@@ -48,6 +48,7 @@ const LOAN_TYPE = createGraphType('loans', `
 `)('loans');
 const FACE_TYPE = createGraphType('client', `_id faceTemplate`)('faceClients');
 const BRANCH_TYPE = createGraphType('branches', `_id name`)('branches');
+const EXCLUSION_TYPE = createGraphType('duplicate_client_exclusions', `_id`)('duplicate_client_exclusions');
 const USER_TYPE = createGraphType('users', `_id firstName lastName`)('users');
 const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `_id status review_status reviewed_member_ids`);
 const RUN_TYPE = createGraphType('duplicate_scan_runs', `_id status started_at finished_at stats error trigger`);
@@ -209,7 +210,12 @@ async function runScan(runId, req) {
         t = lap('faceMs', t);
 
         await report('detect', 'Finding duplicate groups');
-        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard });
+        // Reviewer decisions "these two are different people" — fails soft if migration 012 is not applied yet.
+        let exclusions = new Set();
+        try { exclusions = new Set((await fetchAll(EXCLUSION_TYPE, {})).map(e => e._id)); }
+        catch (e) { console.error('[duplicate-scan] exclusions not loaded', e); timings.exclusionsError = String(e?.message ?? e).slice(0, 120); }
+        timings.exclusions = exclusions.size;
+        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard, exclusions });
         const sameClient = detectMultiActiveLoans(clients, activeLoans);
         // Not needed any more: only the (much smaller) cluster members stay referenced through enrich + save.
         clients = null;
