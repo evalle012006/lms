@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { Download, RefreshCw, ExternalLink, ChevronDown } from 'lucide-react';
@@ -12,6 +13,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import HierarchyFilters from '@/components/settings/duplicate-clients/HierarchyFilters';
 import {
     exportDuplicateClientsExcel, SCENARIO_LABELS, CONFIDENCE_LABELS, SEVERITY_LABELS,
 } from '@/components/settings/duplicate-clients/exportDuplicateClientsExcel';
@@ -51,6 +53,7 @@ const DuplicateClientsPage = () => {
     const [clusters, setClusters] = useState([]);
     const [summary, setSummary] = useState(null);
     const [branches, setBranches] = useState([]);
+    const [hierarchy, setHierarchy] = useState(null);       // { divisions, regions, areas, branches }
     const [lastRun, setLastRun] = useState(null);
     const [reviewCounts, setReviewCounts] = useState({ pending: 0, confirmed: 0, not_duplicate: 0 });
     const [reviewTarget, setReviewTarget] = useState(null);   // { cluster, decision }
@@ -67,7 +70,7 @@ const DuplicateClientsPage = () => {
     const [page, setPage] = useState(1);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState({ confidence: '', scenario: '', severity: '', branchId: '', review: 'pending' });
+    const [filters, setFilters] = useState({ confidence: '', scenario: '', severity: '', divisionId: '', regionId: '', areaId: '', branchId: '', review: 'pending' });
 
     // Selection is by cluster and survives paging/filtering; keep the cluster
     // objects so "export selected" works for rows that are no longer on screen.
@@ -76,6 +79,15 @@ const DuplicateClientsPage = () => {
     useEffect(() => {
         if (currentUser && !isAdmin(currentUser)) router.replace('/');
     }, [currentUser, router]);
+
+    // Drill-down from the statistics page: /settings/duplicate-clients?view=active&branchId=...&loId=...
+    useEffect(() => {
+        if (!router.isReady) return;
+        const q = router.query;
+        const keys = ['divisionId', 'regionId', 'areaId', 'branchId', 'loId', 'groupId'].filter(k => q[k]);
+        if (q.view && TABS.some(t => t.value === q.view)) setView(q.view);
+        if (keys.length) setFilters(f => ({ ...f, ...Object.fromEntries(keys.map(k => [k, String(q[k])])) }));
+    }, [router.isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const t = setTimeout(() => { setPage(1); setSearch(searchInput.trim()); }, 350);
@@ -117,6 +129,7 @@ const DuplicateClientsPage = () => {
             setPagination(res.pagination);
             setSummary(res.summary);
             setBranches(res.branches);
+            setHierarchy(res.hierarchy);
             setLastRun(res.lastRun);
             setReviewCounts(res.reviewCounts);
         } catch (e) {
@@ -148,6 +161,7 @@ const DuplicateClientsPage = () => {
     };
 
     const changeFilter = (key, value) => { setPage(1); setFilters(f => ({ ...f, [key]: value })); };
+    const changeHierarchy = (next) => { setPage(1); setFilters(f => ({ ...f, ...next })); };
     const changeView = (v) => { setView(v); setPage(1); setSelected(new Map()); };
 
     const toggle = (cluster) => setSelected(prev => {
@@ -170,9 +184,13 @@ const DuplicateClientsPage = () => {
         if (filters.confidence) parts.push(`Confidence: ${CONFIDENCE_LABELS[filters.confidence]}`);
         if (filters.scenario) parts.push(`Scenario: ${SCENARIO_LABELS[filters.scenario]}`);
         if (filters.severity) parts.push(`Severity: ${SEVERITY_LABELS[filters.severity]}`);
-        if (filters.branchId) parts.push(`Branch: ${branches.find(b => b._id === filters.branchId)?.name ?? filters.branchId}`);
+        const nameOf = (list, id) => list?.find(x => x._id === id)?.name ?? id;
+        if (filters.divisionId) parts.push(`Division: ${nameOf(hierarchy?.divisions, filters.divisionId)}`);
+        if (filters.regionId) parts.push(`Region: ${nameOf(hierarchy?.regions, filters.regionId)}`);
+        if (filters.areaId) parts.push(`Area: ${nameOf(hierarchy?.areas, filters.areaId)}`);
+        if (filters.branchId) parts.push(`Branch: ${nameOf(branches, filters.branchId)}`);
         return parts.join(' | ');
-    }, [view, search, filters, branches]);
+    }, [view, search, filters, branches, hierarchy]);
 
     const runExport = async (mode) => {
         setExportOpen(false);
@@ -278,6 +296,9 @@ const DuplicateClientsPage = () => {
                     <button type="button" onClick={toggleMetrics} className="text-sm text-blue-600 hover:text-blue-800">
                         {metricsOpen ? 'Hide' : 'Show'} who is creating duplicates (by LO / branch)
                     </button>
+                    <Link href="/settings/duplicate-clients/stats" className="ml-4 text-sm text-blue-600 hover:text-blue-800">
+                        Statistics by group, LO, branch, area, region &amp; division →
+                    </Link>
                     {metricsOpen && (
                         <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4">
                             {metricsLoading || !metrics ? <p className="text-sm text-gray-400">Loading…</p> : (
@@ -326,8 +347,6 @@ const DuplicateClientsPage = () => {
                         <Select value={filters.severity} onChange={(v) => changeFilter('severity', v)}
                             placeholder="All severity" options={Object.entries(SEVERITY_LABELS).filter(([k]) => k !== 'no_active')} />
                     )}
-                    <Select value={filters.branchId} onChange={(v) => changeFilter('branchId', v)}
-                        placeholder="All branches" options={branches.map(b => [b._id, b.name])} />
                     <select value={filters.review} onChange={(e) => changeFilter('review', e.target.value)}
                         className="border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white">
                         <option value="pending">Needs review ({reviewCounts.pending})</option>
@@ -335,6 +354,15 @@ const DuplicateClientsPage = () => {
                         <option value="not_duplicate">Not duplicate ({reviewCounts.not_duplicate})</option>
                         <option value="all">All</option>
                     </select>
+                    {(filters.loId || filters.groupId) && (
+                        <div className="lg:col-span-7 text-sm text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex items-center justify-between">
+                            <span>Showing groups for one {filters.loId ? 'loan officer' : 'group'} (from the statistics page).</span>
+                            <button type="button" className="underline" onClick={() => changeHierarchy({ loId: '', groupId: '' })}>Clear</button>
+                        </div>
+                    )}
+                    <div className="lg:col-span-7 grid grid-cols-1 lg:grid-cols-4 gap-3">
+                        <HierarchyFilters hierarchy={hierarchy} value={filters} onChange={changeHierarchy} />
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-2 text-sm text-gray-600">

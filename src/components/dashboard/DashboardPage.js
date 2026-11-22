@@ -21,6 +21,7 @@ import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/date-utils';
 import CustomSelect from './CustomSelect';
 import DelinquentAlertsModal from './DelinquentAlertsModal';
 import DuplicateAlertsModal from './DuplicateAlertsModal';
+import { canSeeDuplicateAlerts } from '@/lib/duplicate-alerts-access';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -409,15 +410,16 @@ const DashboardPage = () => {
         }
     }, [currentUser, currentDate]);
 
-    // Duplicate Alerts (same audience/placement as Delinquent Alerts): >1 active loan for the same person, from the stored scan.
+    // Duplicate Alerts: >1 active loan for the same person, from the stored scan. Admins and division heads only (for now).
     const [duplicateAlerts, setDuplicateAlerts] = useState([]);
     const [duplicateTotal, setDuplicateTotal] = useState(0);
     const [duplicateLoading, setDuplicateLoading] = useState(false);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const isAdminUser = currentUser?.root === true || currentUser?.role?.rep === 1;
+    const showDuplicateAlerts = canSeeDuplicateAlerts(currentUser);
 
     useEffect(() => {
-        if (!canSeeDelinquentAlerts) return;
+        if (!showDuplicateAlerts) return;
         let cancelled = false;
         (async () => {
             setDuplicateLoading(true);
@@ -1468,8 +1470,8 @@ const DashboardPage = () => {
                             <span className="text-sm font-medium">{isSearchVisible ? 'Hide Search' : 'Search Client'}</span>
                         </button>
 
-                        {/* ── DUPLICATE ALERTS BUTTON — just left of Delinquent Alerts ── */}
-                        {canSeeDelinquentAlerts && (
+                        {/* ── DUPLICATE ALERTS BUTTON — just left of Delinquent Alerts (admins + division heads only) ── */}
+                        {showDuplicateAlerts && (
                             <button
                                 onClick={() => setShowDuplicateModal(true)}
                                 className={`relative ml-auto flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200
@@ -1489,7 +1491,7 @@ const DashboardPage = () => {
                         {canSeeDelinquentAlerts && (
                             <button
                                 onClick={() => setShowDelinquentModal(true)}
-                                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200
+                                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-sm border font-medium text-sm transition-all duration-200 ${showDuplicateAlerts ? '' : 'ml-auto'}
                                     ${totalAlertCount > 0
                                         ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
                                         : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'

@@ -8,7 +8,8 @@
 //   scenario    cross_branch | same_branch_diff_lo | same_lo_diff_group | same_group  (comma-separated allowed)
 //   severity    both_active | one_active | no_active
 //   review      'pending' (default, not yet reviewed) | 'confirmed' | 'not_duplicate' | 'all'
-//   branchId / loId / groupId                            group kept if ANY member matches
+//   divisionId / regionId / areaId / branchId / loId / groupId   group kept if ANY member matches
+//     (division/region/area/branch combine with AND and are resolved to branch ids via the branches table)
 //   search      name, client id, or contact number
 //   all         'true' to return every filtered group (Excel export, capped at EXPORT_MAX)
 //   page / limit
@@ -19,6 +20,7 @@ import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { normalizeText } from '@/lib/duplicate-clients';
 import { getLatestRun, isRunActive } from '@/lib/duplicate-clients-job';
+import { loadHierarchy, branchIdsForFilters, branchIdsCondition } from '@/lib/duplicate-hierarchy';
 
 const graph = new GraphProvider();
 
@@ -30,7 +32,6 @@ const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `
   exact_closed_vs_active members first_detected_at last_seen_at
   review_status review_note reviewed_by_name reviewed_at
 `);
-const BRANCH_TYPE = createGraphType('branches', `_id name`)('branches');
 
 export default apiHandler({ get: list });
 
@@ -54,7 +55,9 @@ async function list(req, res) {
     if (confidences) and.push({ confidence: { _in: confidences } });
     if (scenarios) and.push({ _or: scenarios.map(s => ({ scenarios: { _contains: [s] } })) });
     if (q.severity) and.push({ severity: { _eq: q.severity } });
-    if (q.branchId) and.push({ branch_ids: { _contains: [q.branchId] } });
+    const hierarchy = await loadHierarchy();
+    const branchCond = branchIdsCondition(branchIdsForFilters(hierarchy, q));
+    if (branchCond) and.push(branchCond);
     if (q.loId) and.push({ lo_ids: { _contains: [q.loId] } });
     if (q.groupId) and.push({ group_ids: { _contains: [q.groupId] } });
     const search = q.search?.trim();
@@ -100,7 +103,6 @@ async function list(req, res) {
         aggregateQl(T('pendingReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _is_null: true } }] }),
         aggregateQl(T('confirmedReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _eq: 'confirmed' } }] }),
         aggregateQl(T('notDupReviewAgg'), 'aggregate { count }', { _and: [...viewBase, { review_status: { _eq: 'not_duplicate' } }] }),
-        queryQl(BRANCH_TYPE, { order_by: [{ name: 'asc' }] }),
     ).then(r => r.data);
 
     const total = data.filteredAgg.aggregate.count;
@@ -123,7 +125,8 @@ async function list(req, res) {
             confirmed: data.confirmedReviewAgg.aggregate.count,
             not_duplicate: data.notDupReviewAgg.aggregate.count,
         },
-        branches: data.branches ?? [],
+        branches: hierarchy.branches,
+        hierarchy: { divisions: hierarchy.divisions, regions: hierarchy.regions, areas: hierarchy.areas, branches: hierarchy.branches },
         lastRun: run && {
             status: run.status, trigger: run.trigger, startedAt: run.started_at,
             finishedAt: run.finished_at, error: run.error, running: isRunActive(run),
