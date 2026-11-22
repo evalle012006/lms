@@ -16,3 +16,17 @@ export function duplicateAccess(user) {
 }
 
 export const canManageDuplicates = (user) => duplicateAccess(user) === 'full';
+
+// Statistics tabs each role may see (top of their own hierarchy downwards). Admin / root see all six.
+const ALL_LEVELS = ['division', 'region', 'area', 'branch', 'lo', 'group'];
+const LEVELS_BY_ROLE = {
+    deputy_director: ALL_LEVELS,
+    regional_manager: ALL_LEVELS.slice(1),
+    area_admin: ALL_LEVELS.slice(2),
+    branch_manager: ALL_LEVELS.slice(3),
+};
+export function statsLevelsFor(user) {
+    if (!duplicateAccess(user)) return [];
+    if (user.root === true || user.role?.rep === 1) return ALL_LEVELS;
+    return LEVELS_BY_ROLE[user.role?.shortCode ?? user.shortCode] ?? [];
+}

@@ -18,6 +18,7 @@ import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { loadHierarchy, branchIdsForFilters, branchIdsCondition, intersectBranchIds, scopeHierarchy } from '@/lib/duplicate-hierarchy';
 import { resolveDuplicateScope } from '@/lib/duplicate-scope';
+import { statsLevelsFor } from '@/lib/duplicate-access';
 import { tallyDuplicateStats, STAT_LEVELS } from '@/lib/duplicate-stats';
 import { getLatestRun } from '@/lib/duplicate-clients-job';
 
@@ -37,7 +38,10 @@ async function stats(req, res) {
     }
 
     const q = req.query;
-    const level = STAT_LEVELS.includes(q.level) ? q.level : 'branch';
+    const allowedLevels = statsLevelsFor(user);
+    if (!allowedLevels.length) return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
+    const wanted = STAT_LEVELS.includes(q.level) ? q.level : 'branch';
+    const level = allowedLevels.includes(wanted) ? wanted : allowedLevels[0];
     const includeClosed = q.includeClosed === 'true';
     const fullHierarchy = await loadHierarchy();
     const hierarchy = scopeHierarchy(fullHierarchy, access.branchIds);
@@ -74,6 +78,7 @@ async function stats(req, res) {
         level,
         includeClosed,
         access: { level: access.level },
+        allowedLevels,
         totals,
         rows: q.all === 'true' ? rows : rows.slice(0, TOP),
         rowCount: rows.length,

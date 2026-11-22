@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const CATEGORIES = ['', 'CI', 'LAF', 'BIOMETRIC', 'LOAN', 'QR', 'AUTH', 'GROUP', 'BRANCH', 'TRANSFER', 'COLLECTION', 'SAVINGS'];
+const CATEGORIES = ['', 'CI', 'LAF', 'BIOMETRIC', 'LOAN', 'QR', 'GROUP', 'BRANCH', 'TRANSFER', 'COLLECTION', 'SAVINGS'];
 const SEVERITIES  = ['', 'INFO', 'WARNING', 'CRITICAL'];
 
 const CATEGORY_COLORS = {

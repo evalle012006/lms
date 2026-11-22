@@ -1081,7 +1081,9 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
     }
   };
 
-  const isActive = normUrl(activePath) === normUrl(item.url);
+  const _a = normUrl(activePath), _u = normUrl(item.url);
+  // Sub-pages (e.g. /reports/duplicate-clients/stats) keep their parent menu item highlighted.
+  const isActive = _a === _u || (_u === '/reports/duplicate-clients' && _a.split('?')[0].startsWith(_u + '/'));
   const IconComponent = isActive ? item.icon?.active : item.icon?.notActive;
   const displayLabel = item.displayLabel || item.label;
 

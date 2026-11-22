@@ -15,7 +15,7 @@ import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 import HierarchyFilters from '@/components/settings/duplicate-clients/HierarchyFilters';
-import { duplicateAccess } from '@/lib/duplicate-access';
+import { duplicateAccess, statsLevelsFor } from '@/lib/duplicate-access';
 
 const LEVELS = [
     { value: 'division', label: 'Division', filter: 'divisionId' },
@@ -41,7 +41,11 @@ const StatsPage = () => {
     const currentUser = useSelector((s) => s.user.data);
     const router = useRouter();
 
+    const allowed = statsLevelsFor(currentUser);
     const [level, setLevel] = useState('branch');
+    useEffect(() => {
+        if (allowed.length && !allowed.includes(level)) setLevel(allowed.includes('branch') ? 'branch' : allowed[0]);
+    }, [allowed.join(','), level]); // eslint-disable-line react-hooks/exhaustive-deps
     const [includeClosed, setIncludeClosed] = useState(false);
     const [hf, setHf] = useState({ divisionId: '', regionId: '', areaId: '', branchId: '' });
     const [data, setData] = useState(null);
@@ -153,7 +157,7 @@ const StatsPage = () => {
                 </div>
 
                 <div className="flex gap-1 mb-2 border-b border-gray-200">
-                    {LEVELS.map(l => (
+                    {LEVELS.filter(l => allowed.includes(l.value)).map(l => (
                         <button key={l.value} type="button" onClick={() => setLevel(l.value)}
                             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${level === l.value
                                 ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>

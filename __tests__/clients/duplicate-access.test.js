@@ -68,3 +68,17 @@ describe('maskId', () => {
         expect(maskId(null)).toBeNull();
     });
 });
+
+import { statsLevelsFor } from '@/lib/duplicate-access';
+describe('statsLevelsFor', () => {
+    const u = (shortCode, extra = {}) => ({ role: { shortCode, rep: 3 }, ...extra });
+    test('per role', () => {
+        expect(statsLevelsFor({ root: true })).toHaveLength(6);
+        expect(statsLevelsFor({ role: { shortCode: 'admin', rep: 1 } })).toHaveLength(6);
+        expect(statsLevelsFor(u('deputy_director'))).toEqual(['division', 'region', 'area', 'branch', 'lo', 'group']);
+        expect(statsLevelsFor(u('regional_manager'))).toEqual(['region', 'area', 'branch', 'lo', 'group']);
+        expect(statsLevelsFor(u('area_admin'))).toEqual(['area', 'branch', 'lo', 'group']);
+        expect(statsLevelsFor(u('branch_manager'))).toEqual(['branch', 'lo', 'group']);
+        expect(statsLevelsFor(u('loan_officer'))).toEqual([]);
+    });
+});
