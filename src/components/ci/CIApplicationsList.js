@@ -9,6 +9,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import moment from 'moment';
+import { useSelector } from 'react-redux';
+import { getShortCode, canDecideCI } from '@/lib/ci-roles';
 import { Search, RefreshCw, ChevronRight, WifiOff } from 'lucide-react';
 import { fetchWrapper }    from '@/lib/fetch-wrapper';
 import { getApiBaseUrl }   from '@/lib/constants';
@@ -72,6 +74,35 @@ const CIApplicationsList = ({
     const [total,         setTotal]         = useState(0);
     const [statusFilter,  setStatusFilter]  = useState('pending');
 
+    // Branch (admin / supervisors), LO (branch manager) and Group filters.
+    // Options come from a scoped endpoint, so each role only sees its own.
+    const currentUser = useSelector(state => state.user.data);
+    const shortCode   = getShortCode(currentUser);
+    const isBM        = shortCode === 'branch_manager';
+    const showBranchFilter = isOnline && canDecideCI(currentUser) && !isBM;
+    const showLoFilter     = isOnline && canDecideCI(currentUser); // admin, supervisors and branch manager
+    const showGroupFilter  = isOnline;
+    const [branchId, setBranchId] = useState('');
+    const [loId,     setLoId]     = useState('');
+    const [groupId,  setGroupId]  = useState('');
+    const [options,  setOptions]  = useState({ branches: [], los: [], groups: [] });
+
+    useEffect(() => {
+        if (!isOnline || !currentUser?._id) return;
+        const p = new URLSearchParams();
+        if (branchId) p.set('branchId', branchId);
+        if (loId)     p.set('loId', loId);
+        let cancelled = false;
+        fetchWrapper.get(getApiBaseUrl() + `laf/applications/filter-options?${p}`)
+            .then(r => { if (!cancelled && r.success) setOptions({
+                branches: r.branches || [], los: r.los || [], groups: r.groups || [],
+            }); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [isOnline, currentUser?._id, branchId, loId]);
+
+    const clearFilters = () => { setBranchId(''); setLoId(''); setGroupId(''); onFilterChange?.(); };
+
     // FIX: search split into immediate input value (for the text box) and a
     // debounced value (what actually drives the fetch). Typing stays instant;
     // the network call waits until the user pauses for SEARCH_DEBOUNCE_MS.
@@ -122,6 +153,9 @@ const CIApplicationsList = ({
             const params = new URLSearchParams({ limit: PAGE_SIZE_LIST, offset: 0 });
             if (statusFilter !== 'all') params.set('status', statusFilter);
             if (search) params.set('search', search);
+            if (branchId) params.set('branchId', branchId);
+            if (loId)     params.set('loId', loId);
+            if (groupId)  params.set('groupId', groupId);
             const res = await fetchWrapper.get(
                 getApiBaseUrl() + `laf/applications/list?${params}`
             );
@@ -145,7 +179,7 @@ const CIApplicationsList = ({
             setLoading(false);
             initialLoadDone.current = true; // FIX: now safe for sentinel to fire
         }
-    }, [statusFilter, search, isOnline]);
+    }, [statusFilter, search, isOnline, branchId, loId, groupId]);
 
     useEffect(() => { fetchList(); }, [fetchList, refreshKey]);
 
@@ -160,6 +194,9 @@ const CIApplicationsList = ({
             const params = new URLSearchParams({ limit: PAGE_SIZE_LIST, offset });
             if (statusFilter !== 'all') params.set('status', statusFilter);
             if (search) params.set('search', search);
+            if (branchId) params.set('branchId', branchId);
+            if (loId)     params.set('loId', loId);
+            if (groupId)  params.set('groupId', groupId);
             const res = await fetchWrapper.get(
                 getApiBaseUrl() + `laf/applications/list?${params}`
             );
@@ -181,7 +218,7 @@ const CIApplicationsList = ({
             setLoadingMore(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadingMore, hasMore, offset, statusFilter, search, applications.length]);
+    }, [loadingMore, hasMore, offset, statusFilter, search, branchId, loId, groupId, applications.length]);
 
     // ── IntersectionObserver — uses scroll container as root ──────────────
     useEffect(() => {
@@ -211,8 +248,9 @@ const CIApplicationsList = ({
         { value: 'all',                label: 'All'            },
         { value: 'pending',            label: 'Pending CI'     },
         { value: 'ci_approved',        label: 'CI Approved'    },
-        { value: 'ci_declined',        label: 'Declined'       },
-        { value: 'promoted',           label: 'Promoted'       },
+        { value: 'promoted_today',     label: 'Promoted'       },
+        { value: 'declined_today',     label: 'Declined'       },
+        { value: 'history',            label: 'History'        },
     ];
 
     return (
@@ -255,6 +293,44 @@ const CIApplicationsList = ({
                                 {opt.label}
                             </button>
                         ))}
+                    </div>
+                )}
+                {(showBranchFilter || showLoFilter || showGroupFilter) && (
+                    <div className="flex gap-1.5 mb-3 flex-wrap items-center">
+                        {showBranchFilter && (
+                            <select value={branchId} aria-label="Branch"
+                                onChange={e => { setBranchId(e.target.value); setLoId(''); setGroupId(''); onFilterChange?.(); }}
+                                className="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white">
+                                <option value="">All branches</option>
+                                {options.branches.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        )}
+                        {showLoFilter && (
+                            <select value={loId} aria-label="Loan officer"
+                                disabled={options.los.length === 0}
+                                onChange={e => { setLoId(e.target.value); setGroupId(''); onFilterChange?.(); }}
+                                className="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                                <option value="">
+                                    {options.los.length === 0 && showBranchFilter && !branchId ? 'Select a branch first' : 'All loan officers'}
+                                </option>
+                                {options.los.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        )}
+                        {showGroupFilter && (
+                            <select value={groupId} aria-label="Group"
+                                disabled={options.groups.length === 0}
+                                onChange={e => { setGroupId(e.target.value); onFilterChange?.(); }}
+                                className="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                                <option value="">
+                                    {options.groups.length === 0 && showBranchFilter && !branchId ? 'Select a branch first' : 'All groups'}
+                                </option>
+                                {options.groups.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        )}
+                        {(branchId || loId || groupId) && (
+                            <button type="button" onClick={clearFilters}
+                                className="text-xs text-blue-600 hover:underline px-1">Clear</button>
+                        )}
                     </div>
                 )}
                 <div className="relative">

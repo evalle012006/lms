@@ -5,7 +5,7 @@ import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.
 import { CI_INVESTIGATION_FIELDS, TEMP_LOAN_APP_FIELDS } from '@/lib/graph.fields';
 import { generateUUID } from '@/lib/utils';
 import { findUserById } from '@/lib/graph.functions';
-import { canDecideCI, resolveBranchWhere, branchWhereAllows } from '@/lib/ci-scope';
+import { canInvestigateCI, getAllowLoCI, resolveCIWhere, ciWhereAllows } from '@/lib/ci-scope';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import moment from 'moment';
 import { getCurrentDateV2, getSystemDate } from '@/lib/date-utils';
@@ -18,7 +18,7 @@ const graph = new GraphProvider();
 const CI_TYPE   = createGraphType('ciInvestigations',          CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', TEMP_LOAN_APP_FIELDS)('temporaryLoanApplications');
 const CI_SETTINGS_TYPE = createGraphType('settings', 'ciQuestions')('settings');
-const TEMP_GUARD_TYPE  = createGraphType('temporaryLoanApplications', '_id branchId status')('temporaryLoanApplications');
+const TEMP_GUARD_TYPE  = createGraphType('temporaryLoanApplications', '_id branchId groupId status')('temporaryLoanApplications');
 
 const s3 = new S3Client({
     endpoint:    'https://sgp1.digitaloceanspaces.com',
@@ -70,13 +70,13 @@ async function syncOfflineDrafts(req, res) {
     if (!user) {
         return res.status(200).json({ success: false, message: 'User not found.' });
     }
-    if (!canDecideCI(user)) {
+    if (!canInvestigateCI(user, await getAllowLoCI())) {
         return res.status(200).json({
             success: false,
             message: 'You are not allowed to approve or reject a CI investigation.',
         });
     }
-    const branchWhere = await resolveBranchWhere(user);
+    const branchWhere = await resolveCIWhere(user);
     if (branchWhere === null) {
         return res.status(200).json({ success: false, message: 'You do not have access to these applications.' });
     }
@@ -113,7 +113,7 @@ async function syncOfflineDrafts(req, res) {
                 })
             ).then(r => r.data?.temporaryLoanApplications ?? []);
 
-            if (!application || !branchWhereAllows(branchWhere, application.branchId)) {
+            if (!application || !ciWhereAllows(branchWhere, application)) {
                 results.push({ ciReferenceCode, success: false, error: 'Application not found.' });
                 continue;
             }

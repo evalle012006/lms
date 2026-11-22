@@ -132,9 +132,55 @@ const PhotoTile = ({ url, label, onZoom }) => (
     </div>
 );
 
+// ── Side-by-side details: applicant (LAF) vs existing client ───────────────
+const norm  = v => String(v ?? '').trim().toUpperCase().replace(/\s+/g, ' ');
+const phone = v => String(v ?? '').replace(/\D/g, '').slice(-10);
+const fmtDate = v => (v ? moment(v).format('MMM D, YYYY') : '');
+const fullName = o => [o?.firstName, o?.middleName, o?.lastName].filter(Boolean).join(' ');
+
+const DetailCompare = ({ applicant, client }) => {
+    const rows = [
+        { label: 'Name',       a: fullName(applicant), c: fullName(client), same: norm(fullName(applicant)) === norm(fullName(client)) },
+        { label: 'Birthdate',  a: fmtDate(applicant?.birthdate), c: fmtDate(client?.birthdate),
+          same: !!applicant?.birthdate && fmtDate(applicant.birthdate) === fmtDate(client?.birthdate) },
+        { label: 'Contact no.', a: applicant?.contactNumber, c: client?.contactNumber,
+          same: !!phone(applicant?.contactNumber) && phone(applicant.contactNumber) === phone(client?.contactNumber) },
+        { label: 'Address',    a: applicant?.address, c: client?.address,
+          same: !!norm(applicant?.address) && norm(applicant.address) === norm(client?.address) },
+        { label: 'ID',         a: applicant?.governmentIdType ? `${applicant.governmentIdType}: ${applicant.governmentIdNumber || '—'}` : '',
+          c: client?.governmentIdType ? `${client.governmentIdType}: ${client.governmentIdNumber || '—'}` : '',
+          same: !!norm(applicant?.governmentIdNumber) && norm(applicant.governmentIdNumber) === norm(client?.governmentIdNumber) },
+    ];
+    return (
+        <div className="mb-3 rounded-xl border border-gray-200 bg-white overflow-hidden text-xs">
+            <div className="grid grid-cols-[84px_1fr_1fr] bg-gray-100 text-[10px] font-semibold
+                uppercase tracking-wide text-gray-500">
+                <div className="px-2 py-1.5" />
+                <div className="px-2 py-1.5">Applicant (LAF)</div>
+                <div className="px-2 py-1.5">Existing client</div>
+            </div>
+            {rows.map(r => (
+                <div key={r.label} className="grid grid-cols-[84px_1fr_1fr] border-t border-gray-100">
+                    <div className="px-2 py-1.5 text-gray-400">{r.label}</div>
+                    <div className={`px-2 py-1.5 break-words ${r.same ? 'bg-green-50 text-green-800' : 'text-gray-800'}`}>
+                        {r.a || '—'}
+                    </div>
+                    <div className={`px-2 py-1.5 break-words ${r.same ? 'bg-green-50 text-green-800' : 'text-gray-800'}`}>
+                        {r.c || '—'}
+                    </div>
+                </div>
+            ))}
+            <p className="px-2 py-1 text-[10px] text-gray-400 border-t border-gray-100">
+                Green = same on both records.
+            </p>
+        </div>
+    );
+};
+
 // ── One candidate card ────────────────────────────────────────────────────
 const CandidateCard = ({
     client,
+    application,
     applicantLafPhotoUrl,
     selectedForLink,      // this client is selected for "Link LAF" action
     selectedForMerge,     // this client is selected as master for merge
@@ -210,21 +256,23 @@ const CandidateCard = ({
                         onZoom={() => setZoomOpen(true)} />
                 </div>
 
-                {/* Client info */}
-                <div className="mb-3 space-y-0.5">
-                    <p className="text-sm font-bold text-gray-900">{clientName}</p>
-                    <div className="flex flex-wrap gap-x-3 text-xs text-gray-500">
-                        {client.birthdate && (
-                            <span>DOB: {moment(client.birthdate).format('MMM D, YYYY')}</span>
-                        )}
-                        {client.branchName && <span>Branch: {client.branchName}</span>}
-                    </div>
-                    {client.governmentIdType && (
-                        <p className="text-xs text-gray-400">
-                            {client.governmentIdType}: {client.governmentIdNumber || '—'}
-                        </p>
+                {/* Client info: side-by-side with the applicant */}
+                <p className="text-sm font-bold text-gray-900 mb-2">{clientName}
+                    {client.branchName && (
+                        <span className="ml-2 text-xs font-normal text-gray-400">{client.branchName}</span>
                     )}
-                </div>
+                </p>
+                <DetailCompare applicant={application} client={client} />
+
+                {/* Close remarks: why the matched client was closed (offset) */}
+                {client.closeRemarks && (
+                    <div className="mb-3 p-2.5 rounded-xl bg-gray-100 border border-gray-200">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                            Close remarks{client.lastClosedDate ? ` · ${moment(client.lastClosedDate).format('MMM D, YYYY')}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-700 mt-0.5 break-words">{client.closeRemarks}</p>
+                    </div>
+                )}
 
                 {/* Zoom button */}
                 <button type="button" onClick={() => setZoomOpen(true)}
@@ -559,6 +607,7 @@ const CIDuplicatePanel = ({ application, onValidated }) => {
                                 <CandidateCard
                                     key={cl._id}
                                     client={cl}
+                                    application={application}
                                     applicantLafPhotoUrl={applicantLafPhotoUrl}
                                     selectedForLink={linkClientId === cl._id}
                                     selectedForMerge={mergeMasterId === cl._id}
