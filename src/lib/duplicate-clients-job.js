@@ -127,8 +127,11 @@ export async function startDuplicateScan({ trigger, triggeredBy = null, req = nu
     // Which of the app containers is running it (HOSTNAME = the short container id from `docker ps`).
     console.log('[duplicate-scan] started', JSON.stringify({ runId, trigger, host: process.env.HOSTNAME ?? null }));
     runScan(runId, req)
-        .catch(err => console.error('[duplicate-scan] unexpected failure:', err))
-        .finally(() => finishCronRun(lock.runId, { ok: true, stats: { scanRunId: runId } }));
+        .catch(err => ({ ok: false, error: describeError(err) || String(err) }))
+        .then(res => finishCronRun(lock.runId, {
+            ok: !!res?.ok, stats: { scanRunId: runId }, error: res?.ok ? null : (res?.error ?? 'scan failed'),
+        }))
+        .catch(err => console.error('[duplicate-scan] could not close cron_runs row:', err));
     return { started: true, runId };
 }
 
@@ -149,20 +152,21 @@ async function runScan(runId, req) {
         })).catch(() => {});   // progress is best-effort; never fail the scan over it
     };
 
+    let failure = null;
     try {
         const scanStartedAt = new Date().toISOString();
 
         let t = Date.now();
         // Merged/archived clients are already-resolved duplicates — never re-flag them.
         await report('fetch_clients', 'Loading clients');
-        const clients = await fetchAll(CLIENT_TYPE, {
+        let clients = await fetchAll(CLIENT_TYPE, {
             status: { _nin: ['merged', 'archived'] },
             _or: [{ archived: { _is_null: true } }, { archived: { _eq: false } }],
         }, n => report('fetch_clients', 'Loading clients', { count: n }));
         t = lap('fetchClientsMs', t);
 
         await report('fetch_loans', 'Loading active loans');
-        const activeLoans = await fetchAll(LOAN_TYPE, { status: { _eq: 'active' } });
+        let activeLoans = await fetchAll(LOAN_TYPE, { status: { _eq: 'active' } });
         t = lap('fetchActiveLoansMs', t);
 
         const activeIds = new Set(activeLoans.map(l => l.clientId));
@@ -205,6 +209,9 @@ async function runScan(runId, req) {
         await report('detect', 'Finding duplicate groups');
         const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard });
         const sameClient = detectMultiActiveLoans(clients, activeLoans);
+        // Not needed any more: only the (much smaller) cluster members stay referenced through enrich + save.
+        clients = null;
+        activeLoans = null;
         t = lap('detectMs', t);
 
         const clusters = [...fuzzy, ...sameClient];
@@ -225,11 +232,10 @@ async function runScan(runId, req) {
         }
 
         await report('save', 'Saving results', { total: clusters.length });
-        const { inserted, reopened, resolved } = await persist(clusters, scanStartedAt, guard);
+        const { insertedCount, alertable, reopened, resolved } = await persist(clusters, scanStartedAt, guard);
         lap('persistMs', t);
 
         // Alert only on NEW groups where more than one loan is active at the same time.
-        const alertable = inserted.filter(c => c.severity === 'both_active');
         for (const c of alertable) {
             logAudit(req, {
                 action: 'DUPLICATE_CLIENTS_DETECTED',
@@ -248,7 +254,7 @@ async function runScan(runId, req) {
         const finalStats = {
             ...stats,
             clusters: clusters.length,
-            newClusters: inserted.length,
+            newClusters: insertedCount,
             reopenedClusters: reopened,
             resolvedClusters: resolved,
             alerts: alertable.length,
@@ -262,6 +268,7 @@ async function runScan(runId, req) {
         }));
     } catch (err) {
         console.error('[duplicate-scan] failed in phase', phase, err);
+        failure = `[${phase}] ${describeError(err) || String(err)}`.slice(0, 1000);
         await graph.mutation(updateQl(RUN_TYPE('r'), {
             set: {
                 status: 'failed', finished_at: new Date().toISOString(),
@@ -270,7 +277,9 @@ async function runScan(runId, req) {
             },
             where: { _id: { _eq: runId } },
         })).catch(() => {});
+        return { ok: false, error: failure };
     }
+    return { ok: true };
 }
 
 const clusterId = clusterKey;
@@ -280,7 +289,7 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
     const existingById = new Map(existing.map(e => [e._id, e]));
 
     const nowIso = new Date().toISOString();
-    const rows = clusters.map(c => {
+    const toRow = (c) => {
         const members = c.members;
         return {
             _id: clusterId(c),
@@ -306,20 +315,35 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
             last_seen_at: nowIso,
             resolved_at: null,
         };
-    });
+    };
 
-    const inserted = [];
+    // Streamed: build and write one chunk at a time instead of materialising a second copy of every cluster.
+    const alertable = [];          // only NEW both_active groups are alerted on — the only ones we need to keep
+    let insertedCount = 0;
     let reopened = 0;
-    rows.forEach((row, i) => {
-        const prev = existingById.get(row._id)?.status;
-        if (prev === undefined) inserted.push(clusters[i]);
-        else if (prev === 'resolved') { reopened += 1; inserted.push(clusters[i]); }
-    });
+    const seen = new Set();
+    const resetIds = [];
 
-    for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    for (let i = 0; i < clusters.length; i += UPSERT_CHUNK) {
         guard('save');
+        const slice = clusters.slice(i, i + UPSERT_CHUNK);
+        const rows = slice.map(toRow);
+        rows.forEach((row, k) => {
+            seen.add(row._id);
+            const e = existingById.get(row._id);
+            const prev = e?.status;
+            if (prev === undefined || prev === 'resolved') {
+                if (prev === 'resolved') reopened += 1;
+                insertedCount += 1;
+                if (slice[k].severity === 'both_active') alertable.push(slice[k]);
+            }
+            // A 'not_duplicate' decision only holds for the records that were reviewed. If a NEW record has
+            // joined the group since, bring it back for review. ('confirmed' decisions always stay.)
+            if (e?.review_status === 'not_duplicate' && Array.isArray(e.reviewed_member_ids)
+                && row.members.some(m => !e.reviewed_member_ids.includes(m._id))) resetIds.push(row._id);
+        });
         await graph.mutation(insertQl(CLUSTER_TYPE('c'), {
-            objects: rows.slice(i, i + UPSERT_CHUNK),
+            objects: rows,
             on_conflict: {
                 constraint: 'duplicate_client_clusters_pkey',
                 // first_detected_at is deliberately NOT updated.
@@ -328,13 +352,6 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
         }));
     }
 
-    // A 'not_duplicate' decision only holds for the records that were reviewed. If a NEW record has joined
-    // the group since, bring it back for review. ('confirmed' decisions always stay.)
-    const resetIds = rows.filter(r => {
-        const e = existingById.get(r._id);
-        return e?.review_status === 'not_duplicate' && Array.isArray(e.reviewed_member_ids)
-            && r.members.some(m => !e.reviewed_member_ids.includes(m._id));
-    }).map(r => r._id);
     for (let i = 0; i < resetIds.length; i += ID_CHUNK) {
         await graph.mutation(updateQl(CLUSTER_TYPE('rv'), {
             set: {
@@ -346,7 +363,6 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
     }
 
     // Anything still open that this scan did not see is resolved (merged, fixed, or no longer matching).
-    const seen = new Set(rows.map(r => r._id));
     const staleIds = existing.filter(e => e.status === 'open' && !seen.has(e._id)).map(e => e._id);
     for (let i = 0; i < staleIds.length; i += ID_CHUNK) {
         await graph.mutation(updateQl(CLUSTER_TYPE('s'), {
@@ -355,7 +371,7 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
         }));
     }
 
-    return { inserted, reopened, resolved: staleIds.length };
+    return { insertedCount, alertable, reopened, resolved: staleIds.length };
 }
 
 async function loadLoNames() {
