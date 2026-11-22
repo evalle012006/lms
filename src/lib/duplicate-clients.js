@@ -225,16 +225,95 @@ function blockingKeys(c) {
     return keys;
 }
 
-class UnionFind {
-    constructor() { this.parent = new Map(); }
-    find(x) {
-        if (!this.parent.has(x)) this.parent.set(x, x);
-        let root = x;
-        while (this.parent.get(root) !== root) root = this.parent.get(root);
-        while (this.parent.get(x) !== root) { const n = this.parent.get(x); this.parent.set(x, root); x = n; }
-        return root;
+// A group is never allowed to grow past this: a bigger "group" is a name-collision pile, not one person.
+const MAX_CLUSTER_SIZE = 60;
+
+// Hard evidence that two records are NOT the same person. Used as a cannot-link constraint when joining
+// groups, so a record with little data (no middle name, no birthdate) cannot bridge two different people.
+// `skipName`: a face match is evidence that does not depend on the name, so differently-named records may join.
+function hardConflict(a, b, skipName = false) {
+    const A = a._n, B = b._n;
+    const sameBirthdate = !!A.birthdate && A.birthdate === B.birthdate;
+    const samePhone = !!A.phone && A.phone === B.phone;
+    if (A.birthdate && B.birthdate && !sameBirthdate && !birthdateNear(A.birthdate, B.birthdate) && !samePhone) return true;
+    if (middleCompat(A.middle, B.middle).conflict && !sameBirthdate && !samePhone) return true;
+    return !skipName && nameScore(A, B).score < 0.8;   // stops slow name drift: A~B, B~C but A is not C
+}
+
+/**
+ * Agglomerative clustering with cannot-link constraints (replaces plain union-find, which chained
+ * different people through any record with sparse data). Strongest links first; a link that would put two
+ * conflicting records in one group is rejected.
+ */
+function clusterLinks(links, byId) {
+    links.sort((x, y) => CONFIDENCE_RANK[y.confidence] - CONFIDENCE_RANK[x.confidence] || (y.nameScore ?? 0) - (x.nameScore ?? 0));
+    const compOf = new Map();
+    const comps = [];
+    let rejectedLinks = 0, oversizedLinks = 0;
+    const comp = (id) => {
+        let c = compOf.get(id);
+        if (!c) { c = { ids: [id], tree: [], other: [], dead: false, face: false }; compOf.set(id, c); comps.push(c); }
+        return c;
+    };
+    for (const e of links) {
+        const ca = comp(e.idA), cb = comp(e.idB);
+        if (ca === cb) { ca.other.push(e); continue; }
+        if (ca.ids.length + cb.ids.length > MAX_CLUSTER_SIZE) { oversizedLinks++; continue; }
+        const isFace = e.reasons?.some(r => /face/i.test(r));
+        const skipName = isFace || ca.face || cb.face;
+        const conflict = ca.ids.some(x => cb.ids.some(y => hardConflict(byId.get(x), byId.get(y), skipName)));
+        if (conflict) { rejectedLinks++; continue; }
+        ca.ids.push(...cb.ids);
+        for (const id of cb.ids) compOf.set(id, ca);
+        ca.face = ca.face || cb.face || !!isFace;
+        ca.tree.push(e, ...cb.tree);
+        ca.other.push(...cb.other);
+        cb.dead = true;
     }
-    union(a, b) { this.parent.set(this.find(a), this.find(b)); }
+    return { comps: comps.filter(c => !c.dead && c.ids.length >= 2), rejectedLinks, oversizedLinks };
+}
+
+// What differs between a record and the group's reference record (only fields where BOTH have a value).
+function differsFrom(a, b) {
+    const A = a._n, B = b._n, out = [];
+    if (A.birthdate && B.birthdate && A.birthdate !== B.birthdate) out.push('Birthdate');
+    if (A.phone && B.phone && A.phone !== B.phone) out.push('Contact number');
+    if (A.middle && B.middle && A.middle !== B.middle) out.push('Middle name');
+    return out;
+}
+
+// Per-record remark: how this record relates to the group's reference record (the best-connected one).
+function buildMatches(g, byId, activeLoanClientIds) {
+    const degree = new Map();
+    for (const e of g.tree) for (const id of [e.idA, e.idB]) degree.set(id, (degree.get(id) ?? 0) + 1);
+    const anchorId = [...g.ids].sort((x, y) =>
+        (degree.get(y) ?? 0) - (degree.get(x) ?? 0) ||
+        Number(activeLoanClientIds.has(y)) - Number(activeLoanClientIds.has(x)) ||
+        (x < y ? -1 : 1))[0];
+    const anchor = byId.get(anchorId);
+    const all = [...g.tree, ...g.other];
+    const matches = new Map([[anchorId, { anchor: true }]]);
+    for (const id of g.ids) {
+        if (id === anchorId) continue;
+        const c = byId.get(id);
+        const direct = scorePair(c, anchor);
+        if (direct) {
+            matches.set(id, { ref: anchorId, confidence: direct.confidence, reasons: direct.reasons, differs: differsFrom(c, anchor) });
+            continue;
+        }
+        let best = null;
+        for (const e of all) {
+            if (e.idA !== id && e.idB !== id) continue;
+            if (!best || CONFIDENCE_RANK[e.confidence] > CONFIDENCE_RANK[best.confidence]) best = e;
+        }
+        matches.set(id, {
+            via: best ? (best.idA === id ? best.idB : best.idA) : null,
+            confidence: best?.confidence ?? CONFIDENCE.POSSIBLE,
+            reasons: best?.reasons ?? [],
+            differs: differsFrom(c, anchor),
+        });
+    }
+    return matches;
 }
 
 const isClosedStatus = (s) => ['offset', 'completed', 'closed'].includes(s);
@@ -297,40 +376,34 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set(), extra
         }
     }
 
-    const uf = new UnionFind();
-    const goodPairs = [];
+    const links = [];
     for (const [key, res] of pairs) {
         if (!res) continue;
         const [idA, idB] = key.split('|');
-        uf.union(idA, idB);
-        goodPairs.push({ idA, idB, ...res });
+        links.push({ idA, idB, ...res });
     }
-
-    const groups = new Map();
-    for (const p of goodPairs) {
-        for (const id of [p.idA, p.idB]) {
-            const root = uf.find(id);
-            if (!groups.has(root)) groups.set(root, { ids: new Set(), pairs: [] });
-            groups.get(root).ids.add(id);
-        }
-        groups.get(uf.find(p.idA)).pairs.push(p);
-    }
+    const goodPairs = links;
+    const { comps, rejectedLinks, oversizedLinks } = clusterLinks(links, byId);
 
     const clusters = [];
-    for (const [root, g] of groups) {
-        const members = [...g.ids].map(id => {
+    for (const g of comps) {
+        const matches = buildMatches(g, byId, activeLoanClientIds);
+        const members = g.ids.map(id => {
             const c = byId.get(id);
             return {
                 ...stripPrepared(c),
                 hasActiveLoan: activeLoanClientIds.has(id),
                 isClosed: isClosedStatus(c.status),
+                match: matches.get(id),
             };
         });
 
-        const best = g.pairs.reduce((m, p) =>
-            CONFIDENCE_RANK[p.confidence] > CONFIDENCE_RANK[m] ? p.confidence : m, CONFIDENCE.POSSIBLE);
+        g.pairs = [...g.tree, ...g.other];
+        // The group is only as strong as its WEAKEST joining link (not its best pair).
+        const best = g.tree.reduce((m, p) =>
+            CONFIDENCE_RANK[p.confidence] < CONFIDENCE_RANK[m] ? p.confidence : m, CONFIDENCE.EXACT);
         const scenarios = [...new Set(g.pairs.map(p => p.scenario))];
-        const reasons = [...new Set(g.pairs.flatMap(p => p.reasons))];
+        const reasons = [...new Set(g.tree.flatMap(p => p.reasons))];
 
         const activeMembers = members.filter(m => m.hasActiveLoan);
         const liveMembers = members.filter(m => !m.isClosed);
@@ -350,7 +423,7 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set(), extra
                 [p.idA, p.idB].some(id => isClosedStatus(byId.get(id).status)));
 
         clusters.push({
-            clusterId: root,
+            clusterId: g.ids[0],
             view,
             confidence: best,
             severity: activeMembers.length >= 2 ? 'both_active' : activeMembers.length === 1 ? 'one_active' : 'no_active',
@@ -376,6 +449,8 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set(), extra
             clientsScanned: clients.length,
             candidatePairs,
             matchedPairs: goodPairs.length,
+            rejectedLinks,
+            oversizedLinks,
             skippedBuckets,
         },
     };

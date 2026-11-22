@@ -398,7 +398,35 @@ const Select = ({ value, onChange, placeholder, options }) => (
     </select>
 );
 
+const SCENARIO_HELP = {
+    cross_branch: 'Some records in this group are in different branches.',
+    same_branch_diff_lo: 'Some records are in the same branch but under different loan officers.',
+    same_lo_diff_group: 'Some records have the same branch and loan officer but different groups.',
+    same_group: 'Some records are in the same group.',
+};
+
+// How one record relates to the group's reference record (the best-connected record, marked "Reference record").
+const Remark = ({ m, members }) => {
+    const r = m.match;
+    if (!r) return null;
+    if (r.anchor) return <span className="text-xs font-medium text-gray-500">Reference record</span>;
+    const via = r.via ? members.find(x => x._id === r.via) : null;
+    return (
+        <div className="text-xs whitespace-normal min-w-[14rem] max-w-xs">
+            <span className={`font-semibold px-1.5 py-0.5 rounded-full border ${CONFIDENCE_STYLE[r.confidence]}`}>{CONFIDENCE_LABELS[r.confidence]}</span>{' '}
+            <span className="text-gray-600">{(r.reasons ?? []).join(' · ')}</span>
+            {r.via && (
+                <p className="text-gray-400 mt-0.5">
+                    Not directly similar to the reference record — linked through {via ? `${via.lastName}, ${via.firstName} ${via.middleName ?? ''}` : r.via}
+                </p>
+            )}
+            {r.differs?.length > 0 && <p className="text-red-600 mt-0.5">Differs from reference: {r.differs.join(', ')}</p>}
+        </div>
+    );
+};
+
 const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
+    const hasRemarks = cluster.members.some(m => m.match);
     const differs = (field) => new Set(cluster.members.map(m => m[field] ?? '')).size > 1;
     const diff = Object.fromEntries(DIFF_FIELDS.map(f => [f, differs(f)]));
     const cell = (f) => (diff[f] ? 'bg-amber-50 text-amber-800 font-medium' : '');
@@ -407,7 +435,8 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
         <div className={`bg-white rounded-xl border overflow-hidden ${checked ? 'border-blue-400 ring-1 ring-blue-300' : 'border-gray-200'}`}>
             <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
                 <input type="checkbox" checked={checked} onChange={onToggle} />
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${CONFIDENCE_STYLE[cluster.confidence]}`}>
+                <span title="How sure the scan is that these are the same person. The group is only as strong as its weakest link; see Remarks on each row."
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${CONFIDENCE_STYLE[cluster.confidence]}`}>
                     {CONFIDENCE_LABELS[cluster.confidence]}
                 </span>
                 {cluster.reviewStatus && (
@@ -418,7 +447,8 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
                     </span>
                 )}
                 {cluster.severity === 'both_active' && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-600 text-white">
+                    <span title="Records in this group that currently have an active loan"
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-600 text-white">
                         {cluster.activeCount} active loans
                     </span>
                 )}
@@ -428,15 +458,15 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
                     </span>
                 )}
                 {cluster.scenarios.map(s => (
-                    <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">{SCENARIO_LABELS[s]}</span>
+                    <span key={s} title={SCENARIO_HELP[s]} className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">{SCENARIO_LABELS[s]}</span>
                 ))}
-                <span className="text-xs text-gray-500 ml-auto">{cluster.reasons.join(' · ')}</span>
+                {!hasRemarks && <span className="text-xs text-gray-500 ml-auto">{cluster.reasons.join(' · ')}</span>}
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="text-left text-xs text-gray-500 uppercase">
-                            {['Client', 'Birthdate', 'Contact', 'Status / Loan', 'Branch', 'LO', 'Group', 'Added', ''].map(h => (
+                            {['Client', 'Birthdate', 'Contact', 'Status / Loan', 'Branch', 'LO', 'Group', 'Added', ...(hasRemarks ? ['Remarks'] : []), ''].map(h => (
                                 <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
@@ -472,6 +502,7 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
                                 <td className="px-3 py-2 whitespace-nowrap text-gray-500">
                                     {m.dateAdded ? moment(m.dateAdded).format('YYYY-MM-DD') : '—'}
                                 </td>
+                                {hasRemarks && <td className="px-3 py-2 align-top"><Remark m={m} members={cluster.members} /></td>}
                                 <td className="px-3 py-2">
                                     <a href={`/clients/edit/${m._id}`} target="_blank" rel="noreferrer"
                                         className="text-blue-600 hover:text-blue-800" title="Open client">
