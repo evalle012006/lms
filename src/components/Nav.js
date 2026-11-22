@@ -770,6 +770,18 @@ const MenuItems = [
                 hidden: false,
                 roles: []
             },
+            {
+                label: "Duplicate Clients",
+                url: "/reports/duplicate-clients",
+                icon: {
+                    active: (props) => <Copy {...props} />,
+                    notActive: (props) => <Copy {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
+            },
         ]
     },
     {
@@ -838,18 +850,6 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Eye {...props} />,
                     notActive: (props) => <Eye {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: ["admin"]
-            },
-            {
-                label: "Duplicate Clients",
-                url: "/settings/duplicate-clients",
-                icon: {
-                    active: (props) => <Copy {...props} />,
-                    notActive: (props) => <Copy {...props} />,
                 },
                 active: false,
                 hasSub: false,

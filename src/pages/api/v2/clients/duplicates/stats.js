@@ -1,5 +1,7 @@
 // src/pages/api/v2/clients/duplicates/stats.js
-// GET — duplicate-client counts per Group / LO / Branch / Area / Region / Division (admin only, same as the page).
+// GET — duplicate-client counts per Group / LO / Branch / Area / Region / Division.
+// Admin: everything. Branch manager / area / regional / division head: only their own branches (records in other
+// branches are not counted and do not appear). Same audience as the list page (lib/duplicate-access.js).
 // Reads the stored scan (as fresh as the last scan); definitions live in lib/duplicate-stats.js.
 //
 // Query params:
@@ -14,7 +16,8 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
-import { loadHierarchy, branchIdsForFilters, branchIdsCondition } from '@/lib/duplicate-hierarchy';
+import { loadHierarchy, branchIdsForFilters, branchIdsCondition, intersectBranchIds, scopeHierarchy } from '@/lib/duplicate-hierarchy';
+import { resolveDuplicateScope } from '@/lib/duplicate-scope';
 import { tallyDuplicateStats, STAT_LEVELS } from '@/lib/duplicate-stats';
 import { getLatestRun } from '@/lib/duplicate-clients-job';
 
@@ -28,15 +31,18 @@ export default apiHandler({ get: stats });
 
 async function stats(req, res) {
     const user = await findUserById(req.auth.sub);
-    if (!user || !(user.root || user.role?.rep === 1)) {
-        return res.status(200).json({ success: false, message: 'Admin access required.' });
+    const access = await resolveDuplicateScope(user);
+    if (!access.level) {
+        return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 
     const q = req.query;
     const level = STAT_LEVELS.includes(q.level) ? q.level : 'branch';
     const includeClosed = q.includeClosed === 'true';
-    const hierarchy = await loadHierarchy();
-    const branchIds = branchIdsForFilters(hierarchy, q);
+    const fullHierarchy = await loadHierarchy();
+    const hierarchy = scopeHierarchy(fullHierarchy, access.branchIds);
+    // Filters narrow within the caller's scope, never beyond it.
+    const branchIds = intersectBranchIds(branchIdsForFilters(fullHierarchy, q), access.branchIds);
     const branchCond = branchIdsCondition(branchIds);
 
     const where = {
@@ -62,11 +68,12 @@ async function stats(req, res) {
     }
 
     const lastRun = await getLatestRun();
-    const { rows, totals } = tallyDuplicateStats(clusters, level, { ...hierarchy, branchIds });
+    const { rows, totals } = tallyDuplicateStats(clusters, level, { ...fullHierarchy, branchIds });
     return res.status(200).json({
         success: true,
         level,
         includeClosed,
+        access: { level: access.level },
         totals,
         rows: q.all === 'true' ? rows : rows.slice(0, TOP),
         rowCount: rows.length,

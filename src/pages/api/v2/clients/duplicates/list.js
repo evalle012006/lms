@@ -1,6 +1,10 @@
 // src/pages/api/v2/clients/duplicates/list.js
 // GET — stored duplicate-client groups (written by lib/duplicate-clients-job.js), paginated in the database.
-// Admin only (rep=1, root or not). Read-only.
+// Root: everything (and the only one who can act). Other admins: everything, read-only. Branch manager / area /
+// regional manager / division head: read-only and limited to groups that touch their own branches. Inside such a
+// group the records of OTHER branches are shown too (that is the point: who your client duplicates), flagged
+// `inScope: false`; the page links to a client's full profile only for records in the caller's own branches.
+// See lib/duplicate-access.js.
 //
 // Query params:
 //   view        'active' | 'closed' | 'same_client'      (default 'active')
@@ -20,7 +24,8 @@ import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { normalizeText } from '@/lib/duplicate-clients';
 import { getLatestRun, isRunActive } from '@/lib/duplicate-clients-job';
-import { loadHierarchy, branchIdsForFilters, branchIdsCondition } from '@/lib/duplicate-hierarchy';
+import { loadHierarchy, branchIdsForFilters, branchIdsCondition, intersectBranchIds, scopeHierarchy } from '@/lib/duplicate-hierarchy';
+import { resolveDuplicateScope } from '@/lib/duplicate-scope';
 
 const graph = new GraphProvider();
 
@@ -37,8 +42,9 @@ export default apiHandler({ get: list });
 
 async function list(req, res) {
     const currentUser = await findUserById(req.auth.sub);
+    const access = await resolveDuplicateScope(currentUser);
     // 200 + success:false, never 403 (403 triggers client-side logout).
-    if (!currentUser?.root && currentUser?.role?.rep !== 1) {
+    if (!access.level) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 
@@ -55,9 +61,12 @@ async function list(req, res) {
     if (confidences) and.push({ confidence: { _in: confidences } });
     if (scenarios) and.push({ _or: scenarios.map(s => ({ scenarios: { _contains: [s] } })) });
     if (q.severity) and.push({ severity: { _eq: q.severity } });
-    const hierarchy = await loadHierarchy();
-    const branchCond = branchIdsCondition(branchIdsForFilters(hierarchy, q));
+    const fullHierarchy = await loadHierarchy();
+    const hierarchy = scopeHierarchy(fullHierarchy, access.branchIds);
+    // Filters narrow within the caller's scope, never beyond it.
+    const branchCond = branchIdsCondition(intersectBranchIds(branchIdsForFilters(fullHierarchy, q), access.branchIds));
     if (branchCond) and.push(branchCond);
+    const scopeCond = branchIdsCondition(access.branchIds); // null for admin
     if (q.loId) and.push({ lo_ids: { _contains: [q.loId] } });
     if (q.groupId) and.push({ group_ids: { _contains: [q.groupId] } });
     const search = q.search?.trim();
@@ -80,8 +89,9 @@ async function list(req, res) {
     and.push(...reviewCond);
 
     const where = { _and: and };
-    const base = [{ status: { _eq: 'open' } }, { view: { _eq: view } }, ...reviewCond];
-    const viewBase = [{ status: { _eq: 'open' } }, { view: { _eq: view } }];
+    const scoped = scopeCond ? [scopeCond] : [];
+    const base = [{ status: { _eq: 'open' } }, { view: { _eq: view } }, ...reviewCond, ...scoped];
+    const viewBase = [{ status: { _eq: 'open' } }, { view: { _eq: view } }, ...scoped];
 
     const T = (alias) => CLUSTER_TYPE(alias);
     const agg = (alias, extra = []) => aggregateQl(
@@ -107,10 +117,13 @@ async function list(req, res) {
 
     const total = data.filteredAgg.aggregate.count;
     const run = await getLatestRun();
+    const inScope = access.branchIds ? new Set(access.branchIds) : null;
+    const clusters = data.clusters.map(c => toApiCluster(c, inScope));
 
     return res.status(200).json({
         success: true,
-        clusters: data.clusters.map(toApiCluster),
+        clusters,
+        access: { level: access.level, canManage: access.level === 'full' },
         pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
         summary: {
             clusters: data.totalAgg.aggregate.count,
@@ -129,14 +142,15 @@ async function list(req, res) {
         hierarchy: { divisions: hierarchy.divisions, regions: hierarchy.regions, areas: hierarchy.areas, branches: hierarchy.branches },
         lastRun: run && {
             status: run.status, trigger: run.trigger, startedAt: run.started_at,
-            finishedAt: run.finished_at, error: run.error, running: isRunActive(run),
+            finishedAt: run.finished_at, error: access.level === 'full' ? run.error : null, running: isRunActive(run),
             progress: run.stats?.progress ?? null, failedPhase: run.stats?.failedPhase ?? null,
         },
     });
 }
 
 // Keep the camelCase shape the page + Excel export already use.
-function toApiCluster(c) {
+function toApiCluster(c, inScope) {
+    const mark = (m) => ({ ...m, inScope: !inScope || inScope.has(m.branchId) });
     return {
         clusterId: c._id,
         view: c.view,
@@ -147,7 +161,7 @@ function toApiCluster(c) {
         activeCount: c.active_count,
         memberCount: c.member_count,
         exactClosedVsActive: c.exact_closed_vs_active,
-        members: c.members,
+        members: c.members.map(mark),
         firstDetectedAt: c.first_detected_at,
         reviewStatus: c.review_status,
         reviewNote: c.review_note,

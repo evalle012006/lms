@@ -1431,7 +1431,7 @@ const DashboardPage = () => {
                     loading={duplicateLoading}
                     isAdmin={isAdminUser}
                     onClose={() => setShowDuplicateModal(false)}
-                    onOpenPage={() => { setShowDuplicateModal(false); router.push('/settings/duplicate-clients'); }}
+                    onOpenPage={() => { setShowDuplicateModal(false); router.push('/reports/duplicate-clients'); }}
                 />
             )}
 

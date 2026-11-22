@@ -50,3 +50,27 @@ export function branchIdsCondition(ids) {
     if (ids.length === 0) return { _id: { _eq: '__no_match__' } };
     return { branch_ids: { _has_keys_any: ids } };
 }
+
+/** Intersection of two branch-id restrictions where null means "no restriction". */
+export function intersectBranchIds(a, b) {
+    if (a === null || a === undefined) return b ?? null;
+    if (b === null || b === undefined) return a;
+    const set = new Set(b);
+    return a.filter(id => set.has(id));
+}
+
+/** The hierarchy a scoped caller may pick from: only their branches and the area/region/division above them. */
+export function scopeHierarchy(hierarchy, branchIds) {
+    if (branchIds === null || branchIds === undefined) return hierarchy;
+    const ids = new Set(branchIds);
+    const branches = hierarchy.branches.filter(b => ids.has(b._id));
+    const areaIds = new Set(branches.map(b => b.areaId).filter(Boolean));
+    const regionIds = new Set(branches.map(b => b.regionId).filter(Boolean));
+    const divisionIds = new Set(branches.map(b => b.divisionId).filter(Boolean));
+    return {
+        branches,
+        areas: hierarchy.areas.filter(a => areaIds.has(a._id)),
+        regions: hierarchy.regions.filter(r => regionIds.has(r._id)),
+        divisions: hierarchy.divisions.filter(d => divisionIds.has(d._id)),
+    };
+}
