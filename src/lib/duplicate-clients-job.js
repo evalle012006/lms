@@ -243,7 +243,18 @@ async function runScan(runId, req) {
         lap('persistMs', t);
 
         // Alert only on NEW groups where more than one loan is active at the same time.
-        for (const c of alertable) {
+        // A scan that re-groups everything (first run, or after an engine change) can find thousands of "new" groups at
+        // once: one summary entry instead of a flood of per-group CRITICAL alerts.
+        const ALERT_MAX = Number(process.env.DUPLICATE_ALERT_MAX) || 200;
+        if (alertable.length > ALERT_MAX) {
+            logAudit(req, {
+                action: 'DUPLICATE_CLIENTS_DETECTED', category: 'CLIENT', severity: 'CRITICAL', entityType: 'client',
+                entityId: 'duplicate-scan', userName: 'Duplicate scan',
+                description: `${alertable.length} new duplicate groups with more than one active loan were found (individual alerts suppressed above ${ALERT_MAX}).`,
+                metadata: { newBothActive: alertable.length, suppressed: true },
+            });
+        }
+        for (const c of alertable.length > ALERT_MAX ? [] : alertable) {
             logAudit(req, {
                 action: 'DUPLICATE_CLIENTS_DETECTED',
                 category: 'CLIENT',
