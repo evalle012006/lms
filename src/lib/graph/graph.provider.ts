@@ -20,6 +20,12 @@ export class GraphProvider {
         });
 
         this.apollo = new ApolloClient({ cache, link, defaultOptions: {
+            // Without this, every mutation's INPUT (variables are part of the cache key) and result are kept in the
+            // InMemoryCache for the life of the process, ~5x the payload size. Nothing reads that cache (all queries
+            // are no-cache), so it was a pure memory leak: the duplicate scan's 500+ save chunks alone reached ~4.5 GB.
+            mutate: {
+                fetchPolicy: 'no-cache',
+            },
             query: {
                 fetchPolicy: 'no-cache',
                 errorPolicy: 'all',
