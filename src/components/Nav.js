@@ -35,7 +35,7 @@ import {
     Smartphone,
     Copy
 } from 'lucide-react';
-import { AlertTriangle, Edit, FileSpreadsheet } from 'lucide-react';
+import { AlertTriangle, Edit, FileSpreadsheet, HardDrive } from 'lucide-react';
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -850,6 +850,18 @@ const MenuItems = [
                 icon: {
                     active: (props) => <Copy {...props} />,
                     notActive: (props) => <Copy {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: ["admin"]
+            },
+            {
+                label: "Spaces Cleanup",
+                url: "/settings/spaces-cleanup",
+                icon: {
+                    active: (props) => <HardDrive {...props} />,
+                    notActive: (props) => <HardDrive {...props} />,
                 },
                 active: false,
                 hasSub: false,
