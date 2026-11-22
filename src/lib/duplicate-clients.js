@@ -231,7 +231,8 @@ const MAX_CLUSTER_SIZE = 60;
 // Hard evidence that two records are NOT the same person. Used as a cannot-link constraint when joining
 // groups, so a record with little data (no middle name, no birthdate) cannot bridge two different people.
 // `skipName`: a face match is evidence that does not depend on the name, so differently-named records may join.
-function hardConflict(a, b, skipName = false) {
+function hardConflict(a, b, skipName = false, excluded = null) {
+    if (excluded && excluded.has(a._id < b._id ? `${a._id}|${b._id}` : `${b._id}|${a._id}`)) return true;   // reviewer: different people
     const A = a._n, B = b._n;
     const sameBirthdate = !!A.birthdate && A.birthdate === B.birthdate;
     const samePhone = !!A.phone && A.phone === B.phone;
@@ -245,7 +246,7 @@ function hardConflict(a, b, skipName = false) {
  * different people through any record with sparse data). Strongest links first; a link that would put two
  * conflicting records in one group is rejected.
  */
-function clusterLinks(links, byId) {
+function clusterLinks(links, byId, excluded = null) {
     links.sort((x, y) => CONFIDENCE_RANK[y.confidence] - CONFIDENCE_RANK[x.confidence] || (y.nameScore ?? 0) - (x.nameScore ?? 0));
     const compOf = new Map();
     const comps = [];
@@ -261,7 +262,7 @@ function clusterLinks(links, byId) {
         if (ca.ids.length + cb.ids.length > MAX_CLUSTER_SIZE) { oversizedLinks++; continue; }
         const isFace = e.reasons?.some(r => /face/i.test(r));
         const skipName = isFace || ca.face || cb.face;
-        const conflict = ca.ids.some(x => cb.ids.some(y => hardConflict(byId.get(x), byId.get(y), skipName)));
+        const conflict = ca.ids.some(x => cb.ids.some(y => hardConflict(byId.get(x), byId.get(y), skipName, excluded)));
         if (conflict) { rejectedLinks++; continue; }
         ca.ids.push(...cb.ids);
         for (const id of cb.ids) compOf.set(id, ca);
@@ -323,7 +324,7 @@ const isClosedStatus = (s) => ['offset', 'completed', 'closed'].includes(s);
  * @param {Set<string>} activeLoanClientIds  clientIds that currently own a loan with status 'active'
  * @returns {{ clusters: Array, stats: object }}
  */
-export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = [], { onTick = null } = {}) {
+export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = [], { onTick = null, exclusions = null } = {}) {
     const prepared = clients.map(prepareClient);
     for (const c of prepared) c._keys = blockingKeys(c);
     const byId = new Map(prepared.map(c => [c._id, c]));
@@ -383,7 +384,7 @@ export function detectDuplicates(clients, activeLoanClientIds = new Set(), extra
         links.push({ idA, idB, ...res });
     }
     const goodPairs = links;
-    const { comps, rejectedLinks, oversizedLinks } = clusterLinks(links, byId);
+    const { comps, rejectedLinks, oversizedLinks } = clusterLinks(links, byId, exclusions);
 
     const clusters = [];
     for (const g of comps) {

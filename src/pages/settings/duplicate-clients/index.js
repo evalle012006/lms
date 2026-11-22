@@ -54,6 +54,7 @@ const DuplicateClientsPage = () => {
     const [lastRun, setLastRun] = useState(null);
     const [reviewCounts, setReviewCounts] = useState({ pending: 0, confirmed: 0, not_duplicate: 0 });
     const [reviewTarget, setReviewTarget] = useState(null);   // { cluster, decision }
+    const [notSameTarget, setNotSameTarget] = useState(null);   // { cluster, member }
     const [mergeTarget, setMergeTarget] = useState(null);     // cluster
     const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -356,7 +357,8 @@ const DuplicateClientsPage = () => {
                             <ClusterCard key={c.clusterId} cluster={c} checked={selected.has(c.clusterId)}
                                 onToggle={() => toggle(c)}
                                 onReview={(decision) => setReviewTarget({ cluster: c, decision })}
-                                onMerge={() => setMergeTarget(c)} />
+                                onMerge={() => setMergeTarget(c)}
+                                onNotSame={(member) => setNotSameTarget({ cluster: c, member })} />
                         ))}
                     </div>
                 )}
@@ -374,6 +376,10 @@ const DuplicateClientsPage = () => {
             {reviewTarget && (
                 <ReviewModal target={reviewTarget} onClose={() => setReviewTarget(null)}
                     onDone={() => { setReviewTarget(null); load({ silent: true }); }} />
+            )}
+            {notSameTarget && (
+                <NotSameModal target={notSameTarget} onClose={() => setNotSameTarget(null)}
+                    onDone={() => { setNotSameTarget(null); load({ silent: true }); }} />
             )}
             {mergeTarget && (
                 <MergeModal cluster={mergeTarget} onClose={() => setMergeTarget(null)}
@@ -425,7 +431,7 @@ const Remark = ({ m, members }) => {
     );
 };
 
-const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
+const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge, onNotSame }) => {
     const hasRemarks = cluster.members.some(m => m.match);
     const differs = (field) => new Set(cluster.members.map(m => m[field] ?? '')).size > 1;
     const diff = Object.fromEntries(DIFF_FIELDS.map(f => [f, differs(f)]));
@@ -503,7 +509,14 @@ const ClusterCard = ({ cluster, checked, onToggle, onReview, onMerge }) => {
                                     {m.dateAdded ? moment(m.dateAdded).format('YYYY-MM-DD') : '—'}
                                 </td>
                                 {hasRemarks && <td className="px-3 py-2 align-top"><Remark m={m} members={cluster.members} /></td>}
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                    {cluster.view !== 'same_client' && (
+                                        <button type="button" onClick={() => onNotSame(m)}
+                                            title="This record is a different person from the rest of the group"
+                                            className="mr-2 text-xs text-gray-500 hover:text-red-700 underline">
+                                            Not same person
+                                        </button>
+                                    )}
                                     <a href={`/clients/edit/${m._id}`} target="_blank" rel="noreferrer"
                                         className="text-blue-600 hover:text-blue-800" title="Open client">
                                         <ExternalLink className="w-4 h-4" />
@@ -610,6 +623,52 @@ const ReviewModal = ({ target, onClose, onDone }) => {
                 <button type="button" onClick={submit} disabled={saving || (needsNote && !note.trim())}
                     className="px-3 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50">
                     {saving ? 'Saving…' : 'Save'}
+                </button>
+            </div>
+        </ModalShell>
+    );
+};
+
+const NotSameModal = ({ target, onClose, onDone }) => {
+    const { cluster, member } = target;
+    const [note, setNote] = useState('');
+    const [saving, setSaving] = useState(false);
+    const others = cluster.members.length - 1;
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetchWrapper.post(getApiBaseUrl() + 'clients/duplicates/not-same',
+                { clusterId: cluster.clusterId, clientId: member._id, note });
+            if (!res?.success) { toast.error(res?.message || 'Could not save.'); return; }
+            toast.success('Saved.');
+            onDone();
+        } catch (e) {
+            toast.error('Could not save.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ModalShell title="Not the same person" onClose={onClose}>
+            <p className="text-sm text-gray-700 mb-2">
+                <strong>{member.lastName}, {member.firstName} {member.middleName ?? ''}</strong>
+                <span className="block text-xs text-gray-400">{member._id}</span>
+            </p>
+            <p className="text-sm text-gray-600 mb-3">
+                Marks this record as a <strong>different person</strong> from the other {others} record(s) in this group.
+                It is taken out of the group now and the scan will not group it with them again. The other records stay
+                as they are. It does not change any client data.
+            </p>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500}
+                placeholder="Note (optional) — e.g. different birthdate and family"
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex justify-end gap-2">
+                <button type="button" onClick={onClose} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">Cancel</button>
+                <button type="button" onClick={submit} disabled={saving}
+                    className="px-3 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50">
+                    {saving ? 'Saving…' : 'Confirm'}
                 </button>
             </div>
         </ModalShell>
