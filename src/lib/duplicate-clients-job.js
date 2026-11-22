@@ -47,6 +47,7 @@ const LOAN_TYPE = createGraphType('loans', `
   _id clientId status loanCycle principalLoan loanBalance slotNo dateGranted closedDate groupId
 `)('loans');
 const FACE_TYPE = createGraphType('client', `_id faceTemplate`)('faceClients');
+const BRANCH_TYPE = createGraphType('branches', `_id name`)('branches');
 const USER_TYPE = createGraphType('users', `_id firstName lastName`)('users');
 const CLUSTER_TYPE = createGraphType('duplicate_client_clusters', `_id status review_status reviewed_member_ids`);
 const RUN_TYPE = createGraphType('duplicate_scan_runs', `_id status started_at finished_at stats error trigger`);
@@ -221,12 +222,15 @@ async function runScan(runId, req) {
         await report('enrich', 'Loading loan details', { total: memberIds.length });
         const loansByClient = await loadLoanSummaries(memberIds, done => report('enrich', 'Loading loan details', { count: done, total: memberIds.length }));
         const loNames = await loadLoNames();
+        const branchNames = await loadBranchNames();
         t = lap('enrichMs', t);
         timings.liveHeapMb.afterEnrich = liveHeapMb();
 
         for (const c of clusters) {
             for (const m of c.members) {
                 m.loName = loNames[m.effLoId] ?? null;
+                // ~95k clients have branchId but an empty denormalised branchName — resolve it from the branches table.
+                if (!m.branchName && m.branchId) m.branchName = branchNames[m.branchId] ?? m.branchName;
                 const s = loansByClient[m._id] ?? { loanCount: 0, activeLoan: null, lastClosedDate: null };
                 m.loanCount = s.loanCount;
                 m.activeLoan = m.activeLoan ?? s.activeLoan;
@@ -289,6 +293,7 @@ const clusterId = clusterKey;
 
 async function persist(clusters, scanStartedAt, guard = () => {}) {
     const existing = await fetchAll(CLUSTER_TYPE('duplicate_client_clusters'), {});
+    console.log('[duplicate-scan] save start', JSON.stringify({ clusters: clusters.length, existing: existing.length, liveHeapMb: liveHeapMb() }));
     const existingById = new Map(existing.map(e => [e._id, e]));
 
     const nowIso = new Date().toISOString();
@@ -329,6 +334,7 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
 
     for (let i = 0; i < clusters.length; i += UPSERT_CHUNK) {
         guard('save');
+        if ((i / UPSERT_CHUNK) % 50 === 0) console.log('[duplicate-scan] saving', JSON.stringify({ done: i, of: clusters.length, usedMb: heapStats().usedMb }));
         const slice = clusters.slice(i, i + UPSERT_CHUNK);
         const rows = slice.map(toRow);
         rows.forEach((row, k) => {
@@ -375,6 +381,11 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
     }
 
     return { insertedCount, alertable, reopened, resolved: staleIds.length };
+}
+
+async function loadBranchNames() {
+    const rows = await graph.query(queryQl(BRANCH_TYPE, {})).then(r => r.data?.branches ?? []);
+    return Object.fromEntries(rows.map(b => [b._id, b.name]));
 }
 
 async function loadLoNames() {
