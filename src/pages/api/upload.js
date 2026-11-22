@@ -66,8 +66,12 @@ export default async function handler(req, res) {
                     const uuid   = req.body.uuid   || 'unknown';
                     const prefix = `${process.env.SPACES_ROOT}/${origin}/${uuid}/`;
 
-                    // Delete existing file in destination folder
-                    await deleteExistingFile(process.env.SPACES_BUCKET, prefix);
+                    // Delete existing file in destination folder, unless the caller
+                    // wants to remove old files itself later (e.g. only after ALL
+                    // new files uploaded successfully).
+                    if (req.body.keepExisting !== 'true') {
+                        await deleteExistingFile(process.env.SPACES_BUCKET, prefix);
+                    }
 
                     // Final key — reuse sanitized filename from temp key
                     const filename = req.file.key.split('/').pop();

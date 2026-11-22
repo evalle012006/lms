@@ -60,3 +60,39 @@ export function buildSignedUrlEndpoint(keyOrUrl, baseUrl = '') {
   if (!key) return '';
   return `${baseUrl}/api/signed-url?key=${encodeURIComponent(key)}`;
 }
+
+/**
+ * Documents attached to a record may be a single key (legacy / one file) or
+ * several keys. Multiple keys are stored as a JSON array string in the same
+ * text column, so no schema change is needed and existing single-key rows
+ * keep working untouched.
+ *
+ * @param {string|null|undefined} value - stored column value
+ * @returns {string[]} list of keys / legacy URLs (empty when nothing stored)
+ */
+export function parseDocumentKeys(value) {
+  if (!value || typeof value !== 'string') return [];
+  const trimmed = value.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const arr = JSON.parse(trimmed);
+      if (Array.isArray(arr)) return arr.filter((k) => typeof k === 'string' && k);
+    } catch {
+      // not JSON — fall through and treat as a plain key
+    }
+  }
+  return [value];
+}
+
+/**
+ * Inverse of parseDocumentKeys. One key stays a plain string (backward
+ * compatible); two or more become a JSON array string.
+ *
+ * @param {string[]} keys
+ * @returns {string|null}
+ */
+export function serializeDocumentKeys(keys) {
+  const clean = (keys || []).filter((k) => typeof k === 'string' && k);
+  if (clean.length === 0) return null;
+  return clean.length === 1 ? clean[0] : JSON.stringify(clean);
+}

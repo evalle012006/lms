@@ -6,10 +6,22 @@ import { UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import { generateUUID } from '@/lib/utils';
 import { getSystemDate } from '@/lib/date-utils';
+import { serializeDocumentKeys, parseDocumentKeys, extractKeyFromValue } from '@/lib/fileUtils';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import logger from '@/logger';
 import moment from 'moment';
 
 const graph = new GraphProvider();
+
+const s3Client = new S3Client({
+    endpoint: 'https://sgp1.digitaloceanspaces.com',
+    region: 'sgp1',
+    credentials: {
+        accessKeyId: process.env.SPACES_ACCESS_KEY,
+        secretAccessKey: process.env.SPACES_SECRET_KEY,
+    },
+    forcePathStyle: false,
+});
 
 const UNCLAIMED_TRANSACTION_TYPE = createGraphType(
     'unclaimed_amount_transactions', 
@@ -113,15 +125,14 @@ async function claimTransaction(req, res) {
             areaId,
             regionId,
             divisionId,
-            loanId,
-            documentUrl
+            loanId
         } = req.body;
 
         // Validate required fields for single mode
-        if (!cashCollectionId || !clientId || !documentUrl) {
+        if (!cashCollectionId || !clientId || resolveDocumentValue(req.body) === null) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: cashCollectionId, clientId, and documentUrl are required'
+                message: 'Missing required fields: cashCollectionId, clientId, and at least one document are required'
             });
         }
 
@@ -150,6 +161,67 @@ async function claimTransaction(req, res) {
     }
 }
 
+const MAX_DOCUMENTS = 10;
+
+/**
+ * Delete files that were attached to `existing` before this claim and are not
+ * part of the new document set. Runs only after the update succeeded.
+ * Best-effort: failures are logged, never thrown (the claim is already saved).
+ * A key still referenced by any OTHER row is kept (batch claims share files).
+ */
+async function deleteReplacedDocuments(existing, newDocumentValue, user_id) {
+    try {
+        const toKey = (v) => {
+            const k = extractKeyFromValue(v);
+            if (!k) return null;
+            try { return decodeURIComponent(k); } catch { return k; }
+        };
+        const newKeys = new Set(parseDocumentKeys(newDocumentValue).map(toKey).filter(Boolean));
+        const allowedPrefix = `${process.env.SPACES_ROOT}/unclaimed-transactions/`;
+
+        const oldKeys = parseDocumentKeys(existing?.document_url)
+            .map(toKey)
+            .filter(k => k && !newKeys.has(k) && k.startsWith(allowedPrefix) && !k.includes('..'));
+
+        for (const key of oldKeys) {
+            const ref = await graph.query(
+                queryQl(UNCLAIMED_TRANSACTION_TYPE, {
+                    where: {
+                        _id: { _neq: existing._id },
+                        document_url: { _like: `%${key}%` }
+                    },
+                    limit: 1
+                })
+            );
+            if (ref.data?.transaction?.length > 0) continue;
+
+            await s3Client.send(new DeleteObjectCommand({
+                Bucket: process.env.SPACES_BUCKET,
+                Key: key,
+            }));
+        }
+    } catch (error) {
+        logger.error({
+            user_id,
+            page: 'Delete Replaced Unclaimed Documents',
+            message: 'Failed to delete replaced files (claim already saved)',
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Normalise the document payload into the value stored in document_url.
+ * Accepts `documentUrls` (array of keys) or legacy `documentUrl` (string).
+ * Returns null when no usable document is supplied.
+ */
+function resolveDocumentValue(data) {
+    const list = Array.isArray(data?.documentUrls)
+        ? data.documentUrls
+        : (data?.documentUrl ? [data.documentUrl] : []);
+    return serializeDocumentKeys(list.slice(0, MAX_DOCUMENTS));
+}
+
 /**
  * Process a single claim transaction
  * @param {Object} transactionData - Transaction data
@@ -165,11 +237,21 @@ async function processSingleClaim(transactionData, user_id) {
         areaId,
         regionId,
         divisionId,
-        loanId,
-        documentUrl
+        loanId
     } = transactionData;
 
+    // Accept documentUrls (array) or legacy documentUrl (string)
+    const documentUrl = resolveDocumentValue(transactionData);
+
     try {
+        if (documentUrl === null) {
+            return {
+                success: false,
+                error: true,
+                message: 'At least one document is required'
+            };
+        }
+
         logger.debug({
             user_id,
             page: 'Process Single Claim',
@@ -206,6 +288,9 @@ async function processSingleClaim(transactionData, user_id) {
                     }
                 })
             );
+
+            // The new documents are saved. Only now remove the files they replace.
+            await deleteReplacedDocuments(existing, documentUrl, user_id);
 
             logger.info({
                 user_id,

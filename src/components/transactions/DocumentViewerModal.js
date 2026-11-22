@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, Download, ExternalLink, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Download, ExternalLink, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { parseDocumentKeys } from '@/lib/fileUtils';
 import { useSignedUrl } from "hooks/useSignedUrl";
 
 /**
@@ -12,17 +13,32 @@ import { useSignedUrl } from "hooks/useSignedUrl";
 export default function DocumentViewerModal({
   isOpen,
   onClose,
-  documentUrl,   // storage key OR legacy full URL
+  documentUrl,   // storage key, legacy full URL, or JSON array string of keys
   clientName,
   unclaimedAmount
 }) {
   const [viewerError, setViewerError] = useState(false);
-  const { signedUrl, loading, error } = useSignedUrl(documentUrl);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const documentKeys = useMemo(() => parseDocumentKeys(documentUrl), [documentUrl]);
+  const activeKey = documentKeys[activeIndex] || null;
+  const { signedUrl, loading, error } = useSignedUrl(activeKey);
 
-  if (!isOpen || !documentUrl) return null;
+  // Reset to first file whenever a different record is opened
+  useEffect(() => {
+    setActiveIndex(0);
+    setViewerError(false);
+  }, [documentUrl]);
+
+  useEffect(() => {
+    setViewerError(false);
+  }, [activeIndex]);
+
+  if (!isOpen || !activeKey) return null;
+
+  const total = documentKeys.length;
 
   // Determine file type from the key/URL (extension is in the filename either way)
-  const fileExtension = documentUrl.split('.').pop().toLowerCase();
+  const fileExtension = activeKey.split('.').pop().toLowerCase();
 
   const isImage = /^(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileExtension);
   const isPDF = fileExtension === 'pdf';
@@ -46,7 +62,7 @@ export default function DocumentViewerModal({
     const link = document.createElement('a');
     link.href = signedUrl;
     const extension = fileExtension || 'file';
-    link.download = `unclaimed-${clientName?.replace(/\s+/g, '_')}_${unclaimedAmount}.${extension}`;
+    link.download = `unclaimed-${clientName?.replace(/\s+/g, '_')}_${unclaimedAmount}${total > 1 ? `_${activeIndex + 1}` : ''}.${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -62,7 +78,9 @@ export default function DocumentViewerModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>
-            <h2 className="text-lg font-semibold">Document Viewer</h2>
+            <h2 className="text-lg font-semibold">
+              Document Viewer{total > 1 ? ` (${activeIndex + 1} of ${total})` : ''}
+            </h2>
             {clientName && (
               <p className="text-sm text-gray-500">{clientName}</p>
             )}
@@ -89,6 +107,39 @@ export default function DocumentViewerModal({
             </button>
           </div>
         </div>
+
+        {/* Multi-file navigation */}
+        {total > 1 && (
+          <div className="flex items-center gap-2 px-4 py-2 border-b bg-gray-50">
+            <button
+              onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
+              disabled={activeIndex === 0}
+              className="p-1 border rounded hover:bg-white disabled:opacity-40"
+              aria-label="Previous document"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="flex gap-1 overflow-x-auto">
+              {documentKeys.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIndex(i)}
+                  className={`px-3 py-1 text-xs rounded border ${i === activeIndex ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  File {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setActiveIndex(i => Math.min(total - 1, i + 1))}
+              disabled={activeIndex === total - 1}
+              className="p-1 border rounded hover:bg-white disabled:opacity-40"
+              aria-label="Next document"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-hidden p-4 min-h-[60vh]">
