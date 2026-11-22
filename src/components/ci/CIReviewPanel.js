@@ -13,7 +13,7 @@ import { useCIDraftStorage } from '@/hooks/useCIDraftStorage';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { checkRealConnectivity } from '@/lib/check-online';
 import FaceLivenessStep from '@/components/laf/FaceLivenessStep';
-import { canDecideCI } from '@/lib/ci-roles';
+import { canInvestigateCI } from '@/lib/ci-roles';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const systemSettings = useSelector(state => state.systemSettings.data);
     const { isOnline }   = useOnlineStatus();
     const { saveDraft }  = useCIDraftStorage();
-    const canDecide      = canDecideCI(currentUser);
+    const canDecide      = canInvestigateCI(currentUser, systemSettings?.allowLoCI === true);
 
     const { application, lafPhotoUrl } = applicationData;
 

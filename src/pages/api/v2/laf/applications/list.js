@@ -9,7 +9,8 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { TEMP_LOAN_APP_FIELDS, CI_INVESTIGATION_FIELDS } from '@/lib/graph.fields';
 import { findUserById }  from '@/lib/graph.functions';
-import { resolveBranchWhere, getShortCode } from '@/lib/ci-scope';
+import moment from 'moment';
+import { resolveCIWhere, getShortCode, canViewCI } from '@/lib/ci-scope';
 import { TEMP_LOAN_APP_LIST_FIELDS as TEMP_LIST_FIELDS } from '@/lib/ci-list-fields';
 
 const graph = new GraphProvider();
@@ -18,6 +19,7 @@ const TEMP_TYPE   = createGraphType('temporaryLoanApplications', TEMP_LIST_FIELD
 const CI_TYPE     = createGraphType('ciInvestigations', CI_INVESTIGATION_FIELDS)('ciInvestigations');
 const BRANCH_TYPE = createGraphType('branches', '_id name code')('branches');
 const GROUP_TYPE  = createGraphType('groups', '_id name')('groups');
+const CI_REF_TYPE = createGraphType('ciInvestigations', 'ciReferenceCode')('ciInvestigations');
 
 export default apiHandler({ get: listApplications });
 
@@ -25,6 +27,10 @@ async function listApplications(req, res) {
     const currentUser = await findUserById(req.auth.sub);
     if (!currentUser) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!canViewCI(currentUser)) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     const {
@@ -38,7 +44,7 @@ async function listApplications(req, res) {
     const offset = Math.max(parseInt(offsetStr, 10) || 0, 0);
 
     // ── Scope by role (fail closed) ───────────────────────────────────────
-    const branchWhere = await resolveBranchWhere(currentUser);
+    const branchWhere = await resolveCIWhere(currentUser);
     if (branchWhere === null) {
         console.warn('[laf/list] scope denied', {
             userId: currentUser._id,
@@ -60,11 +66,46 @@ async function listApplications(req, res) {
     // ── Build where clause ────────────────────────────────────────────────
     let where = { ...branchWhere };
 
-    if (status && status !== 'all') {
+    // ── Status / tab filters ──────────────────────────────────────────────
+    // CI page tab keys (the plain statuses keep their old meaning for other callers):
+    //   'promoted_today' = promoted today (Philippine day, UTC+8)
+    //   'declined_today' = declined today
+    //   'history'        = declined or promoted before today
+    // 'ci_approved' (all dates, not yet promoted) is a plain status and never ages out.
+    const startOfToday = moment().utcOffset(8).startOf('day').toISOString();
+    let todayRefs = [];
+    if (status === 'declined_today' || status === 'history') {
+        todayRefs = await graph.query(
+            queryQl(CI_REF_TYPE, { where: { investigatedAt: { _gte: startOfToday } } })
+        ).then(r => (r.data?.ciInvestigations ?? []).map(c => c.ciReferenceCode));
+    }
+
+    if (status === 'promoted_today') {
+        where = { ...where, status: { _eq: 'promoted' }, promotedAt: { _gte: startOfToday } };
+    } else if (status === 'declined_today') {
+        where = { ...where, status: { _eq: 'ci_declined' }, ciReferenceCode: { _in: todayRefs } };
+    } else if (status === 'history') {
+        where = { ...where, _or: [
+            { status: { _eq: 'ci_declined' }, ciReferenceCode: { _nin: todayRefs } },
+            { status: { _eq: 'promoted' }, _or: [
+                { promotedAt: { _lt: startOfToday } },
+                { promotedAt: { _is_null: true } },
+            ] },
+        ] };
+    } else if (status && status !== 'all') {
         // 'pending' excludes pending_validation, which lives in the
         // "Flagged as Duplicate" tab
         where = { ...where, status: { _eq: status } };
     }
+
+    // Branch / LO / Group filters. ANDed with the role scope above, so they can only
+    // narrow what the caller may already see.
+    const extra = [];
+    for (const key of ['branchId', 'loId', 'groupId']) {
+        const v = Array.isArray(req.query[key]) ? req.query[key][0] : req.query[key];
+        if (v) extra.push({ [key]: { _eq: v } });
+    }
+    if (extra.length) where = { _and: [where, ...extra] };
 
     if (req.query.existingClientId) {
         where = { ...where, existingClientId: { _eq: req.query.existingClientId } };
@@ -73,13 +114,12 @@ async function listApplications(req, res) {
     if (search?.trim()) {
         const term = search.trim();
         where = {
-            ...where,
-            _or: [
+            _and: [where, { _or: [
                 { firstName:       { _ilike: `%${term}%` } },
                 { lastName:        { _ilike: `%${term}%` } },
                 { contactNumber:   { _ilike: `%${term}%` } },
                 { ciReferenceCode: { _ilike: `%${term}%` } },
-            ],
+            ] }],
         };
     }
 
@@ -88,7 +128,8 @@ async function listApplications(req, res) {
         graph.query(
             queryQl(TEMP_TYPE, {
                 where,
-                order_by: [{ submittedAt: 'desc' }],
+                // newest first; the Promoted tab orders by promotion time
+                order_by: [status === 'promoted_today' ? { promotedAt: 'desc' } : { submittedAt: 'desc' }],
                 limit:  limit + 1,   // +1 detects hasMore
                 offset,
             })

@@ -35,6 +35,7 @@ import { fetchWrapper }      from '@/lib/fetch-wrapper';
 import { getApiBaseUrl }     from '@/lib/constants';
 import { getLatestNonPendingLoan } from '@/lib/loan-cycle';
 import CIDuplicateQueue from '@/components/ci/CIDuplicateQueue';
+import { canDecideCI, canInvestigateCI, isLoanOfficer } from '@/lib/ci-roles';
 
 // ── Offline: no cache screen ──────────────────────────────────────────────
 const OfflineNoCacheScreen = ({ onOpen }) => (
@@ -61,28 +62,6 @@ const OfflineNoCacheScreen = ({ onOpen }) => (
                     rounded-xl cursor-not-allowed">
                 Prepare for Field Work (requires internet)
             </button>
-        </div>
-    </Layout>
-);
-
-// ── LO access restricted screen ───────────────────────────────────────────
-const LORestrictedScreen = () => (
-    <Layout>
-        <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667
-                        1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34
-                        16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900">Access Restricted</h2>
-            <p className="text-sm text-gray-500 text-center max-w-sm">
-                Loan Officers are not currently authorized to conduct CI Investigations.
-                Please contact your Branch Manager.
-            </p>
         </div>
     </Layout>
 );
@@ -158,11 +137,12 @@ const CIInvestigationPage = () => {
     }, [listRefreshKey]);
 
     useEffect(() => {
-        if (!isOnline) return;
+        if (!isOnline || !canSeeDuplicates) return;
         fetchWrapper.get(getApiBaseUrl() + 'laf/pending-validation-list?limit=1')
             .then(r => { if (r.success) setDuplicateCount(r.total ?? r.applications?.length ?? 0); })
             .catch(() => {});
-    }, [listRefreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [listRefreshKey, currentUser?._id]);
 
     // ── Load application detail ───────────────────────────────────────────
     const loadApplication = useCallback(async (ciCode) => {
@@ -329,15 +309,15 @@ const CIInvestigationPage = () => {
     }, [getCacheInfo, getCache]);
 
     // ── Role guards ───────────────────────────────────────────────────────
-    const isLO      = currentUser?.role?.rep === 4;
-    const allowLoCI = systemSettings?.allowLoCI ?? false;
+    // Loan officers always get a read-only view (own groups only, enforced by the
+    // API) with LAF print. They can investigate only while allowLoCI is on.
+    const isLO           = isLoanOfficer(currentUser);
+    const allowLoCI      = systemSettings?.allowLoCI ?? false;
+    const canInvestigate = canInvestigateCI(currentUser, allowLoCI === true);
+    const canSeeDuplicates = canDecideCI(currentUser);
 
-    if (isLO && !allowLoCI) {
-        const hasCache = !!(cacheInfo && offlineApps.length > 0);
-        if (!isOnline && !hasCache) {
-            return <OfflineNoCacheScreen onOpen={() => setFieldModalOpen(true)} />;
-        }
-        return <LORestrictedScreen />;
+    if (isLO && !isOnline && !(cacheInfo && offlineApps.length > 0)) {
+        return <OfflineNoCacheScreen onOpen={() => setFieldModalOpen(true)} />;
     }
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -353,7 +333,7 @@ const CIInvestigationPage = () => {
                             Select an application from the list or search by CI reference code
                         </p>
                     </div>
-                    {isOnline && (
+                    {isOnline && canInvestigate && (
                         <button type="button" onClick={() => setFieldModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white
                                 text-sm font-semibold rounded-xl hover:bg-teal-700 transition-colors
@@ -365,7 +345,7 @@ const CIInvestigationPage = () => {
                 </div>
 
                 {/* Field work reminder banner */}
-                {isOnline && pendingCount > 0 && !cacheInfo && (
+                {isOnline && canInvestigate && pendingCount > 0 && !cacheInfo && (
                     <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl
                         flex items-start gap-3">
                         <Briefcase className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -451,6 +431,7 @@ const CIInvestigationPage = () => {
                         }`}>
                         CI Investigation
                     </button>
+                    {canSeeDuplicates && (
                     <button type="button" onClick={() => setActiveTab('duplicates')}
                         className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                             activeTab === 'duplicates'
@@ -464,9 +445,9 @@ const CIInvestigationPage = () => {
                             </span>
                         )}
                     </button>
+                    )}
                 </div>
 
-                        
                 {/* Main layout */}
                 {activeTab === 'active' && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
