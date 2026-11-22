@@ -66,7 +66,12 @@ async function fetchAll(type, where, onPage) {
     for (let offset = 0; ; offset += PAGE_SIZE) {
         const rows = await graph.query(
             queryQl(type, { where, order_by: [{ _id: 'asc' }], limit: PAGE_SIZE, offset })
-        ).then(r => r.data?.[key] ?? []);
+        ).then(r => {
+            // Queries run with errorPolicy 'all': a GraphQL error comes back as r.errors with data null and would
+            // otherwise look like an empty table (e.g. exclusions silently not loaded).
+            if (r.errors?.length) throw new Error(`GraphQL error reading ${key}: ${r.errors[0].message}`);
+            return r.data?.[key] ?? [];
+        });
         out.push(...rows);
         if (onPage) await onPage(out.length);
         if (rows.length < PAGE_SIZE) break;

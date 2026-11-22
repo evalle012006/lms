@@ -1,7 +1,7 @@
 // src/pages/api/v2/clients/duplicates/alerts.js
 // GET — dashboard "Duplicate Alerts": open, not-yet-reviewed duplicate groups where more than one loan is active
 // (two records of one person each with an active loan, or one client ID with several active loans).
-// Same audience as Delinquent Alerts (rep <= 3) and scoped to the caller's branches. Records in branches the
+// Audience: admins and division heads (see lib/duplicate-alerts-access.js), scoped to the caller's branches. Records in branches the
 // caller cannot see are reduced to a placeholder — no names, ids or contact details leave their scope.
 // Data comes from the stored scan, so it is as fresh as the last scan.
 
@@ -10,6 +10,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 import { resolveBranchWhere } from '@/lib/ci-scope';
+import { canSeeDuplicateAlerts } from '@/lib/duplicate-alerts-access';
 
 const graph = new GraphProvider();
 const LIMIT = 50;
@@ -23,7 +24,7 @@ export default apiHandler({ get: alerts });
 async function alerts(req, res) {
     const user = await findUserById(req.auth.sub);
     // 200 + success:false, never 403 (403 triggers client-side logout).
-    if (!user || !(user.root || user.role?.rep <= 3)) {
+    if (!canSeeDuplicateAlerts(user)) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 
