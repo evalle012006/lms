@@ -31,6 +31,9 @@ export default function PrivateImage({ src, alt = 'Image', fallback, ...imagePro
   return (
     <Image
       {...imageProps}
+      // Signed Spaces URLs change on every request, so /_next/image can never cache them: each view re-downloaded
+      // and re-resized the full photo on the app server (CPU-bound, 5-300 s, 499s). Let the browser load it directly.
+      unoptimized
       src={displaySrc}
       alt={alt}
       onError={() => setImgError(true)}
