@@ -18,6 +18,12 @@ export const heapStats = () => {
     return { usedMb: Math.round(s.used_heap_size / 1048576), limitMb: Math.round(s.heap_size_limit / 1048576) };
 };
 
+/** Heap in use after a forced full GC = what is really still referenced (diagnostics only: GC pauses ~1 s at multi-GB). */
+export const liveHeapMb = () => {
+    if (forceGc) { try { forceGc(); } catch { /* ignore */ } }
+    return heapStats().usedMb;
+};
+
 /** @param {number} fraction share of the heap limit that counts as "too much" (default 0.85) */
 export function heapGuard(fraction = Number(process.env.SCAN_HEAP_GUARD) || 0.85) {
     return function check(label = '') {

@@ -13,7 +13,7 @@ import { createGraphType, queryQl, insertQl, updateQl } from '@/lib/graph/graph.
 import { generateUUID } from '@/lib/utils';
 import { logAudit } from '@/lib/audit';
 import { findFaceMatchesAsync, parseFaceTemplate } from '@/lib/duplicate-faces';
-import { heapGuard, heapStats } from '@/lib/heap-guard';
+import { heapGuard, heapStats, liveHeapMb } from '@/lib/heap-guard';
 import { withRetry, describeError } from '@/lib/retry';
 import { beginCronRun, finishCronRun } from '@/lib/cron-guard';
 import {
@@ -168,6 +168,7 @@ async function runScan(runId, req) {
         await report('fetch_loans', 'Loading active loans');
         let activeLoans = await fetchAll(LOAN_TYPE, { status: { _eq: 'active' } });
         t = lap('fetchActiveLoansMs', t);
+        timings.liveHeapMb = { afterFetch: liveHeapMb() };   // heap really retained (post-GC), to see which phase holds the memory
 
         const activeIds = new Set(activeLoans.map(l => l.clientId));
         // Phase 4: face evidence. Fails soft — a face-pass error must not lose the text-based results.
@@ -213,6 +214,7 @@ async function runScan(runId, req) {
         clients = null;
         activeLoans = null;
         t = lap('detectMs', t);
+        timings.liveHeapMb.afterDetect = liveHeapMb();
 
         const clusters = [...fuzzy, ...sameClient];
         const memberIds = [...new Set(clusters.flatMap(c => c.members.map(m => m._id)))];
@@ -220,6 +222,7 @@ async function runScan(runId, req) {
         const loansByClient = await loadLoanSummaries(memberIds, done => report('enrich', 'Loading loan details', { count: done, total: memberIds.length }));
         const loNames = await loadLoNames();
         t = lap('enrichMs', t);
+        timings.liveHeapMb.afterEnrich = liveHeapMb();
 
         for (const c of clusters) {
             for (const m of c.members) {

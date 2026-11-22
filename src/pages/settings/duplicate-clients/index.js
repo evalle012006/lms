@@ -204,7 +204,7 @@ const DuplicateClientsPage = () => {
 
     return (
         <Layout>
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
                 <div className="flex items-start justify-between mb-4 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Duplicate Clients</h1>
@@ -262,7 +262,7 @@ const DuplicateClientsPage = () => {
                 </div>
 
                 {summary && (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
                         <Stat label="Groups" value={summary.clusters} />
                         <Stat label="Client records" value={summary.clients} />
                         <Stat label="Exact" value={summary.exact} tone="text-red-600" />
@@ -280,7 +280,7 @@ const DuplicateClientsPage = () => {
                     {metricsOpen && (
                         <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4">
                             {metricsLoading || !metrics ? <p className="text-sm text-gray-400">Loading…</p> : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {[['Loan officers', metrics.byLo, r => `${r.loName}${r.branchName ? ' · ' + r.branchName : ''}`],
                                       ['Branches', metrics.byBranch, r => r.branchName]].map(([title, rows, label]) => (
                                         <div key={title}>
@@ -309,10 +309,10 @@ const DuplicateClientsPage = () => {
                     )}
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 md:grid-cols-7 gap-3">
+                <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 lg:grid-cols-7 gap-3">
                     <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
                         placeholder="Name, client ID or contact no."
-                        className="md:col-span-2 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="lg:col-span-2 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     {view !== 'same_client' && (
                         <>
                             <Select value={filters.confidence} onChange={(v) => changeFilter('confidence', v)}
