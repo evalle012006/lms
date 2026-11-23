@@ -31,7 +31,12 @@ async function clean(req, res) {
         req, res, 'clean-up-stale-applications',
         async () => {
             // clients first, so applications the client stage still needs are not wiped before it runs
-            const clients = await runStaleClientCleanup({ dryRun });
+            const caps = {};
+            const wc = parseInt(req.body?.wipeCap ?? req.query?.wipeCap, 10);
+            const ec = parseInt(req.body?.excludeCap ?? req.query?.excludeCap, 10);
+            if (wc > 0) caps.wipeCap = wc;
+            if (ec > 0) caps.excludeCap = ec;
+            const clients = await runStaleClientCleanup({ dryRun, ...caps });
             const applications = await runStaleApplicationCleanup({ dryRun });
             return { dryRun, clients, applications };
         },

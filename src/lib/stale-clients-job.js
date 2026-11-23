@@ -33,6 +33,20 @@ export const PENDING_LOAN_DAYS = 30;
 export const EXCLUDED_RETENTION_MONTHS = 1;
 const SAMPLE_CAP = 100;
 
+// Per-run caps. Excluding is reversible (Restore Client) so its cap is generous; wiping is not, so its
+// cap stays small. Override per call ({ wipeCap, excludeCap }) or with STALE_CLIENT_WIPE_CAP /
+// STALE_CLIENT_EXCLUDE_CAP. A run that hits a cap stops that stage and reports capped: true.
+const envInt = (name, dflt) => { const n = parseInt(process.env[name], 10); return Number.isFinite(n) && n > 0 ? n : dflt; };
+export const DEFAULT_EXCLUDE_CAP = () => envInt('STALE_CLIENT_EXCLUDE_CAP', 5000);
+export const DEFAULT_WIPE_CAP    = () => envInt('STALE_CLIENT_WIPE_CAP', 500);
+
+/** Legacy ids are Mongo ObjectIds: the first 8 hex digits are the creation time. */
+export function objectIdDate(id) {
+    if (typeof id !== 'string' || !/^[0-9a-f]{24}$/i.test(id)) return null;
+    const m = moment.unix(parseInt(id.slice(0, 8), 16));
+    return m.isValid() ? m : null;
+}
+
 const CLIENT_KEYS = ['governmentIdPhotoKey', 'selfieWithIdPhotoKey', 'faceEnrollPhotoKey'];
 const LOAN_KEYS   = ['disbursementPhotoKey', 'guarantorPhotoKey', 'guarantorIdPhotoKey'];
 
@@ -75,7 +89,7 @@ export function decideClient({ client, apps, loans, hasCollections = false }, cu
 
     if (pending.length) {
         if (pending.some(l => l.preApproved || l.ldfApproved)) return skip('pre-approved-or-ldf');
-        const lastTouch = latest(pending.map(l => l.dateModified || l.dateAdded));
+        const lastTouch = latest(pending.map(l => l.dateModified || l.dateAdded || objectIdDate(l._id)));
         if (!lastTouch) return skip('pending-loan-no-date');
         if (!lastTouch.isBefore(cut.pendingLoan)) return skip('pending-loan-recent');
         // a loan the client was never approved for: reject it; exclude only if loanCycle 1 throughout
@@ -91,7 +105,7 @@ export function decideClient({ client, apps, loans, hasCollections = false }, cu
     const touch = latest([
         client.dateAdded,
         ...apps.map(a => a.promotedAt),
-        ...loans.map(l => l.dateModified || l.dateAdded),
+        ...loans.map(l => l.dateModified || l.dateAdded || objectIdDate(l._id)),
     ]);
     if (!touch) return skip('no-date');
     if (!touch.isBefore(cut.noActivity)) return skip('recent-activity');
@@ -111,8 +125,9 @@ const collectionClientIds = async (ids) => {
 };
 
 /** Stage E + X. Scan every pending, non-archived client older than the idle window (promoted and legacy). */
-async function excludeStage({ dryRun, now, cut, size, maxBatches }) {
-    const out = { scanned: 0, exclude: 0, rejectAndExclude: 0, rejectOnly: 0, rejectedLoans: 0,
+async function excludeStage({ dryRun, now, cut, size, maxBatches, cap }) {
+    let acted = 0;
+    const out = { cap, capped: false, scanned: 0, exclude: 0, rejectAndExclude: 0, rejectOnly: 0, rejectedLoans: 0,
         promoted: 0, legacy: 0, skipped: {}, samples: [] };
     const where = {
         status: { _eq: 'pending' }, archived: { _neq: true },
@@ -137,6 +152,7 @@ async function excludeStage({ dryRun, now, cut, size, maxBatches }) {
         const toExclude = [];
         const toReject = [];
         for (const client of clients) {
+            if (acted >= cap) { out.capped = true; break; }
             out.scanned++;
             const d = decideClient({
                 client, apps: appsBy[client._id] || [], loans: loansBy[client._id] || [],
@@ -147,6 +163,7 @@ async function excludeStage({ dryRun, now, cut, size, maxBatches }) {
                 skippedTotal++;
                 continue;
             }
+            acted++;
             const source = (appsBy[client._id] || []).length ? 'promoted' : 'legacy';
             out[source]++;
             if (d.action === 'exclude') out.exclude++;
@@ -176,14 +193,14 @@ async function excludeStage({ dryRun, now, cut, size, maxBatches }) {
                 })));
             }
         }
-        if (clients.length < size) break;
+        if (out.capped || clients.length < size) break;
     }
     return out;
 }
 
 /** Stage W. Wipe clients this job excluded more than a month ago. */
-async function wipeStage({ dryRun, cut, size, maxBatches }) {
-    const out = { found: 0, wiped: 0, files: 0, skipped: {}, samples: [] };
+async function wipeStage({ dryRun, cut, size, maxBatches, cap }) {
+    const out = { cap, capped: false, found: 0, wiped: 0, files: 0, skipped: {}, samples: [] };
     const where = {
         archived: { _eq: true }, status: { _eq: 'pending' },
         archivedDate: { _lt: cut.excluded.toISOString() },
@@ -212,6 +229,8 @@ async function wipeStage({ dryRun, cut, size, maxBatches }) {
             return !why;
         });
         skippedTotal += clients.length - safe.length;
+        const room = cap - out.found;
+        if (safe.length > room) { safe.length = Math.max(room, 0); out.capped = true; }
         out.found += safe.length;
 
         if (safe.length) {
@@ -247,14 +266,15 @@ async function wipeStage({ dryRun, cut, size, maxBatches }) {
     return out;
 }
 
-export async function runStaleClientCleanup({ dryRun = true, now = moment(), size = 200, maxBatches = 200 } = {}) {
+export async function runStaleClientCleanup({ dryRun = true, now = moment(), size = 200, maxBatches = 200,
+    wipeCap = DEFAULT_WIPE_CAP(), excludeCap = DEFAULT_EXCLUDE_CAP() } = {}) {
     const cut = cutoffs(now);
     const stats = { dryRun, wipe: null, exclude: null, errors: [] };
     const stage = async (name, fn) => {
         try { stats[name] = await fn(); } catch (err) { stats.errors.push(`${name}: ${describeError(err)}`); }
     };
     // wipe first so what is excluded today is not purged today
-    await stage('wipe', () => wipeStage({ dryRun, cut, size, maxBatches }));
-    await stage('exclude', () => excludeStage({ dryRun, now, cut, size, maxBatches }));
+    await stage('wipe', () => wipeStage({ dryRun, cut, size, maxBatches, cap: wipeCap }));
+    await stage('exclude', () => excludeStage({ dryRun, now, cut, size, maxBatches, cap: excludeCap }));
     return stats;
 }

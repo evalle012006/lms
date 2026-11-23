@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { decideClient, cutoffs } from '@/lib/stale-clients-job';
+import { decideClient, cutoffs, objectIdDate } from '@/lib/stale-clients-job';
 
 const now = moment('2026-11-23T12:00:00Z');
 const cut = cutoffs(now);
@@ -50,5 +50,17 @@ describe('decideClient', () => {
   });
   test('client with any collection history is never touched', () => {
     expect(run(client(), [app()], [], true).reason).toBe('has-collections');
+  });
+  test('objectIdDate reads the creation time from a Mongo id', () => {
+    expect(objectIdDate('650edfb709ff40dc99f17e57').format('YYYY-MM')).toBe('2023-09');
+    expect(objectIdDate('87de4913-e0b7-45b9-8727-cd714eebfc23')).toBeNull();
+  });
+  test('pending loan without dates falls back to the Mongo id time', () => {
+    const l = loan({ _id: '650edfb709ff40dc99f17e57', dateModified: null, dateAdded: null });
+    expect(run(client(), [app()], [l]).action).toBe('reject-and-exclude');
+  });
+  test('pending loan without dates and a non-Mongo id is skipped', () => {
+    const l = loan({ _id: 'abc', dateModified: null, dateAdded: null });
+    expect(run(client(), [app()], [l]).reason).toBe('pending-loan-no-date');
   });
 });
