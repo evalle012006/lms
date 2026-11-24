@@ -17,7 +17,7 @@ import { heapGuard, heapStats, liveHeapMb } from '@/lib/heap-guard';
 import { withRetry, describeError } from '@/lib/retry';
 import { beginCronRun, finishCronRun } from '@/lib/cron-guard';
 import {
-    detectDuplicates, detectMultiActiveLoans, clusterKey, normalizeText, normalizePhone,
+    detectDuplicates, detectMultiActiveLoans, clusterKey, normalizeText, normalizePhone, leanClient, effectiveIds,
 } from '@/lib/duplicate-clients';
 
 const rawGraph = new GraphProvider();
@@ -86,7 +86,10 @@ async function fetchEach(type, where, onRows, onPage) {
     for (let offset = 0; ; offset += PAGE_SIZE) {
         const rows = await graph.query(
             queryQl(type, { where, order_by: [{ _id: 'asc' }], limit: PAGE_SIZE, offset })
-        ).then(r => r.data?.[key] ?? []);
+        ).then(r => {
+            if (r.errors?.length) throw new Error(`GraphQL error reading ${key}: ${r.errors[0].message}`);
+            return r.data?.[key] ?? [];
+        });
         onRows(rows);
         total += rows.length;
         if (onPage) await onPage(total);
@@ -166,10 +169,14 @@ async function runScan(runId, req) {
         let t = Date.now();
         // Merged/archived clients are already-resolved duplicates — never re-flag them.
         await report('fetch_clients', 'Loading clients');
-        let clients = await fetchAll(CLIENT_TYPE, {
+        // Each page is reduced to a lean record straight away (matching fields only): holding ~700k full rows plus a
+        // second prepared copy took ~5.8 GB and tripped the memory guard. Display fields are reloaded for group members.
+        let clients = [];
+        await fetchEach(CLIENT_TYPE, {
             status: { _nin: ['merged', 'archived'] },
             _or: [{ archived: { _is_null: true } }, { archived: { _eq: false } }],
-        }, n => report('fetch_clients', 'Loading clients', { count: n }));
+        }, rows => { for (const r of rows) clients.push(leanClient(r)); },
+        n => report('fetch_clients', 'Loading clients', { count: n }));
         t = lap('fetchClientsMs', t);
 
         await report('fetch_loans', 'Loading active loans');
@@ -220,7 +227,7 @@ async function runScan(runId, req) {
         try { exclusions = new Set((await fetchAll(EXCLUSION_TYPE, {})).map(e => e._id)); }
         catch (e) { console.error('[duplicate-scan] exclusions not loaded', e); timings.exclusionsError = String(e?.message ?? e).slice(0, 120); }
         timings.exclusions = exclusions.size;
-        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard, exclusions });
+        const { clusters: fuzzy, stats } = detectDuplicates(clients, activeIds, facePairs, { onTick: guard, exclusions, prepared: true });
         const sameClient = detectMultiActiveLoans(clients, activeLoans);
         // Not needed any more: only the (much smaller) cluster members stay referenced through enrich + save.
         clients = null;
@@ -230,6 +237,16 @@ async function runScan(runId, req) {
 
         const clusters = [...fuzzy, ...sameClient];
         const memberIds = [...new Set(clusters.flatMap(c => c.members.map(m => m._id)))];
+        // Members only carry the lean matching fields: load the full client rows for just these ids.
+        await report('enrich', 'Loading client details', { total: memberIds.length });
+        const fullById = await loadClientsByIds(memberIds);
+        for (const c of clusters) {
+            for (const m of c.members) {
+                const r = fullById.get(m._id);
+                if (r) Object.assign(m, r, effectiveIds(r));
+            }
+        }
+        timings.hydrated = fullById.size;
         await report('enrich', 'Loading loan details', { total: memberIds.length });
         const loansByClient = await loadLoanSummaries(memberIds, done => report('enrich', 'Loading loan details', { count: done, total: memberIds.length }));
         const loNames = await loadLoNames();
@@ -403,6 +420,19 @@ async function persist(clusters, scanStartedAt, guard = () => {}) {
     }
 
     return { insertedCount, alertable, reopened, resolved: staleIds.length };
+}
+
+async function loadClientsByIds(ids) {
+    const out = new Map();
+    for (let i = 0; i < ids.length; i += ID_CHUNK) {
+        const chunk = ids.slice(i, i + ID_CHUNK);
+        const rows = await graph.query(queryQl(CLIENT_TYPE, { where: { _id: { _in: chunk } } })).then(r => {
+            if (r.errors?.length) throw new Error(`GraphQL error reading clients: ${r.errors[0].message}`);
+            return r.data?.clients ?? [];
+        });
+        for (const r of rows) out.set(r._id, r);
+    }
+    return out;
 }
 
 async function loadBranchNames() {

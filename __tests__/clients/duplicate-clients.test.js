@@ -103,3 +103,27 @@ describe('clusterKey', () => {
         expect(clusterKey(three)).toBe('dc_a');
     });
 });
+
+describe('lean scan mode', () => {
+    const { leanClient, effectiveIds } = require('@/lib/duplicate-clients');
+    const data = [
+        base({ _id: 'a' }),
+        base({ _id: 'b', branchId: 'b2', loId: 'lo2' }),
+        base({ _id: 'c', firstName: 'MARIA', lastName: 'SANTOS', birthdate: '1990-01-01', contactNumber: '09170000001' }),
+        base({ _id: 'd', status: 'offset', loId: '', oldLoId: 'lo9', groupId: '', oldGroupId: 'g9' }),
+    ];
+    it('gives the same groups as the full path, from records that carry only matching fields', () => {
+        const active = new Set(['a', 'b']);
+        const full = detectDuplicates(data, active);
+        const lean = detectDuplicates(data.map(leanClient), active, [], { prepared: true });
+        const sig = (r) => r.clusters.map(c => `${c.clusterId}:${c.view}:${c.confidence}:${c.members.map(m => m._id).join(',')}`);
+        expect(sig(lean)).toEqual(sig(full));
+        expect(full.clusters.length).toBeGreaterThan(0);
+    });
+    it('keeps no display fields on lean records and computes effective ids', () => {
+        const l = leanClient(data[3]);
+        expect(l.firstName).toBeUndefined();
+        expect(l.effLoId).toBe('lo9');
+        expect(effectiveIds(data[3])).toEqual({ effLoId: 'lo9', effGroupId: 'g9' });
+    });
+});
