@@ -131,8 +131,7 @@ export function prepareClient(c) {
     return {
         ...c,
         // For offset clients the live LO/group are cleared and old* hold the last known values.
-        effLoId: c.loId && c.loId.trim() ? c.loId : (c.oldLoId || null),
-        effGroupId: c.groupId && c.groupId.trim() ? c.groupId : (c.oldGroupId || null),
+        ...effectiveIds(c),
         _n: {
             first, last, middle,
             // Order-insensitive key — catches first/last name swapped by the encoder.
@@ -142,6 +141,29 @@ export function prepareClient(c) {
             address: normalizeAddress(c),
         },
     };
+}
+
+/** Effective LO / group: for offset clients the live values are cleared and old* hold the last known ones. */
+export function effectiveIds(c) {
+    return {
+        effLoId: c.loId && c.loId.trim() ? c.loId : (c.oldLoId || null),
+        effGroupId: c.groupId && c.groupId.trim() ? c.groupId : (c.oldGroupId || null),
+    };
+}
+
+/**
+ * Memory-lean record for the nightly scan (~700k clients): only what matching and grouping read. Display fields
+ * (names, address, branch/group names…) are reloaded for the few clients that end up in a group. Pass the result
+ * to detectDuplicates with { prepared: true }.
+ */
+export function leanClient(c) {
+    const p = prepareClient(c);
+    const lean = {
+        _id: c._id, status: c.status, dateAdded: c.dateAdded, branchId: c.branchId,
+        effLoId: p.effLoId, effGroupId: p.effGroupId, _n: p._n,
+    };
+    lean._keys = blockingKeys(lean);
+    return lean;
 }
 
 // ───────────────────────────── pair scoring ─────────────────────────────
@@ -324,9 +346,10 @@ const isClosedStatus = (s) => ['offset', 'completed', 'closed'].includes(s);
  * @param {Set<string>} activeLoanClientIds  clientIds that currently own a loan with status 'active'
  * @returns {{ clusters: Array, stats: object }}
  */
-export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = [], { onTick = null, exclusions = null } = {}) {
-    const prepared = clients.map(prepareClient);
-    for (const c of prepared) c._keys = blockingKeys(c);
+export function detectDuplicates(clients, activeLoanClientIds = new Set(), extraPairs = [], { onTick = null, exclusions = null, prepared: alreadyPrepared = false } = {}) {
+    // prepared: true = `clients` are leanClient() records (already normalised + keyed): no second full copy in memory.
+    const prepared = alreadyPrepared ? clients : clients.map(prepareClient);
+    if (!alreadyPrepared) for (const c of prepared) c._keys = blockingKeys(c);
     const byId = new Map(prepared.map(c => [c._id, c]));
 
     const buckets = new Map();
