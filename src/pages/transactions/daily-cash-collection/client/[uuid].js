@@ -111,6 +111,7 @@ const CashCollectionDetailsPage = () => {
 
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [showWaningDialog, setShowWarningDialog] = useState(false);
+    const [revertConfirm, setRevertConfirm] = useState(null);
     const [showChangeRemarksDialog, setShowNewRemarksDialog] = useState(false);
 
     const [hasDraft, setHasDraft] = useState(false);
@@ -3476,7 +3477,8 @@ const CashCollectionDetailsPage = () => {
         dispatch(setCashCollectionGroup(tempList));
     }
 
-    const handleNewRevert = async () => {
+    // onClick passes the click event as the first argument, so only `true` counts as confirmed.
+    const handleNewRevert = async (confirmed = false) => {
         setShowWarningDialog(false);
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
@@ -3495,8 +3497,23 @@ const CashCollectionDetailsPage = () => {
                 return;
             }
 
+            // UX hint only, the server is the authority: an approved reloan row shows as 'tomorrow'.
+            const approvedNew = selectedRows.filter(r => r.status === 'tomorrow' && Number(r.loanCycle) > 1);
+            if (approvedNew.length > 0) {
+                toast.error(`Cannot revert: the new loan is already approved for ${approvedNew.map(r => r.fullName).join(', ')}. Contact an administrator.`);
+                return;
+            }
+
             setLoading(true);
-            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
+            const response = await fetchWrapper.post(
+                getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction' + (confirmed === true ? '?confirmed=true' : ''),
+                selectedRows
+            );
+            if (response.requiresConfirmation) {
+                setLoading(false);
+                setRevertConfirm({ message: response.message });
+                return;
+            }
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);
@@ -4718,7 +4735,16 @@ const CashCollectionDetailsPage = () => {
                         </div>
                         <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
                             <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
-                            <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
+                            <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={() => handleNewRevert()} />
+                        </div>
+                    </Dialog>
+                    <Dialog show={!!revertConfirm}>
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 text-center">
+                            <p className="text-xl font-normal text-dark-color">{revertConfirm?.message}</p>
+                        </div>
+                        <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setRevertConfirm(null)} />
+                            <ButtonSolid label="Yes, roll back" type="button" className="p-2" onClick={() => { setRevertConfirm(null); handleNewRevert(true); }} />
                         </div>
                     </Dialog>
                     <Dialog show={showChangeRemarksDialog}>

@@ -2,7 +2,11 @@ import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS }
 import { findClients, findGroups, findLoans, findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { getCurrentDate } from '@/lib/date-utils';
+import { logAudit } from '@/lib/audit';
+import { buildRevertAuditEvents } from '@/lib/audit-lor';
 import logger from '@/logger';
+import moment from 'moment';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
@@ -34,6 +38,9 @@ async function revert(req, res) {
     const groupCache = {};
     const blockedItems = []; // records that cannot be reverted; fails the whole request
     const skippedItems = []; // records intentionally not reverted (reported back, never silent)
+    const keptPendingLoans = []; // pending new loans that stay; the page must confirm first
+    const revertedRows = []; // rows whose revert was queued; audited after the mutation succeeds
+    const confirmed = req.query?.confirmed === 'true';
 
     try {
         if (!Array.isArray(cashCollections) || cashCollections.length === 0) {
@@ -133,6 +140,47 @@ async function revert(req, res) {
                 continue;
             }
 
+            // The new (reloan) loan decides what may be reverted, not cc.status.
+            // An approved new loan has been released (photo, SMS, cash out): reverting it
+            // would delete a released loan or leave two live loans (2026-11-24 incident).
+            const successorOr = [{ prevLoanId: { _eq: loanId } }];
+            if (cashCollection.loanId) successorOr.push({ _id: { _eq: cashCollection.loanId } });
+            const successors = await findLoans({
+                _and: [
+                    { _or: successorOr },
+                    { _id: { _neq: loanId } },
+                    { status: { _neq: 'reject' } },
+                ],
+            });
+
+            const label = `${cashCollection.fullName ?? cashCollection.clientId}${cashCollection.slotNo ? ` (slot ${cashCollection.slotNo})` : ''}`;
+            const approvedSuccessor = successors.find(l => l.status !== 'pending');
+            if (approvedSuccessor) {
+                blockedItems.push({
+                    code: 'NEW_LOAN_APPROVED',
+                    cashCollectionId: cashCollection._id,
+                    loanId,
+                    newLoanId: approvedSuccessor._id,
+                    clientId: cashCollection.clientId,
+                    branchId: cashCollection.branchId,
+                    label,
+                    reason: `${label}: the new loan is already approved and released.`
+                });
+                continue;
+            }
+
+            // A pending new loan is never deleted: it stays pending and the page confirms first.
+            const pendingSuccessor = successors.find(l => l.status === 'pending');
+            if (pendingSuccessor) {
+                keptPendingLoans.push({
+                    clientId: cashCollection.clientId,
+                    branchId: cashCollection.branchId,
+                    loanId: pendingSuccessor._id,
+                    label,
+                    ldfApproved: !!pendingSuccessor.ldfApproved
+                });
+            }
+
             // The cash collection being deleted must really exist, otherwise the revert would
             // silently leave it behind while the loan/client are restored.
             const existingCc = await graph.query(
@@ -203,15 +251,9 @@ async function revert(req, res) {
                 )
             );
 
-            if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
-                // Delete new loan
-                mutationQL.push(
-                    deleteQl(
-                        createGraphType('loans', `_id`)(`loans_${mutationQL.length}`),
-                        { _id: { _eq: cashCollection.loanId } }
-                    )
-                );
-            }
+            // The new loan is never deleted here: a pending one stays pending, an approved one was blocked above.
+
+            revertedRows.push(cashCollection);
 
             const prevLoanData = {
                 ...loan_history.data,
@@ -297,11 +339,40 @@ async function revert(req, res) {
                 data: blockedItems
             });
 
+            const approvedBlocks = blockedItems.filter(b => b.code === 'NEW_LOAN_APPROVED');
+            blockedItems.slice(0, 50).forEach(b => logAudit(req, {
+                action: b.code === 'NEW_LOAN_APPROVED' ? 'LOR_REVERT_BLOCKED_APPROVED_LOAN' : 'LOR_REVERT_BLOCKED',
+                category: 'COLLECTION',
+                severity: 'WARNING',
+                entityType: 'cashCollection',
+                entityId: b.cashCollectionId,
+                clientId: b.clientId,
+                branchId: b.branchId,
+                description: `Revert refused: ${b.reason}`,
+                success: false,
+                failReason: b.reason,
+                metadata: { loanId: b.loanId, newLoanId: b.newLoanId ?? null, code: b.code ?? null },
+            }));
+
             return send(res, 200, {
                 success: false,
                 error: true,
-                message: 'Cannot revert: one or more records have no restorable history.',
+                message: approvedBlocks.length > 0
+                    ? 'Cannot revert: the new loan is already approved and released. Contact an administrator.'
+                    : 'Cannot revert: one or more records have no restorable history.',
                 details: blockedItems
+            });
+        }
+
+        // Pending new loans are kept, not deleted. Ask the page to confirm before rolling back.
+        if (keptPendingLoans.length > 0 && !confirmed) {
+            const ldf = keptPendingLoans.some(k => k.ldfApproved);
+            return send(res, 200, {
+                success: false,
+                requiresConfirmation: true,
+                message: `The current transaction will be rolled back. The pending loan for ${keptPendingLoans.map(k => k.label).join(', ')} is kept, not deleted.`
+                    + (ldf ? ' Its LDF approval is also kept; un-approve it first if it should not stay approved.' : ''),
+                details: keptPendingLoans
             });
         }
 
@@ -316,6 +387,24 @@ async function revert(req, res) {
         }
 
         const result = await graph.mutation(...mutationQL);
+
+        // Audit only after the mutation succeeded. Never let audit break a revert.
+        try {
+            const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+            buildRevertAuditEvents(revertedRows, { currentDate }).forEach(e => logAudit(req, e));
+            keptPendingLoans.forEach(k => logAudit(req, {
+                action: 'LOR_REVERT_PENDING_LOAN_KEPT',
+                category: 'COLLECTION',
+                severity: 'INFO',
+                entityType: 'loan',
+                entityId: k.loanId,
+                clientId: k.clientId,
+                branchId: k.branchId,
+                description: `Transaction rolled back; pending loan ${k.loanId} kept (not deleted)`,
+                metadata: { ldfApproved: k.ldfApproved, currentDate },
+            }));
+        } catch (e) { /* audit must never break a revert */ }
+
         return send(res, 200, { success: true, data: result?.data, skipped: skippedItems });
 
     } catch (error) {
@@ -326,6 +415,20 @@ async function revert(req, res) {
             error: error.message,
             stack: error.stack
         });
+
+        try {
+            logAudit(req, {
+                action: 'LOR_REVERT_FAILED',
+                category: 'COLLECTION',
+                severity: 'CRITICAL',
+                entityType: 'cashCollection',
+                entityId: Array.isArray(cashCollections) ? cashCollections[0]?._id ?? null : null,
+                description: `Revert failed for ${Array.isArray(cashCollections) ? cashCollections.length : 0} row(s)`,
+                success: false,
+                failReason: error.message,
+                metadata: { cashCollectionIds: Array.isArray(cashCollections) ? cashCollections.map(c => c._id).slice(0, 200) : [] },
+            });
+        } catch (e) { /* ignore */ }
 
         return send(res, 500, { success: false, error: error.message });
     }
