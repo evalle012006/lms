@@ -98,13 +98,20 @@ function timingSafeEqualStr(a, b) {
 async function authenticate(req, res) {
     let statusCode = 200;
     let response   = {};
-    const { username, password } = req.body;
+    const { username: rawUsername, password: rawPassword } = req.body;
+    // Pasted temp passwords / emails often carry stray whitespace; normalise both.
+    const username = typeof rawUsername === 'string' ? rawUsername.trim() : rawUsername;
+    const password = typeof rawPassword === 'string' ? rawPassword.trim() : rawPassword;
+    // Case-insensitive email match (escape LIKE wildcards so '_' and '%' match literally).
+    const emailMatch = typeof username === 'string'
+        ? { _ilike: username.replace(/[\\%_]/g, '\\$&') }
+        : { _eq: username };
 
     try {
         let [user] = await graph.query(
             queryQl(USER_TYPE, {
                 where: {
-                    email:  { _eq: username },
+                    email:  emailMatch,
                     status: { _eq: 'active' },
                 }
             })
@@ -119,7 +126,7 @@ async function authenticate(req, res) {
             const [candidate] = await graph.query(
                 queryQl(USER_TYPE, {
                     where: {
-                        email:       { _eq: username },
+                        email:       emailMatch,
                         status:      { _eq: 'inactive' },
                         employee_no: { _is_null: false },
                     }
