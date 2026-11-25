@@ -1,12 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { getApiBaseUrl } from "@/lib/constants";
-
-/* =========================================================
-   CASHBOOK
-   Connected to Daily Collection Summary data
-   No Hasura
-========================================================= */
+import React from "react";
+import {
+  calculateCashbookReceipts,
+  calculateCashbookPayments,
+  calculateClosingBalance,
+} from "@/lib/dcs-calculations";
 
 const money = (value) => {
   const number = Number(value || 0);
@@ -17,398 +14,20 @@ const money = (value) => {
   });
 };
 
-// =========================================================
-// CASHBOOK TRANSACTION CODE FORMATTER
-// =========================================================
-
-const formatTransactionCodes = (codes) => {
-  if (!Array.isArray(codes) || codes.length === 0) {
-    return "";
-  }
-
-  const uniqueCodes = [
-    ...new Set(
-      codes
-        .map((value) => {
-          const text = String(value ?? "").trim();
-          const match = text.match(/^(\d{1,3})(?=\D|$)/);
-
-          return match
-            ? match[1].padStart(3, "0")
-            : "";
-        })
-        .filter(Boolean)
-    ),
-  ];
-
-  return uniqueCodes.join(" / ");
-};
-
-const emptyRow = (day) => ({
-  day,
-
-  /* RECEIPTS / DEBIT */
-  description: "",
-  receiptTransactionCodes: "",
-  paymentTransactionCodes: "",
-
-  beginningBalance: 0,
-  mcbuCollection: 0,
-  csfCollection: 0,
-
-  regularLoanCollection: 0,
-  otherLoanCollection: 0,
-  weekly12Collection: 0,
-
-  staffCbuCollection: 0,
-  cashbondCollection: 0,
-  salaryAdvanceCollection: 0,
-  membershipFee: 0,
-
-  lrfCollection: 0,
-  cbhbCollection: 0,
-  cbhbAdditional: 0,
-  cbhbOther: 0,
-  otherIncomePicture: 0,
-
-  withholdingTax: 0,
-  mcbuUnclaimReturn: 0,
-
-  // LOR CSF In / DCS Other Income CSF W/o Agent (12c)
-  csfIn: 0,
-
-  receiptFundTransfer: 0,
-  otherIncome: 0,
-  otherReceipts: 0,
-  bankWithdrawal: 0,
-
-  /* PAYMENTS / CREDIT */
-  managementExpenses: 0,
-
-  regularLoanReleasePersons: 0,
-  regularLoanReleasePrincipal: 0,
-
-  otherLoanReleasePersons: 0,
-  otherLoanReleasePrincipal: 0,
-
-  mcbuWithdrawal: 0,
-  csfWithdrawal: 0,
-
-  mcbuReturnPersons: 0,
-  mcbuReturnAmount: 0,
-  csfReturnAmount: 0,
-
-  staffCbuWithdrawal: 0,
-  cashbondRefund: 0,
-  salaryAdvanceRelease: 0,
-
-  managementCostExpenses: 0,
-  cbhbDisbursement: 0,
-
-  unclaimReturnOut: 0,
-  rebatesLoan: 0,
-  otherPayment: 0,
-
-    paymentFundTransfer: 0,
-    bankDeposit: 0,
-  });
-
-  // =========================================================
-  // OTHER RECEIPT MATCHING
-  // Same enabled transactions as Other Receipts Summary
-  // =========================================================
-
-  const normalize = (value) =>
-    String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-  const CASHBOOK_OTHER_RECEIPT_COLUMNS = [
-    {
-      code: "013",
-      aliases: [
-        "Motorcycle Advance",
-        "Motor Loan Principal Collection",
-      ],
-    },
-    {
-      code: "014",
-      aliases: [
-        "Special Advance",
-        "Special Advance Collection",
-      ],
-    },
-    {
-      code: "015",
-      aliases: [
-        "Cash Advance to Staff",
-        "Cash Advance Collection",
-      ],
-    },
-    {
-      code: "016",
-      aliases: [
-        "Other Receivable",
-        "Others/Account Receivables",
-      ],
-    },
-    {
-      code: "017",
-      aliases: ["Office Rental Deposit"],
-    },
-    {
-      code: "030",
-      aliases: [
-        "Staff Benevolent Fund (SBF)",
-        "Staff Benevolent Fund",
-      ],
-    },
-    {
-      aliases: [
-        "Accounts Payable (Payroll A/C)",
-        "Accounts Payable - Payroll A/c",
-      ],
-    },
-    {
-      aliases: [
-        "Accounts Payable (Others)",
-        "Accounts Payable - Others",
-      ],
-    },
-    {
-      code: "033",
-      aliases: [
-        "Accrued Expenses (Picture Collection)",
-        "Picture Collection",
-      ],
-    },
-    {
-      code: "048",
-      aliases: [
-        "Recovered from Bad debt Accounts Collection",
-        "Recoverable from Badept Accounts",
-        "Recoverable from Bad Debt Accounts",
-        "Recovered from Bad Debt Accounts Collection",
-      ],
-    },
-    {
-      code: "052",
-      aliases: [
-        "Interest on Borrowed Funds / Investment Capital",
-        "Borrowed Fund Accounts",
-      ],
-    },
-  ];
-
-  const isIncludedOtherReceipt = (item) => {
-    const category = normalize(item?.category);
-    const code = String(item?.code || "").trim();
-
-    const accountTitle = normalize(
-      item?.account_title ||
-        item?.accountTitle ||
-        ""
-    );
-
-    if (
-      category !== "other receipts" &&
-      code !== "048"
-    ) {
-      return false;
-    }
-
-    return CASHBOOK_OTHER_RECEIPT_COLUMNS.some(
-      (column) => {
-        if (
-          column.code &&
-          code === String(column.code)
-        ) {
-          return true;
-        }
-
-        return (column.aliases || []).some(
-          (alias) =>
-            normalize(alias) === accountTitle
-        );
-      }
-    );
-  };
-
-  // =========================================================
-  // CASHBOOK COMPONENT
-  // =========================================================
-
-  const Cashbook = ({
-    branchId,
-    selectedDate,
-    cashbookData = {},
-    loading = false,
-    otherIncomeRefreshKey = 0,
-    onBeginningBalanceCalculated,
+const Cashbook = ({
+  branchId,
+  selectedDate,
+  cashbookData = {},
+  loading = false,
+  otherIncomeRefreshKey = 0,
+  onBeginningBalanceCalculated,
+  rows = [],
 }) => {
-  const [transactions, setTransactions] = useState([]);
-  const [otherIncomeTransactions, setOtherIncomeTransactions] = useState([]);
-  const [otherReceiptsTransactions, setOtherReceiptsTransactions] = useState([]);
-
-  // =========================================================
-  // LOAD DCS TRANSACTIONS FOR CASHBOOK
-  // =========================================================
-
-  useEffect(() => {
-    if (!branchId) {
-      setTransactions([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadTransactions = async () => {
-      try {
-        const response = await fetchWrapper.get(
-          `${getApiBaseUrl()}transactions/dcs?branch_id=${encodeURIComponent(
-            branchId
-          )}`
-        );
-
-        if (cancelled) return;
-
-        const data =
-          response?.transactions ||
-          response?.data ||
-          response?.response ||
-          [];
-
-        setTransactions(
-          Array.isArray(data) ? data : []
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load Cashbook transactions:",
-          error
-        );
-
-        if (!cancelled) {
-          setTransactions([]);
-        }
-      }
-    };
-
-    loadTransactions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [branchId]);
-
-  // =========================================================
-  // LOAD OTHER INCOME TRANSACTIONS FOR CASHBOOK
-  // =========================================================
-
-  useEffect(() => {
-      if (!branchId || !selectedDate) {
-          setOtherIncomeTransactions([]);
-          return;
-      }
-
-      let cancelled = false;
-
-      const loadOtherIncomeTransactions = async () => {
-          try {
-              const selectedMonth = selectedDate.slice(0, 7);
-
-              const response = await fetchWrapper.get(
-                  `${getApiBaseUrl()}transactions/dcs/other-income?branch_id=${encodeURIComponent(
-                      branchId
-                  )}&month=${encodeURIComponent(selectedMonth)}`
-              );
-
-              if (cancelled) return;
-
-              setOtherIncomeTransactions(
-                  Array.isArray(response?.transactions)
-                      ? response.transactions
-                      : []
-              );
-          } catch (error) {
-              console.error(
-                  "Failed to load Cashbook Other Income:",
-                  error
-              );
-
-              if (!cancelled) {
-                  setOtherIncomeTransactions([]);
-              }
-          }
-      };
-
-      loadOtherIncomeTransactions();
-
-      return () => {
-          cancelled = true;
-      };
-  }, [branchId, selectedDate, otherIncomeRefreshKey]);
-
-  useEffect(() => {
-      if (!branchId || !selectedDate) {
-          setOtherReceiptsTransactions([]);
-          return;
-      }
-
-      let cancelled = false;
-
-      const loadOtherReceipts = async () => {
-          try {
-              const selectedMonth = selectedDate.slice(0, 7);
-
-              const params = new URLSearchParams({
-                  branch_id: String(branchId),
-                  month: selectedMonth,
-              });
-
-              const response = await fetchWrapper.get(
-                  `${getApiBaseUrl()}transactions/dcs/other-receipts?${params.toString()}`
-              );
-
-              if (cancelled) return;
-
-              setOtherReceiptsTransactions(
-                  Array.isArray(response?.transactions)
-                      ? response.transactions
-                      : []
-              );
-
-          } catch (error) {
-              console.error(
-                  "Failed to load Cashbook Other Receipts:",
-                  error
-              );
-
-              if (!cancelled) {
-                  setOtherReceiptsTransactions([]);
-              }
-          }
-      };
-
-      loadOtherReceipts();
-
-      return () => {
-          cancelled = true;
-      };
-
-  }, [branchId, selectedDate, otherIncomeRefreshKey]);
-
-  /* =======================================================
-     TEMPORARY UI DATA
-     Later this will come from API / Hasura.
-  ======================================================= */
-
   const selected = selectedDate
     ? new Date(`${selectedDate}T00:00:00`)
     : new Date();
 
   const year = selected.getFullYear();
-  const monthIndex = selected.getMonth();
 
   const month = selected
     .toLocaleDateString("en-US", {
@@ -416,508 +35,8 @@ const emptyRow = (day) => ({
     })
     .toUpperCase();
 
-  const calculateTotalReceipts = (row) => {
-    return (
-      Number(row.beginningBalance || 0) +
-      Number(row.mcbuCollection || 0) +
-      Number(row.csfCollection || 0) +
-      Number(row.regularLoanCollection || 0) +
-      Number(row.otherLoanCollection || 0) +
-      Number(row.weekly12Collection || 0) +
-      Number(row.staffCbuCollection || 0) +
-      Number(row.cashbondCollection || 0) +
-      Number(row.salaryAdvanceCollection || 0) +
-      Number(row.membershipFee || 0) +
-      Number(row.lrfCollection || 0) +
-      Number(row.cbhbCollection || 0) +
-      Number(row.cbhbAdditional || 0) +
-      Number(row.cbhbOther || 0) +
-      Number(row.otherIncomePicture || 0) +
-      Number(row.withholdingTax || 0) +
-      Number(row.mcbuUnclaimReturn || 0) +
-      Number(row.csfIn || 0) +
-      Number(row.receiptFundTransfer || 0) +
-      Number(row.otherIncome || 0) +
-      Number(row.otherReceipts || 0) +
-      Number(row.bankWithdrawal || 0)
-    );
-  };
-
-  const calculateTotalPayments = (row) => {
-    return (
-      Number(row.regularLoanReleasePrincipal || 0) +
-      Number(row.otherLoanReleasePrincipal || 0) +
-      Number(row.mcbuWithdrawal || 0) +
-      Number(row.csfWithdrawal || 0) +
-      Number(row.mcbuReturnAmount || 0) +
-      Number(row.csfReturnAmount || 0) +
-      Number(row.staffCbuWithdrawal || 0) +
-      Number(row.cashbondRefund || 0) +
-      Number(row.salaryAdvanceRelease || 0) +
-      Number(row.managementCostExpenses || 0) +
-      Number(row.cbhbDisbursement || 0) +
-      Number(row.unclaimReturnOut || 0) +
-      Number(row.rebatesLoan || 0) +
-      Number(row.otherPayment || 0) +
-      Number(row.paymentFundTransfer || 0) +
-      Number(row.bankDeposit || 0)
-    );
-  };
-
-  const rows = useMemo(() => {
-    const result = [];
-
-    const selectedDay = selected.getDate();
-
-    for (let day = 1; day <= selectedDay; day++) {
-      const date = new Date(year, monthIndex, day);
-
-      const dayOfWeek = date.getDay();
-
-      // Skip Sunday and Saturday
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        continue;
-      }
-
-      const dateKey =
-        `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-      const summary = cashbookData[dateKey];
-
-      let staffCbuCollection = 0;
-      let cashbondCollection = 0;
-      let salaryAdvanceCollection = 0;
-      let receiptFundTransfer = 0;
-      let paymentFundTransfer = 0;
-      let otherReceiptsTotal = 0;
-      let withholdingTax = 0;
-      let managementExpensesTotal = 0;
-      let cbhbDisbursementTotal = 0;
-      let otherIncomeBankDeposit = 0;
-      let otherIncomeBankWithdrawal = 0;
-      let otherIncomePenalty = 0;
-      let otherIncomeExcessRemittance = 0;
-      let otherIncomePassbook = 0;
-
-      otherReceiptsTransactions.forEach((transaction) => {
-          const transactionDate = String(
-              transaction?.transaction_date || ""
-          ).slice(0, 10);
-
-          if (transactionDate !== dateKey) {
-              return;
-          }
-
-          const amount = Number(transaction?.amount || 0);
-
-          if (!Number.isFinite(amount) || amount <= 0) {
-              return;
-          }
-
-          switch (transaction.transaction_type) {
-              case "staff_cbu_collection":
-                  staffCbuCollection += amount;
-                  break;
-
-              case "staff_cashbond_collection":
-                  cashbondCollection += amount;
-                  break;
-
-              case "staff_loan_collection":
-                  salaryAdvanceCollection += amount;
-                  break;
-
-              case "staff_sbf_utility_collection":
-              case "mpl_contribution":
-              case "sss_contribution":
-              case "ap_payroll":
-                  otherReceiptsTotal += amount;
-                  break;
-
-              default:
-                  break;
-          }
-      });
-
-      otherIncomeTransactions.forEach((transaction) => {
-          const transactionDate = String(
-              transaction?.transaction_date || ""
-          ).slice(0, 10);
-
-          if (transactionDate !== dateKey) {
-              return;
-          }
-
-          const amount = Number(transaction?.amount || 0);
-
-          if (!Number.isFinite(amount) || amount <= 0) {
-              return;
-          }
-
-          switch (transaction.transaction_type) {
-
-            case "penalty":
-                otherIncomePenalty += amount;
-                break;
-
-            case "excess_remittance":
-                otherIncomeExcessRemittance += amount;
-                break;
-
-            case "passbook":
-                otherIncomePassbook += amount;
-                break;
-
-            case "bank_deposit":
-                otherIncomeBankDeposit += amount;
-                break;
-
-            case "bank_withdrawal":
-                otherIncomeBankWithdrawal += amount;
-                break;
-
-            default:
-                break;
-        }
-      });
-
-      const receiptCodes = [];
-      const paymentCodes = [];
-
-
-      transactions.forEach((transaction) => {
-        const transactionDate = String(
-          transaction?.transaction_date ||
-          transaction?.date ||
-          ""
-        ).slice(0, 10);
-
-        if (transactionDate !== dateKey) {
-          return;
-        }
-
-        const items =
-          transaction?.dcs_transaction_items ||
-          transaction?.items ||
-          [];
-
-        items.forEach((item) => {
-          const category = String(
-            item?.category || ""
-          )
-            .trim()
-            .toLowerCase();
-
-          const rawCode = String(
-            item?.code || ""
-          ).trim();
-
-          const codeMatch = rawCode.match(/^(\d{1,3})(?=\D|$)/);
-
-          const code = codeMatch
-            ? codeMatch[1].padStart(3, "0")
-            : rawCode;
-
-          const accountTitle = String(
-            item?.account_title ||
-            item?.accountTitle ||
-            ""
-          )
-            .trim()
-            .toLowerCase();
-
-          const amount = Number(item?.amount || 0);
-
-          if (!Number.isFinite(amount) || amount <= 0) {
-            return;
-          }
-
-          // =========================================================
-          // AUTOMATIC RECEIPT TRANSACTION CODES
-          // =========================================================
-
-          if (
-            code &&
-            (
-              category === "other receipts" ||
-              category === "other income"
-            )
-          ) {
-            receiptCodes.push(code);
-          }
-
-          // =========================================================
-          // AUTOMATIC PAYMENT TRANSACTION CODES
-          // =========================================================
-
-          if (
-            code &&
-            (
-              category === "management expenses" ||
-              category === "other payments"
-            )
-          ) {
-            paymentCodes.push(code);
-          }
-
-          // Existing Management Expenses calculation
-          if (category === "management expenses") {
-            managementExpensesTotal += amount;
-          }
-
-          // CBHB TOTAL DISBURSEMENT
-          // Transaction > Other Payments > Code 023
-          if (
-            category === "other payments" &&
-            code === "023"
-          ) {
-            cbhbDisbursementTotal += amount;
-          }
-
-          if (isIncludedOtherReceipt(item)) {
-            otherReceiptsTotal += amount;
-          }
-
-          if (
-            category === "other receipts" &&
-            code === "028" &&
-            accountTitle === "staff cbu collection"
-          ) {
-            staffCbuCollection += amount;
-          }
-
-          if (
-            category === "other receipts" &&
-            code === "029" &&
-            accountTitle === "staff cashbond collection"
-          ) {
-            cashbondCollection += amount;
-          }
-
-          if (
-            category === "other receipts" &&
-            code === "012" &&
-            accountTitle === "salary advance"
-          ) {
-            salaryAdvanceCollection += amount;
-          }
-
-          if (
-              category === "other receipts" &&
-              code === "036" &&
-              accountTitle === "fund transfer (receiver)"
-          ) {
-              receiptFundTransfer += amount;
-          }
-
-          if (
-              category === "other payments" &&
-              code === "036" &&
-              accountTitle === "fund transfer (giver)"
-          ) {
-              paymentFundTransfer += amount;
-          }
-
-          if (
-            category === "management expenses" &&
-            code === "055" &&
-            (
-              accountTitle === "employers contribution (er)" ||
-              accountTitle === "employers contribution (ee)" ||
-              accountTitle === "witheld tax"
-            )
-          ) {
-            withholdingTax += amount;
-          }
-
-        });
-      });
-
-    result.push({
-        ...emptyRow(day),
-
-        date,
-        dateKey,
-
-        dayName: date.toLocaleDateString("en-US", {
-          weekday: "long",
-        }),
-
-        receiptTransactionCodes: formatTransactionCodes(receiptCodes),
-        paymentTransactionCodes: formatTransactionCodes(paymentCodes),
-
-        beginningBalance: summary?.beginningBalance ?? 0,
-        mcbuCollection: summary?.rcptMcbu ?? 0,
-        csfCollection: summary?.rcptCsf ?? 0,
-        managementCostExpenses: managementExpensesTotal,
-        cbhbDisbursement: cbhbDisbursementTotal,
-
-        regularLoanCollection: summary?.rcptRegularLoan ?? 0,
-        otherLoanCollection: summary?.rcptOtherLoan ?? 0,
-        weekly12Collection: summary?.rcptWeekly12 ?? 0,
-
-        regularLoanReleasePersons:
-          Number(summary?.regularLoanReleasePersons) || 0,
-
-        regularLoanReleasePrincipal:
-          Number(summary?.regularLoanReleasePrincipal) || 0,
-
-        otherLoanReleasePersons:
-          Number(summary?.otherLoanReleasePersons) || 0,
-
-        otherLoanReleasePrincipal:
-          Number(summary?.otherLoanReleasePrincipal) || 0,
-
-        mcbuWithdrawal:
-          Number(summary?.payMcbuWithdrawal) || 0,
-
-        csfWithdrawal:
-          Number(summary?.payCsfWithdrawal) || 0,
-
-        mcbuReturnPersons:
-          Number(summary?.payMcbuReturnNo) || 0,
-
-        mcbuReturnAmount:
-          Math.round(
-            (
-              (Number(summary?.payMcbuReturn) || 0) -
-              (Number(summary?.payCsfReturn) || 0)
-            ) * 100
-          ) / 100,
-
-        csfReturnAmount:
-          Number(summary?.payCsfReturn) || 0,
-
-        staffCbuCollection,
-        cashbondCollection,
-        salaryAdvanceCollection,
-        membershipFee: summary?.rcptAdminFees ?? 0,
-        lrfCollection: summary?.rcptLrf ?? 0,
-        cbhbCollection: summary?.rcptCbhb ?? 0,
-        cbhbAdditional: summary?.rcptAddHospi ?? 0,
-
-        cbhbOther:
-          (Number(summary?.admissionNo || 0) * 50) +
-          otherIncomePassbook,
-
-        otherIncomePicture:
-          Number(summary?.rcptOtherReceiptsPicture || 0),
-
-        withholdingTax,
-
-        mcbuUnclaimReturn:
-            Number(summary?.rcptMcbuUnclaimedIn) || 0,
-
-        unclaimReturnOut:
-            Number(summary?.payMcbuUnclaimedOut) || 0,
-
-        csfIn:
-          Number(summary?.rcptOtherIncomeCsf) || 0,
-
-        receiptFundTransfer:
-            Number(summary?.rcptFundTransferIn) || 0,
-
-        paymentFundTransfer,
-
-        otherIncome:
-          Number(summary?.rcptOtherIncome || 0) +
-          otherIncomePenalty +
-          otherIncomeExcessRemittance,
-
-        otherReceipts: otherReceiptsTotal,
-        rebatesLoan: summary?.payRebates ?? 0,
-
-        bankWithdrawal:
-          Number(summary?.rcptBankWithdrawal || 0) +
-          otherIncomeBankWithdrawal,
-
-          bankDeposit:
-          Number(summary?.payBankDeposits || 0) +
-          otherIncomeBankDeposit,
-
-        otherPayment: summary?.payOtherPayments ?? 0,
-
-      });
-    }
-
-    let previousClosingBalance = null;
-
-    result.forEach((row, index) => {
-      const source = cashbookData[row.dateKey];
-
-      const sourceType = String(
-        source?.beginningBalanceSource || ""
-      ).toLowerCase();
-
-      const isFirstWorkingDay = index === 0;
-
-      if (
-        isFirstWorkingDay ||
-        previousClosingBalance === null ||
-        sourceType === "manual"
-      ) {
-        row.beginningBalance = Number(
-          source?.beginningBalance || 0
-        );
-      } else {
-        row.beginningBalance = previousClosingBalance;
-      }
-
-      const totalReceipts = calculateTotalReceipts(row);
-      const totalPayments = calculateTotalPayments(row);
-
-      previousClosingBalance =
-        Math.round(
-          (totalReceipts - totalPayments) * 100
-        ) / 100;
-    });
-
-    return result;
-  }, [
-      selectedDate,
-      year,
-      monthIndex,
-      cashbookData,
-      transactions,
-      otherIncomeTransactions,
-      otherReceiptsTransactions,
-  ]);
-
-  const selectedDayBeginningBalance = useMemo(() => {
-      if (loading || !selectedDate) {
-          return null;
-      }
-
-      const selectedRow = rows.find(
-          (row) => row.dateKey === selectedDate
-      );
-
-      if (!selectedRow) {
-          return null;
-      }
-
-      if (!cashbookData[selectedDate]) {
-          return null;
-      }
-
-      const amount = Number(selectedRow.beginningBalance);
-
-      return Number.isFinite(amount) ? amount : null;
-  }, [rows, selectedDate, cashbookData, loading]);
-
-  useEffect(() => {
-      if (typeof onBeginningBalanceCalculated !== "function") {
-          return;
-      }
-
-      onBeginningBalanceCalculated(
-          selectedDayBeginningBalance
-      );
-  }, [
-      selectedDayBeginningBalance,
-      onBeginningBalanceCalculated,
-  ]);
-
+  const calculateTotalReceipts = (row) => calculateCashbookReceipts(row);
+  const calculateTotalPayments = (row) => calculateCashbookPayments(row);
   const isWeekEnd = (row, index) => {
     const nextRow = rows[index + 1];
 
@@ -933,39 +52,33 @@ const emptyRow = (day) => ({
   };
 
   const sumField = (sourceRows, field) =>
-    sourceRows.reduce(
-      (total, row) => total + Number(row[field] || 0),
-      0
-    );
+    sourceRows.reduce((total, row) => total + Number(row[field] || 0), 0);
 
   const renderTotalRow = (sourceRows, label, className = "") => {
     const firstRow = sourceRows[0];
     const lastRow = sourceRows[sourceRows.length - 1];
 
-    const beginningBalance = Number(
-        firstRow?.beginningBalance || 0
-    );
+    const beginningBalance = Number(firstRow?.beginningBalance || 0);
 
     const operatingReceipts = sourceRows.reduce(
-        (sum, row) =>
-            sum +
-            calculateTotalReceipts(row) -
-            Number(row.beginningBalance || 0),
-        0
+      (sum, row) =>
+        sum + calculateTotalReceipts(row) - Number(row.beginningBalance || 0),
+      0
     );
 
-    const totalReceipts =
-        beginningBalance + operatingReceipts;
+    const totalReceipts = beginningBalance + operatingReceipts;
 
     const totalPayments = sourceRows.reduce(
-        (sum, row) => sum + calculateTotalPayments(row),
-        0
+      (sum, row) => sum + calculateTotalPayments(row),
+      0
     );
 
     const closingBalance = lastRow
-        ? calculateTotalReceipts(lastRow) -
-          calculateTotalPayments(lastRow)
-        : 0;
+      ? calculateClosingBalance({
+          totalReceipts: calculateTotalReceipts(lastRow),
+          totalPayments: calculateTotalPayments(lastRow),
+        })
+      : 0;
 
     return (
       <tr className={`cb-total-row ${className}`}>
@@ -1001,9 +114,7 @@ const emptyRow = (day) => ({
         <td>{money(sumField(sourceRows, "otherReceipts"))}</td>
         <td>{money(sumField(sourceRows, "bankWithdrawal"))}</td>
 
-        <td className="cb-important">
-          {money(totalReceipts)}
-        </td>
+        <td className="cb-important">{money(totalReceipts)}</td>
 
         <td className="cb-expense"></td>
 
@@ -1034,13 +145,9 @@ const emptyRow = (day) => ({
         <td>{money(sumField(sourceRows, "paymentFundTransfer"))}</td>
         <td>{money(sumField(sourceRows, "bankDeposit"))}</td>
 
-        <td className="cb-important">
-          {money(totalPayments)}
-        </td>
+        <td className="cb-important">{money(totalPayments)}</td>
 
-        <td className="cb-closing">
-          {money(closingBalance)}
-        </td>
+        <td className="cb-closing">{money(closingBalance)}</td>
       </tr>
     );
   };
@@ -1303,13 +410,9 @@ const emptyRow = (day) => ({
       =================================================== */}
 
       <div className="cashbook-header">
-        <h2 className="cashbook-company">
-          AmberCash PH Micro Lending Corp
-        </h2>
+        <h2 className="cashbook-company">AmberCash PH Micro Lending Corp</h2>
 
-        <div className="cashbook-title">
-          CASHBOOK
-        </div>
+        <div className="cashbook-title">CASHBOOK</div>
 
         <div className="cashbook-period">
           <div>
@@ -1329,21 +432,14 @@ const emptyRow = (day) => ({
       <div className="cashbook-scroll">
         <table className="cashbook-table">
           <thead>
-
             {/* MAIN GROUPS */}
 
             <tr className="cb-main-group">
-              <th
-                className="cb-receipts-title"
-                colSpan={26}
-              >
+              <th className="cb-receipts-title" colSpan={26}>
                 RECEIPTS / DEBIT
               </th>
 
-              <th
-                className="cb-payments-title"
-                colSpan={22}
-              >
+              <th className="cb-payments-title" colSpan={22}>
                 PAYMENTS / CREDIT
               </th>
             </tr>
@@ -1351,18 +447,13 @@ const emptyRow = (day) => ({
             {/* COLUMN HEADERS */}
 
             <tr>
-              <th className="cb-weekday">
-                Day
-              </th>
+              <th className="cb-weekday">Day</th>
 
-              <th className="cb-date">
-                Date
-              </th>
+              <th className="cb-date">Date</th>
 
               <th className="cb-description">
                 Description of Others Receipts
-                <br />
-                & Other Income
+                <br />& Other Income
               </th>
 
               <th className="cb-beginning">
@@ -1390,15 +481,15 @@ const emptyRow = (day) => ({
               </th>
 
               <th className="cb-collection">
-                  Weekly Collection
-                  <br />
-                  (24 Weeks)
+                Weekly Collection
+                <br />
+                (24 Weeks)
               </th>
 
               <th className="cb-collection">
-                  Weekly Collection
-                  <br />
-                  (12 Weeks)
+                Weekly Collection
+                <br />
+                (12 Weeks)
               </th>
 
               <th className="cb-cbu">
@@ -1507,8 +598,7 @@ const emptyRow = (day) => ({
 
               <th className="cb-expense">
                 Management Expenses
-                <br />
-                & Other Payments
+                <br />& Other Payments
               </th>
 
               <th className="cb-collection">
@@ -1641,14 +731,14 @@ const emptyRow = (day) => ({
 
           <tbody>
             {rows.map((row, index) => {
-              const totalReceipts =
-                calculateTotalReceipts(row);
+              const totalReceipts = calculateTotalReceipts(row);
 
-              const totalPayments =
-                calculateTotalPayments(row);
+              const totalPayments = calculateTotalPayments(row);
 
-              const closingBalance =
-                totalReceipts - totalPayments;
+              const closingBalance = calculateClosingBalance({
+                totalReceipts,
+                totalPayments,
+              });
 
               const weekEnd = isWeekEnd(row, index);
 
@@ -1656,12 +746,10 @@ const emptyRow = (day) => ({
                 <React.Fragment key={row.day}>
                   <tr>
                     <td className="cb-weekday-cell">
-                        {row.dayName.slice(0, 3)}
-                      </td>
+                      {row.dayName.slice(0, 3)}
+                    </td>
 
-                      <td className="cb-date cb-day-cell">
-                        {row.day}
-                      </td>
+                    <td className="cb-date cb-day-cell">{row.day}</td>
 
                     <td
                       className="cb-description-cell"
@@ -1671,16 +759,18 @@ const emptyRow = (day) => ({
                     </td>
 
                     <td
-                        className="cb-beginning"
-                        title={
-                            cashbookData[row.dateKey]?.beginningBalanceSource === 'manual'
-                                ? 'Manual Beginning Balance'
-                                : cashbookData[row.dateKey]?.beginningBalanceSource === 'carried_forward'
-                                    ? 'Automatic Carry-Forward'
-                                    : 'Historical Beginning Balance'
-                        }
+                      className="cb-beginning"
+                      title={
+                        cashbookData[row.dateKey]?.beginningBalanceSource ===
+                        "manual"
+                          ? "Manual Beginning Balance"
+                          : cashbookData[row.dateKey]
+                              ?.beginningBalanceSource === "carried_forward"
+                          ? "Automatic Carry-Forward"
+                          : "Historical Beginning Balance"
+                      }
                     >
-                        {money(row.beginningBalance)}
+                      {money(row.beginningBalance)}
                     </td>
 
                     <td className="cb-collection">
@@ -1700,76 +790,48 @@ const emptyRow = (day) => ({
                     </td>
 
                     <td className="cb-collection">
-                        {money(row.weekly12Collection)}
+                      {money(row.weekly12Collection)}
                     </td>
 
-                    <td className="cb-cbu">
-                      {money(row.staffCbuCollection)}
-                    </td>
+                    <td className="cb-cbu">{money(row.staffCbuCollection)}</td>
 
-                    <td className="cb-cbu">
-                      {money(row.cashbondCollection)}
-                    </td>
+                    <td className="cb-cbu">{money(row.cashbondCollection)}</td>
 
                     <td className="cb-cbu">
                       {money(row.salaryAdvanceCollection)}
                     </td>
 
-                    <td className="cb-special">
-                      {money(row.membershipFee)}
-                    </td>
+                    <td className="cb-special">{money(row.membershipFee)}</td>
 
-                    <td className="cb-special">
-                      {money(row.lrfCollection)}
-                    </td>
+                    <td className="cb-special">{money(row.lrfCollection)}</td>
 
-                    <td className="cb-special">
-                      {money(row.cbhbCollection)}
-                    </td>
+                    <td className="cb-special">{money(row.cbhbCollection)}</td>
 
-                    <td className="cb-special">
-                      {money(row.cbhbAdditional)}
-                    </td>
+                    <td className="cb-special">{money(row.cbhbAdditional)}</td>
 
-                    <td className="cb-special">
-                      {money(row.cbhbOther)}
-                    </td>
+                    <td className="cb-special">{money(row.cbhbOther)}</td>
 
                     <td className="cb-special">
                       {money(row.otherIncomePicture)}
                     </td>
 
-                    <td className="cb-special">
-                      {money(row.withholdingTax)}
-                    </td>
+                    <td className="cb-special">{money(row.withholdingTax)}</td>
 
-                    <td className="cb-cbu">
-                      {money(row.mcbuUnclaimReturn)}
-                    </td>
+                    <td className="cb-cbu">{money(row.mcbuUnclaimReturn)}</td>
 
-                    <td className="cb-cbu">
-                      {money(row.csfIn)}
-                    </td>
+                    <td className="cb-cbu">{money(row.csfIn)}</td>
 
                     <td className="cb-special">
                       {money(row.receiptFundTransfer)}
                     </td>
 
-                    <td className="cb-special">
-                      {money(row.otherIncome)}
-                    </td>
+                    <td className="cb-special">{money(row.otherIncome)}</td>
 
-                    <td className="cb-special">
-                      {money(row.otherReceipts)}
-                    </td>
+                    <td className="cb-special">{money(row.otherReceipts)}</td>
 
-                    <td className="cb-bank">
-                      {money(row.bankWithdrawal)}
-                    </td>
+                    <td className="cb-bank">{money(row.bankWithdrawal)}</td>
 
-                    <td className="cb-important">
-                      {money(totalReceipts)}
-                    </td>
+                    <td className="cb-important">{money(totalReceipts)}</td>
 
                     {/* PAYMENTS */}
 
@@ -1804,9 +866,7 @@ const emptyRow = (day) => ({
                       {money(row.csfWithdrawal)}
                     </td>
 
-                    <td className="cb-collection">
-                      {row.mcbuReturnPersons}
-                    </td>
+                    <td className="cb-collection">{row.mcbuReturnPersons}</td>
 
                     <td className="cb-collection">
                       {money(row.mcbuReturnAmount)}
@@ -1816,13 +876,9 @@ const emptyRow = (day) => ({
                       {money(row.csfReturnAmount)}
                     </td>
 
-                    <td className="cb-cbu">
-                      {money(row.staffCbuWithdrawal)}
-                    </td>
+                    <td className="cb-cbu">{money(row.staffCbuWithdrawal)}</td>
 
-                    <td className="cb-cbu">
-                      {money(row.cashbondRefund)}
-                    </td>
+                    <td className="cb-cbu">{money(row.cashbondRefund)}</td>
 
                     <td className="cb-cbu">
                       {money(row.salaryAdvanceRelease)}
@@ -1836,33 +892,21 @@ const emptyRow = (day) => ({
                       {money(row.cbhbDisbursement)}
                     </td>
 
-                    <td className="cb-cbu">
-                      {money(row.unclaimReturnOut)}
-                    </td>
+                    <td className="cb-cbu">{money(row.unclaimReturnOut)}</td>
 
-                    <td className="cb-payment">
-                      {money(row.rebatesLoan)}
-                    </td>
+                    <td className="cb-payment">{money(row.rebatesLoan)}</td>
 
-                    <td className="cb-payment">
-                      {money(row.otherPayment)}
-                    </td>
+                    <td className="cb-payment">{money(row.otherPayment)}</td>
 
                     <td className="cb-payment">
                       {money(row.paymentFundTransfer)}
                     </td>
 
-                    <td className="cb-bank">
-                      {money(row.bankDeposit)}
-                    </td>
+                    <td className="cb-bank">{money(row.bankDeposit)}</td>
 
-                    <td className="cb-important">
-                      {money(totalPayments)}
-                    </td>
+                    <td className="cb-important">{money(totalPayments)}</td>
 
-                    <td className="cb-closing">
-                      {money(closingBalance)}
-                    </td>
+                    <td className="cb-closing">{money(closingBalance)}</td>
                   </tr>
 
                   {weekEnd &&
@@ -1887,11 +931,7 @@ const emptyRow = (day) => ({
               );
             })}
 
-            {renderTotalRow(
-              rows,
-              "Monthly Total",
-              "cb-monthly-total"
-            )}
+            {renderTotalRow(rows, "Monthly Total", "cb-monthly-total")}
           </tbody>
         </table>
       </div>
