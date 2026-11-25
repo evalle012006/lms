@@ -343,9 +343,9 @@ async function save(req, res) {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else if ((mode === 'advance' || mode === 'active')) {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
-            } else if (!hasExistingCC) {
-                await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
+            // noOfClients / availableSlots / status of the group are maintained by the DB trigger
+            // (refresh_group_slots, migrations 011 + 014). Do not write them from here.
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow' && finalData.loanCycle > 1) {
                 const reloan = mode === 'reloan';
@@ -435,35 +435,6 @@ async function save(req, res) {
     res.send(response);
 }
 
-
-async function updateGroup(user_id, loan, addToMutationList, loanId) {
-    //let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
-    logger.debug({user_id, page: `Updating Group For Loan: ${loanId}`, data: loan});
-    let group = await graph.query(queryQl(groupType(), { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
-    if (group.length > 0) {
-        group = group[0];
-        group.noOfClients = group.noOfClients ? group.noOfClients : 0;
-
-        group.availableSlots = group.availableSlots.filter(s => s !== loan.slotNo);
-        group.noOfClients = group.noOfClients + 1;
-
-        if (group.noOfClients === group.capacity) {
-            group.status = 'full';
-        }
-
-        addToMutationList(alias => updateQl(groupType(alias), {
-                set: {
-                    noOfClients: group.noOfClients,
-                    availableSlots: group.availableSlots,
-                    status: group.status,
-                },
-                where: {
-                    _id: { _eq: loan.groupId }
-                }
-            })
-        );
-    }
-}
 
 async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMutationList) {
     let loan = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId }}}))).data?.loans;

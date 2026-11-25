@@ -66,6 +66,17 @@ async function createOffsetNotification(collection, loan, user_id) {
     }
 }
 
+// Advance (reloaner) payoff row: current loan of a client who just fully paid and has a pending reloan.
+// Sent as 'pending' but its loan is still active/completed (the reloan's own release row has a pending loan).
+function isAdvancePayoffRow(collection, loan) {
+    return collection.status === 'pending'
+        && collection.advance === true
+        && !collection.draft
+        && Number(collection.loanBalance) <= 0
+        && !!loan
+        && (loan.status === 'active' || loan.status === 'completed');
+}
+
 async function save(req, res) {
     const user_id = req?.auth?.sub;
     let response = {};
@@ -194,6 +205,10 @@ async function save(req, res) {
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate)
                     await updateClient(user_id, mutationQl, collection);
+                } else if (isAdvancePayoffRow(collection, loan)) {
+                    // Fully-paid client with a pending reloan is sent as 'pending', which skips updateLoan above;
+                    // savePendingLoans may then only flip the loan status. Apply the payoff now (see saveV2.js).
+                    await updateLoan(user_id, mutationQl, { ...collection, status: 'completed' }, currentDate)
                 }
 
                 // A resubmitted (non-draft) reverted row resolves the revert. updateLoan never writes loans.reverted

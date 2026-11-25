@@ -624,6 +624,20 @@ async function saveWithProtection(req, res) {
 // Returns: Array of offset collections for notification
 // ============================================
 
+/**
+ * An advance (reloaner) payoff row: the cashCollections row of the CURRENT loan of a client who just
+ * fully paid and already has a pending reloan. It is sent with status 'pending', but its loan is still
+ * active/completed. The reloan's own release row is different: its loan has status 'pending'.
+ */
+function isAdvancePayoffRow(collection, loan) {
+    return collection.status === 'pending'
+        && collection.advance === true
+        && !collection.draft
+        && Number(collection.loanBalance) <= 0
+        && !!loan
+        && (loan.status === 'active' || loan.status === 'completed');
+}
+
 async function executeSave(req, user_id, transactionId, user) {
     let data = req.body;
     const currentDate = data.currentDate;
@@ -839,6 +853,14 @@ async function executeSave(req, user_id, transactionId, user) {
                     await updateLoan(user_id, mutationQl, collection, currentDate);
                     await updateClient(user_id, mutationQl, collection);
                     rowsToVerify.push(collection);
+                } else if (isAdvancePayoffRow(collection, loan)) {
+                    // The page sends a fully-paid client with a pending reloan as status 'pending'
+                    // (temp.status = temp.advance ? 'pending' : 'completed'), which skips updateLoan above.
+                    // savePendingLoans then either closes the loan (release due today) or only flips the status
+                    // to 'completed', which left loanBalance / activeLoan / mcbu / noOfPayments / fullPaymentDate
+                    // untouched. Apply the payoff to the loan now, as a normal 'completed' row; the reloan
+                    // release (updatePendingLoan) still closes it afterwards.
+                    await updateLoan(user_id, mutationQl, { ...collection, status: 'completed' }, currentDate);
                 }
 
                 // A resubmitted (non-draft) reverted row resolves the revert. updateLoan never writes loans.reverted
