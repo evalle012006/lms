@@ -419,8 +419,8 @@ const LoginPage = () => {
         setIsSubmitting(true);
         
         try {
-            const email = formData.email;
-            const password = getPasswordValue();
+            const email = formData.email.trim();
+            const password = getPasswordValue().trim();
             
             // Additional check before submission
             if (!password) {

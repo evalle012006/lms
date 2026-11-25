@@ -42,6 +42,10 @@ async function resetUserPassword(req, res) {
             set: {
                 password: hashedPassword,
                 mustChangePassword: true,
+                // A reset must also lift any lockout, otherwise the new temp password is
+                // rejected with "Account locked" for users who failed several times first.
+                loginAttempts: 0,
+                lockedUntil: null,
                 biometricCredentialId: null,
                 biometricPublicKey:    null,
                 biometricCounter:      0,

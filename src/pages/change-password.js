@@ -91,7 +91,7 @@ const ChangePasswordPage = () => {
         try {
             const response = await fetchWrapper.post(getApiBaseUrl() + 'users/change-password', {
                 _id: currentUser._id,
-                currentPassword,
+                currentPassword: currentPassword.trim(),
                 newPassword,
             });
 
