@@ -36,6 +36,7 @@ jest.mock('@/lib/graph.functions', () => {
 const h = require('../../__mocks__/cc-harness');
 const { savePendingLoans } = require('@/pages/api/v2/transactions/cash-collections/update-pending-loans');
 const saveV2 = require('@/pages/api/v2/transactions/cash-collections/saveV2').default;
+const saveLegacy = require('@/pages/api/v2/transactions/cash-collections/save').default;
 const rollbackH = require('@/pages/api/v2/transactions/cash-collections/rollback-transaction').default;
 const preSaveH = require('@/pages/api/v2/transactions/cash-collections/pre-save-collections').default;
 
@@ -136,5 +137,13 @@ describe('advance payoff rows apply the payoff to the loan', () => {
         seed();
         await save([payoff(1, { status: 'completed', advance: false })]);
         expect(loan()).toMatchObject({ status: 'completed', loanBalance: 0, activeLoan: 0 });
+    });
+
+    test('[OK] P5 the older save.js endpoint applies the same payoff', async () => {
+        seed();
+        const res = mkRes();
+        await saveLegacy({ auth: { sub: 'u-1' }, body: { currentDate: DAY, currentTime: '1:24:35 PM', collection: JSON.stringify([payoff()]) } }, res);
+        expect(res.data).toMatchObject({ success: true });
+        expect(loan()).toMatchObject({ status: 'completed', loanBalance: 0, activeLoan: 0, mcbu: 4065 });
     });
 });
