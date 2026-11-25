@@ -7,6 +7,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { findUserById } from '@/lib/graph.functions';
 
+import { isAdminLevel } from '@/lib/roles';
 const graph = new GraphProvider();
 
 const ATTEMPT_TYPE = createGraphType('client_enrollment_attempts', `
@@ -25,7 +26,7 @@ export default apiHandler({ get: list });
 
 async function list(req, res) {
     const currentUser = await findUserById(req.auth.sub);
-    if (!currentUser?.root) {
+    if (!isAdminLevel(currentUser)) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 

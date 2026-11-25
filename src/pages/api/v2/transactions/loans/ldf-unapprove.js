@@ -13,6 +13,7 @@
 // approved are changed, and the update repeats those conditions in the WHERE clause
 // so a loan that was final-approved a moment ago cannot be touched.
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -28,6 +29,7 @@ const MAX_IDS = 500;
 export default apiHandler({ post: ldfUnapprove });
 
 async function ldfUnapprove(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     try {
         const { scope, error } = await requireApprover(req);
         if (error) return res.status(200).json({ success: false, message: error });

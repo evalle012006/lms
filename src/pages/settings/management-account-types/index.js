@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { isAdminLevel } from '@/lib/roles';
 import Layout from "@/components/Layout";
 import { useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
@@ -50,7 +51,7 @@ const FormulaHint = () => (
 const ManagementAccountTypesPage = () => {
     const currentUser = useSelector(state => state.user.data);
 
-    if (!currentUser || currentUser.role?.shortCode !== 'admin') {
+    if (!currentUser || !isAdminLevel(currentUser)) {
         return (
             <Layout>
                 <div className="flex flex-col items-center justify-center h-96">

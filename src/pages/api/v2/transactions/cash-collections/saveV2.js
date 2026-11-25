@@ -23,6 +23,7 @@ import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { notifyLoanOffset, notifySuccessiveDelinquent, notifyDelinquentAsReloaner, isNotificationEnabled } from '@/lib/notification-service';
 import moment from 'moment-timezone';
 import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
+import { groupLockMessage } from '@/lib/support-lock';
 import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
 import { findHardRuleViolations, sanitizeCompletedRow, refreshPayoffHistory } from '@/lib/collection-rules';
@@ -260,6 +261,9 @@ async function saveWithProtection(req, res) {
         if (typeof data.collection === 'string') {
             data.collection = JSON.parse(data.collection);
         }
+
+        const lockMsg = await groupLockMessage(data.collection?.[0]?.groupId, user_id);
+        if (lockMsg) return res.status(200).json({ success: false, error: true, message: lockMsg });
 
         // Log start
         logger.debug({

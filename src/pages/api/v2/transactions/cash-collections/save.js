@@ -4,6 +4,7 @@ import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.
 import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
+import { groupLockMessage } from '@/lib/support-lock';
 import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { isNotificationEnabled, notifyLoanOffset } from '@/lib/notification-service';
@@ -73,6 +74,8 @@ async function save(req, res) {
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
     data.collection = JSON.parse(data.collection);
+    const lockMsg = await groupLockMessage(data.collection?.[0]?.groupId, user_id);
+    if (lockMsg) return res.status(200).json({ success: false, error: true, message: lockMsg });
     const overallTotalNetCollection = data.overallTotalNetCollection || 0;
     const isNotificationEnabledFlag = await isNotificationEnabled();
 

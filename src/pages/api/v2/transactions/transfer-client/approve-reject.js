@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from "@/services/api-handler";
 import moment from "moment";
 import { findCashCollections, findLoans } from "@/lib/graph.functions";
@@ -31,6 +32,7 @@ export default apiHandler({
 });
 
 async function approveReject(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const user_id = req.auth?.sub;
     const transfers = req.body;
     const mutationList = [];

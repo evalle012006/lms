@@ -24,6 +24,7 @@
  * }
  */
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import { LOAN_FIELDS, CASH_COLLECTIONS_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -40,6 +41,7 @@ export default apiHandler({
 });
 
 async function verifyAndRepair(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body?.repair ? req.body : null, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const user_id = req?.auth?.sub;
     const { groupId, dateAdded, repair = false } = req.body;
 

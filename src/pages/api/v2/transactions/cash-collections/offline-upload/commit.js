@@ -15,6 +15,7 @@
  * Returns HTTP 200 with success:false for business rejections (a 403 would log the user out).
  */
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import moment from 'moment-timezone';
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -78,6 +79,7 @@ const reply = (res, success, message, extra = {}) =>
 const near = (a, b, tol = 0.005) => Math.abs(safeNumber(a) - safeNumber(b)) < tol;
 
 async function commit(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const userId = req?.auth?.sub;
     const user = await findUserById(userId);
     const body = req.body || {};

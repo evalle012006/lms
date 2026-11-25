@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { findRoleByKey } from '@/lib/roles';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
@@ -137,9 +138,7 @@ const AddUpdateUser = ({ mode = 'add', user = DEFAULT_USER, roles = DEFAULT_ROLE
 
     const selectedRole = useMemo(() => {
         if (role) {
-            const [rep, shortCode] = role.split('-') ?? [];
-            const selected = roles.find(r => r.rep === +rep);
-            return { ...selected, shortCode};
+            return findRoleByKey(roles, role);
         }
         return null;
     }, [user, role]);

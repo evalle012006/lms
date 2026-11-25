@@ -8,6 +8,7 @@ import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { FACE_VERIFY_ATTEMPT_FIELDS, CLIENT_FACE_ENROLLMENT_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 
+import { isAdminLevel } from '@/lib/roles';
 const graph = new GraphProvider();
 const ATTEMPT_TYPE = createGraphType('face_verify_attempts', FACE_VERIFY_ATTEMPT_FIELDS);
 const CLIENT_TYPE = createGraphType('client', `_id firstName lastName profile faceEnrollPhotoKey`)('clients');
@@ -17,7 +18,7 @@ export default apiHandler({ get: list });
 
 async function list(req, res) {
     const currentUser = await findUserById(req.auth.sub);
-    if (!currentUser?.root) {
+    if (!isAdminLevel(currentUser)) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 

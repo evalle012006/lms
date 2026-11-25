@@ -6,6 +6,7 @@ import { getCurrentDate } from '@/lib/date-utils';
 import { findUserById, findBranches, findGroups } from '@/lib/graph.functions';
 import { isNotificationEnabled, notifyProspectClientCreated } from '@/lib/notification-service';
 import { apiHandler } from "@/services/api-handler";
+import { groupLockMessage } from '@/lib/support-lock';
 import moment from 'moment';
 import logger from '@/logger';
 import { isAboveBranchLevel } from '@/lib/ci-roles';
@@ -28,6 +29,9 @@ async function save(req, res) {
 
     let response = {};
     let statusCode = 200;
+
+    const lockMsg = await groupLockMessage(clientData.groupId, user_id);
+    if (lockMsg) return res.send({ success: false, error: true, message: lockMsg });
 
     try {
         // ── Duplicate guard ───────────────────────────────────────────────

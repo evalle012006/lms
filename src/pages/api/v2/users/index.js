@@ -1,4 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
+import { parseRole } from '@/lib/roles';
 import formidable from "formidable";
 
 import { USER_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
@@ -365,7 +366,8 @@ async function updateUser(req, res) {
                 }
 
                 const profile = file || userData.profile;
-                const userRole = JSON.parse(payload.role);
+                const userRole = parseRole(payload.role);
+                if (!userRole?.shortCode) { return res.status(200).json({ error: true, fields: ['role'], message: 'Invalid role.' }); }
 
                 const hierarchyFields = buildHierarchyFields(userRole, payload);
 
@@ -492,7 +494,7 @@ async function updateUser(req, res) {
 
                 const resp = await graph.mutation(
                     updateQl(USER_TYPE, {
-                        set: forUpdate,
+                        set: { ...forUpdate, dateModified: new Date() },
                         where: { email: { _eq: payload.email } }
                     })
                 );

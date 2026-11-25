@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from "@/services/api-handler";
 import { createGraphType, deleteQl, queryQl } from "@/lib/graph/graph.util";
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -11,6 +12,7 @@ export default apiHandler({
 });
 
 async function deleteUser(req, res) {
+    { const __lockMsg = await lockMessageForBody(null, req?.auth?.sub, { clientIds: [req.body?._id] }); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
   const { _id = null } = req.body;
 
   let statusCode = 200;

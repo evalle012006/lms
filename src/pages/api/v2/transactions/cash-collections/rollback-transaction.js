@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS, QR_CASH_COLLECTION_ENTRY_FIELDS } from '@/lib/graph.fields';
 import { findClients, findGroups, findLoans, findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -32,6 +33,7 @@ function resolveLoanId(cc) {
 }
 
 async function revert(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const user_id = req?.auth?.sub;
     const cashCollections = req.body;
     const mutationQL = [];
