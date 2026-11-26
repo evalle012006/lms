@@ -94,32 +94,6 @@ BEGIN
     )
     WHERE source_type = 'manual';
 
-    RAISE NOTICE 'MCBU / CSF In database setup completed successfully.';
-
-    ALTER TABLE public.dcs_other_receipts_transactions
-
-    DROP CONSTRAINT dcs_other_receipts_type_check,
-
-    ADD CONSTRAINT dcs_other_receipts_type_check
-    CHECK (
-        transaction_type IN (
-            'staff_loan_collection',
-            'staff_cbu_collection',
-            'staff_cashbond_collection',
-            'staff_sbf_utility_collection',
-            'mpl_contribution',
-            'sss_contribution',
-            'ap_payroll',
-
-            -- Additional Other Receipts Transactions
-            'overstated_management_expenses',
-            'salary_advance',
-            'motorcycle_loan',
-            'cash_advance',
-            'special_advance'
-        )
-    );
-
     ALTER TABLE public.dcs_other_receipts_transactions
     DROP CONSTRAINT dcs_other_receipts_type_check,
     ADD CONSTRAINT dcs_other_receipts_type_check
@@ -141,6 +115,8 @@ BEGIN
             'bad_debt_collection'
         )
     );
+
+    RAISE NOTICE 'MCBU / CSF In and Other Receipts database setup completed successfully.';
 
     END;
     $$;
