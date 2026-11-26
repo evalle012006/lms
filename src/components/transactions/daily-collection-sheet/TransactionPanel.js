@@ -16,8 +16,17 @@ const OTHER_INCOME_TYPES = [
 const OTHER_RECEIPTS_TYPES = [
     { value: 'staff_cbu_collection', label: 'Staff CBU Collection' },
     { value: 'staff_cashbond_collection', label: 'Staff Cashbond Collection' },
-    { value: 'staff_loan_collection', label: 'Staff Loan Collection' },
     { value: 'staff_sbf_utility_collection', label: 'Staff SBF / Utility Collection' },
+    { value: 'staff_loan_collection', label: 'Staff Loan Collection' },
+    { value: 'staff_loan_interest', label: 'Staff Loan Interest' },
+
+    { value: 'salary_advance', label: 'Salary Advance' },
+    { value: 'cash_advance', label: 'Cash Advance' },
+    { value: 'motorcycle_loan', label: 'Motorcycle Loan' },
+    { value: 'special_advance', label: 'Special Advance' },
+    { value: 'bad_debt_collection', label: 'Recovered from Bad Debt Accounts Collection' },
+
+    { value: 'overstated_management_expenses', label: 'Overstated ( Management Expenses )' },
     { value: 'mpl_contribution', label: 'MPL Contribution' },
     { value: 'sss_contribution', label: 'SSS Contribution' },
     { value: 'ap_payroll', label: 'A/P Payroll' },
@@ -126,10 +135,6 @@ const INITIAL_TRANSACTION_TYPES = [
     // OTHER RECEIPTS
     // =====================================================
 
-    { id: 'OR-012', category: 'Other Receipts', code: '012 - Salary Advance', accountTitle: 'Salary Advance' },
-    { id: 'OR-013', category: 'Other Receipts', code: '013 - Motorcycle Advance', accountTitle: 'Motorcycle Advance' },
-    { id: 'OR-014', category: 'Other Receipts', code: '014 - Special Advance', accountTitle: 'Special Advance' },
-    { id: 'OR-015', category: 'Other Receipts', code: '015 - Cash Advance to Staff', accountTitle: 'Cash Advance to Staff' },
     { id: 'OR-016', category: 'Other Receipts', code: '016 - Other Receivable', accountTitle: 'Other Receivable' },
     { id: 'OR-017', category: 'Other Receipts', code: '017 - Office Rental Deposit', accountTitle: 'Office Rental Deposit' },
     { id: 'OR-023', category: 'Other Receipts', code: '023 - Client Hospitalization & Beneficiary (C.B.H.B) Refund', accountTitle: 'Client Hospitalization & Beneficiary (C.B.H.B) Refund' },
@@ -143,8 +148,6 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OR-033', category: 'Other Receipts', code: '033 - Accrued Expenses (Picture Collection)', accountTitle: 'Accrued Expenses (Picture Collection)' },
     { id: 'OR-034-01', category: 'Other Receipts', code: '034 - Accounts Payable (Payroll A/C)', accountTitle: 'Accounts Payable (Payroll A/C)' },
     { id: 'OR-034-02', category: 'Other Receipts', code: '034 - Accounts Payable (Others)', accountTitle: 'Accounts Payable (Others)' },
-    { id: 'OR-036', category: 'Other Receipts', code: '036 - Fund Transfer (Receiver)', accountTitle: 'Fund Transfer (Receiver)' },
-    { id: 'OR-048', category: 'Other Receipts', code: '048 - Recovered from Bad debt Accounts Collection', accountTitle: 'Recovered from Bad debt Accounts Collection' },
     { id: 'OR-052', category: 'Other Receipts', code: '052 - Interest on Borrowed Funds / Investment Capital', accountTitle: 'Interest on Borrowed Funds / Investment Capital' },
     ];
 
@@ -681,7 +684,7 @@ const TransactionPanel = ({
             `Are you sure you want to permanently delete this Other Receipts Transaction?\n\n` +
             `Type: ${typeLabel}\n` +
             `Description: ${transaction.description}\n` +
-            `Amount: â‚± ${money(transaction.amount)}`
+            `Amount: {'₱'} ${money(transaction.amount)}`
         );
 
         if (!confirmed) return;
@@ -747,7 +750,7 @@ const TransactionPanel = ({
                 (type) => type.value === transaction.transaction_type
             )?.label || transaction.transaction_type}\n` +
             `Description: ${transaction.description}\n` +
-            `Amount: â‚± ${money(transaction.amount)}`
+            `Amount: {'₱'} ${money(transaction.amount)}`
         );
 
         if (!confirmed) return;
@@ -1078,7 +1081,7 @@ const TransactionPanel = ({
                         <td>${String(item.code || '').split(' - ')[0].trim()}</td>
                         <td>${item.accountTitle || ''}</td>
                         <td>${item.description || ''}</td>
-                        <td class="amount">â‚± ${money(item.amount)}</td>
+                        <td class="amount">{'₱'} ${money(item.amount)}</td>
                     </tr>
                 `
             )
@@ -1502,7 +1505,7 @@ const TransactionPanel = ({
                                 </td>
 
                                 <td class="amount">
-                                    â‚± ${money(transaction.totalAmount)}
+                                    {'₱'} ${money(transaction.totalAmount)}
                                 </td>
                             </tr>
                         </tbody>
@@ -1791,7 +1794,7 @@ const TransactionPanel = ({
                                             </td>
 
                                             <td className="px-4 py-3 text-right font-bold text-gray-800">
-                                                â‚± {money(transaction.totalAmount)}
+                                                {'₱'} {money(transaction.totalAmount)}
                                             </td>
 
                                             <td className="px-4 py-3">
@@ -1913,7 +1916,7 @@ const TransactionPanel = ({
                                             colSpan={5}
                                             className="px-4 py-3 text-right font-bold text-teal-800 whitespace-nowrap"
                                         >
-                                            â‚± {money(totalTransactionsAmount)}
+                                            {'₱'} {money(totalTransactionsAmount)}
                                         </td>
 
                                         <td></td>
@@ -2007,7 +2010,7 @@ const TransactionPanel = ({
                                             </td>
 
                                             <td className="px-4 py-3 text-right font-bold text-gray-800">
-                                                â‚± {money(transaction.amount)}
+                                                {'₱'} {money(transaction.amount)}
                                             </td>
 
                                             <td className="px-4 py-3">
@@ -2088,7 +2091,7 @@ const TransactionPanel = ({
                                             colSpan={3}
                                             className="px-4 py-3 text-right font-bold text-teal-800 whitespace-nowrap"
                                         >
-                                            â‚± {money(totalOtherTransactionsAmount)}
+                                            {'₱'} {money(totalOtherTransactionsAmount)}
                                         </td>
 
                                         <td></td>
@@ -2136,7 +2139,7 @@ const TransactionPanel = ({
                                 </span>
 
                                 <span className="text-sm font-bold text-teal-800">
-                                    â‚± {money(totalOtherReceiptsAmount)}
+                                    {'₱'} {money(totalOtherReceiptsAmount)}
                                 </span>
                             </div>
                         </div>
@@ -2194,7 +2197,7 @@ const TransactionPanel = ({
                                             </td>
 
                                             <td className="px-4 py-3 text-right font-bold text-gray-800">
-                                                â‚± {money(transaction.amount)}
+                                                {'₱'} {money(transaction.amount)}
                                             </td>
 
                                             <td className="px-4 py-3">
@@ -2281,7 +2284,7 @@ const TransactionPanel = ({
                                             colSpan={3}
                                             className="px-4 py-3 text-right font-bold text-teal-800 whitespace-nowrap"
                                         >
-                                            â‚± {money(totalOtherReceiptsAmount)}
+                                            {'₱'} {money(totalOtherReceiptsAmount)}
                                         </td>
 
                                         <td></td>
@@ -2689,7 +2692,7 @@ const TransactionPanel = ({
                                         </span>
 
                                         <div className="text-xl font-bold text-gray-800">
-                                            â‚± {money(totalAmount)}
+                                            {'₱'} {money(totalAmount)}
                                         </div>
 
                                     </div>
@@ -2784,7 +2787,7 @@ const TransactionPanel = ({
                         <div className="flex justify-between items-center gap-3 px-5 py-4 border-t border-gray-200">
 
                             <div className="text-sm font-bold text-gray-700">
-                                Total: â‚± {money(totalAmount)}
+                                Total: {'₱'} {money(totalAmount)}
                             </div>
 
                             <div className="flex gap-2">
@@ -2951,7 +2954,7 @@ const TransactionPanel = ({
 
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                                        â‚±
+                                        {'₱'}
                                     </span>
 
                                     <input
@@ -3053,7 +3056,7 @@ const TransactionPanel = ({
                             <div>
                                 <p className="text-gray-500">Amount</p>
                                 <p className="text-lg font-bold text-teal-700">
-                                    â‚± {money(viewingOtherIncome.amount)}
+                                    {'₱'} {money(viewingOtherIncome.amount)}
                                 </p>
                             </div>
 
@@ -3140,7 +3143,7 @@ const TransactionPanel = ({
                                 </p>
 
                                 <p className="text-lg font-bold text-blue-700">
-                                    â‚± {money(viewingOtherReceipts.amount)}
+                                    {'₱'} {money(viewingOtherReceipts.amount)}
                                 </p>
                             </div>
 
@@ -3304,7 +3307,7 @@ const TransactionPanel = ({
                                                     </td>
 
                                                     <td className="border border-gray-300 p-2 text-sm text-right">
-                                                        â‚± {money(item.amount)}
+                                                        {'₱'} {money(item.amount)}
                                                     </td>
 
                                                 </tr>
@@ -3320,7 +3323,7 @@ const TransactionPanel = ({
                                             </td>
 
                                             <td className="border border-gray-300 p-2 text-right font-bold">
-                                                â‚±{' '}
+                                                {'₱'}{' '}
                                                 {money(
                                                     selectedTransaction.totalAmount
                                                 )}

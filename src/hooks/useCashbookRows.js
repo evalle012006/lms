@@ -238,7 +238,7 @@ export default function useCashbookRows({
     return () => {
       cancelled = true;
     };
-  }, [branchId]);
+  }, [branchId, selectedDate, otherIncomeRefreshKey]);
 
   useEffect(() => {
     if (!branchId || !selectedDate) {
@@ -360,6 +360,7 @@ export default function useCashbookRows({
       let staffCbuCollection = 0;
       let cashbondCollection = 0;
       let salaryAdvanceCollection = 0;
+      let staffLoanInterestTotal = 0;
       let receiptFundTransfer = 0;
       let paymentFundTransfer = 0;
       let otherReceiptsTotal = 0;
@@ -398,16 +399,29 @@ export default function useCashbookRows({
             cashbondCollection += amount;
             break;
 
+          // STAFF PRINCIPAL LOAN COLLECTION
           case "staff_loan_collection":
-            salaryAdvanceCollection += amount;
-            break;
+          case "cash_advance":
+          case "special_advance":
+              salaryAdvanceCollection += amount;
+              break;
 
+          // STAFF LOAN INTEREST
+          case "staff_loan_interest":
+              staffLoanInterestTotal += amount;
+              break;
+
+          // OTHER RECEIPTS
+          case "bad_debt_collection":
+          case "salary_advance":
+          case "motorcycle_loan":
           case "staff_sbf_utility_collection":
           case "mpl_contribution":
           case "sss_contribution":
           case "ap_payroll":
-            otherReceiptsTotal += amount;
-            break;
+          case "overstated_management_expenses":
+              otherReceiptsTotal += amount;
+              break;
 
           default:
             break;
@@ -471,19 +485,11 @@ export default function useCashbookRows({
           transaction?.dcs_transaction_items || transaction?.items || [];
 
         items.forEach((item) => {
-          const category = String(item?.category || "")
-            .trim()
-            .toLowerCase();
-
+          const category = normalize(item?.category);
           const rawCode = String(item?.code || "").trim();
-
           const codeMatch = rawCode.match(/^(\d{1,3})(?=\D|$)/);
-
           const code = codeMatch ? codeMatch[1].padStart(3, "0") : rawCode;
-
-          const accountTitle = String(
-            item?.account_title || item?.accountTitle || ""
-          )
+          const accountTitle = String(item?.account_title || item?.accountTitle || "")
             .trim()
             .toLowerCase();
 
@@ -604,16 +610,6 @@ export default function useCashbookRows({
           ) {
             paymentFundTransfer += amount;
           }
-
-          if (
-            category === "management expenses" &&
-            code === "055" &&
-            (accountTitle === "employers contribution (er)" ||
-              accountTitle === "employers contribution (ee)" ||
-              accountTitle === "witheld tax")
-          ) {
-            withholdingTax += amount;
-          }
         });
       });
 
@@ -657,27 +653,20 @@ export default function useCashbookRows({
         lrfCollection: summary?.rcptLrf ?? 0,
         cbhbCollection: summary?.rcptCbhb ?? 0,
         cbhbAdditional: summary?.rcptAddHospi ?? 0,
-
         cbhbOther: Number(summary?.admissionNo || 0) * 50 + otherIncomePassbook,
-
         otherIncomePicture: Number(summary?.rcptOtherReceiptsPicture || 0),
-
         withholdingTax,
-
         mcbuUnclaimReturn: Number(summary?.rcptMcbuUnclaimedIn) || 0,
-
         unclaimReturnOut: Number(summary?.payMcbuUnclaimedOut) || 0,
-
         csfIn: Number(summary?.rcptOtherIncomeCsf) || 0,
-
         receiptFundTransfer: Number(summary?.rcptFundTransferIn) || 0,
-
         paymentFundTransfer,
 
         otherIncome:
-            Number(summary?.rcptOtherIncome || 0) +
-            otherIncomePenalty +
-            otherIncomeExcessRemittance,
+          Number(summary?.rcptOtherIncome || 0) +
+          otherIncomePenalty +
+          otherIncomeExcessRemittance +
+          staffLoanInterestTotal,
 
         otherReceipts: otherReceiptsTotal,
         rebatesLoan: summary?.payRebates ?? 0,

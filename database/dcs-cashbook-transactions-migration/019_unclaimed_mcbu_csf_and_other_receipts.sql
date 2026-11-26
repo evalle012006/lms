@@ -76,8 +76,6 @@ BEGIN
     )
     WHERE source_type = 'manual';
 
-    RAISE NOTICE 'MCBU / CSF In database setup completed successfully.';
-
     CREATE UNIQUE INDEX IF NOT EXISTS
         idx_unclaimed_unique_cash_collection
     ON public.unclaimed_amount_transactions (
@@ -85,5 +83,64 @@ BEGIN
     )
     WHERE cash_collection_id IS NOT NULL;
 
-END;
-$$;
+    CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_unclaimed_unique_manual_entry
+    ON public.unclaimed_amount_transactions (
+        client_id,
+        branch_id,
+        entry_date,
+        mcbu_amount,
+        csf_amount
+    )
+    WHERE source_type = 'manual';
+
+    RAISE NOTICE 'MCBU / CSF In database setup completed successfully.';
+
+    ALTER TABLE public.dcs_other_receipts_transactions
+
+    DROP CONSTRAINT dcs_other_receipts_type_check,
+
+    ADD CONSTRAINT dcs_other_receipts_type_check
+    CHECK (
+        transaction_type IN (
+            'staff_loan_collection',
+            'staff_cbu_collection',
+            'staff_cashbond_collection',
+            'staff_sbf_utility_collection',
+            'mpl_contribution',
+            'sss_contribution',
+            'ap_payroll',
+
+            -- Additional Other Receipts Transactions
+            'overstated_management_expenses',
+            'salary_advance',
+            'motorcycle_loan',
+            'cash_advance',
+            'special_advance'
+        )
+    );
+
+    ALTER TABLE public.dcs_other_receipts_transactions
+    DROP CONSTRAINT dcs_other_receipts_type_check,
+    ADD CONSTRAINT dcs_other_receipts_type_check
+    CHECK (
+        transaction_type IN (
+            'staff_loan_collection',
+            'staff_loan_interest',
+            'staff_cbu_collection',
+            'staff_cashbond_collection',
+            'staff_sbf_utility_collection',
+            'mpl_contribution',
+            'sss_contribution',
+            'ap_payroll',
+            'overstated_management_expenses',
+            'salary_advance',
+            'motorcycle_loan',
+            'cash_advance',
+            'special_advance',
+            'bad_debt_collection'
+        )
+    );
+
+    END;
+    $$;

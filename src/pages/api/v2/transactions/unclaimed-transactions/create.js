@@ -62,6 +62,22 @@ const GROUP_TYPE = createGraphType(
     `
 )("groups");
 
+const CASH_COLLECTION_TYPE = createGraphType(
+    "cashCollections",
+    `
+        _id
+        clientId
+        branchId
+        groupId
+        loId
+        dateAdded
+        mcbuReturnAmt
+        csfReturnAmt
+        paymentCollection
+        remarks
+    `
+)("cashCollections");
+
 const LOAN_TYPE = createGraphType(
     "loans",
     `
@@ -311,6 +327,102 @@ async function createUnclaimedTransaction(req, res) {
         }
 
         // =================================================
+        // PREVENT DUPLICATE MANUAL REGISTRATION
+        // =================================================
+
+        const duplicateResult = checkGraphResult(
+            await graph.query(
+                queryQl(UNCLAIMED_TRANSACTION_TYPE, {
+                    where: {
+                        source_type: { _eq: "manual" },
+                        client_id: { _eq: clientId },
+                        branch_id: { _eq: branchId },
+                        entry_date: { _eq: entryDate },
+                        mcbu_amount: { _eq: mcbu },
+                        csf_amount: { _eq: csf },
+                    },
+                    limit: 1,
+                })
+            )
+        );
+
+        const duplicateTransaction =
+            duplicateResult.data?.transaction?.[0];
+
+        if (duplicateTransaction) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This MCBU / CSF In transaction is already registered.",
+            });
+        }
+
+        // =================================================
+        // CHECK EXISTING AUTOMATIC OFFSET TRANSACTIONS
+        // =================================================
+
+        const offsetResult = checkGraphResult(
+            await graph.query(
+                queryQl(CASH_COLLECTION_TYPE, {
+                    where: {
+                        clientId: { _eq: clientId },
+                        branchId: { _eq: branchId },
+                        dateAdded: { _eq: entryDate },
+                        remarks: {
+                            _contains: {
+                                value: "offset-unclaimed",
+                            },
+                        },
+                    },
+                })
+            )
+        );
+
+        const existingOffsets =
+            offsetResult.data?.cashCollections || [];
+
+        const toCents = value =>
+            Math.round(Number(value || 0) * 100);
+
+        const duplicateOffset = existingOffsets.some(collection => {
+            // LOR stores MCBU and CSF combined in mcbuReturnAmt.
+            const combinedReturn =
+                toCents(collection.mcbuReturnAmt);
+
+            const csfReturn =
+                toCents(collection.csfReturnAmt);
+
+            const paymentCollection =
+                toCents(collection.paymentCollection);
+
+            const mcbuReturn =
+                combinedReturn - csfReturn;
+
+            const unclaimedAmount =
+                combinedReturn - paymentCollection;
+
+            const manualTotal = toCents(mcbu) + toCents(csf);
+
+            const sameReturnAmounts =
+                mcbuReturn === toCents(mcbu) &&
+                csfReturn === toCents(csf);
+
+            const sameUnclaimedAmount =
+                unclaimedAmount > 0 &&
+                unclaimedAmount === manualTotal;
+
+            return sameReturnAmounts || sameUnclaimedAmount;
+        });
+
+        if (duplicateOffset) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "A matching automatic offset transaction already exists for this client. Please use the existing transaction.",
+            });
+        }
+
+        // =================================================
         // GET CLIENT LOAN AND SLOT NUMBER
         // =================================================
 
@@ -431,6 +543,20 @@ async function createUnclaimedTransaction(req, res) {
         });
 
     } catch (error) {
+        const errorMessage = String(error?.message || "");
+
+        if (
+            errorMessage.includes(
+                "idx_unclaimed_unique_manual_entry"
+            )
+        ) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This MCBU / CSF In transaction is already registered.",
+            });
+        }
+
         logger.error(
             "Create manual unclaimed transaction error:",
             error

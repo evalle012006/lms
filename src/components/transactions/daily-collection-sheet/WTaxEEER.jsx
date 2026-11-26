@@ -13,9 +13,8 @@ const money = (value) => {
     });
 };
 
-const WTaxEEER = ({ branchId, selectedDate }) => {
+const WTaxEEER = ({branchId, selectedDate, otherIncomeRefreshKey = 0,}) => {
     const selectedMoment = moment(selectedDate);
-
     const monthName = selectedMoment.format('MMMM').toUpperCase();
     const year = selectedMoment.format('YYYY');
 
@@ -59,6 +58,12 @@ const WTaxEEER = ({ branchId, selectedDate }) => {
                     response?.response ||
                     [];
 
+                console.log("WTAX BRANCH ID:", branchId);
+
+                console.log("WTAX API RESPONSE:", response);
+
+                console.log("WTAX TRANSACTIONS:", data);
+
                 setTransactions(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error('Failed to load WTax EE ER transactions:', error);
@@ -69,46 +74,67 @@ const WTaxEEER = ({ branchId, selectedDate }) => {
         };
 
         loadTransactions();
-    }, [branchId]);
+    }, [branchId, selectedDate, otherIncomeRefreshKey]);
 
     const dailyData = useMemo(() => {
         const result = {};
 
+        const selectedMonth = moment(selectedDate).format('YYYY-MM');
+
+        const normalize = (value) =>
+            String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, ' ');
+
         transactions.forEach((transaction) => {
-            const date = transaction.transaction_date;
+            const date = String(
+                transaction?.transaction_date ||
+                transaction?.date ||
+                ''
+            ).slice(0, 10);
 
             if (!date) return;
 
-            // Only include transactions in the selected month.
-            if (
-                moment(date).format('YYYY-MM') !==
-                selectedMoment.format('YYYY-MM')
-            ) {
+            if (date.slice(0, 7) !== selectedMonth) {
                 return;
             }
 
-            if (!result[date]) {
-                result[date] = {
-                    ee: 0,
-                    er: 0,
-                    withholdingTax: 0,
-                };
-            }
-
-            const items = transaction.dcs_transaction_items || [];
+            const items =
+                transaction?.dcs_transaction_items ||
+                transaction?.items ||
+                [];
 
             items.forEach((item) => {
-                const category = String(item.category || '')
-                    .trim()
-                    .toLowerCase();
+                const category = normalize(item?.category);
+                const rawCode = String(item?.code || '').trim();
+                const codeMatch = rawCode.match(/^(\d{1,3})(?=\D|$)/);
 
-                const code = String(item.code || '').trim();
+                const code = codeMatch
+                    ? codeMatch[1].padStart(3, '0')
+                    : rawCode;
 
-                const accountTitle = String(item.account_title || '')
-                    .trim()
-                    .toLowerCase();
+                const accountTitle = normalize(
+                    item?.account_title ||
+                    item?.accountTitle ||
+                    ''
+                );
 
-                const amount = Number(item.amount || 0);
+                const amount = Number(item?.amount || 0);
+
+                console.log("WTAX TRANSACTION ITEM:", {
+                    date,
+                    category,
+                    rawCode,
+                    code,
+                    accountTitle,
+                    amount,
+                    originalItem: item,
+                });
+
+                if (!Number.isFinite(amount) || amount <= 0) {
+                    return;
+                }
 
                 if (
                     category !== 'management expenses' ||
@@ -117,18 +143,37 @@ const WTaxEEER = ({ branchId, selectedDate }) => {
                     return;
                 }
 
+                if (!result[date]) {
+                    result[date] = {
+                        ee: 0,
+                        er: 0,
+                        withholdingTax: 0,
+                    };
+                }
+
                 // Employee's Contribution (EE)
-                if (accountTitle === 'employers contribution (ee)') {
+                if (
+                    accountTitle === 'employers contribution (ee)' ||
+                    accountTitle === 'employees contribution (ee)' ||
+                    accountTitle === "employee's contribution (ee)"
+                ) {
                     result[date].ee += amount;
                 }
 
                 // Employer's Contribution (ER)
-                if (accountTitle === 'employers contribution (er)') {
+                else if (
+                    accountTitle === 'employers contribution (er)' ||
+                    accountTitle === "employer's contribution (er)"
+                ) {
                     result[date].er += amount;
                 }
 
                 // Withholding Tax
-                if (accountTitle === 'witheld tax') {
+                else if (
+                    accountTitle === 'witheld tax' ||
+                    accountTitle === 'withheld tax' ||
+                    accountTitle === 'withholding tax'
+                ) {
                     result[date].withholdingTax += amount;
                 }
             });

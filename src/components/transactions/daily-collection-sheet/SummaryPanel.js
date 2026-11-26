@@ -82,6 +82,7 @@ const SummaryPanel = ({
   const [staffCbuCollection, setStaffCbuCollection] = useState(0);
   const [staffCashbondCollection, setStaffCashbondCollection] = useState(0);
   const [staffLoanCollection, setStaffLoanCollection] = useState(0);
+  const [staffLoanInterest, setStaffLoanInterest] = useState(0);
   const [otherReceiptsCollections, setOtherReceiptsCollections] = useState(0);
 
   useEffect(() => {
@@ -175,8 +176,10 @@ const SummaryPanel = ({
       setStaffCbuCollection(0);
       setStaffCashbondCollection(0);
       setStaffLoanCollection(0);
+      setStaffLoanInterest(0);
+      setOtherReceiptsCollections(0);
       return;
-    }
+  }
 
     let cancelled = false;
 
@@ -200,6 +203,7 @@ const SummaryPanel = ({
         let cbuTotal = 0;
         let cashbondTotal = 0;
         let loanTotal = 0;
+        let staffLoanInterestTotal = 0;
         let otherReceiptsTotal = 0;
 
         transactions.forEach((transaction) => {
@@ -218,16 +222,29 @@ const SummaryPanel = ({
               cashbondTotal += amount;
               break;
 
+            // 5 - Staff Principal Loan Collection
             case "staff_loan_collection":
-              loanTotal += amount;
-              break;
+            case "cash_advance":
+            case "special_advance":
+                loanTotal += amount;
+                break;
 
+            // Staff Loan Interest
+            case "staff_loan_interest":
+                staffLoanInterestTotal += amount;
+                break;
+
+            // 14 - Other Receipts
+            case "bad_debt_collection":
+            case "salary_advance":
+            case "motorcycle_loan":
             case "staff_sbf_utility_collection":
             case "mpl_contribution":
             case "sss_contribution":
             case "ap_payroll":
-              otherReceiptsTotal += amount;
-              break;
+            case "overstated_management_expenses":
+                otherReceiptsTotal += amount;
+                break;
 
             default:
               break;
@@ -237,6 +254,7 @@ const SummaryPanel = ({
         setStaffCbuCollection(cbuTotal);
         setStaffCashbondCollection(cashbondTotal);
         setStaffLoanCollection(loanTotal);
+        setStaffLoanInterest(staffLoanInterestTotal);
         setOtherReceiptsCollections(otherReceiptsTotal);
       } catch (error) {
         console.error("Failed to load Other Receipts collections:", error);
@@ -245,6 +263,7 @@ const SummaryPanel = ({
           setStaffCbuCollection(0);
           setStaffCashbondCollection(0);
           setStaffLoanCollection(0);
+          setStaffLoanInterest(0);
           setOtherReceiptsCollections(0);
         }
       }
@@ -404,6 +423,14 @@ const SummaryPanel = ({
       </div>
     );
 
+    console.log("SUMMARY MANAGEMENT EXPENSES:", {
+        cashbookRow,
+        cashbookManagementExpenses:
+            cashbookRow?.managementCostExpenses,
+        summaryManagementExpenses:
+            d?.payMngtExpenses,
+    });
+
   const amounts = {
     rcptMcbu: dcsTotals ? Number(dcsTotals.mcbuActual) || 0 : d.rcptMcbu,
 
@@ -440,7 +467,10 @@ const SummaryPanel = ({
 
     rcptOtherIncomePassbook:
       (Number(dcsTotals?.admissionNo) || 0) * 50 + otherIncomePassbook,
-    rcptOtherIncome: Number(d.rcptOtherIncome || 0) + otherIncomeReceipts,
+    rcptOtherIncome:
+      Number(d.rcptOtherIncome || 0) +
+      otherIncomeReceipts +
+      staffLoanInterest,
     rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
 
     rcptOtherReceiptsPicture: otherIncomePicture,
@@ -469,6 +499,10 @@ const SummaryPanel = ({
         ? (Number(cashbookRow.salaryAdvanceRelease) || 0) +
         (Number(cashbookRow.staffCbuWithdrawal) || 0)
         : Number(d.payStaffLoanRelease) || 0,
+
+    payMngtExpenses: cashbookRow
+        ? Number(cashbookRow.managementCostExpenses) || 0
+        : Number(d.payMngtExpenses) || 0,
 
     payCbhbDisbursed: cashbookRow
         ? Number(cashbookRow.cbhbDisbursement) || 0
@@ -525,6 +559,7 @@ const SummaryPanel = ({
       staffCbuCollection +
       staffCashbondCollection +
       staffLoanCollection +
+      staffLoanInterest +
       otherReceiptsCollections +
       (amounts.rcptOtherIncomePassbook -
         Number(d.rcptOtherIncomePassbook || 0)) +

@@ -179,8 +179,76 @@ const getBranchDcsTotals = async (branchId, selectedDate) => {
   };
 };
 
+const getBranchOtherReceiptsTotal = async (branchId, selectedDate) => {
+    const response = await graph.apollo.query({
+        query: gql`
+            query GetBranchOtherReceiptsTotal(
+                $branchId: String!
+                $selectedDate: date!
+            ) {
+                dcs_other_receipts_transactions(
+                    where: {
+                        branch_id: { _eq: $branchId }
+                        transaction_date: { _eq: $selectedDate }
+                    }
+                ) {
+                    transaction_type
+                    amount
+                }
+            }
+        `,
+        variables: {
+            branchId,
+            selectedDate,
+        },
+        fetchPolicy: "network-only",
+    });
+
+    if (response.errors?.length) {
+        throw new Error(
+            `Failed to retrieve Other Receipts for ${selectedDate}.`
+        );
+    }
+
+    const allowedTypes = [
+      "bad_debt_collection",
+      "staff_loan_collection",
+      "staff_loan_interest",
+      "staff_cbu_collection",
+      "staff_cashbond_collection",
+      "staff_sbf_utility_collection",
+      "mpl_contribution",
+      "sss_contribution",
+      "ap_payroll",
+      "overstated_management_expenses",
+      "salary_advance",
+      "motorcycle_loan",
+      "cash_advance",
+      "special_advance",
+  ];
+
+    const transactions =
+        response.data?.dcs_other_receipts_transactions || [];
+
+    const total = transactions.reduce((sum, transaction) => {
+        const amount = Number(transaction.amount || 0);
+
+        if (
+            !allowedTypes.includes(transaction.transaction_type) ||
+            !Number.isFinite(amount) ||
+            amount <= 0
+        ) {
+            return sum;
+        }
+
+        return sum + amount;
+    }, 0);
+
+    return roundMoney(total);
+};
+
 const getBranchDailyCashMovement = async (branchId, selectedDate) => {
-  const [summaryResponse, dcsTotals] = await Promise.all([
+  const [summaryResponse, dcsTotals, otherReceiptsTotal,] = await Promise.all([
     graph.apollo.query({
       query: gql`
         query GetBranchDcsCashMovement(
@@ -202,6 +270,7 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
     }),
 
     getBranchDcsTotals(branchId, selectedDate),
+    getBranchOtherReceiptsTotal(branchId, selectedDate),
   ]);
 
   if (summaryResponse.errors?.length) {
@@ -283,9 +352,7 @@ const getBranchDailyCashMovement = async (branchId, selectedDate) => {
     otherLoanDifference;
 
   const totalPaymentDifference = mcbuReturnDifference + csfReturnDifference;
-
-  const receipts = roundMoney(originalReceipts + totalCollectionDifference);
-
+  const receipts = roundMoney(originalReceipts + totalCollectionDifference + otherReceiptsTotal);
   const payments = roundMoney(originalPayments + totalPaymentDifference);
 
   return {

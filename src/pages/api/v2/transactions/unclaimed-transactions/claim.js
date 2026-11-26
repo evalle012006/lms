@@ -572,10 +572,10 @@ async function claimOffsetTransaction(
     }
 
     const unclaimedAmount = roundMoney(
-        toNumber(collection.mcbuReturnAmt) -
+        toNumber(collection.mcbuReturnAmt) +
+        toNumber(collection.csfReturnAmt) -
         toNumber(collection.paymentCollection)
     );
-
     if (unclaimedAmount <= 0) {
         return failure(
             'Unclaimed amount must be greater than zero.'

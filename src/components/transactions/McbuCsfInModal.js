@@ -1,5 +1,5 @@
 //src/components/transactions/McbuCsfInModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save } from 'lucide-react';
 import { toast } from 'react-toastify';
 import moment from 'moment';
@@ -59,6 +59,8 @@ export default function McbuCsfInModal({
 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    const savingRef = useRef(false);
 
     // =====================================================
     // RESET MODAL
@@ -380,7 +382,7 @@ export default function McbuCsfInModal({
     const handleSave = async (event) => {
         event.preventDefault();
 
-        if (saving) return;
+        if (savingRef.current || saving) return;
 
         setError('');
 
@@ -420,6 +422,7 @@ export default function McbuCsfInModal({
             return;
         }
 
+        savingRef.current = true;
         setSaving(true);
 
         try {
@@ -458,6 +461,7 @@ export default function McbuCsfInModal({
                 'Failed to register MCBU / CSF In.'
             );
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };

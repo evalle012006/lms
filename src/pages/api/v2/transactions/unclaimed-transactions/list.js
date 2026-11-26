@@ -198,9 +198,9 @@ function buildRequestFilters(filters, manual = false) {
 }
 
 function formatOffsetTransaction(cc, transaction = null) {
-    const totalReturn = toNumber(cc.mcbuReturnAmt);
+    const mcbu = toNumber(cc.mcbuReturnAmt);
     const csf = toNumber(cc.csfReturnAmt);
-    const mcbu = roundMoney(totalReturn - csf);
+    const totalReturn = roundMoney(mcbu + csf);
     const loanBalance = toNumber(cc.paymentCollection);
 
     const unclaimedAmount = roundMoney(
