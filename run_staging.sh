@@ -11,6 +11,7 @@ set -e  # Exit immediately on any error
 APP_DIR=~/lms-app
 BRANCH=${1:-migration}
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+MIN_FREE_GB=${MIN_FREE_GB:-5}   # minimum free disk space (GB) required before building
 
 # ── Colors ───────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -24,6 +25,19 @@ log()     { echo -e "${CYAN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"; }
 success() { echo -e "${GREEN}✔ $1${NC}"; }
 warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 error()   { echo -e "${RED}✘ $1${NC}"; exit 1; }
+
+free_gb() { df -P --output=avail -BG "$APP_DIR" | tail -1 | tr -dc '0-9'; }
+
+cleanup_disk() {
+  log "Reclaiming disk space..."
+  docker builder prune -af                                   || warn "builder prune failed"
+  docker image prune -af --filter "until=72h"                || warn "image prune failed"
+  docker container prune -f --filter "until=72h"             || warn "container prune failed"
+  docker volume prune -f                                     || warn "volume prune failed"
+  rm -rf "$APP_DIR/.next/cache"
+  npm cache clean --force >/dev/null 2>&1                    || warn "npm cache clean failed"
+  success "Cleanup done. Free space: $(free_gb)GB"
+}
 
 # ── Banner ───────────────────────────────────────────────────
 echo ""
@@ -50,6 +64,15 @@ log "Checking environment and config files..."
 [ -f "docker-compose.yml" ] || error "docker-compose.yml missing!"
 success "Configuration files verified."
 
+# ── Disk space guard ────────────────────────────────────────
+log "Checking disk space (need >= ${MIN_FREE_GB}GB free)..."
+if [ "$(free_gb)" -lt "$MIN_FREE_GB" ]; then
+  warn "Low disk space: $(free_gb)GB free."
+  cleanup_disk
+  [ "$(free_gb)" -ge "$MIN_FREE_GB" ] || error "Only $(free_gb)GB free after cleanup (need ${MIN_FREE_GB}GB). Free space manually."
+fi
+success "Disk OK: $(free_gb)GB free."
+
 # ── Install dependencies & Build ────────────────────────────
 log "Installing dependencies..."
 npm install --quiet
@@ -71,12 +94,11 @@ docker compose up -d
 success "Containers started."
 
 # ── Cleanup ──────────────────────────────────────────────────
-log "Cleaning up old Docker images for this project..."
-
-# Option A: Targeted cleanup using the project name
-# This removes dangling images that belong specifically to this compose project
-docker image prune -f --filter "label=com.docker.compose.project=lms-app"
-success "Cleanup done."
+log "Cleaning up old Docker images and build cache..."
+docker image prune -f                              # dangling images
+docker image prune -af --filter "until=72h"        # unused images older than 72h (running ones are untouched)
+docker builder prune -f --filter "until=72h"       # old build cache
+success "Cleanup done. Free space: $(free_gb)GB"
 
 # ── Show Status ──────────────────────────────────────────────
 echo ""
@@ -84,7 +106,7 @@ log "Container status:"
 docker compose ps
 echo ""
 log "Port Status (LMS on 3001, Nginx on 3000):"
-sudo lsof -i :3000,3001 || warn "Could not verify ports. Check logs."
+ss -ltn '( sport = :3000 or sport = :3001 )' || warn "Could not verify ports. Check logs."
 
 # ── Final Message ────────────────────────────────────────────
 echo ""
