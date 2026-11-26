@@ -26,16 +26,34 @@ success() { echo -e "${GREEN}✔ $1${NC}"; }
 warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 error()   { echo -e "${RED}✘ $1${NC}"; exit 1; }
 
-free_gb() { df -P --output=avail -BG "$APP_DIR" | tail -1 | tr -dc '0-9'; }
+free_gb() { df -BG --output=avail "$APP_DIR" 2>/dev/null | tail -1 | tr -dc '0-9'; }
+
+cleanup_docker() {
+  log "Cleaning Docker (images, build cache, containers, volumes)..."
+  docker image prune -f                                || warn "dangling image prune failed"
+  docker image prune -af --filter "until=72h"          || warn "image prune failed"
+  docker builder prune -af                             || warn "builder prune failed"
+  docker container prune -f --filter "until=72h"       || warn "container prune failed"
+  docker volume prune -f                               || warn "volume prune failed"
+}
+
+cleanup_logs() {
+  log "Cleaning logs and caches..."
+  # Docker container json logs live under /var/lib/docker (root-owned). Truncate them
+  # through a throwaway container so no sudo is needed (requires docker group access).
+  docker run --rm -v /var/lib/docker/containers:/c alpine:3 \
+    sh -c 'for f in /c/*/*-json.log; do [ -f "$f" ] && : > "$f"; done' \
+    || warn "Could not truncate Docker container logs"
+  rm -rf "$APP_DIR/.next/cache"
+  rm -rf "$HOME/.npm/_logs" "$HOME/.pm2/logs"/*.log 2>/dev/null || true
+  find "$APP_DIR" -maxdepth 2 -path "$APP_DIR/node_modules" -prune -o \
+       -type f \( -name "*.log" -o -name "npm-debug.log*" \) -size +1M -print -delete 2>/dev/null || true
+  npm cache clean --force >/dev/null 2>&1              || warn "npm cache clean failed"
+}
 
 cleanup_disk() {
-  log "Reclaiming disk space..."
-  docker builder prune -af                                   || warn "builder prune failed"
-  docker image prune -af --filter "until=72h"                || warn "image prune failed"
-  docker container prune -f --filter "until=72h"             || warn "container prune failed"
-  docker volume prune -f                                     || warn "volume prune failed"
-  rm -rf "$APP_DIR/.next/cache"
-  npm cache clean --force >/dev/null 2>&1                    || warn "npm cache clean failed"
+  cleanup_docker
+  cleanup_logs
   success "Cleanup done. Free space: $(free_gb)GB"
 }
 
@@ -66,12 +84,16 @@ success "Configuration files verified."
 
 # ── Disk space guard ────────────────────────────────────────
 log "Checking disk space (need >= ${MIN_FREE_GB}GB free)..."
-if [ "$(free_gb)" -lt "$MIN_FREE_GB" ]; then
-  warn "Low disk space: $(free_gb)GB free."
+FREE=$(free_gb)
+[[ "$FREE" =~ ^[0-9]+$ ]] || error "Could not read free disk space."
+if [ "$FREE" -lt "$MIN_FREE_GB" ]; then
+  warn "Low disk space: ${FREE}GB free."
   cleanup_disk
-  [ "$(free_gb)" -ge "$MIN_FREE_GB" ] || error "Only $(free_gb)GB free after cleanup (need ${MIN_FREE_GB}GB). Free space manually."
+  FREE=$(free_gb)
+  [[ "$FREE" =~ ^[0-9]+$ ]] && [ "$FREE" -ge "$MIN_FREE_GB" ] \
+    || error "Only ${FREE:-?}GB free after cleanup (need ${MIN_FREE_GB}GB). Free space manually."
 fi
-success "Disk OK: $(free_gb)GB free."
+success "Disk OK: ${FREE}GB free."
 
 # ── Install dependencies & Build ────────────────────────────
 log "Installing dependencies..."
@@ -94,10 +116,8 @@ docker compose up -d
 success "Containers started."
 
 # ── Cleanup ──────────────────────────────────────────────────
-log "Cleaning up old Docker images and build cache..."
-docker image prune -f                              # dangling images
-docker image prune -af --filter "until=72h"        # unused images older than 72h (running ones are untouched)
-docker builder prune -f --filter "until=72h"       # old build cache
+cleanup_docker   # containers are up now, so in-use images/volumes are protected
+cleanup_logs
 success "Cleanup done. Free space: $(free_gb)GB"
 
 # ── Show Status ──────────────────────────────────────────────
