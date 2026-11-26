@@ -2,7 +2,7 @@ import React from 'react';
 import PhotoCapture from '@/components/clients/PhotoCapture';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 
-const LAFPhotoStep = ({ onPhotoReady, uploading, preview }) => (
+const LAFPhotoStep = ({ onPhotoReady, uploading, preview, offlineModeActive = false }) => (
     <div className="space-y-5">
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex gap-3">
             <ShieldCheckIcon className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -24,7 +24,8 @@ const LAFPhotoStep = ({ onPhotoReady, uploading, preview }) => (
             facingMode="user"
             maxMB={10}
             preview={preview}
-            allowUpload={true}
+            allowUpload={offlineModeActive}
+            enforceCamera={!offlineModeActive}
         />
 
         {uploading && (

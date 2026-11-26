@@ -10,6 +10,12 @@
 //   - Mobile (userAgent): native camera via capture attr (best UX, has flash/zoom)
 //   - Desktop with camera (enumerateDevices): getUserMedia inline stream
 //   - Desktop no camera: upload only
+//
+// enforceCamera=true (strict, live-camera only):
+//   - Native file inputs are NOT rendered at all (no gallery / file picker, even on mobile)
+//   - Mobile uses the same getUserMedia live stream as desktop
+//   - No camera / permission denied → blocked with a message, never falls back to upload
+//   - Callers turn this off (and set allowUpload) only for branches in offline mode
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Camera, Upload, X, SwitchCamera, ImagePlus, RefreshCw } from 'lucide-react';
@@ -25,6 +31,7 @@ const PhotoCapture = ({
     existingPhotoKey = null,
     cameraOnly       = false,   // legacy: hides upload
     allowUpload      = false,   // always show upload alongside camera
+    enforceCamera    = false,   // strict live-camera capture only (overrides allowUpload)
 }) => {
     const cameraInputRef = useRef();
     const fileInputRef   = useRef();
@@ -41,14 +48,19 @@ const PhotoCapture = ({
     const [capturing,    setCapturing]    = useState(false);
 
     const preview      = controlledPreview || localPreview;
-    const showUpload   = allowUpload && !cameraOnly;
+    const strict       = enforceCamera;
+    const showUpload   = allowUpload && !cameraOnly && !strict;
 
     // ── Detection ─────────────────────────────────────────────────────────
     useEffect(() => {
         const ua     = navigator.userAgent || '';
         const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
         setIsMobile(mobile);
-        if (!mobile && navigator.mediaDevices?.enumerateDevices) {
+        if (strict) {
+            // Live stream is the only path: usable only when the browser exposes getUserMedia
+            // (needs HTTPS). Real failures (no device / denied) surface when the camera opens.
+            setHasCamera(!!navigator.mediaDevices?.getUserMedia);
+        } else if (!mobile && navigator.mediaDevices?.enumerateDevices) {
             navigator.mediaDevices.enumerateDevices()
                 .then(devices => setHasCamera(devices.some(d => d.kind === 'videoinput')))
                 .catch(() => setHasCamera(false));
@@ -57,7 +69,7 @@ const PhotoCapture = ({
         } else {
             setHasCamera(false);
         }
-    }, []);
+    }, [strict]);
 
     // ── Stream cleanup ────────────────────────────────────────────────────
     const stopStream = useCallback(() => {
@@ -82,16 +94,18 @@ const PhotoCapture = ({
             streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play();
+                videoRef.current.play().catch(() => {});
             }
         } catch (err) {
             setCameraError(
                 err.name === 'NotAllowedError'
                     ? 'Camera permission denied. Please allow camera access and try again.'
-                    : 'Could not open camera. Try uploading a file instead.'
+                    : strict
+                        ? 'Could not open the camera. Check that a camera is available and try again.'
+                        : 'Could not open camera. Try uploading a file instead.'
             );
         }
-    }, [activeFacing, stopStream]);
+    }, [activeFacing, stopStream, strict]);
 
     const switchCamera = useCallback(() => {
         const next = activeFacing === 'environment' ? 'user' : 'environment';
@@ -114,7 +128,7 @@ const PhotoCapture = ({
         canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
-        ctx.setTransform(-1, 0, 0, 1, canvas.width, 0); // mirror to match preview
+        if (activeFacing === 'user') ctx.setTransform(-1, 0, 0, 1, canvas.width, 0); // mirror front camera only (rear camera text must not be reversed)
         ctx.drawImage(video, 0, 0);
         canvas.toBlob(blob => {
             if (!blob) { setCapturing(false); return; }
@@ -131,7 +145,7 @@ const PhotoCapture = ({
             setCameraOpen(false);
             setCapturing(false);
         }, 'image/jpeg', 0.92);
-    }, [maxMB, onFileReady, stopStream]);
+    }, [maxMB, onFileReady, stopStream, activeFacing]);
 
     // ── File input ────────────────────────────────────────────────────────
     const processFile = async (file) => {
@@ -155,6 +169,12 @@ const PhotoCapture = ({
         if (fileInputRef.current)   fileInputRef.current.value   = '';
         onFileReady?.(null);
     };
+
+    // Native capture input is skipped in strict mode: its `capture` attribute is only a hint and
+    // many mobile browsers still offer the gallery.
+    const openCamera = () => (isMobile && !strict)
+        ? cameraInputRef.current?.click()
+        : openDesktopCamera();
 
     // ── Desktop camera view ───────────────────────────────────────────────
     if (cameraOpen) {
@@ -184,7 +204,7 @@ const PhotoCapture = ({
                     <>
                         <div className="relative">
                             <video ref={videoRef} autoPlay playsInline muted
-                                style={{ transform: 'scaleX(-1)' }}
+                                style={{ transform: activeFacing === 'user' ? 'scaleX(-1)' : 'none' }}
                                 className="w-full max-h-72 object-cover" />
                             {/* Switch camera */}
                             <button type="button" onClick={switchCamera}
@@ -266,9 +286,7 @@ const PhotoCapture = ({
                         {/* Retake */}
                         {hasCamera && (
                             <button type="button"
-                                onClick={() => isMobile
-                                    ? cameraInputRef.current?.click()
-                                    : openDesktopCamera()}
+                                onClick={openCamera}
                                 className="flex items-center gap-1.5 px-3 py-1.5
                                     text-xs font-medium bg-white/90 text-gray-800
                                     rounded-lg hover:bg-white transition-colors shadow-sm">
@@ -297,12 +315,16 @@ const PhotoCapture = ({
                         </button>
                     </div>
                 </div>
+                {!strict && (
+                    <>
                 <input ref={cameraInputRef} type="file" accept="image/*"
                     capture={facingMode} className="hidden"
                     onChange={e => processFile(e.target.files?.[0])} />
                 <input ref={fileInputRef} type="file" accept="image/*"
                     className="hidden"
                     onChange={e => processFile(e.target.files?.[0])} />
+                    </>
+                )}
             </div>
         );
     }
@@ -322,9 +344,7 @@ const PhotoCapture = ({
                 // Has camera — single prominent "Open Camera" button
                 <div className="w-full space-y-2">
                     <button type="button"
-                        onClick={() => isMobile
-                            ? cameraInputRef.current?.click()
-                            : openDesktopCamera()}
+                        onClick={openCamera}
                         className="w-full group relative overflow-hidden rounded-2xl
                             bg-gradient-to-br from-teal-500 to-teal-600
                             hover:from-teal-400 hover:to-teal-500
@@ -363,7 +383,18 @@ const PhotoCapture = ({
                         </button>
                     )}
                     <p className="text-xs text-center text-gray-400">
-                        JPG, PNG · Max {maxMB}MB
+                        {strict ? `Live camera only · Max ${maxMB}MB` : `JPG, PNG · Max ${maxMB}MB`}
+                    </p>
+                </div>
+            ) : strict ? (
+                // Strict mode, no usable camera — blocked, no upload fallback
+                <div className="w-full rounded-2xl border-2 border-dashed border-red-200
+                    bg-red-50 p-6 text-center space-y-2">
+                    <Camera className="w-6 h-6 text-red-400 mx-auto" />
+                    <p className="text-sm font-semibold text-red-700">Camera required</p>
+                    <p className="text-xs text-red-600">
+                        A live camera photo is required here. This device or browser has no
+                        camera available (camera access also needs a secure https connection).
                     </p>
                 </div>
             ) : (
@@ -398,12 +429,16 @@ const PhotoCapture = ({
             )}
 
             {/* Inputs */}
+            {!strict && (
+                <>
             <input ref={cameraInputRef} type="file" accept="image/*"
                 capture={facingMode} className="hidden"
                 onChange={e => processFile(e.target.files?.[0])} />
             <input ref={fileInputRef} type="file" accept="image/*"
                 className="hidden"
                 onChange={e => processFile(e.target.files?.[0])} />
+                </>
+            )}
         </div>
     );
 };
