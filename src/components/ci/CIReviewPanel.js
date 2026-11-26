@@ -96,6 +96,21 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
     const [decision,         setDecision]         = useState(investigationData?.decision         || '');
     const [declineReason,    setDeclineReason]    = useState(investigationData?.declineReason    || '');
     const [selfieFile,       setSelfieFile]       = useState(null);
+    // Upload is allowed only when the application's branch is in offline mode. Fails closed
+    // (live camera only) until the server confirms, and if the lookup fails or we are offline.
+    const [branchOfflineMode, setBranchOfflineMode] = useState(false);
+    const ciBranchId = application?.branchId;
+    useEffect(() => {
+        setBranchOfflineMode(false);
+        if (!ciBranchId || !isOnline) return undefined;
+        let cancelled = false;
+        fetchWrapper.get(
+            getApiBaseUrl() + 'branches/face-verify-mode?' + new URLSearchParams({ branchIds: ciBranchId })
+        )
+            .then(res => { if (!cancelled) setBranchOfflineMode(res?.success && res.modeMap?.[ciBranchId] === true); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [ciBranchId, isOnline]);
     const [saving,           setSaving]           = useState(false);
     // Promotion blocked by the duplicate-client guard: { matches, canOverride, investigation }
     const [dupBlock,         setDupBlock]         = useState(null);
@@ -746,7 +761,9 @@ const CIReviewPanel = ({ applicationData, investigationData, onSaved, onGoToDupl
 
                     <PhotoCapture onFileReady={setSelfieFile}
                         label="Take selfie with client and form"
-                        facingMode="user" maxMB={10} />
+                        facingMode="user" maxMB={10}
+                        allowUpload={branchOfflineMode}
+                        enforceCamera={!branchOfflineMode} />
                 </div>
             )}
 

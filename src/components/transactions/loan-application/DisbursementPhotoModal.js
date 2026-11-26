@@ -536,10 +536,11 @@ const DisbursementPhotoModal = ({
                                     setPhotoFile(file);
                                     setPhotoKey(null);
                                 }}
-                                label="Take or upload disbursement photo"
+                                label={isPhotoMode ? "Take or upload disbursement photo" : "Take disbursement photo"}
                                 maxMB={5}
                                 facingMode="environment"
-                                allowUpload={true}
+                                allowUpload={isPhotoMode}
+                                enforceCamera={!isPhotoMode}
                                 preview={photo}
                             />
                             {uploading && (

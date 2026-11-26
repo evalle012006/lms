@@ -341,7 +341,7 @@ async function save(req, res) {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             }
             // noOfClients / availableSlots / status of the group are maintained by the DB trigger
-            // (refresh_group_slots, migrations 011 + 013). Do not write them from here.
+            // (refresh_group_slots, migrations 011 + 014). Do not write them from here.
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow' && finalData.loanCycle > 1) {
                 const reloan = mode === 'reloan';

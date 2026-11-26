@@ -266,6 +266,7 @@ const PublicLAFForm = ({
     requireClientBiometric = true,
     requireGovernmentId    = true,
     requireSelfieWithId    = false,
+    offlineModeActive      = false, // branch offline mode: the ONLY case where photo upload is allowed
 }) => {
     const formikRef = useRef();
     const [clientType, setClientType] = useState(null);
@@ -1292,7 +1293,7 @@ const PublicLAFForm = ({
                                     ℹ Current photo loaded from your record. Take a new photo below to replace it.
                                 </div>
                             )}
-                            <LAFPhotoStep onPhotoReady={file => { if (!file) { setLafPhotoFile(null); setLafPhotoPreview(foundClientPhotoUrl || null); return; } setLafPhotoFile(file); setLafPhotoPreview(URL.createObjectURL(file)); }} uploading={false} preview={lafPhotoPreview} />
+                            <LAFPhotoStep offlineModeActive={offlineModeActive} onPhotoReady={file => { if (!file) { setLafPhotoFile(null); setLafPhotoPreview(foundClientPhotoUrl || null); return; } setLafPhotoFile(file); setLafPhotoPreview(URL.createObjectURL(file)); }} uploading={false} preview={lafPhotoPreview} />
                             {lafPhotoFile && (
                                 <p className="text-xs text-green-600 mt-2">
                                     {foundClient?.profile
@@ -1342,7 +1343,8 @@ const PublicLAFForm = ({
                                             maxMB={10}
                                             preview={idPhotoPreview}
                                             existingPhotoKey={foundClient?.governmentIdPhotoKey}
-                                            allowUpload={true}
+                                            allowUpload={offlineModeActive}
+                                            enforceCamera={!offlineModeActive}
                                         />
                                         {idPhotoFile && (
                                             <p className="text-xs text-blue-600 mt-1">✓ New ID photo captured — will replace the existing one</p>
@@ -1436,15 +1438,15 @@ const PublicLAFForm = ({
                                         <p className="text-xs text-gray-500 mb-2">Take a clear photo of your government ID (front side).</p>
                                         <PhotoCapture
                                             onFileReady={file => { setIdPhotoFile(file); setIdPhotoPreview(file ? URL.createObjectURL(file) : null); }}
-                                            label="Take/upload ID photo" facingMode="environment" maxMB={10}
-                                            preview={idPhotoPreview} allowUpload={true}
+                                            label={offlineModeActive ? "Take/upload ID photo" : "Take ID photo"} facingMode="environment" maxMB={10}
+                                            preview={idPhotoPreview} allowUpload={offlineModeActive} enforceCamera={!offlineModeActive}
                                         />
                                         {idPhotoFile && <p className="text-xs text-green-600 mt-1">✓ ID photo captured</p>}
                                     </Field>
                                     {requireSelfieWithId && (
                                         <Field label="Selfie Holding ID" required error={idErrors.selfieWithId}>
                                             <p className="text-xs text-gray-500 mb-2">Take a selfie holding your ID next to your face.</p>
-                                            <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} allowUpload={true} />
+                                            <PhotoCapture onFileReady={setSelfieWithIdFile} label="Take selfie with ID" facingMode="user" maxMB={10} allowUpload={offlineModeActive} enforceCamera={!offlineModeActive} />
                                             {selfieWithIdFile && <p className="text-xs text-green-600 mt-1">✓ Selfie captured</p>}
                                         </Field>
                                     )}

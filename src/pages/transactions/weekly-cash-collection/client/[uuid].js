@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { findHardRuleViolations, hardRuleMessages } from '@/lib/collection-rules';
+import { findHardRuleViolations, hardRuleMessages, maturedPdOffsetBalance, maturedPdOffsetMcbu } from '@/lib/collection-rules';
 import { hasActionablePreSaveRow } from '@/lib/lor-edit-mode';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
@@ -116,6 +116,7 @@ const CashCollectionDetailsPage = () => {
 
     const [selectedSlot, setSelectedSlot] = useState();
     const [showWaningDialog, setShowWarningDialog] = useState(false);
+    const [revertConfirm, setRevertConfirm] = useState(null);
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
     const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
@@ -1992,6 +1993,9 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (cc.mcbuWithdrawFlag) {
+                    if (!isMcbuWithdrawalAllowed(cc)) {
+                        errorMsg.add(withClientName(cc, "Error occured. MCBU Withdrawal is only allowed on a new release (loan cycle > 1) with status 'tomorrow'."));
+                    }
                     if (!cc.mcbuWithdrawal) {
                         errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Withdraw amount.'));
                     } else if (parseFloat(cc.mcbuWithdrawal) < 10) {
@@ -2406,6 +2410,8 @@ const CashCollectionDetailsPage = () => {
         const totalIdx = data.indexOf(totalObj);
 
         if (type === 'amount') {
+            // Offset - Matured PD: payment is auto-computed (loan balance - MCBU), no manual input
+            if (data[index]?.remarks?.value === 'offset-matured-pd' || (data[index]?.maturedPDPrevTransaction && data[index]?.remarks?.value?.startsWith('offset'))) return;
             const value = e.target.value;
             let payment = value ? value : 0;
 
@@ -2877,6 +2883,9 @@ const CashCollectionDetailsPage = () => {
                         } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
+                        } else if (wasMaturedPD && remarks.value == 'offset-matured-pd' && maturedPdOffsetMcbu(temp) > maturedPdOffsetBalance(temp)) {
+                            temp.error = true;
+                            toast.error("Invalid remarks. MCBU is greater than the loan balance. Please use the regular Offset remarks.");
                         } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
@@ -2949,7 +2958,7 @@ const CashCollectionDetailsPage = () => {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
-                                    if (wasMaturedPD && remarks.value !== 'offset-matured-pd') {
+                                    if (wasMaturedPD && remarks.value !== 'offset-matured-pd' && !(maturedPdOffsetMcbu(temp) > maturedPdOffsetBalance(temp))) {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
@@ -2981,12 +2990,17 @@ const CashCollectionDetailsPage = () => {
                                         let prevData = {...temp.prevData};
                                         
                                         if (temp?.maturedPD || temp?.maturedPDPrevTransaction) {
-                                            temp.paymentCollection = temp.loanBalance;
-                                            temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
-                                            prevData.paymentCollection = temp.loanBalance;
-                                            history.paymentCollection = temp.loanBalance;
+                                            // Offset - Matured PD: payment = loanBalance - MCBU, set automatically
+                                            const mpdBalance = maturedPdOffsetBalance(temp);
+                                            // MCBU above the balance with a regular Offset: MCBU pays the balance (payment = balance) and the full MCBU is returned, so the row nets negative
+                                            const mpdPayment = remarks.value === 'offset-matured-pd' ? Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0) : mpdBalance;
+                                            temp.paymentCollection = mpdPayment;
+                                            temp.paymentCollectionStr = mpdPayment > 0 ? formatPricePhp(mpdPayment) : '-';
+                                            prevData.loanBalance = mpdBalance;
+                                            prevData.paymentCollection = mpdPayment;
+                                            history.paymentCollection = mpdPayment;
                                             history.mcbu = temp.mcbu;
-                                            temp.maturedPastDue = temp.loanBalance - temp.mcbu;
+                                            temp.maturedPastDue = remarks.value === 'offset-matured-pd' ? mpdPayment : 0;
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
@@ -2998,11 +3012,12 @@ const CashCollectionDetailsPage = () => {
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
                                             temp.loanBalance = 0;
+                                            temp.loanBalanceStr = '-';
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                         }
-                                        temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                        temp.mcbuReturnAmt = remarks.value === 'offset-matured-pd' ? 0 : parseFloat(temp.mcbu); // matured PD: MCBU is applied to the balance, nothing is returned
                                         temp.csfReturnAmt = temp.csf;
                                         temp.csfReturnAmtStr = formatPricePhp(temp.csf);
 
@@ -3023,7 +3038,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.loanBalanceStr = '-';
                                         }
 
-                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0 && remarks.value !== 'offset-matured-pd') {
                                             temp.fullPayment = temp?.history?.amountRelease;
                                         }
 
@@ -3626,7 +3641,8 @@ const CashCollectionDetailsPage = () => {
         dispatch(setCashCollectionGroup(tempList));
     };
 
-    const handleNewRevert = async () => {
+    // onClick passes the click event as the first argument, so only `true` counts as confirmed.
+    const handleNewRevert = async (confirmed = false) => {
         setShowWarningDialog(false);
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
@@ -3645,8 +3661,23 @@ const CashCollectionDetailsPage = () => {
                 return;
             }
 
+            // UX hint only, the server is the authority: an approved reloan row shows as 'tomorrow'.
+            const approvedNew = selectedRows.filter(r => r.status === 'tomorrow' && Number(r.loanCycle) > 1);
+            if (approvedNew.length > 0) {
+                toast.error(`Cannot revert: the new loan is already approved for ${approvedNew.map(r => r.fullName).join(', ')}. Contact an administrator.`);
+                return;
+            }
+
             setLoading(true);
-            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
+            const response = await fetchWrapper.post(
+                getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction' + (confirmed === true ? '?confirmed=true' : ''),
+                selectedRows
+            );
+            if (response.requiresConfirmation) {
+                setLoading(false);
+                setRevertConfirm({ message: response.message });
+                return;
+            }
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);
@@ -3745,7 +3776,21 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    // Weekly rule: MCBU withdrawal only on the new release (loanCycle > 1) with cashCollections.status = 'tomorrow',
+    // or a group leader (MCBU > 3000) within the last 5 days of the month. Keep in sync with ActionDropDown.
+    // prevData.mcbu is the balance before the withdrawal was deducted (cc.mcbu is already reduced at save time).
+    const isMcbuWithdrawalAllowed = (cc) => {
+        const isNewRelease = cc.status === 'tomorrow' && Number(cc.loanCycle) > 1;
+        const isGLMonthEnd = !!cc.client?.groupLeader && parseFloat(cc.prevData?.mcbu ?? cc.mcbu) > 3000 && (last5DaysOfTheMonth || []).includes(currentDate);
+        return isNewRelease || isGLMonthEnd;
+    };
+
     const handleMcbuWithdrawal = (selected, index) => {
+        if (!isMcbuWithdrawalAllowed(selected)) {
+            toast.error("MCBU Withdrawal is only allowed on a new release (loan cycle > 1) with status 'tomorrow', or for a group leader in the last 5 days of the month.");
+            return;
+        }
+
         const isGL = selected.client?.groupLeader || false;
         const minRetain = isGL
             ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
@@ -4653,7 +4698,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' 
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc.remarks?.value !== 'offset-matured-pd' && !(cc.maturedPDPrevTransaction && cc.remarks?.value?.startsWith('offset'))
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
@@ -4762,7 +4807,7 @@ const CashCollectionDetailsPage = () => {
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection > 0 ? formatPricePhp(cc.totalCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection ? formatPricePhp(cc.totalCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
@@ -4833,7 +4878,7 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
-                                        {closeLoan && closeLoan.remarks && closeLoan.remarks.value !== 'offset-unclaimed' && (
+                                        {closeLoan && closeLoan.remarks && closeLoan.remarks.value !== 'offset-unclaimed' && closeLoan.remarks.value !== 'offset-matured-pd' && (
                                             <CheckBox size={"md"} name="used-mcbu" value={offsetUseMCBU} label="Use MCBU as Payment" onChange={(name, value) => handleOffsetUseMCBU(closeLoan, name, value)} />
                                         )}
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
@@ -4863,7 +4908,16 @@ const CashCollectionDetailsPage = () => {
                         </div>
                         <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
                             <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
-                            <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
+                            <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={() => handleNewRevert()} />
+                        </div>
+                    </Dialog>
+                    <Dialog show={!!revertConfirm}>
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 text-center">
+                            <p className="text-xl font-normal text-dark-color">{revertConfirm?.message}</p>
+                        </div>
+                        <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setRevertConfirm(null)} />
+                            <ButtonSolid label="Yes, roll back" type="button" className="p-2" onClick={() => { setRevertConfirm(null); handleNewRevert(true); }} />
                         </div>
                     </Dialog>
                     <McbuInterestBreakdownModal

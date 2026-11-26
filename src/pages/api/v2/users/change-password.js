@@ -36,7 +36,9 @@ async function changePassword(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { _id, currentPassword, newPassword } = req.body;
+    const { _id, newPassword } = req.body;
+    // Temp passwords are often pasted with stray whitespace.
+    const currentPassword = typeof req.body.currentPassword === 'string' ? req.body.currentPassword.trim() : req.body.currentPassword;
 
     if (!_id || !currentPassword || !newPassword) {
         response = { error: true, message: 'Missing required fields.' };
