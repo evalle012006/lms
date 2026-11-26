@@ -6,6 +6,7 @@
 export const SUPPORT_ROLE = 'support';
 
 import { getShortCode, isAdminLevel } from './roles';
+import { LOR_DAILY_REMARKS, LOR_WEEKLY_REMARKS, LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS, LOR_ONLY_WEEKLY_RELOAN_OFFSET_REMARKS } from './constants';
 export { getShortCode };
 export const canUseSupportEditor = (user) => isAdminLevel(user);
 
@@ -68,9 +69,9 @@ export const ENTITIES = {
             remarks:           text('Remarks', { nullable: true }),
             // ---- written by save / saveV2 / loan release; added so support can correct them in one place ----
             // identity: normally changed only through Analyze > Repair (values come from the group)
-            branchId:          text('Branch ID'),
-            groupId:           text('Group ID'),
-            loId:              text('Loan officer ID'),
+            branchId:          text('Branch ID', { hidden: true }),
+            groupId:           text('Group ID', { hidden: true }),
+            loId:              text('Loan officer ID', { hidden: true }),
             loanCycle:         int('Loan cycle'),
             mcbuTarget:        money('MCBU target'),
             dateOfRelease:     date('Date of release', { nullable: true }),
@@ -94,9 +95,9 @@ export const ENTITIES = {
         context: ['_id', 'clientId', 'loanId', 'fullName', 'groupName', 'slotNo',
             'dateAdded', 'occurence', 'loanCycle', 'loanTerms', 'amountRelease'],
         fields: {
-            branchId:          text('Branch ID'),
-            groupId:           text('Group ID'),
-            loId:              text('Loan officer ID'),
+            branchId:          text('Branch ID', { hidden: true }),
+            groupId:           text('Group ID', { hidden: true }),
+            loId:              text('Loan officer ID', { hidden: true }),
             status:            { label: 'Status', type: 'enum', options: ['pending', 'active', 'completed', 'closed', 'tomorrow', 'reject'] },
             paymentCollection: money('Payment collection'),
             excess:            money('Excess'),
@@ -121,7 +122,7 @@ export const ENTITIES = {
             fullPayment:       money('Full payment'),
             fullPaymentDate:   date('Full payment date', { nullable: true }),
             currentReleaseAmount: money('Current release amount'),
-            remarks:           text('Remarks', { nullable: true }),
+            remarks:           { label: 'Remarks', type: 'remarks', nullable: true },
             closeRemarks:      text('Close remarks', { nullable: true }),
             draft:             bool('Draft'),
         },
@@ -158,9 +159,9 @@ export const ENTITIES = {
         idField: '_id',
         context: ['_id', 'fullName'],
         fields: {
-            branchId:       text('Branch ID'),
-            groupId:        text('Group ID'),
-            loId:           text('Loan officer ID'),
+            branchId:       text('Branch ID', { hidden: true }),
+            groupId:        text('Group ID', { hidden: true }),
+            loId:           text('Loan officer ID', { hidden: true }),
             firstName:      text('First name'),
             middleName:     text('Middle name', { nullable: true }),
             lastName:       text('Last name'),
@@ -186,12 +187,38 @@ export const fetchFieldNames = (entity) => {
     return [...new Set([cfg.idField, ...cfg.context, ...Object.keys(cfg.fields)])];
 };
 
+// ── LOR remarks ─────────────────────────────────────────────────────────────────
+// cashCollections.remarks is stored the way the LOR stores it: { label, value } (or '' for none). The choices follow the
+// group's occurence, exactly like the daily / weekly register lists.
+export const remarkValue = (r) => (r && typeof r === 'object' ? (r.value ?? '') : (r ?? ''));
+const isWeekly = (occurence) => String(occurence ?? '').trim().toLowerCase() === 'weekly';
+export const remarkOptions = (occurence) => {
+    const lists = isWeekly(occurence) ? [LOR_WEEKLY_REMARKS, LOR_ONLY_WEEKLY_RELOAN_OFFSET_REMARKS] : [LOR_DAILY_REMARKS, LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS];
+    const seen = new Set();
+    const all = lists.flat().filter((r) => r.value !== '' && !seen.has(r.value) && seen.add(r.value));
+    // register-only extras are listed next to the remarks they belong with, not at the bottom
+    const anchor = { 'reloaner-wd': 'reloaner-cont', 'offset-delinquent': 'offset-good' };
+    const main = all.filter((r) => !anchor[r.value]);
+    for (const extra of all.filter((r) => anchor[r.value])) {
+        const at = main.findIndex((r) => r.value === anchor[extra.value]);
+        main.splice(at >= 0 ? at + 1 : main.length, 0, extra);
+    }
+    return main;
+};
+export const canonicalRemark = (value) => {
+    const v = remarkValue(value);
+    if (v === '') return '';
+    const hit = [LOR_DAILY_REMARKS, LOR_WEEKLY_REMARKS, LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS, LOR_ONLY_WEEKLY_RELOAN_OFFSET_REMARKS].flat().find((r) => r.value === v);
+    return hit ? { label: hit.label, value: hit.value } : { label: String(v), value: String(v) };
+};
+
 // ── value normalisation / comparison ───────────────────────────────────────────
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const toNum = (v) => (v === '' || v === null || v === undefined ? NaN : Number(v));
 
 export function normalizeValue(def, value) {
     if (value === undefined) return undefined;
+    if (def.type === 'remarks') return canonicalRemark(value);
     if (value === null || value === '') return def.nullable || def.type === 'text' ? (def.nullable ? null : '') : null;
     switch (def.type) {
         case 'money': return round2(value);
@@ -203,6 +230,7 @@ export function normalizeValue(def, value) {
 }
 
 export function sameValue(def, a, b) {
+    if (def.type === 'remarks') return remarkValue(a) === remarkValue(b);
     const x = a === undefined || a === '' ? null : a;
     const y = b === undefined || b === '' ? null : b;
     if (x === null || y === null) return x === y;

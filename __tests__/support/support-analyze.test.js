@@ -25,3 +25,36 @@ test('stale draft and completed-with-balance', () => {
     expect(analyzeTransaction({ ...base, row: { ...row, draft: true, dateAdded: '2026-11-20' } }).issues.some((i) => i.field === 'draft')).toBe(true);
     expect(analyzeTransaction({ ...base, loan: { ...loan, status: 'completed', loanBalance: 50 } }).counts.error).toBeGreaterThan(0);
 });
+
+import { remarkOptions, canonicalRemark, sameValue, normalizeValue, ENTITIES } from '../../src/lib/support-edit-config';
+import { validateEdit } from '../../src/lib/support-edit-validate';
+
+describe('remarks follow the group occurence like the register', () => {
+    const def = ENTITIES.cashCollections.fields.remarks;
+    test('daily vs weekly lists', () => {
+        expect(remarkOptions('daily').map((o) => o.value)).toContain('reloaner-cont');
+        expect(remarkOptions('weekly').map((o) => o.value)).toContain('reloaner');
+        expect(remarkOptions('weekly').map((o) => o.value)).not.toContain('reloaner-cont');
+        expect(remarkOptions('daily').some((o) => o.value === '')).toBe(false);
+    });
+    test('stored as { label, value }; compare by value; blank is ""', () => {
+        expect(normalizeValue(def, 'excused-death')).toEqual({ label: 'Excused - Death of Clients/Family Member', value: 'excused-death' });
+        expect(normalizeValue(def, null)).toBe('');
+        expect(sameValue(def, { label: 'x', value: 'past due' }, 'past due')).toBe(true);
+        expect(sameValue(def, '', null)).toBe(true);
+        expect(canonicalRemark({ value: 'delinquent' }).label).toBe('Delinquent');
+    });
+    test('a remark from the other register is rejected', () => {
+        const before = { _id: 'r', occurence: 'weekly', paymentCollection: 0, status: 'active' };
+        const r = validateEdit({ entity: 'cashCollections', before, changes: [{ field: 'remarks', before: '', after: { label: 'Reloaner', value: 'reloaner-cont' } }], ctx: {} });
+        expect(r.errors.some((e) => e.field === 'remarks')).toBe(true);
+        const ok = validateEdit({ entity: 'cashCollections', before, changes: [{ field: 'remarks', before: '', after: { label: 'Reloaner', value: 'reloaner' } }], ctx: {} });
+        expect(ok.errors.some((e) => e.field === 'remarks')).toBe(false);
+    });
+});
+
+test('register-only remarks sit with their related remarks', () => {
+    const v = remarkOptions('daily').map((o) => o.value);
+    expect(v.indexOf('offset-delinquent')).toBe(v.indexOf('offset-good') + 1);
+    expect(v.indexOf('reloaner-wd')).toBe(v.indexOf('reloaner-cont') + 1);
+});

@@ -136,16 +136,31 @@ const BrowsePanel = ({ onPickLoan }) => {
             )}
 
             {items && !loading && lastLevel === 'lo' && (
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <div>
                     {items.length === 0 && <p className="text-sm text-gray-500">No groups for this loan officer.</p>}
-                    {items.map((g) => (
-                        <button key={g._id} onClick={() => open([...trail, { level: 'group', id: g._id, label: g.name || `Group ${g.groupNo}` }])} className={card}>
-                            <span className="block font-medium text-gray-900">{g.name || `Group ${g.groupNo}`}</span>
-                            {scheduleChips(g)}
-                            <span className="block text-xs text-gray-600 mt-1">{g.noOfClients ?? 0} / {g.capacity ?? '-'} clients</span>
-                            {count(g)}
-                        </button>
-                    ))}
+                    {[
+                        [1, 'Same type as the loan officer, with clients'],
+                        [2, 'Same type as the loan officer, no clients'],
+                        [3, 'Other groups'],
+                    ].map(([sec, title]) => {
+                        const part = items.filter((g) => (g.section ?? 3) === sec);
+                        if (!part.length) return null;
+                        return (
+                            <div key={sec} className="mb-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{title} <span className="font-normal">({part.length})</span></p>
+                                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                                    {part.map((g) => (
+                                        <button key={g._id} onClick={() => open([...trail, { level: 'group', id: g._id, label: g.name || `Group ${g.groupNo}` }])} className={card}>
+                                            <span className="block font-medium text-gray-900">{g.name || `Group ${g.groupNo}`}</span>
+                                            {scheduleChips(g)}
+                                            <span className="block text-xs text-gray-600 mt-1">{g.noOfClients ?? 0} / {g.capacity ?? '-'} clients</span>
+                                            {count(g)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -163,7 +178,7 @@ const BrowsePanel = ({ onPickLoan }) => {
                         <div className="overflow-x-auto border border-gray-200 rounded-lg">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                                    <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Client</th><th className="px-3 py-2">CI reference</th><th className="px-3 py-2">Cycle</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Released</th><th className="px-3 py-2 text-right">Balance</th></tr>
+                                    <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Client</th><th className="px-3 py-2">CI reference</th><th className="px-3 py-2">Cycle</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Released</th><th className="px-3 py-2 text-right">Balance</th><th className="px-3 py-2 text-right">MCBU</th><th className="px-3 py-2 text-right">CSF</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {items.map((l) => (
@@ -175,6 +190,8 @@ const BrowsePanel = ({ onPickLoan }) => {
                                             <td className="px-3 py-2"><StatusChip status={l.status} /></td>
                                             <td className="px-3 py-2 text-right tabular-nums text-gray-800">{peso(l.amountRelease)}</td>
                                             <td className="px-3 py-2 text-right tabular-nums font-medium text-gray-900">{peso(l.loanBalance)}</td>
+                                            <td className="px-3 py-2 text-right tabular-nums text-gray-800">{peso(l.mcbu)}</td>
+                                            <td className="px-3 py-2 text-right tabular-nums text-gray-800">{peso(l.csf)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -4,8 +4,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
-import { MIN_REASON_LENGTH, sameValue } from '@/lib/support-edit-config';
+import { MIN_REASON_LENGTH, sameValue, remarkValue, remarkOptions } from '@/lib/support-edit-config';
+const disp = (v) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? (v.label ?? JSON.stringify(v)) : String(v));
 import EditTrail from './EditTrail';
+import SearchSelect from './SearchSelect';
 import { Btn } from './ui';
 
 const api = (p) => getApiBaseUrl() + 'support/' + p;
@@ -74,7 +76,7 @@ export default function RecordEditor({ entity, record, fields, onSaved, initialD
     return (
         <div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-4">
-                {Object.entries(fields).map(([f, def]) => {
+                {Object.entries(fields).filter(([, d]) => !d.hidden).map(([f, def]) => {
                     const val = f in draft ? draft[f] : toInput(def, record[f]);
                     const isChanged = f in changedFields;
                     const errs = fieldMsgs(f, check?.errors); const warns = fieldMsgs(f, check?.warnings);
@@ -91,12 +93,23 @@ export default function RecordEditor({ entity, record, fields, onSaved, initialD
                                     )}
                                 </span>
                             </span>
-                            {def.type === 'enum' ? (
-                                <select value={val ?? ''} onChange={(e) => setField(f, e.target.value)}
-                                    className={`mt-1 w-full border rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-1/40 focus:border-primary-1 ${isChanged ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-white'}`}>
-                                    {!def.options.includes(String(val)) && <option value={val ?? ''}>{val ?? '—'}</option>}
-                                    {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                                </select>
+                            {def.type === 'remarks' ? (() => {
+                                const cur = remarkValue(f in draft ? draft[f] : record[f]);
+                                const opts = remarkOptions(record.occurence);
+                                return (
+                                    <SearchSelect value={cur} changed={isChanged} onChange={(v) => setField(f, v)}
+                                        options={[
+                                            { value: '', label: '— no remark —' },
+                                            ...(cur && !opts.some((o) => o.value === cur) ? [{ value: cur, label: `${disp(record[f])} (not on the ${record.occurence ?? 'daily'} list)` }] : []),
+                                            ...opts,
+                                        ]} />
+                                );
+                            })() : def.type === 'enum' ? (
+                                <SearchSelect value={val ?? ''} changed={isChanged} onChange={(v) => setField(f, v)}
+                                    options={[
+                                        ...(!def.options.includes(String(val)) ? [{ value: val ?? '', label: String(val ?? '—') }] : []),
+                                        ...def.options.map((o) => ({ value: o, label: o })),
+                                    ]} />
                             ) : def.type === 'bool' ? (
                                 <select value={String(val === true || val === 'true')} onChange={(e) => setField(f, e.target.value === 'true')}
                                     className={`mt-1 w-full border rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-1/40 focus:border-primary-1 ${isChanged ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-white'}`}>
@@ -107,7 +120,7 @@ export default function RecordEditor({ entity, record, fields, onSaved, initialD
                                     value={val ?? ''} onChange={(e) => setField(f, e.target.value)}
                                     className={`mt-1 w-full border rounded-lg px-3 py-2 tabular-nums text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-1/40 focus:border-primary-1 ${errs.length ? 'border-red-400 bg-red-50' : isChanged ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-white'}`} />
                             )}
-                            {isChanged && <span className="block text-xs text-gray-500">was: {record[f] ?? '—'}</span>}
+                            {isChanged && <span className="block text-xs text-gray-500">was: {disp(record[f])}</span>}
                             {errs.map((m, i) => <span key={i} className="block text-xs text-red-600">{m.message}</span>)}
                             {warns.map((m, i) => <span key={i} className="block text-xs text-amber-700">{m.message}</span>)}
                         </label>
@@ -128,8 +141,8 @@ export default function RecordEditor({ entity, record, fields, onSaved, initialD
                         {check.changes.map((c) => (
                             <tr key={c.field} className="border-t border-gray-100">
                                 <td className="py-1.5 px-2 pr-3 font-medium text-gray-900">{fields[c.field]?.label ?? c.field}</td>
-                                <td className="py-1.5 pr-3 text-red-600 line-through tabular-nums">{String(c.before ?? '—')}</td>
-                                <td className="py-1.5 text-green-700 font-medium tabular-nums">{String(c.after ?? '—')}</td>
+                                <td className="py-1.5 pr-3 text-red-600 line-through tabular-nums">{disp(c.before)}</td>
+                                <td className="py-1.5 text-green-700 font-medium tabular-nums">{disp(c.after)}</td>
                             </tr>
                         ))}
                     </tbody></table>

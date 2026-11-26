@@ -10,19 +10,21 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, aggregateQl } from '@/lib/graph/graph.util';
 import { requireSupportUser } from '@/lib/support-edit-service';
 import { getSupportBranchScope } from '@/lib/support-edit-config';
+import { orderGroups } from '@/lib/support-group-order';
 
 const graph = new GraphProvider();
 const MAX_ROWS = 60;
 
 const BRANCH_TYPE = createGraphType('branches', '_id name code')('branches');
 const LO_TYPE = (alias) => createGraphType('users', '_id firstName lastName email loNo designatedBranchId designatedBranch transactionType weeklyScheduleType')(alias);
-const GROUP_TYPE = createGraphType('groups', '_id name groupNo day branchId loanOfficerId loanOfficerName noOfClients capacity occurence weeklyScheduleType time status')('groups');
+const GROUP_TYPE = createGraphType('groups', '_id name groupNo day branchId loanOfficerId loanOfficerName noOfClients capacity occurence weeklyScheduleType time status dayNo')('groups');
 const LOAN_TYPE = createGraphType('loans', '_id clientId fullName ciReferenceCode loanCycle status principalLoan amountRelease loanBalance mcbu csf dateGranted groupName slotNo branchName')('loans');
 const COUNT_TYPE = (alias) => createGraphType('loans', '_id')(alias);
 
 export default apiHandler({ get: browse });
 
 const STATUSES = ['active', 'completed', 'closed'];
+
 
 // Optional per-user branch restriction (see getSupportBranchScope). null = every branch.
 const branchGuard = (scope, branchId) => !scope || scope.includes(branchId);
@@ -79,12 +81,15 @@ async function browse(req, res) {
     // ---- loan officer -> groups -------------------------------------------------------------------
     if (level === 'lo') {
         if (!loId) return res.status(200).json({ success: false, message: 'loId is required.' });
-        const groups = await graph.query(queryQl(GROUP_TYPE, {
-            where: { loanOfficerId: { _eq: loId }, ...(scope ? { branchId: { _in: scope } } : {}) },
-            order_by: [{ groupNo: 'asc' }], limit: MAX_ROWS * 2,
-        })).then((r) => r.data?.groups ?? []);
+        const data = await graph.query(
+            queryQl(GROUP_TYPE, { where: { loanOfficerId: { _eq: loId }, ...(scope ? { branchId: { _in: scope } } : {}) }, order_by: [{ groupNo: 'asc' }], limit: MAX_ROWS * 2 }),
+            queryQl(LO_TYPE('lo_one'), { where: { _id: { _eq: loId } }, limit: 1 }),
+        ).then((r) => r.data ?? {});
+        const groups = data.groups ?? [];
+        const loType = data.lo_one?.[0]?.transactionType ?? null;
         const counts = await countsFor(groups, '_id', (g) => ({ groupId: { _eq: g._id } }));
-        return res.status(200).json({ success: true, items: groups.map((g) => ({ ...g, ...(counts[g._id] ?? { total: 0, active: 0 }) })) });
+        const items = orderGroups(groups.map((g) => ({ ...g, ...(counts[g._id] ?? { total: 0, active: 0 }) })), loType);
+        return res.status(200).json({ success: true, loTransactionType: loType, items });
     }
 
     // ---- group -> loans ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 // ctx (all optional, loaded by the API): { loan, client, serviceChargeRate, today }
 // `before` is the row as it is in the DB, `after` is before + the proposed changes.
 
-import { ENTITIES, normalizeValue, toNum } from './support-edit-config';
+import { ENTITIES, normalizeValue, toNum, remarkValue, remarkOptions } from './support-edit-config';
 
 const TOL = 0.01;
 const eq  = (a, b) => Math.abs(Number(a) - Number(b)) <= TOL;
@@ -35,6 +35,11 @@ export function validateEdit({ entity, before = {}, changes = [], ctx = {} }) {
         const def = cfg.fields[c.field];
         if (!def) { err(c.field, `"${c.field}" cannot be edited here.`); continue; }
         const v = c.after;
+        if (def.type === 'remarks') {
+            const rv = remarkValue(v);
+            if (rv !== '' && !remarkOptions(before.occurence).some((o) => o.value === rv)) err(c.field, `"${rv}" is not a ${String(before.occurence ?? 'daily')} register remark.`);
+            continue;
+        }
         if (v === null || (def.type === 'text' && typeof v === 'string' && v.trim() === '' && !def.nullable)) { if (!def.nullable && def.type !== 'bool') err(c.field, `${def.label} cannot be empty.`); continue; }
         if (def.type === 'money' || def.type === 'int') {
             const n = toNum(v);
@@ -138,9 +143,10 @@ export function validateEdit({ entity, before = {}, changes = [], ctx = {} }) {
             const expectedExcess = pay > target ? Math.round((pay - target) * 100) / 100 : 0;
             if (has(after.excess) && !eq(n('excess'), expectedExcess)) warn('excess', `Excess is ${fmt(n('excess'))} but payment - target = ${fmt(expectedExcess)}.`);
         }
-        if (touched('paymentCollection', 'remarks', 'mispayment') && pay === 0 && !has(after.remarks) && !['pending', 'tomorrow'].includes(after.status)) warn('remarks', 'A no-payment row needs an Excused or Delinquent remark.');
+        if (touched('paymentCollection', 'remarks', 'mispayment') && pay === 0 && !has(remarkValue(after.remarks)) && !['pending', 'tomorrow'].includes(after.status)) warn('remarks', 'A no-payment row needs an Excused or Delinquent remark.');
         if (touched('paymentCollection', 'mispayment') && pay > 0 && (after.mispayment === true)) warn('mispayment', 'Row is flagged as a mispayment but has a payment.');
-        if (touched('paymentCollection', 'mcbuCol') && pay === 0 && n('mcbuCol') > 0 && !/offset|reloan/i.test(String(after.remarks ?? ''))) warn('mcbuCol', 'MCBU collection with no payment collection; check the remark.');
+        if (touched('paymentCollection', 'mcbuCol') && pay === 0 && n('mcbuCol') > 0 && !/offset|reloan/i.test(remarkValue(after.remarks))) warn('mcbuCol', 'MCBU collection with no payment collection; check the remark.');
+        if (touched('remarks', 'closeRemarks') && /^offset/.test(remarkValue(after.remarks)) && !has(after.closeRemarks)) warn('closeRemarks', 'A close / offset remark normally comes with close remarks (the register asks for them).');
         if (touched('mcbuWithdrawal', 'mcbu') && n('mcbuWithdrawal') > n('mcbu') + TOL && n('mcbuWithdrawal') > 0) warn('mcbuWithdrawal', 'MCBU withdrawal is more than the MCBU balance on this row.');
         if (touched('draft') && after.draft === true && loan && ['completed', 'closed'].includes(loan.status)) warn('draft', 'Fully paid rows should not stay as draft.');
     }

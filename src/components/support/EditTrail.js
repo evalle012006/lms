@@ -4,7 +4,7 @@ import moment from 'moment';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
 
-const show = (v) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
+const show = (v) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : typeof v === 'object' ? (v.label ?? JSON.stringify(v)) : String(v));
 
 export default function EditTrail({ query, refreshKey = 0, title = 'Edit trail' }) {
     const [edits, setEdits] = useState([]);

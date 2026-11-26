@@ -12,6 +12,7 @@ import EditTrail from '@/components/support/EditTrail';
 import BrowsePanel from '@/components/support/BrowsePanel';
 import RestoreCollection from '@/components/support/RestoreCollection';
 import AnalyzePanel from '@/components/support/AnalyzePanel';
+import RevertTransaction from '@/components/support/RevertTransaction';
 import GroupLockBar from '@/components/support/GroupLockBar';
 import { StatusChip, Btn, IdTag } from '@/components/support/ui';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -342,6 +343,9 @@ const SupportTransactionEditorPage = () => {
                                         {loaded && loaded.entity === (tab) && (
                                             <RecordEditor key={loaded.record._id} entity={loaded.entity} record={loaded.record} fields={loaded.fields} onSaved={() => { loadTab(); if (tab === 'cashCollections' && loan) checkLoan(loan._id, true); }}
                                                 initialDraft={prefill?.entity === tab ? prefill.draft : undefined} initialReason={prefill?.entity === tab ? prefill.reason : undefined} />
+                                        )}
+                                        {tab === 'cashCollections' && rowId && loaded?.entity === 'cashCollections' && loaded.record?.draft !== true && (
+                                            <RevertTransaction record={loaded.record} onReverted={() => { setRowId(null); setLoaded(null); loadTab(); }} />
                                         )}
                                         {tab === 'loans' && !loan && <p className="text-sm text-gray-500">This client has no loans.</p>}
                                     </>
