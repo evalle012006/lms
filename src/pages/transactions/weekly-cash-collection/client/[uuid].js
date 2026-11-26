@@ -1993,6 +1993,9 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (cc.mcbuWithdrawFlag) {
+                    if (!isMcbuWithdrawalAllowed(cc)) {
+                        errorMsg.add(withClientName(cc, "Error occured. MCBU Withdrawal is only allowed on a new release (loan cycle > 1) with status 'tomorrow'."));
+                    }
                     if (!cc.mcbuWithdrawal) {
                         errorMsg.add(withClientName(cc, 'Error occured. Invalid MCBU Withdraw amount.'));
                     } else if (parseFloat(cc.mcbuWithdrawal) < 10) {
@@ -3762,7 +3765,21 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    // Weekly rule: MCBU withdrawal only on the new release (loanCycle > 1) with cashCollections.status = 'tomorrow',
+    // or a group leader (MCBU > 3000) within the last 5 days of the month. Keep in sync with ActionDropDown.
+    // prevData.mcbu is the balance before the withdrawal was deducted (cc.mcbu is already reduced at save time).
+    const isMcbuWithdrawalAllowed = (cc) => {
+        const isNewRelease = cc.status === 'tomorrow' && Number(cc.loanCycle) > 1;
+        const isGLMonthEnd = !!cc.client?.groupLeader && parseFloat(cc.prevData?.mcbu ?? cc.mcbu) > 3000 && (last5DaysOfTheMonth || []).includes(currentDate);
+        return isNewRelease || isGLMonthEnd;
+    };
+
     const handleMcbuWithdrawal = (selected, index) => {
+        if (!isMcbuWithdrawalAllowed(selected)) {
+            toast.error("MCBU Withdrawal is only allowed on a new release (loan cycle > 1) with status 'tomorrow', or for a group leader in the last 5 days of the month.");
+            return;
+        }
+
         const isGL = selected.client?.groupLeader || false;
         const minRetain = isGL
             ? (transactionSettings.minWeeklyMcbuWithdrawalGL ?? 3000)
