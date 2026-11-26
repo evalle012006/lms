@@ -24,7 +24,24 @@ const isCsfExempt = (cc) => {
     return r.startsWith('delinquent') || r.startsWith('excused') || r === 'past due';
 };
 
+// Offset - Matured PD (2026-11-26): the client's MCBU is netted against the loan balance, so the payment is
+// loanBalance - MCBU, computed automatically (no manual input). MCBU above the balance is blocked: use the regular Offset.
+const OFFSET_MATURED_PD = 'offset-matured-pd';
+
+export const maturedPdOffsetBalance = (cc) => (toNum(cc?.loanBalance) > 0 ? toNum(cc.loanBalance) : toNum(cc?.prevData?.loanBalance));
+
+// MCBU as the page uses it when the offset remark is applied (same adjustments as the remarks handler)
+export const maturedPdOffsetMcbu = (cc) => {
+    let mcbu = toNum(cc?.mcbu);
+    const prev = cc?.prevData;
+    const h = cc?.history?.remarks?.value;
+    if (prev && h && (h.startsWith('offset') || h.startsWith('reloaner'))) mcbu = toNum(prev.mcbu);
+    if (prev && mcbu !== toNum(prev.mcbu) && toNum(cc?.mcbuCol) > 0) mcbu -= toNum(cc.mcbuCol);
+    return mcbu;
+};
+
 export const CODES = {
+    OFFSET_MATURED_PD_PAYMENT: 'OFFSET_MATURED_PD_PAYMENT',
     OFFSET_REASON_REQUIRED: 'OFFSET_REASON_REQUIRED',
     LEADER_CSF_REQUIRED: 'LEADER_CSF_REQUIRED',
     NOT_MULTIPLE_OF_TARGET: 'NOT_MULTIPLE_OF_TARGET',
@@ -59,6 +76,19 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
         if (isOffsetRemark(cc) && !String(cc.closeRemarks ?? cc.closeAccountRemarks ?? '').trim()) {
             out.push({ ...base, code: CODES.OFFSET_REASON_REQUIRED,
                 message: 'Offset requires a reason. Please enter the close account remarks.' });
+        }
+
+        // Rule 9: Offset - Matured PD: payment must equal loanBalance - MCBU (balance/MCBU taken from the pre-transaction snapshot)
+        if (remarkValue(cc) === OFFSET_MATURED_PD && toNum(cc.prevData?.loanBalance) > 0) {
+            const balance = toNum(cc.prevData.loanBalance);
+            const mcbu = toNum(cc.history?.mcbu ?? cc.prevData?.mcbu);
+            if (mcbu > balance) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: 'Invalid remarks. MCBU is greater than the loan balance. Please use the regular Offset remarks.' });
+            } else if (Math.abs(toNum(cc.paymentCollection) - (balance - mcbu)) > 0.009) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: `Offset - Matured PD payment must be the loan balance less MCBU (${balance - mcbu}).` });
+            }
         }
 
         // Rule 4: a completed (fully paid) client must not carry a phantom target / payment

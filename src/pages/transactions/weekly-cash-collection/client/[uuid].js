@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { findHardRuleViolations, hardRuleMessages } from '@/lib/collection-rules';
+import { findHardRuleViolations, hardRuleMessages, maturedPdOffsetBalance, maturedPdOffsetMcbu } from '@/lib/collection-rules';
 import { hasActionablePreSaveRow } from '@/lib/lor-edit-mode';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
@@ -2410,6 +2410,8 @@ const CashCollectionDetailsPage = () => {
         const totalIdx = data.indexOf(totalObj);
 
         if (type === 'amount') {
+            // Offset - Matured PD: payment is auto-computed (loan balance - MCBU), no manual input
+            if (data[index]?.remarks?.value === 'offset-matured-pd') return;
             const value = e.target.value;
             let payment = value ? value : 0;
 
@@ -2881,6 +2883,9 @@ const CashCollectionDetailsPage = () => {
                         } else if (!wasMaturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
+                        } else if (wasMaturedPD && remarks.value == 'offset-matured-pd' && maturedPdOffsetMcbu(temp) > maturedPdOffsetBalance(temp)) {
+                            temp.error = true;
+                            toast.error("Invalid remarks. MCBU is greater than the loan balance. Please use the regular Offset remarks.");
                         } else if (temp.loanBalance > 0 && (temp.remarks && temp.remarks?.value != "matured-past due") && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner'))) && temp.mcbu < temp.loanBalance) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
@@ -2985,12 +2990,16 @@ const CashCollectionDetailsPage = () => {
                                         let prevData = {...temp.prevData};
                                         
                                         if (temp?.maturedPD || temp?.maturedPDPrevTransaction) {
-                                            temp.paymentCollection = temp.loanBalance;
-                                            temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
-                                            prevData.paymentCollection = temp.loanBalance;
-                                            history.paymentCollection = temp.loanBalance;
+                                            // Offset - Matured PD: payment = loanBalance - MCBU, set automatically
+                                            const mpdBalance = maturedPdOffsetBalance(temp);
+                                            const mpdPayment = Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0);
+                                            temp.paymentCollection = mpdPayment;
+                                            temp.paymentCollectionStr = mpdPayment > 0 ? formatPricePhp(mpdPayment) : '-';
+                                            prevData.loanBalance = mpdBalance;
+                                            prevData.paymentCollection = mpdPayment;
+                                            history.paymentCollection = mpdPayment;
                                             history.mcbu = temp.mcbu;
-                                            temp.maturedPastDue = temp.loanBalance - temp.mcbu;
+                                            temp.maturedPastDue = mpdPayment;
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
@@ -3006,7 +3015,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                         }
-                                        temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                        temp.mcbuReturnAmt = remarks.value === 'offset-matured-pd' ? 0 : parseFloat(temp.mcbu); // matured PD: MCBU is applied to the balance, nothing is returned
                                         temp.csfReturnAmt = temp.csf;
                                         temp.csfReturnAmtStr = formatPricePhp(temp.csf);
 
@@ -3027,7 +3036,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.loanBalanceStr = '-';
                                         }
 
-                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0 && remarks.value !== 'offset-matured-pd') {
                                             temp.fullPayment = temp?.history?.amountRelease;
                                         }
 
@@ -4687,7 +4696,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' 
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc.remarks?.value !== 'offset-matured-pd'
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
@@ -4867,7 +4876,7 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
-                                        {closeLoan && closeLoan.remarks && closeLoan.remarks.value !== 'offset-unclaimed' && (
+                                        {closeLoan && closeLoan.remarks && closeLoan.remarks.value !== 'offset-unclaimed' && closeLoan.remarks.value !== 'offset-matured-pd' && (
                                             <CheckBox size={"md"} name="used-mcbu" value={offsetUseMCBU} label="Use MCBU as Payment" onChange={(name, value) => handleOffsetUseMCBU(closeLoan, name, value)} />
                                         )}
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
