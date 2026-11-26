@@ -2411,7 +2411,7 @@ const CashCollectionDetailsPage = () => {
 
         if (type === 'amount') {
             // Offset - Matured PD: payment is auto-computed (loan balance - MCBU), no manual input
-            if (data[index]?.remarks?.value === 'offset-matured-pd') return;
+            if (data[index]?.remarks?.value === 'offset-matured-pd' || (data[index]?.maturedPDPrevTransaction && data[index]?.remarks?.value?.startsWith('offset'))) return;
             const value = e.target.value;
             let payment = value ? value : 0;
 
@@ -2958,7 +2958,7 @@ const CashCollectionDetailsPage = () => {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
-                                    if (wasMaturedPD && remarks.value !== 'offset-matured-pd') {
+                                    if (wasMaturedPD && remarks.value !== 'offset-matured-pd' && !(maturedPdOffsetMcbu(temp) > maturedPdOffsetBalance(temp))) {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
@@ -2992,14 +2992,15 @@ const CashCollectionDetailsPage = () => {
                                         if (temp?.maturedPD || temp?.maturedPDPrevTransaction) {
                                             // Offset - Matured PD: payment = loanBalance - MCBU, set automatically
                                             const mpdBalance = maturedPdOffsetBalance(temp);
-                                            const mpdPayment = Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0);
+                                            // MCBU above the balance with a regular Offset: MCBU pays the balance (payment = balance) and the full MCBU is returned, so the row nets negative
+                                            const mpdPayment = remarks.value === 'offset-matured-pd' ? Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0) : mpdBalance;
                                             temp.paymentCollection = mpdPayment;
                                             temp.paymentCollectionStr = mpdPayment > 0 ? formatPricePhp(mpdPayment) : '-';
                                             prevData.loanBalance = mpdBalance;
                                             prevData.paymentCollection = mpdPayment;
                                             history.paymentCollection = mpdPayment;
                                             history.mcbu = temp.mcbu;
-                                            temp.maturedPastDue = mpdPayment;
+                                            temp.maturedPastDue = remarks.value === 'offset-matured-pd' ? mpdPayment : 0;
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
@@ -3011,6 +3012,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
                                             temp.loanBalance = 0;
+                                            temp.loanBalanceStr = '-';
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
@@ -4696,7 +4698,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc.remarks?.value !== 'offset-matured-pd'
+                                                    { (!isWeekend && !isHoliday && (!currentBranch.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && cc.remarks?.value !== 'offset-matured-pd' && !(cc.maturedPDPrevTransaction && cc.remarks?.value?.startsWith('offset'))
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
@@ -4805,7 +4807,7 @@ const CashCollectionDetailsPage = () => {
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection > 0 ? formatPricePhp(cc.totalCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection ? formatPricePhp(cc.totalCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>

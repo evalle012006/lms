@@ -9,6 +9,7 @@ import PublicLAFForm                  from '@/components/laf/PublicLAFForm';
 import Head                           from 'next/head';
 import moment                         from 'moment';
 import { logAuditPublic }             from '@/lib/audit';
+import { isOfflineModeActive }        from '@/lib/offline-mode';
 
 const graph = new GraphProvider();
 
@@ -16,7 +17,7 @@ const GROUP_TYPE = createGraphType('groups', `
     _id name status qrToken qrExpiresAt qrGeneratedAt qrGeneratedBy
     branchId loanOfficerId loanOfficerName availableSlots capacity
     occurence day dayNo time groupNo
-    branch { _id name code }
+    branch { _id name code skipClientFaceVerify skipClientFaceVerifyUntil }
 `)('groups');
 
 const SETTINGS_TYPE = createGraphType('settings', `
@@ -135,6 +136,9 @@ export async function getServerSideProps({ req, params }) {
             branchCode: group.branch?.code  || '',
             qrToken,
             qrExpiresAt: group.qrExpiresAt,
+            // Photo upload is allowed only while the branch is in offline mode (flag set AND not expired).
+            // Resolved server-side per page load; otherwise live camera capture is the only option.
+            offlineModeActive: isOfflineModeActive(group.branch),
             // Settings
             requireClientBiometric: settings?.requireClientBiometric ?? true,
             requireGovernmentId:    settings?.requireGovernmentId    ?? true,
@@ -186,6 +190,7 @@ export default function ApplyPage(props) {
         requireClientBiometric,
         requireGovernmentId,
         requireSelfieWithId,
+        offlineModeActive,
     } = props;
 
     if (error) {
@@ -225,6 +230,7 @@ export default function ApplyPage(props) {
                 requireClientBiometric={requireClientBiometric}
                 requireGovernmentId={requireGovernmentId}
                 requireSelfieWithId={requireSelfieWithId}
+                offlineModeActive={offlineModeActive === true}
             />
         </>
     );
