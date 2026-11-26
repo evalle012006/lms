@@ -18,8 +18,18 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
-                if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && (!dataOptions?.filter && (data.status == 'tomorrow' || (data.occurence == 'weekly' && (data.status == 'active' || data.status == 'completed')) || (client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate))) && !data?.draft)) {
-                    tempOption.hidden = false;
+                if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && !dataOptions?.filter && !data?.draft) {
+                    const isGLMonthEnd = client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate);
+                    if (data.occurence == 'weekly') {
+                        // Weekly LOR rule: MCBU withdrawal is only allowed on the new release
+                        // (loanCycle > 1) whose cashCollection status is 'tomorrow',
+                        // or for a group leader in the last 5 days of the month.
+                        if ((data.status == 'tomorrow' && Number(data.loanCycle) > 1) || isGLMonthEnd) {
+                            tempOption.hidden = false;
+                        }
+                    } else if (data.status == 'tomorrow' || isGLMonthEnd) {
+                        tempOption.hidden = false;
+                    }
                 }
 
                 if (option.label == 'Change Reloaner Remarks' && ((data.remarks?.value?.startsWith('reloaner') && (data.status == 'pending' || data.status == 'tomorrow')) && !dataOptions?.filter && !data.draft && !data.reverted)) {
