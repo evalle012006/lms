@@ -113,6 +113,20 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
             }
         }
 
+        // Rule 9b: regular Offset on a matured PD loan is only valid when MCBU exceeds the balance: MCBU pays the balance
+        // (payment = balance) and the full MCBU is returned, so the row nets negative.
+        if (cc.maturedPDPrevTransaction && isOffsetRemark(cc) && remarkValue(cc) !== OFFSET_MATURED_PD && toNum(cc.prevData?.loanBalance) > 0) {
+            const balance = toNum(cc.prevData.loanBalance);
+            const mcbu = toNum(cc.history?.mcbu ?? cc.prevData?.mcbu);
+            if (!(mcbu > balance)) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: 'Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.' });
+            } else if (Math.abs(toNum(cc.paymentCollection) - balance) > 0.009) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: `Offset on a matured PD loan must record the loan balance (${balance}) as payment, paid by MCBU.` });
+            }
+        }
+
         // Rule 4: a completed (fully paid) client must not carry a phantom target / payment
         if (cc.status === 'completed' && (isOffsetRemark(cc) || remarkValue(cc).startsWith('reloaner'))
             && toNum(cc.loanBalance) <= 0 && toNum(cc.paymentCollection) === 0 && toNum(cc.targetCollection) > 0) {
