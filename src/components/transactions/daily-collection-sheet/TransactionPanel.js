@@ -117,6 +117,7 @@ const INITIAL_TRANSACTION_TYPES = [
     { id: 'OP-025-04', category: 'Other Payments', code: '025 - Medical Mission Program (Health Care)', accountTitle: 'Medical Mission Program (Health Care)' },
     { id: 'OP-025-05', category: 'Other Payments', code: '025 - Business Development Program', accountTitle: 'Business Development Program' },
     { id: 'OP-026', category: 'Other Payments', code: '026 - Unclaimed Return (Out)', accountTitle: 'Unclaimed Return (Out)' },
+    { id: 'OP-028', category: 'Other Payments', code: '028 - Staff CBU Withdrawal', accountTitle: 'Staff CBU Withdrawal' },
     { id: 'OP-030', category: 'Other Payments', code: '030 - Staff Benevolent Fund (SBF)', accountTitle: 'Staff Benevolent Fund (SBF)' },
     { id: 'OP-033', category: 'Other Payments', code: '033 - Accrued Expenses', accountTitle: 'Accrued Expenses' },
     { id: 'OP-034', category: 'Other Payments', code: '034 - ACCOUNTS PAYABLE', accountTitle: 'ACCOUNTS PAYABLE' },

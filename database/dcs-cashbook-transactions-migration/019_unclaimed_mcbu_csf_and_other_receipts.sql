@@ -95,7 +95,7 @@ BEGIN
     WHERE source_type = 'manual';
 
     ALTER TABLE public.dcs_other_receipts_transactions
-    DROP CONSTRAINT dcs_other_receipts_type_check,
+    DROP CONSTRAINT IF EXISTS dcs_other_receipts_type_check,
     ADD CONSTRAINT dcs_other_receipts_type_check
     CHECK (
         transaction_type IN (

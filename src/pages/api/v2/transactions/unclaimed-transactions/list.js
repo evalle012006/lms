@@ -4,6 +4,7 @@ import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { CASH_COLLECTIONS_FIELDS, BRANCH_FIELDS, UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import { getSystemDate } from '@/lib/date-utils';
+import { calculateOffsetAmounts } from "@/lib/unclaimed-calculations";
 import logger from '@/logger';
 import moment from 'moment';
 
@@ -198,14 +199,7 @@ function buildRequestFilters(filters, manual = false) {
 }
 
 function formatOffsetTransaction(cc, transaction = null) {
-    const mcbu = toNumber(cc.mcbuReturnAmt);
-    const csf = toNumber(cc.csfReturnAmt);
-    const totalReturn = roundMoney(mcbu + csf);
-    const loanBalance = toNumber(cc.paymentCollection);
-
-    const unclaimedAmount = roundMoney(
-        totalReturn - loanBalance
-    );
+    const { mcbu, csf, totalReturn, paymentCollection: loanBalance, unclaimedAmount, } = calculateOffsetAmounts(cc);
 
     return {
         _id: cc._id,

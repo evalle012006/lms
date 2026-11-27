@@ -262,7 +262,6 @@ BEGIN
         COALESCE(
             SUM(
                 COALESCE(cc."mcbuReturnAmt", 0)
-                + COALESCE(cc."csfReturnAmt", 0)
                 - COALESCE(cc."paymentCollection", 0)
             ),
             0

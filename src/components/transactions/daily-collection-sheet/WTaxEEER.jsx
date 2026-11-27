@@ -13,7 +13,7 @@ const money = (value) => {
     });
 };
 
-const WTaxEEER = ({branchId, selectedDate, otherIncomeRefreshKey = 0,}) => {
+const WTaxEEER = ({ branchId, selectedDate, otherIncomeRefreshKey = 0 }) => {
     const selectedMoment = moment(selectedDate);
     const monthName = selectedMoment.format('MMMM').toUpperCase();
     const year = selectedMoment.format('YYYY');
@@ -57,12 +57,6 @@ const WTaxEEER = ({branchId, selectedDate, otherIncomeRefreshKey = 0,}) => {
                     response?.data ||
                     response?.response ||
                     [];
-
-                console.log("WTAX BRANCH ID:", branchId);
-
-                console.log("WTAX API RESPONSE:", response);
-
-                console.log("WTAX TRANSACTIONS:", data);
 
                 setTransactions(Array.isArray(data) ? data : []);
             } catch (error) {
@@ -121,16 +115,6 @@ const WTaxEEER = ({branchId, selectedDate, otherIncomeRefreshKey = 0,}) => {
                 );
 
                 const amount = Number(item?.amount || 0);
-
-                console.log("WTAX TRANSACTION ITEM:", {
-                    date,
-                    category,
-                    rawCode,
-                    code,
-                    accountTitle,
-                    amount,
-                    originalItem: item,
-                });
 
                 if (!Number.isFinite(amount) || amount <= 0) {
                     return;

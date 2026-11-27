@@ -1,17 +1,8 @@
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-
-import {
-    createGraphType,
-    insertQl,
-    updateQl,
-    queryQl
-} from '@/lib/graph/graph.util';
-
-import {
-    UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS
-} from '@/lib/graph.fields';
-
+import { calculateOffsetAmounts } from "@/lib/unclaimed-calculations";
+import { createGraphType, insertQl, updateQl, queryQl } from '@/lib/graph/graph.util';
+import { UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import { generateUUID } from '@/lib/utils';
 import { getSystemDate } from '@/lib/date-utils';
@@ -571,11 +562,8 @@ async function claimOffsetTransaction(
         );
     }
 
-    const unclaimedAmount = roundMoney(
-        toNumber(collection.mcbuReturnAmt) +
-        toNumber(collection.csfReturnAmt) -
-        toNumber(collection.paymentCollection)
-    );
+    const { unclaimedAmount } = calculateOffsetAmounts(collection);
+
     if (unclaimedAmount <= 0) {
         return failure(
             'Unclaimed amount must be greater than zero.'

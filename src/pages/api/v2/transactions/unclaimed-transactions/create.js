@@ -1,16 +1,9 @@
 //src/pages/api/v2/transactions/unclaimed-transactions/create.js
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
-import {
-    createGraphType,
-    insertQl,
-    queryQl,
-} from "@/lib/graph/graph.util";
-
-import {
-    UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS,
-} from "@/lib/graph.fields";
-
+import { calculateOffsetAmounts } from "@/lib/unclaimed-calculations";
+import { createGraphType, insertQl, queryQl, } from "@/lib/graph/graph.util";
+import { UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS, } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 import { getSystemDate } from "@/lib/date-utils";
@@ -378,38 +371,18 @@ async function createUnclaimedTransaction(req, res) {
             )
         );
 
-        const existingOffsets =
-            offsetResult.data?.cashCollections || [];
-
-        const toCents = value =>
-            Math.round(Number(value || 0) * 100);
-
+        const existingOffsets = offsetResult.data?.cashCollections || [];
+        const toCents = value => Math.round(Number(value || 0) * 100);
         const duplicateOffset = existingOffsets.some(collection => {
-            // LOR stores MCBU and CSF combined in mcbuReturnAmt.
-            const combinedReturn =
-                toCents(collection.mcbuReturnAmt);
-
-            const csfReturn =
-                toCents(collection.csfReturnAmt);
-
-            const paymentCollection =
-                toCents(collection.paymentCollection);
-
-            const mcbuReturn =
-                combinedReturn - csfReturn;
-
-            const unclaimedAmount =
-                combinedReturn - paymentCollection;
+            const {
+                mcbuCents: mcbuReturn,
+                csfCents: csfReturn,
+                unclaimedAmountCents: unclaimedAmount,
+            } = calculateOffsetAmounts(collection);
 
             const manualTotal = toCents(mcbu) + toCents(csf);
-
-            const sameReturnAmounts =
-                mcbuReturn === toCents(mcbu) &&
-                csfReturn === toCents(csf);
-
-            const sameUnclaimedAmount =
-                unclaimedAmount > 0 &&
-                unclaimedAmount === manualTotal;
+            const sameReturnAmounts = mcbuReturn === toCents(mcbu) && csfReturn === toCents(csf);
+            const sameUnclaimedAmount = unclaimedAmount > 0 && unclaimedAmount === manualTotal;
 
             return sameReturnAmounts || sameUnclaimedAmount;
         });
