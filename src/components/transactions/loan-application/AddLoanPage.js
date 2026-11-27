@@ -657,6 +657,19 @@ const AddLoanPage = ({
                 const latestLoan = loans
                     .filter(l => l.status === 'active' || l.status === 'completed')
                     .sort((a, b) => (Number(b.loanCycle) || 0) - (Number(a.loanCycle) || 0))[0];
+                // A reloan with no payment yet cannot be paid off or advanced; edit or reject it instead.
+                // (The server enforces the same rule; this just stops the user earlier.)
+                if (latestLoan?.prevLoanId && !(Number(latestLoan.noOfPayments) > 0)) {
+                    setSelectedClientObj(null);
+                    setClientId(null);
+                    resetClient(formikRef.current);
+                    toast.error(
+                        'This client\'s current loan is a reloan that has no payment yet, so a new loan ' +
+                        'cannot be created. Edit or reject that loan instead.',
+                        { autoClose: 8000 }
+                    );
+                    return;
+                }
                 if (latestLoan?._id) {
                     setSelectedLoanId(latestLoan._id);
                     setSelectedLoanStatus(latestLoan.status);

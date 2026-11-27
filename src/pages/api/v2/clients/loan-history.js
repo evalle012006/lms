@@ -14,7 +14,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
     _id delinquent
     loans (order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 20) {
-        _id loanCycle status slotNo
+        _id loanCycle prevLoanId status slotNo
         amountRelease loanBalance loanTerms
         principalLoan pnNumber occurence
         dateAdded dateOfRelease ciReferenceCode insertedDateTime
@@ -74,6 +74,7 @@ async function getLoanHistory(req, res) {
     const loans = (clientData.loans || []).map((l, i) => ({
         _id:            l._id,
         loanCycle:      l.loanCycle,
+        prevLoanId:     l.prevLoanId,
         status:         l.status,
         slotNo:         l.slotNo,
         amountRelease:  l.amountRelease,

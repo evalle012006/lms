@@ -185,6 +185,70 @@ async function save(req, res) {
         }
     }
 
+    // ── Unstarted-reloan guard ────────────────────────────────────────────────
+    // Incident 2026-11-25 (slots 1 and 10, KIA): a client got a reloan, and before that reloan
+    // had a single payment a SECOND loan was created from it (prevLoanId = the first reloan).
+    // The duplicate guard above misses this (different oldLoanId), and pendingExist misses it too
+    // (the first reloan was already active). Releasing the second loan then closed the first one
+    // through update-pending-loans, and the new loan was saved with loanCycle 0.
+    // A reloan that has not collected anything yet cannot be paid off or advanced: edit or reject
+    // it instead.
+    if ((mode === 'reloan' || mode === 'advance' || mode === 'active') && oldLoanId) {
+        const oldLoan = (await graph.query(queryQl(loansType(), {
+            where: { _id: { _eq: oldLoanId } }
+        }))).data?.loans?.[0];
+
+        const oldLoanIsUnstartedReloan = !!oldLoan
+            && !!oldLoan.prevLoanId
+            && ['pending', 'active'].includes(oldLoan.status)
+            && !(Number(oldLoan.noOfPayments) > 0);
+
+        if (oldLoanIsUnstartedReloan) {
+            logger.warn({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Loan requested from a reloan that has no payment yet', mode, oldLoanId, oldLoanStatus: oldLoan.status, oldLoanPrevLoanId: oldLoan.prevLoanId});
+            logAudit(req, {
+                action: 'LOAN_BLOCKED', category: 'LOAN', severity: 'WARNING',
+                entityType: 'loan', entityId: oldLoan._id, clientId: loanData.clientId, branchId: loanData.branchId,
+                description: 'Loan creation blocked: the current loan is a reloan with no payment yet',
+                metadata: { reason: 'unstarted_reloan', mode, oldLoanId, oldLoanStatus: oldLoan.status, oldLoanPrevLoanId: oldLoan.prevLoanId, ciReferenceCode: loanData.ciReferenceCode || null },
+            });
+            res.send({
+                error: true,
+                message: `The client's current loan (PN: ${oldLoan.pnNumber || oldLoan._id}) is a reloan that has no payment yet, so a new loan cannot be created from it. Edit or reject that loan instead.`
+            });
+            return;
+        }
+    }
+
+    // ── One approved CI backs one live loan ───────────────────────────────────
+    // Incident 2026-11-25: the same CI reference (CI-B128-20261125-B53F2D / -B5210F) was used for the
+    // first reloan and again for a second one created minutes later. The CI page already refuses a
+    // second loan for a CI that has one (CIPromotedClientBanner linkedLoan); the Add Loan page and this
+    // endpoint did not. A rejected loan frees its CI; closed loans belong to an earlier cycle.
+    if (loanData.ciReferenceCode) {
+        const liveLoanOnCi = (await graph.query(queryQl(loansType(), {
+            where: {
+                ciReferenceCode: { _eq: loanData.ciReferenceCode },
+                clientId:        { _eq: loanData.clientId },
+                status:          { _in: ['pending', 'active', 'completed'] },
+            }
+        }))).data?.loans?.[0];
+
+        if (liveLoanOnCi) {
+            logger.warn({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'CI already has a live loan', ciReferenceCode: loanData.ciReferenceCode, existingLoanId: liveLoanOnCi._id, existingStatus: liveLoanOnCi.status});
+            logAudit(req, {
+                action: 'LOAN_BLOCKED', category: 'LOAN', severity: 'WARNING',
+                entityType: 'loan', entityId: liveLoanOnCi._id, clientId: loanData.clientId, branchId: loanData.branchId,
+                description: 'Loan creation blocked: this CI already has a live loan',
+                metadata: { reason: 'ci_has_live_loan', ciReferenceCode: loanData.ciReferenceCode, existingLoanId: liveLoanOnCi._id, existingStatus: liveLoanOnCi.status, mode, oldLoanId: oldLoanId || null },
+            });
+            res.send({
+                error: true,
+                message: `This CI (${loanData.ciReferenceCode}) already has a ${liveLoanOnCi.status} loan (PN: ${liveLoanOnCi.pnNumber || liveLoanOnCi._id}). Reject or correct that loan instead of creating a new one.`
+            });
+            return;
+        }
+    }
+
     // ── v2 Date of Release validation — server-side source of truth ────────
     // Client-side already checked this (AddLoanPage.js); this is the real
     // enforcement layer since the client check can be bypassed by a direct

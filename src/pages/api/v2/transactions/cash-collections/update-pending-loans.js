@@ -187,6 +187,9 @@ async function updatePendingLoan(user_id, collection, currentDate) {
         const currentLoanId = currentLoan._id;
         const pendingLoanId = pendingLoan._id;
         const cashCollectionId = cashCollection._id;
+        const prevStatusBefore = currentLoan.status;
+        const ccLoanIdBefore = cashCollection.loanId;
+        const ccPrevLoanIdBefore = cashCollection.prevLoanId ?? null;
         
         delete currentLoan._id;
         delete pendingLoan._id;
@@ -210,7 +213,17 @@ async function updatePendingLoan(user_id, collection, currentDate) {
         ).catch(err => {
           logger.error(err);
           throw err;
-        }) 
+        })
+        logAudit({}, {
+          userId: user_id, action: 'LOAN_RELEASED_CLOSED_PREVIOUS', category: 'LOAN', severity: 'INFO',
+          entityType: 'loan', entityId: pendingLoanId, clientId: collection.clientId,
+          description: `Pending loan released; previous loan ${currentLoanId} closed and today's collection row repointed`,
+          metadata: {
+            closedLoanId: currentLoanId, closedLoanStatusBefore: prevStatusBefore,
+            releasedLoanId: pendingLoanId,
+            cashCollection: { _id: cashCollectionId, loanIdBefore: ccLoanIdBefore, prevLoanIdBefore: ccPrevLoanIdBefore, loanIdAfter: pendingLoanId, prevLoanIdAfter: currentLoanId },
+          },
+        });
     } else if (currentLoanClosed.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
       currentLoanClosed = currentLoanClosed[0];
       pendingLoan = pendingLoan[0];
