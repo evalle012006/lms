@@ -40,6 +40,13 @@ export const maturedPdOffsetMcbu = (cc) => {
     return mcbu;
 };
 
+// Matured PD offset rows (regular Offset or Offset - Matured PD): the register shows a business position instead of the
+// cash net: (MCBU + CSF returned) - balance paid by MCBU. Negative = loss / still payable by the client (write-off),
+// positive = excess. Display only: totalCollection (cash, feeds the group total and denomination) is untouched.
+export const isMaturedPdOffsetRow = (cc) => !!(cc && (cc.maturedPD || cc.maturedPDPrevTransaction)
+    && remarkValue(cc).startsWith('offset') && cc.status !== 'totals' && cc.status !== 'open');
+export const maturedPdNetPosition = (cc) => toNum(cc.mcbuReturnAmt) - toNum(cc.paymentCollection);
+
 export const CODES = {
     OFFSET_MATURED_PD_PAYMENT: 'OFFSET_MATURED_PD_PAYMENT',
     OFFSET_REASON_REQUIRED: 'OFFSET_REASON_REQUIRED',
@@ -78,16 +85,45 @@ export const findHardRuleViolations = (rows, { csfEnabled = false, dayName, skip
                 message: 'Offset requires a reason. Please enter the close account remarks.' });
         }
 
-        // Rule 9: Offset - Matured PD: payment must equal loanBalance - MCBU (balance/MCBU taken from the pre-transaction snapshot)
+        // Rule 9: Offset - Matured PD: payment = loan balance (paid by MCBU), the whole MCBU (+ CSF) is returned, the unpaid
+        // part (balance - MCBU) is the write-off. MCBU above the balance must use the regular Offset.
         if (remarkValue(cc) === OFFSET_MATURED_PD && toNum(cc.prevData?.loanBalance) > 0) {
             const balance = toNum(cc.prevData.loanBalance);
             const mcbu = toNum(cc.history?.mcbu ?? cc.prevData?.mcbu);
             if (mcbu > balance) {
                 out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
                     message: 'Invalid remarks. MCBU is greater than the loan balance. Please use the regular Offset remarks.' });
-            } else if (Math.abs(toNum(cc.paymentCollection) - (balance - mcbu)) > 0.009) {
+            } else if (Math.abs(toNum(cc.paymentCollection) - balance) > 0.009) {
                 out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
-                    message: `Offset - Matured PD payment must be the loan balance less MCBU (${balance - mcbu}).` });
+                    message: `Offset - Matured PD payment must be the loan balance (${balance}), paid by MCBU.` });
+            }
+        }
+
+        // Rule 9b: regular Offset on a matured PD loan is only valid when MCBU exceeds the balance: MCBU pays the balance
+        // (payment = balance) and the full MCBU is returned, so the row nets negative.
+        if (cc.maturedPDPrevTransaction && isOffsetRemark(cc) && remarkValue(cc) !== OFFSET_MATURED_PD && toNum(cc.prevData?.loanBalance) > 0) {
+            const balance = toNum(cc.prevData.loanBalance);
+            const mcbu = toNum(cc.history?.mcbu ?? cc.prevData?.mcbu);
+            if (!(mcbu > balance)) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: 'Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.' });
+            } else if (Math.abs(toNum(cc.paymentCollection) - balance) > 0.009) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: `Offset on a matured PD loan must record the loan balance (${balance}) as payment, paid by MCBU.` });
+            }
+        }
+
+        // Rule 9b: regular Offset on a matured PD loan is only valid when MCBU exceeds the balance: MCBU pays the balance
+        // (payment = balance) and the full MCBU is returned, so the row nets negative.
+        if (cc.maturedPDPrevTransaction && isOffsetRemark(cc) && remarkValue(cc) !== OFFSET_MATURED_PD && toNum(cc.prevData?.loanBalance) > 0) {
+            const balance = toNum(cc.prevData.loanBalance);
+            const mcbu = toNum(cc.history?.mcbu ?? cc.prevData?.mcbu);
+            if (!(mcbu > balance)) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: 'Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.' });
+            } else if (Math.abs(toNum(cc.paymentCollection) - balance) > 0.009) {
+                out.push({ ...base, code: CODES.OFFSET_MATURED_PD_PAYMENT,
+                    message: `Offset on a matured PD loan must record the loan balance (${balance}) as payment, paid by MCBU.` });
             }
         }
 

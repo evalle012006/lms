@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { findHardRuleViolations, hardRuleMessages, maturedPdOffsetBalance, maturedPdOffsetMcbu } from '@/lib/collection-rules';
+import { findHardRuleViolations, hardRuleMessages, maturedPdOffsetBalance, maturedPdOffsetMcbu, isMaturedPdOffsetRow, maturedPdNetPosition } from '@/lib/collection-rules';
 import { hasActionablePreSaveRow } from '@/lib/lor-edit-mode';
 import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, isValidCoMaker, normalizeCoMaker, displayCoMaker, safeNumber, UppercaseFirstLetter, isCoMakerSlotValid } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
@@ -2990,17 +2990,17 @@ const CashCollectionDetailsPage = () => {
                                         let prevData = {...temp.prevData};
                                         
                                         if (temp?.maturedPD || temp?.maturedPDPrevTransaction) {
-                                            // Offset - Matured PD: payment = loanBalance - MCBU, set automatically
+                                            // Matured PD offset: payment = loan balance, set automatically; MCBU (+ CSF) is returned
                                             const mpdBalance = maturedPdOffsetBalance(temp);
                                             // MCBU above the balance with a regular Offset: MCBU pays the balance (payment = balance) and the full MCBU is returned, so the row nets negative
-                                            const mpdPayment = remarks.value === 'offset-matured-pd' ? Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0) : mpdBalance;
+                                            const mpdPayment = mpdBalance; // payment = loan balance (paid by MCBU) for both remarks; the unpaid part is the write-off
                                             temp.paymentCollection = mpdPayment;
                                             temp.paymentCollectionStr = mpdPayment > 0 ? formatPricePhp(mpdPayment) : '-';
                                             prevData.loanBalance = mpdBalance;
                                             prevData.paymentCollection = mpdPayment;
                                             history.paymentCollection = mpdPayment;
                                             history.mcbu = temp.mcbu;
-                                            temp.maturedPastDue = remarks.value === 'offset-matured-pd' ? mpdPayment : 0;
+                                            temp.maturedPastDue = remarks.value === 'offset-matured-pd' ? Math.max(mpdBalance - (parseFloat(temp.mcbu) || 0), 0) : 0; // write-off amount
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                             temp.fullPayment = temp.loanRelease;
@@ -3017,7 +3017,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                         }
-                                        temp.mcbuReturnAmt = remarks.value === 'offset-matured-pd' ? 0 : parseFloat(temp.mcbu); // matured PD: MCBU is applied to the balance, nothing is returned
+                                        temp.mcbuReturnAmt = parseFloat(temp.mcbu);
                                         temp.csfReturnAmt = temp.csf;
                                         temp.csfReturnAmtStr = formatPricePhp(temp.csf);
 
@@ -4807,7 +4807,7 @@ const CashCollectionDetailsPage = () => {
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection ? formatPricePhp(cc.totalCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ (isMaturedPdOffsetRow(cc) ? maturedPdNetPosition(cc) : cc.totalCollection) ? formatPricePhp(isMaturedPdOffsetRow(cc) ? maturedPdNetPosition(cc) : cc.totalCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
