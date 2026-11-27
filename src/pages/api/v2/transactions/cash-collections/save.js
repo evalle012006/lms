@@ -128,6 +128,10 @@ async function save(req, res) {
                     collection.maturedPD = true;
                 }
 
+                if (collection.remarks?.value === 'offset-matured-pd') {
+                    collection.pastDue = 0;
+                }
+
                 if (!collection.transferId) {
                     collection.transfer = false;
                     collection.transferred = false;
@@ -431,9 +435,10 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
             }
             
             loan.amountRelease = 0;
+            // pastDue is always cleared (incl. Offset - Matured PD); only the past-due counter is kept for that remark
+            loan.pastDue = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
-                loan.pastDue = 0;
             }
 
             if (collection.status == 'closed') {
