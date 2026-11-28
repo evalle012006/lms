@@ -17,7 +17,7 @@ jest.mock('@/lib/notification-service', () => ({
     notifyLoanOffset: jest.fn(), notifySuccessiveDelinquent: jest.fn(),
     notifyDelinquentAsReloaner: jest.fn(), isNotificationEnabled: jest.fn(),
 }));
-jest.mock('@/lib/date-utils', () => ({ getSystemDate: () => global.__SYSTEM_DATE__ }));
+jest.mock('@/lib/date-utils', () => ({ getSystemDate: () => global.__SYSTEM_DATE__, getNonWorkingReason: () => null }));
 jest.mock('@/lib/csf-config-server', () => ({ loadCsfEnabled: async () => true }));
 jest.mock('@/pages/api/v2/transactions/cash-collections/update-pending-loans', () => ({ savePendingLoans: jest.fn() }));
 jest.mock('@/lib/graph.functions', () => {

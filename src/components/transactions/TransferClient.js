@@ -1,4 +1,5 @@
 import React from "react";
+import { findRoleByKey } from '@/lib/roles';
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useEffect, useState } from "react";
@@ -272,7 +273,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
     const updateClient = (u, updatedValue) => {
         setLoading(true);
         const tempUser = { ...u };
-        const selectedRole = platformRoles.find(role => role.rep == updatedValue);
+        const selectedRole = findRoleByKey(platformRoles, updatedValue);
         tempUser.role = JSON.stringify(selectedRole);
         delete tempUser.roleId;
         fetchWrapper.sendData('/api/users/', tempUser)

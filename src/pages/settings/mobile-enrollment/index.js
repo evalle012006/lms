@@ -10,6 +10,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 import { ImageOff, X, User, Check, XCircle } from 'lucide-react';
 
+import { isAdminLevel } from '@/lib/roles';
 const PAGE_SIZE = 25;
 
 const METHOD_FILTERS = [
@@ -65,7 +66,7 @@ const MobileEnrollmentPage = () => {
     const [actionLoading, setActionLoading] = useState(null); // attempt id currently being approved/rejected
 
     useEffect(() => {
-        if (currentUser && !currentUser.root) router.replace('/');
+        if (currentUser && !isAdminLevel(currentUser)) router.replace('/');
     }, [currentUser, router]);
 
     useEffect(() => {
@@ -122,7 +123,7 @@ const MobileEnrollmentPage = () => {
         }
     }
 
-    if (!currentUser?.root) return null;
+    if (!isAdminLevel(currentUser)) return null;
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

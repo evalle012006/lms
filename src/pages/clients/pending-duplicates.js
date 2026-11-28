@@ -14,6 +14,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import CIDuplicatePanel from '@/components/ci/CIDuplicatePanel';
 import { useSignedUrl } from 'hooks/useSignedUrl';
 
+import { isAdminLevel } from '@/lib/roles';
 // ── One application row ───────────────────────────────────────────────────
 const ApplicationRow = ({ application, onResolved }) => {
     const [expanded, setExpanded] = useState(false);
@@ -107,13 +108,13 @@ const PendingDuplicatesPage = () => {
     // Only rep=1 and rep=2 can access
     useEffect(() => {
         if (!currentUser) return;
-        if (rep !== 1 && rep !== 2 && !currentUser.root) {
+        if (rep !== 1 && rep !== 2 && !isAdminLevel(currentUser)) {
             router.replace('/');
         }
     }, [currentUser, rep, router]);
 
     useEffect(() => {
-        if (rep !== 1 && rep !== 2 && !currentUser?.root) return;
+        if (rep !== 1 && rep !== 2 && !isAdminLevel(currentUser)) return;
         setLoading(true);
         fetchWrapper.get(
             getApiBaseUrl() + 'laf/pending-duplicates'
@@ -129,7 +130,7 @@ const PendingDuplicatesPage = () => {
         setApplications(prev => prev.filter(a => a.ciReferenceCode !== ciReferenceCode));
     };
 
-    if (rep !== 1 && rep !== 2 && !currentUser?.root) return null;
+    if (rep !== 1 && rep !== 2 && !isAdminLevel(currentUser)) return null;
 
     return (
         <Layout>

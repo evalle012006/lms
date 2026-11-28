@@ -11,6 +11,7 @@
 //
 // Always HTTP 200 with { success }: a 403 would trigger the client-side logout.
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
 import { createGraphType, updateQl } from '@/lib/graph/graph.util';
@@ -35,6 +36,7 @@ const pick = (obj, keys) => Object.fromEntries(keys.map((k) => [k, obj?.[k] ?? n
 export default apiHandler({ post: reinstate });
 
 async function reinstate(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     try {
         const loanId = typeof req.body?.loanId === 'string' ? req.body.loanId.trim() : '';
         const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';

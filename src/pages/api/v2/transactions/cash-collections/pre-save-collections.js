@@ -5,7 +5,7 @@ import { getNonWorkingReason } from '@/lib/date-utils';
 import { resolveWeeklyMcbuMinimum } from '@/lib/mcbu-target-utils';
 import { getWeeklyMcbuTargetConfig } from '@/lib/mcbu-withdrawal-utils';
 import { generateUUID } from '@/lib/utils';
-import { createHash } from 'crypto';
+import { presaveId } from '@/lib/presave-id';
 import { apiHandler } from '@/services/api-handler';
 import { findGroups } from '@/lib/graph.functions';
 import { gql } from 'node_modules/apollo-boost/lib/index';
@@ -13,16 +13,6 @@ import { gql } from 'node_modules/apollo-boost/lib/index';
 const graph = new GraphProvider();
 
 const toText = v => (v == null ? null : String(v));
-
-// Deterministic UUID (sha1-based, v5-style) so the same loan+date always maps to the same row id.
-// Combined with on_conflict on the primary key, concurrent pre-save calls cannot create duplicates.
-const presaveId = (loanId, date) => {
-    const h = createHash('sha1').update(`presave|${loanId}|${date}`).digest();
-    h[6] = (h[6] & 0x0f) | 0x50;
-    h[8] = (h[8] & 0x3f) | 0x80;
-    const x = h.subarray(0, 16).toString('hex');
-    return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20, 32)}`;
-};
 
 export default apiHandler({
     post: save

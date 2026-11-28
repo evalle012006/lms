@@ -16,6 +16,7 @@
 //   anyone else                             -> denied
 
 import moment from 'moment';
+import { isAdminLevel } from '@/lib/roles';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { getCurrentDate } from '@/lib/date-utils';
@@ -82,7 +83,7 @@ export async function resolveCohEditPermission(user, branchId, dateFor) {
         return deny('A valid branch and date are required.');
     }
 
-    if (shortCode === 'admin') return { canEdit: true };
+    if (isAdminLevel(user)) return { canEdit: true };
 
     if (shortCode === 'branch_manager') {
         return hasId(user.designatedBranchId) && user.designatedBranchId === branchId

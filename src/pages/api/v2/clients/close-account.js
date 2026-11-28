@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from '@/services/api-handler';
 import { logAudit } from '@/lib/audit';
 
@@ -20,6 +21,7 @@ export default apiHandler({
 
 
 async function updateClient(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     let statusCode = 200;
     let response = {};
 

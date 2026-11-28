@@ -10,6 +10,7 @@ import { TEMP_LOAN_APP_FIELDS }     from '@/lib/graph.fields';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl }               from '@aws-sdk/s3-request-presigner';
 
+import { isAdminLevel } from '@/lib/roles';
 const graph = new GraphProvider();
 
 const TEMP_TYPE = createGraphType('temporaryLoanApplications', `
@@ -37,7 +38,7 @@ async function getPendingDuplicates(req, res) {
 
     // Only rep=1 (admin) and rep=2 (division managers) can see all
     // rep=3 (BM) is restricted to their branch only — but they don't need this endpoint
-    if (rep !== 1 && rep !== 2 && !currentUser?.root) {
+    if (rep !== 1 && rep !== 2 && !isAdminLevel(currentUser)) {
         return res.status(200).json({ success: false, message: 'Insufficient permissions.' });
     }
 

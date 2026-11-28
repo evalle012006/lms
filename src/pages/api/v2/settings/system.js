@@ -4,6 +4,7 @@ import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
 import { SETTINGS_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { logAudit } from "@/lib/audit";
+import { isSystemAdmin } from '@/lib/roles';
 import {
     canManageSuperPassword, SUPER_PASSWORD_MIN_LENGTH, SUPER_PASSWORD_MAX_LENGTH,
 } from "@/lib/super-password-access";
@@ -53,7 +54,7 @@ async function updateSystemSettings(req, res) {
     // An empty/missing id would otherwise produce a where that matches every row
     if (typeof _id !== 'string' || !_id) return refuse(res, '_id is required.');
 
-    const isRoot = user.root === true;
+    const isRoot = isSystemAdmin(user);
     const system = Object.fromEntries(Object.entries(incoming).filter(([k]) => {
         if (k === 'superPwd') return canManageSuperPassword(user);
         if (ROOT_ONLY_SETTINGS.includes(k)) return isRoot;

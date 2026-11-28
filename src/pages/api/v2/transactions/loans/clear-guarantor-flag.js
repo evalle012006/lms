@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { guardGuarantorFlag } from '@/lib/api/loanWriteGuard';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, updateQl } from '@/lib/graph/graph.util';
@@ -13,6 +14,7 @@ export default apiHandler({
 });
 
 async function handleGuarantorFlag(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const user_id = req?.auth?.sub;
     const { loanId, action, reason } = req.body;
 

@@ -4830,7 +4830,7 @@ const CashCollectionDetailsPage = () => {
                                                                     styles={borderStyles}
                                                                     components={{ DropdownIndicator }}
                                                                     onChange={(val) => handlePaymentCollectionChange(val, index, 'remarks') }
-                                                                    isSearchable={false}
+                                                                    isSearchable={true}
                                                                     closeMenuOnSelect={true}
                                                                     tabIndex={-1}
                                                                     placeholder={'Remarks'}/>

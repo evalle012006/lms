@@ -1,4 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
+import { groupLockMessage } from '@/lib/support-lock';
 import logger from '@/logger';
 import { logAudit } from '@/lib/audit';
 import { GraphProvider } from '@/lib/graph/graph.provider'
@@ -46,6 +47,9 @@ async function save(req, res) {
     const [dbGroup] = (await graph.query(queryQl(groupType(), {
         where: { _id: { _eq: loanData.groupId } }
     }))).data?.groups ?? [];
+
+    const lockMsg = await groupLockMessage(loanData.groupId, user_id);
+    if (lockMsg) { res.send({ error: true, message: lockMsg }); return; }
 
     if (!dbGroup?.loanOfficerId) {
         res.send({ error: true, message: 'Group or its Loan Officer could not be resolved.' });

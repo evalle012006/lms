@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
@@ -12,6 +13,7 @@ export default apiHandler({
 });
 
 async function syncLoans(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const { clientId, coMaker, groupId } = req.body;
     const currentLoan = await findLoans({
       status: { _eq: "active" },

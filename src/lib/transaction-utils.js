@@ -16,6 +16,7 @@
  */
 
 import moment from 'moment-timezone';
+import { isAdminLevel } from '@/lib/roles';
 import { fetchWrapper } from './fetch-wrapper';
 import { getApiBaseUrl } from './constants';
 import { getSystemDate } from './date-utils';
@@ -501,7 +502,7 @@ export const isRegionalManagerOrHigher = (currentUser) => {
     if (!currentUser?.role) return false;
     
     return currentUser.role.shortCode === 'regional_manager' ||
-           currentUser.role.shortCode === 'admin' ||
+           isAdminLevel(currentUser) ||
            currentUser.role.shortCode === 'deputy_director' ||
            currentUser.role.rep <= 2;
 };

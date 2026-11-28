@@ -30,6 +30,7 @@
 //     rep===1 branch, which the last version silently skipped).
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { findRoleByKey, roleKey, parseRole, isAdminLevel } from '@/lib/roles';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { useDispatch, useSelector } from "react-redux";
@@ -407,13 +408,11 @@ const AddUpdateUserPage = ({ mode = 'add', userId = null, onBack, onSuccess }) =
 
     // Only admins (rep 1) get the destructive security actions — mirrors the
     // existing gating on the "Reset Password" row action in settings/users/index.js.
-    const isAdmin = currentUser?.role?.rep === 1 || currentUser?.root === true;
+    const isAdmin = isAdminLevel(currentUser);
 
     const selectedRole = useMemo(() => {
         if (!role) return null;
-        const [rep, shortCode] = role.split('-') ?? [];
-        const base = roles.find(r => r.rep === +rep);
-        return base ? { ...base, shortCode } : null;
+        return findRoleByKey(roles, role);
     }, [role, roles]);
 
     // ── Self-contained reference data fetching ──────────────────────────
@@ -487,8 +486,7 @@ const AddUpdateUserPage = ({ mode = 'add', userId = null, onBack, onSuccess }) =
                 setUser(response.user);
                 setPhoto(response.user.profile || '');
                 if (response.user.role) {
-                    const r = typeof response.user.role === 'string' ? JSON.parse(response.user.role) : response.user.role;
-                    setRole(r.rep + '-' + r.shortCode);
+                    setRole(roleKey(response.user.role));
                 }
                 setOccurence(response.user.transactionType || 'daily');
                 setWeeklyScheduleType(response.user.weeklyScheduleType || 'standard');
@@ -542,10 +540,7 @@ const AddUpdateUserPage = ({ mode = 'add', userId = null, onBack, onSuccess }) =
         email: user.email || '',
         number: user.number || '',
         position: user.position || '',
-        role: user.role ? (() => {
-            const r = typeof user.role === 'string' ? JSON.parse(user.role) : user.role;
-            return r.rep + '-' + r.shortCode;
-        })() : '',
+        role: user.role ? roleKey(user.role) : '',
         loNo: user.loNo ? parseInt(user.loNo) : null,
         transactionType: user.transactionType || 'daily',
         weeklyScheduleType: user.weeklyScheduleType || 'standard',
@@ -621,8 +616,7 @@ const AddUpdateUserPage = ({ mode = 'add', userId = null, onBack, onSuccess }) =
         form.setFieldValue(field, value);
         setRole(value);
 
-        const [rep, shortCode] = value.split('-');
-        const matched = roles.find(r => r.rep === +rep && r.shortCode === shortCode);
+        const matched = findRoleByKey(roles, value);
 
         clearIrrelevantFields(matched);
 
@@ -764,7 +758,7 @@ const AddUpdateUserPage = ({ mode = 'add', userId = null, onBack, onSuccess }) =
                 _id: userId,
                 loginAttempts: 0,
                 lockedUntil: null,
-                role: JSON.stringify(typeof user.role === 'string' ? JSON.parse(user.role) : user.role),
+                role: JSON.stringify(parseRole(user.role)),
             });
             if (response.success) {
                 toast.success('Account unlocked.');

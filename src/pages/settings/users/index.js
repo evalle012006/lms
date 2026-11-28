@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { findRoleByKey } from '@/lib/roles';
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectColumnFilter } from '@/lib/table';
@@ -139,7 +140,7 @@ const TeamPage = () => {
     const updateUser = (u, updatedValue) => {
         setLoading(true);
         const tempUser = { ...u };
-        const selectedRole = platformRoles.find(role => role.rep == updatedValue);
+        const selectedRole = findRoleByKey(platformRoles, updatedValue);
         tempUser.role = JSON.stringify(selectedRole);
         delete tempUser.roleId;
         fetchWrapper.sendData('/api/users/', tempUser)
@@ -152,7 +153,7 @@ const TeamPage = () => {
                         email: tempUser.email,
                         number: tempUser.number,
                         position: tempUser.position,
-                        role: tempUser.role,
+                        role: selectedRole,
                         designatedBranch: tempUser.designatedBranch,
                         loNo: tempUser.loNo,
                         transactionType: tempUser.transactionType

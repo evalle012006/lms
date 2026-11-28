@@ -13,6 +13,7 @@
 //      badDebtCollections from duplicate → re-linked to master.
 //   4. Duplicate client → status: 'merged', archived: true.
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler }    from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import {
@@ -41,6 +42,7 @@ const TEMP_TYPE      = createGraphType('temporaryLoanApplications', TEMP_LOAN_AP
 export default apiHandler({ post: mergeClients });
 
 async function mergeClients(req, res) {
+    { const __lockMsg = await lockMessageForBody(null, req?.auth?.sub, { clientIds: [req.body?.masterId, req.body?.duplicateId] }); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     // Merge is destructive and irreversible: only the roles that may decide a CI (admin, supervisors,
     // branch managers) can do it. Previously any authenticated user could call this endpoint.
     const currentUser = await findUserById(req.auth?.sub);
