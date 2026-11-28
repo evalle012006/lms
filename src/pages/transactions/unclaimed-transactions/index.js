@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment';
-import { FileText, Eye, CheckCircle, Clock, Info } from 'lucide-react';
+import { FileText, Eye, CheckCircle, Clock, Info, Plus } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
@@ -10,6 +10,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { formatPricePhp } from '@/lib/utils';
 import ClaimTransactionModal from '@/components/transactions/ClaimTransactionModal';
 import DocumentViewerModal from '@/components/transactions/DocumentViewerModal';
+import McbuCsfInModal from '@/components/transactions/McbuCsfInModal';
 
 /**
  * Tab selector component
@@ -38,40 +39,31 @@ const TabPanel = ({ hidden, children }) => (
     </div>
 );
 
-/**
- * Main component for Unclaimed Amount Transactions
- */
 export default function UnclaimedTransactions() {
     const currentUser = useSelector((state) => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState('unclaimed');
     const [unclaimedList, setUnclaimedList] = useState([]);
     const [claimedList, setClaimedList] = useState([]);
     const [showClaimModal, setShowClaimModal] = useState(false);
+    const [showMcbuCsfInModal, setShowMcbuCsfInModal] = useState(false);
+    const canCreateMcbuCsfIn = [1, 3].includes(Number(currentUser?.role?.rep));
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // Document viewer modal state
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
     const [viewingDocument, setViewingDocument] = useState(null);
-    
-    // Filter states
     const [dateFilter, setDateFilter] = useState(''); // Empty to show all past transactions by default
     const [selectedBranch, setSelectedBranch] = useState('');
     const [selectedLo, setSelectedLo] = useState('');
     const [branchList, setBranchList] = useState([]);
     const [loList, setLoList] = useState([]);
-    
-    // Batch selection states
     const [selectedTransactions, setSelectedTransactions] = useState([]);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [batchProcessing, setBatchProcessing] = useState(false);
 
-    // Fetch branches for filter (role.rep 1 or 2)
     const fetchBranches = useCallback(async () => {
-        if (currentUser.role.rep > 2) return; // Only for admin and regional managers
+        if (currentUser.role.rep > 2) return;
         
         try {
             let url = `${getApiBaseUrl()}branches/list`;
@@ -89,9 +81,8 @@ export default function UnclaimedTransactions() {
         }
     }, [currentUser]);
 
-    // Fetch loan officers for filter (role.rep 1, 2, or 3)
     const fetchLoanOfficers = useCallback(async () => {
-        if (currentUser.role.rep > 3) return; // Only for admin, regional, area, and branch managers
+        if (currentUser.role.rep > 3) return;
         
         try {
             let url = `${getApiBaseUrl()}users/list?`;
@@ -108,14 +99,13 @@ export default function UnclaimedTransactions() {
             
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                setLoList(response.users.filter(u => u.role.rep === 4)); // Only loan officers
+                setLoList(response.users.filter(u => u.role.rep === 4));
             }
         } catch (error) {
             console.error('Error fetching loan officers:', error);
         }
     }, [currentUser, selectedBranch]);
 
-    // Load filters on mount
     useEffect(() => {
         if (currentUser) {
             fetchBranches();
@@ -123,14 +113,12 @@ export default function UnclaimedTransactions() {
         }
     }, [currentUser, fetchBranches, fetchLoanOfficers]);
 
-    // Reload LOs when branch changes
     useEffect(() => {
         if (selectedBranch) {
             fetchLoanOfficers();
         }
     }, [selectedBranch, fetchLoanOfficers]);
 
-    // Fetch unclaimed transactions
     const fetchUnclaimedTransactions = useCallback(async () => {
         setLoading(true);
         try {
@@ -140,10 +128,7 @@ export default function UnclaimedTransactions() {
             
             if (selectedBranch) params.append('branchId', selectedBranch);
             if (selectedLo) params.append('loId', selectedLo);
-            
-            // Only apply date filter if:
-            // 1. Date is selected AND
-            // 2. Date is NOT current date (current date means "show all")
+
             const isCurrentDate = dateFilter && dateFilter === moment(currentDate).format('YYYY-MM-DD');
             if (dateFilter && !isCurrentDate) {
                 params.append('date', dateFilter);
@@ -165,7 +150,6 @@ export default function UnclaimedTransactions() {
         }
     }, [selectedBranch, selectedLo, dateFilter, currentDate]);
 
-    // Fetch claimed transactions
     const fetchClaimedTransactions = useCallback(async () => {
         setLoading(true);
         try {
@@ -175,10 +159,7 @@ export default function UnclaimedTransactions() {
             
             if (selectedBranch) params.append('branchId', selectedBranch);
             if (selectedLo) params.append('loId', selectedLo);
-            
-            // Only apply date filter if:
-            // 1. Date is selected AND
-            // 2. Date is NOT current date (current date means "show all")
+
             const isCurrentDate = dateFilter && dateFilter === moment(currentDate).format('YYYY-MM-DD');
             if (dateFilter && !isCurrentDate) {
                 params.append('date', dateFilter);
@@ -200,7 +181,6 @@ export default function UnclaimedTransactions() {
         }
     }, [selectedBranch, selectedLo, dateFilter, currentDate]);
 
-    // Load data based on selected tab and filters
     useEffect(() => {
         if (selectedTab === 'unclaimed') {
             fetchUnclaimedTransactions();
@@ -209,7 +189,6 @@ export default function UnclaimedTransactions() {
         }
     }, [selectedTab, selectedBranch, selectedLo, dateFilter, fetchUnclaimedTransactions, fetchClaimedTransactions]);
 
-    // Handle claim transaction
     const handleClaimTransaction = async (transactionData) => {
         try {
             const url = `${getApiBaseUrl()}transactions/unclaimed-transactions/claim`;
@@ -220,7 +199,6 @@ export default function UnclaimedTransactions() {
                 setShowClaimModal(false);
                 setSelectedTransaction(null);
                 
-                // Refresh both lists to update the UI
                 await fetchUnclaimedTransactions();
                 await fetchClaimedTransactions();
             } else {
@@ -232,7 +210,6 @@ export default function UnclaimedTransactions() {
         }
     };
 
-    // Handle batch claim transactions
     const handleBatchClaim = async (transactions) => {
         if (!transactions || transactions.length === 0) {
             toast.error('No transactions selected');
@@ -247,7 +224,7 @@ export default function UnclaimedTransactions() {
                 transactions: transactions
             });
             
-            if (response.success) {
+            if (response.mode === 'batch') {
                 const { successCount, errorCount } = response;
                 if (errorCount === 0) {
                     toast.success(`All ${successCount} transactions claimed successfully!`);
@@ -255,14 +232,11 @@ export default function UnclaimedTransactions() {
                     toast.warning(`${successCount} succeeded, ${errorCount} failed`);
                 }
                 
-                // Close modal first
                 setShowClaimModal(false);
-                
-                // Clear selections and exit batch mode
+
                 setSelectedTransactions([]);
                 setIsBatchMode(false);
-                
-                // Refresh both lists to update the UI
+
                 await fetchUnclaimedTransactions();
                 await fetchClaimedTransactions();
             } else {
@@ -276,33 +250,50 @@ export default function UnclaimedTransactions() {
         }
     };
 
-    // Toggle single transaction selection
     const toggleTransactionSelection = (transaction) => {
+        if (Number(transaction.unclaimedAmount) <= 0) {
+            return;
+        }
+
         setSelectedTransactions(prev => {
-            const isSelected = prev.some(t => t.cashCollectionId === transaction.cashCollectionId);
+            const isSelected = prev.some(
+                t => t._id === transaction._id
+            );
+
             if (isSelected) {
-                return prev.filter(t => t.cashCollectionId !== transaction.cashCollectionId);
-            } else {
-                return [...prev, transaction];
+                return prev.filter(
+                    t => t._id !== transaction._id
+                );
             }
+
+            return [...prev, transaction];
         });
     };
 
-    // Toggle select all
     const toggleSelectAll = () => {
-        if (selectedTransactions.length === filteredData.length) {
-            setSelectedTransactions([]);
-        } else {
-            setSelectedTransactions(filteredData);
-        }
+        const eligibleTransactions = filteredData.filter(
+            row => Number(row.unclaimedAmount) > 0
+        );
+
+        const allSelected =
+            eligibleTransactions.length > 0 &&
+            eligibleTransactions.every(row =>
+                selectedTransactions.some(
+                    tx => tx._id === row._id
+                )
+            );
+
+        setSelectedTransactions(
+            allSelected ? [] : eligibleTransactions
+        );
     };
 
-    // Check if transaction is selected
     const isTransactionSelected = (transaction) => {
-        return selectedTransactions.some(t => t.cashCollectionId === transaction.cashCollectionId);
+        return selectedTransactions.some(
+            t => t._id === transaction._id
+        );
     };
 
-    // Reset all filters
     const handleResetFilters = () => {
         setDateFilter('');
         setSelectedBranch('');
@@ -310,7 +301,6 @@ export default function UnclaimedTransactions() {
         setSearchTerm('');
     };
 
-    // Handle view document - open in modal viewer
     const handleViewDocument = (transaction) => {
         if (!transaction?.documentUrl) {
             toast.error('No document available');
@@ -320,7 +310,6 @@ export default function UnclaimedTransactions() {
         setShowDocumentViewer(true);
     };
 
-    // Filter data based on search term (searches: client, branch, group, slot)
     const filteredData = useMemo(() => {
         const data = selectedTab === 'unclaimed' ? unclaimedList : claimedList;
         
@@ -331,13 +320,12 @@ export default function UnclaimedTransactions() {
             item.clientName?.toLowerCase().includes(search) ||
             item.branchName?.toLowerCase().includes(search) ||
             item.groupName?.toLowerCase().includes(search) ||
-            item.slotNo?.toLowerCase().includes(search)
+            String(item.slotNo ?? '').toLowerCase().includes(search)
         );
     }, [selectedTab, unclaimedList, claimedList, searchTerm]);
 
-    // Table columns definition
     const columns = [
-        { key: 'dateOfOffset', label: 'Date of Offset', sortable: true },
+        { key: 'dateOfOffset', label: 'Entry / Offset Date', sortable: true },
         { key: 'branchName', label: 'Branch Name', sortable: true },
         { key: 'groupName', label: 'Group Name', sortable: true },
         { key: 'slotNo', label: 'Slot No', sortable: true },
@@ -477,6 +465,18 @@ export default function UnclaimedTransactions() {
                                         >
                                             {isBatchMode ? 'Cancel Batch' : 'Batch Mode'}
                                         </button>
+
+                                        {/* Manual MCBU / CSF In Button */}
+                                            {canCreateMcbuCsfIn && !isBatchMode && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowMcbuCsfInModal(true)}
+                                                    className="px-4 py-2 bg-teal-600 text-white border border-teal-600 rounded-md font-medium hover:bg-teal-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                    MCBU / CSF In
+                                                </button>
+                                            )}
                                         
                                         {isBatchMode && selectedTransactions.length > 0 && (
                                             <button
@@ -512,8 +512,10 @@ export default function UnclaimedTransactions() {
                                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-2">
                                     <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                     <p className="text-sm text-blue-800">
-                                        <strong>Note:</strong> Only showing past offset transactions (before today). 
-                                        Same-day transactions must settle before they can be claimed.
+                                        <strong>Note:</strong> Showing past unclaimed offset
+                                            transactions and manually registered MCBU / CSF In.
+                                            Automatic offset transactions must settle before
+                                            they can be claimed.
                                         {dateFilter && dateFilter !== moment(currentDate).format('YYYY-MM-DD') 
                                             ? ` Filtered by date: ${moment(dateFilter).format('MMM DD, YYYY')}.` 
                                             : ' Showing all past transactions.'}
@@ -558,6 +560,7 @@ export default function UnclaimedTransactions() {
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={isTransactionSelected(row)}
+                                                                        disabled={!(Number(row.unclaimedAmount) > 0)}
                                                                         onChange={() => toggleTransactionSelection(row)}
                                                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                                     />
@@ -719,6 +722,24 @@ export default function UnclaimedTransactions() {
                     </>
                 )}
             </div>
+
+            {/* Manual MCBU / CSF In Modal */}
+                <McbuCsfInModal
+                    isOpen={showMcbuCsfInModal}
+                    onClose={() => setShowMcbuCsfInModal(false)}
+                    currentUser={currentUser}
+                    currentDate={currentDate}
+                    branchList={branchList}
+                    selectedBranch={selectedBranch}
+                    onSuccess={async () => {
+                        setSelectedTab('unclaimed');
+                        setDateFilter('');
+                        setSelectedLo('');
+                        setSearchTerm('');
+                        setSelectedTransactions([]);
+                        await fetchUnclaimedTransactions();
+                    }}
+                />
 
             {/* Claim Transaction Modal */}
             <ClaimTransactionModal

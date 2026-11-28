@@ -29,6 +29,7 @@ import TransactionPanel from "@/components/transactions/daily-collection-sheet/T
 import OtherReceiptPayment from "@/components/transactions/daily-collection-sheet/OtherReceipt&Payment";
 import MngtExpenses from "@/components/transactions/daily-collection-sheet/MngtExpenses";
 import Cashbook from "@/components/transactions/daily-collection-sheet/Cashbook";
+import useCashbookRows from "@/hooks/useCashbookRows";
 import Payroll from "@/components/transactions/daily-collection-sheet/Payroll";
 import OtherIncomeMiscIncome from "@/components/transactions/daily-collection-sheet/OtherIncomeMiscIncome";
 import MIS from "@/components/transactions/daily-collection-sheet/MIS";
@@ -241,19 +242,6 @@ const DailyCollectionSheet = () => {
 
   const [cashbookData, setCashbookData] = useState({});
   const [cashbookLoading, setCashbookLoading] = useState(false);
-
-  const [cashbookBeginningBalance, setCashbookBeginningBalance] =
-    useState(null);
-  const handleCashbookBeginningBalance = useCallback((amount) => {
-    setCashbookBeginningBalance((previous) => {
-      if (previous === amount) {
-        return previous;
-      }
-
-      return amount;
-    });
-  }, []);
-
   const [otherIncomeRefreshKey, setOtherIncomeRefreshKey] = useState(0);
 
   const [activeTab, setActiveTab] = useState("dcs");
@@ -277,6 +265,29 @@ const DailyCollectionSheet = () => {
       : canSelectBranch
       ? selectedBranch?._id
       : currentBranch?._id;
+
+  const {
+    rows: sharedCashbookRows,
+    selectedDayBeginningBalance: sharedCashbookBeginningBalance,
+    loading: sharedCashbookLoading,
+  } = useCashbookRows({
+    branchId: transactionBranchId,
+    selectedDate,
+    cashbookData,
+    otherIncomeRefreshKey,
+  });
+
+  const selectedCashbookRow = React.useMemo(() => {
+    if (!selectedDate || !Array.isArray(sharedCashbookRows)) {
+      return null;
+    }
+
+    return (
+      sharedCashbookRows.find(
+        (row) => row.dateKey === selectedDate
+      ) || null
+    );
+  }, [sharedCashbookRows, selectedDate]);
 
   // ── Branch list ──────────────────────────────────────────────────────────
   const getListBranch = useCallback(async () => {
@@ -386,16 +397,12 @@ const DailyCollectionSheet = () => {
 
         const monthStart = moment(selectedMonthDate).startOf("month");
         const monthEnd = moment(selectedMonthDate);
-
         const workingDates = [];
-
         const cursor = monthStart.clone();
 
         while (cursor.isSameOrBefore(monthEnd, "day")) {
           const dayOfWeek = cursor.day();
 
-          // Skip Sunday = 0
-          // Skip Saturday = 6
           if (dayOfWeek !== 0 && dayOfWeek !== 6) {
             workingDates.push(cursor.format("YYYY-MM-DD"));
           }
@@ -426,19 +433,8 @@ const DailyCollectionSheet = () => {
                 : response.data;
 
               const mappedSummary = mapSummaryData(raw);
-              // =========================================================
-              // CASHBOOK - OTHER INCOME (PICTURE)
-              // ₱50 PER LOAN RELEASE
-              // =========================================================
-
-              const pictureLoanReleaseCount =
-                Number(mappedSummary?.payLoanReleaseNo) || 0;
-
+              const pictureLoanReleaseCount = Number(mappedSummary?.payLoanReleaseNo) || 0;
               const cashbookOtherIncomePicture = pictureLoanReleaseCount * 50;
-
-              // =========================================================
-              // CASHBOOK - AUTOMATIC LOAN RELEASES
-              // =========================================================
 
               let cashbookLoanReleases = {
                 regularLoanReleasePersons: 0,
@@ -477,17 +473,10 @@ const DailyCollectionSheet = () => {
                 }
 
                 cashbookLoanReleases = {
-                  regularLoanReleasePersons:
-                    Number(loanReleaseRaw.regular_loan_release_persons) || 0,
-
-                  regularLoanReleasePrincipal:
-                    Number(loanReleaseRaw.regular_loan_release_principal) || 0,
-
-                  otherLoanReleasePersons:
-                    Number(loanReleaseRaw.other_loan_release_persons) || 0,
-
-                  otherLoanReleasePrincipal:
-                    Number(loanReleaseRaw.other_loan_release_principal) || 0,
+                  regularLoanReleasePersons: Number(loanReleaseRaw.regular_loan_release_persons) || 0,
+                  regularLoanReleasePrincipal: Number(loanReleaseRaw.regular_loan_release_principal) || 0,
+                  otherLoanReleasePersons: Number(loanReleaseRaw.other_loan_release_persons) || 0,
+                  otherLoanReleasePrincipal: Number(loanReleaseRaw.other_loan_release_principal) || 0,
                 };
               } catch (error) {
                 console.error(
@@ -563,20 +552,14 @@ const DailyCollectionSheet = () => {
                     );
                   }
 
-                  beginningBalanceSource =
-                    balanceResponse.source || "historical";
+                  beginningBalanceSource = balanceResponse.source || "historical";
 
                   if (
-                    balanceResponse.beginningBalance !== null &&
-                    balanceResponse.beginningBalance !== undefined
+                    balanceResponse.beginningBalance !== null && balanceResponse.beginningBalance !== undefined
                   ) {
-                    const parsedBalance = Number(
-                      balanceResponse.beginningBalance
-                    );
+                    const parsedBalance = Number(balanceResponse.beginningBalance);
 
-                    if (!Number.isFinite(parsedBalance)) {
-                      throw new Error(`Invalid Beginning Balance for ${date}`);
-                    }
+                    if (!Number.isFinite(parsedBalance)) {throw new Error(`Invalid Beginning Balance for ${date}`);}
 
                     effectiveBeginningBalance = parsedBalance;
                   }
@@ -593,68 +576,51 @@ const DailyCollectionSheet = () => {
                   ? {
                       ...mappedSummary,
 
-                      // Automatically calculated Picture income
                       rcptOtherReceiptsPicture: cashbookOtherIncomePicture,
-
-                      // CASHBOOK LOAN RELEASES
                       ...cashbookLoanReleases,
 
-                      // Cashbook Receipts - Other Income CSF
                       rcptOtherIncomeCsf:
                         Number(mappedSummary.rcptOtherIncomeCsf) || 0,
 
-                      // Cashbook Receipts - Fund Transfer
-                      // Source: DCS Summary Panel Receipts #15
                       rcptFundTransferIn:
                         Number(mappedSummary.rcptFundTransferIn) || 0,
 
-                      // CASHBOOK - ADMISSION COUNT
-                      // Number of new members for this specific date
                       admissionNo:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.admissionNo) || 0
                           : Number(mappedSummary.rcptAdminFeesNo) || 0,
 
-                      // MCBU Collection
                       rcptMcbu:
                         cashbookCollectionTotals !== null
                           ? cashbookCollectionTotals.mcbuActual
                           : mappedSummary.rcptMcbu,
 
-                      // CSF Collection
                       rcptCsf:
                         cashbookCollectionTotals !== null
                           ? cashbookCollectionTotals.csfCollection
                           : mappedSummary.rcptCsf,
 
-                      // Regular Loan Collection (Daily / 60 Days)
                       rcptRegularLoan:
                         cashbookCollectionTotals !== null
                           ? cashbookCollectionTotals.regularLoanActual
                           : mappedSummary.rcptRegularLoan,
 
-                      // Other Loan Collection (Weekly)
-                      // Includes both 24 Weeks and 12 Weeks
-                      // Weekly Collection (24 Weeks)
                       rcptOtherLoan:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.otherLoanActual) ||
                             0
                           : Number(mappedSummary.rcptOtherLoan) || 0,
 
-                      // Weekly Collection (12 Weeks)
                       rcptWeekly12:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.weekly12Actual) || 0
                           : Number(mappedSummary.rcptWeekly12) || 0,
 
-                      // MCBU Withdrawal
                       payMcbuWithdrawal:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.mcbuWithdrawal) || 0
                           : Number(mappedSummary.payMcbuWithdrawal) || 0,
 
-                      // CSF Withdrawal
                       payCsfWithdrawal:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.csfWithdrawal) || 0
@@ -662,11 +628,9 @@ const DailyCollectionSheet = () => {
 
                       payMcbuReturn:
                         cashbookCollectionTotals !== null
-                          ? Number(cashbookCollectionTotals.mcbuReturnAmount) ||
-                            0
-                          : mappedSummary.payMcbuReturn,
+                          ? Number(cashbookCollectionTotals.mcbuReturnAmount) || 0
+                          : null,
 
-                      // MCBU Return - Number of Persons
                       payMcbuReturnNo:
                         cashbookCollectionTotals !== null
                           ? Number(cashbookCollectionTotals.mcbuReturnNo) || 0
@@ -674,9 +638,8 @@ const DailyCollectionSheet = () => {
 
                       payCsfReturn:
                         cashbookCollectionTotals !== null
-                          ? Number(cashbookCollectionTotals.csfReturnAmount) ||
-                            0
-                          : mappedSummary.payCsfReturn,
+                          ? Number(cashbookCollectionTotals.csfReturnAmount) || 0
+                          : null,
 
                       beginningBalance:
                         effectiveBeginningBalance !== null
@@ -793,7 +756,6 @@ const DailyCollectionSheet = () => {
                 });
               }
             } catch {
-              /* skip failed branch */
             }
           }
           branchResults.sort((a, b) =>
@@ -908,19 +870,13 @@ const DailyCollectionSheet = () => {
       );
     }
 
-    if (isAdmin) {
-      return selectedBranch?.name || "All Branches";
-    }
-
-    if (isAreaManager) {
-      return selectedBranch?.name || "Select a Branch";
-    }
+    if (isAdmin) {return selectedBranch?.name || "All Branches";}
+    if (isAreaManager) {return selectedBranch?.name || "Select a Branch";}
 
     return currentBranch?.name || "Branch";
   };
 
   const handleDateChange = (e) => {
-    setCashbookBeginningBalance(null);
     setCashbookData({});
     setSelectedDate(e.target.value);
   };
@@ -928,7 +884,6 @@ const DailyCollectionSheet = () => {
   const handleLoChange = (lo) => setSelectedLo(lo);
   const handleBranchChange = (branch) => {
     setSelectedBranch(branch);
-    setCashbookBeginningBalance(null);
     setCashbookData({});
     setLoanOfficers([]);
     setSelectedLo(null);
@@ -1211,22 +1166,6 @@ const DailyCollectionSheet = () => {
                         {moment(selectedDate).format("ddd")})
                       </div>
 
-                      {!selectedLo && transactionBranchId && (
-                        <div style={{ display: "none" }}>
-                          <Cashbook
-                            key={`${transactionBranchId}-${selectedDate}`}
-                            branchId={transactionBranchId}
-                            selectedDate={selectedDate}
-                            cashbookData={cashbookData}
-                            loading={cashbookLoading}
-                            otherIncomeRefreshKey={otherIncomeRefreshKey}
-                            onBeginningBalanceCalculated={
-                              handleCashbookBeginningBalance
-                            }
-                          />
-                        </div>
-                      )}
-
                       <SummaryPanel
                         summaryData={
                           summaryData
@@ -1238,31 +1177,22 @@ const DailyCollectionSheet = () => {
                             : summaryData
                         }
                         dcsTotals={totals}
+                        cashbookRow={selectedCashbookRow}
                         branchId={transactionBranchId}
                         selectedDate={selectedDate}
                         otherIncomeRefreshKey={otherIncomeRefreshKey}
                         cashbookBeginningBalance={
-                          !selectedLo && !cashbookLoading
-                            ? cashbookBeginningBalance
-                            : null
+                          cashbookLoading || sharedCashbookLoading
+                            ? null
+                            : sharedCashbookBeginningBalance
                         }
-                        canEditBeginningBalance={
-                          isAdmin && Boolean(transactionBranchId) && !selectedLo
-                        }
+
+                        canEditBeginningBalance={(isAdmin || isBranchManager) && Boolean(transactionBranchId) && !selectedLo}
                         onBeginningBalanceSaved={() => {
                           if (!transactionBranchId) return;
 
-                          fetchSummary(
-                            transactionBranchId,
-                            selectedDate,
-                            selectedLo?._id || null
-                          );
-
-                          fetchCashbookMonth(
-                            transactionBranchId,
-                            selectedDate,
-                            null
-                          );
+                          fetchSummary(transactionBranchId, selectedDate, selectedLo?._id || null);
+                          fetchCashbookMonth(transactionBranchId, selectedDate, null);
                         }}
                       />
                     </div>
@@ -1293,12 +1223,7 @@ const DailyCollectionSheet = () => {
 
                     if (!transactionBranchId) return;
 
-                    fetchSummary(
-                      transactionBranchId,
-                      selectedDate,
-                      selectedLo?._id || null
-                    );
-
+                    fetchSummary(transactionBranchId, selectedDate, selectedLo?._id || null);
                     fetchCashbookMonth(transactionBranchId, selectedDate, null);
                   }}
                 />
@@ -1309,8 +1234,9 @@ const DailyCollectionSheet = () => {
                   branchId={transactionBranchId}
                   selectedDate={selectedDate}
                   cashbookData={cashbookData}
-                  loading={cashbookLoading}
+                  loading={cashbookLoading || sharedCashbookLoading}
                   otherIncomeRefreshKey={otherIncomeRefreshKey}
+                  rows={sharedCashbookRows}
                 />
               </div>
             ) : activeTab === "mis" ? (

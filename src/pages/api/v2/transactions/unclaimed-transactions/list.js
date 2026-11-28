@@ -1,47 +1,611 @@
-//src/pages/api/v2/transactions/unclaimed-transactions/list.js
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { 
-    CASH_COLLECTIONS_FIELDS, 
-    BRANCH_FIELDS,
-    UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS 
-} from '@/lib/graph.fields';
+import { CASH_COLLECTIONS_FIELDS, BRANCH_FIELDS, UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
 import { getSystemDate } from '@/lib/date-utils';
+import { calculateOffsetAmounts } from "@/lib/unclaimed-calculations";
 import logger from '@/logger';
 import moment from 'moment';
 
 const graph = new GraphProvider();
 
-// Create types with relationships
-const UNCLAIMED_TRANSACTION_TYPE = createGraphType('unclaimed_amount_transactions', `
-    ${UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS}
-`)('unclaimedTransactions');
+const UNCLAIMED_TRANSACTION_TYPE = createGraphType(
+    'unclaimed_amount_transactions',
+    UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS
+)('unclaimedTransactions');
 
-const CASH_COLLECTION_WITH_BRANCH = createGraphType('cashCollections', `
-    ${CASH_COLLECTIONS_FIELDS}
-    branch {
-        ${BRANCH_FIELDS}
-    }
-`)('cashCollections');
+const CASH_COLLECTION_WITH_BRANCH = createGraphType('cashCollections',`${CASH_COLLECTIONS_FIELDS} branch {${BRANCH_FIELDS}}`)('cashCollections');
+const CLIENT_TYPE = createGraphType('client',`_id firstName lastName fullName`)('client');
+const GROUP_TYPE = createGraphType('groups',`_id name`)('groups');
+const BRANCH_TYPE = createGraphType('branches',`_id name`)('branches');
+const LOAN_TYPE = createGraphType('loans',`_id slotNo`)('loans');
 
 export default apiHandler({
     get: listUnclaimedTransactions
 });
 
-/**
- * Get list of unclaimed amount transactions from cash collections
- * Supports role-based filtering similar to cash-collection/index.js
- */
-async function listUnclaimedTransactions(req, res) {
-    const user_id = req?.auth?.sub;
-    const { status, branchId, loId, groupId, date } = req.query;
+const toNumber = (value) => {const amount = Number(value ?? 0); return Number.isFinite(amount) ? amount : 0;};
+const roundMoney = (value) => Math.round(toNumber(value) * 100) / 100;
+const uniqueIds = (values) => [...new Set(values.filter(Boolean))];
 
+async function fetchRows(type, alias, args = {}) {
+    const result = await graph.query(
+        queryQl(type, args)
+    );
+
+    if (result?.errors?.length) {
+        throw new Error(
+            result.errors[0]?.message ||
+            'GraphQL query failed'
+        );
+    }
+
+    return result?.data?.[alias] || [];
+}
+
+async function fetchByIds(type, alias, ids) {
+    const validIds = uniqueIds(ids);
+
+    if (!validIds.length) {
+        return [];
+    }
+
+    return fetchRows(type, alias, {
+        where: {
+            _id: {
+                _in: validIds
+            }
+        }
+    });
+}
+
+function buildRoleScope(currentUser, manual = false) {
+    const role = currentUser.role || {};
+    const roleRep = Number(role.rep);
+    const shortCode = String(role.shortCode || '')
+        .toLowerCase();
+
+    const fields = manual
+        ? {
+            branch: 'branch_id',
+            division: 'division_id',
+            region: 'region_id',
+            area: 'area_id',
+            lo: 'lo_id'
+        }
+        : {
+            branch: 'branchId',
+            division: 'divisionId',
+            region: 'regionId',
+            area: 'areaId',
+            lo: 'loId'
+        };
+
+    const deny = {
+        _id: {
+            _in: []
+        }
+    };
+
+    if (shortCode === 'deputy_director') {
+        if (!currentUser.divisionId) return deny;
+
+        return manual
+            ? {
+                [fields.division]: {
+                    _eq: currentUser.divisionId
+                }
+            }
+            : {
+                branch: {
+                    divisionId: {
+                        _eq: currentUser.divisionId
+                    }
+                }
+            };
+    }
+
+    if (shortCode === 'regional_manager') {
+        if (!currentUser.regionId) return deny;
+
+        return manual
+            ? {
+                [fields.region]: {
+                    _eq: currentUser.regionId
+                }
+            }
+            : {
+                branch: {
+                    regionId: {
+                        _eq: currentUser.regionId
+                    }
+                }
+            };
+    }
+
+    if (
+        shortCode === 'area_admin' ||
+        shortCode === 'area_manager'
+    ) {
+        if (!currentUser.areaId) return deny;
+
+        return manual
+            ? {
+                [fields.area]: {
+                    _eq: currentUser.areaId
+                }
+            }
+            : {
+                branch: {
+                    areaId: {
+                        _eq: currentUser.areaId
+                    }
+                }
+            };
+    }
+
+    if (roleRep === 3) {
+        if (!currentUser.designatedBranchId) {
+            return deny;
+        }
+
+        return {
+            [fields.branch]: {
+                _eq: currentUser.designatedBranchId
+            }
+        };
+    }
+
+    if (roleRep === 4) {
+        if (!currentUser._id) return deny;
+
+        return {
+            [fields.lo]: {
+                _eq: currentUser._id
+            }
+        };
+    }
+
+    if (roleRep === 1) {
+        return {};
+    }
+
+    return deny;
+}
+
+function buildRequestFilters(filters, manual = false) {
+    const where = {};
+
+    if (filters.branchId) {
+        where[manual ? 'branch_id' : 'branchId'] = {
+            _eq: filters.branchId
+        };
+    }
+
+    if (filters.loId) {
+        where[manual ? 'lo_id' : 'loId'] = {
+            _eq: filters.loId
+        };
+    }
+
+    if (filters.groupId) {
+        where[manual ? 'group_id' : 'groupId'] = {
+            _eq: filters.groupId
+        };
+    }
+
+    return where;
+}
+
+function formatOffsetTransaction(cc, transaction = null) {
+    const { mcbu, csf, totalReturn, paymentCollection: loanBalance, unclaimedAmount, } = calculateOffsetAmounts(cc);
+
+    return {
+        _id: cc._id,
+
+        sourceType: 'offset',
+
+        cashCollectionId: cc._id,
+        transactionId: transaction?._id || null,
+
+        dateOfOffset: cc.dateAdded,
+        entryDate: cc.dateAdded,
+
+        branchName: cc.branch?.name || '-',
+        groupName: cc.groupName || '-',
+        slotNo: cc.slotNo ?? '-',
+        clientName: cc.fullName || '-',
+
+        amountRelease: toNumber(cc.amountRelease),
+        loanBalance,
+
+        mcbu,
+        csf,
+        unclaimedAmount,
+
+        status: transaction?.status || 'unclaimed',
+
+        dateClaimed: transaction?.date_added || null,
+        documentUrl: transaction?.document_url || null,
+
+        clientId: cc.clientId,
+        groupId: cc.groupId,
+        branchId: cc.branchId,
+
+        areaId:
+            cc.areaId ||
+            cc.branch?.areaId ||
+            null,
+
+        regionId:
+            cc.regionId ||
+            cc.branch?.regionId ||
+            null,
+
+        divisionId:
+            cc.divisionId ||
+            cc.branch?.divisionId ||
+            null,
+
+        loanId: cc.loanId,
+        loId: cc.loId,
+
+        remarks: cc.remarks || null
+    };
+}
+
+async function getManualTransactions(
+    currentUser,
+    filters,
+    status,
+    currentSystemDate
+) {
+    const where = {
+        source_type: {
+            _eq: 'manual'
+        },
+
+        status: {
+            _eq: status
+        },
+
+        _and: [
+            buildRoleScope(currentUser, true),
+            buildRequestFilters(filters, true)
+        ]
+    };
+
+    if (status === 'claimed' && filters.date) {
+        const nextDate = moment(
+            filters.date,
+            'YYYY-MM-DD'
+        )
+            .add(1, 'day')
+            .format('YYYY-MM-DD');
+
+        where.date_added = {
+            _gte: `${filters.date} 00:00:00`,
+            _lt: `${nextDate} 00:00:00`
+        };
+    }
+
+    if (status === 'unclaimed') {
+        where.entry_date = filters.date
+            ? {
+                _eq: filters.date
+            }
+            : {
+                _lte: currentSystemDate
+            };
+    }
+
+    const transactions = await fetchRows(
+        UNCLAIMED_TRANSACTION_TYPE,
+        'unclaimedTransactions',
+        {
+            where,
+            order_by: [
+                { entry_date: 'desc' },
+                { inserted_date: 'desc' }
+            ]
+        }
+    );
+
+    if (!transactions.length) {
+        return [];
+    }
+
+    const [
+        clients,
+        groups,
+        branches,
+        loans
+    ] = await Promise.all([
+        fetchByIds(
+            CLIENT_TYPE,
+            'client',
+            transactions.map(tx => tx.client_id)
+        ),
+
+        fetchByIds(
+            GROUP_TYPE,
+            'groups',
+            transactions.map(tx => tx.group_id)
+        ),
+
+        fetchByIds(
+            BRANCH_TYPE,
+            'branches',
+            transactions.map(tx => tx.branch_id)
+        ),
+
+        fetchByIds(
+            LOAN_TYPE,
+            'loans',
+            transactions.map(tx => tx.loan_id)
+        )
+    ]);
+
+    const clientMap = new Map(
+        clients.map(item => [item._id, item])
+    );
+
+    const groupMap = new Map(
+        groups.map(item => [item._id, item])
+    );
+
+    const branchMap = new Map(
+        branches.map(item => [item._id, item])
+    );
+
+    const loanMap = new Map(
+        loans.map(item => [item._id, item])
+    );
+
+    return transactions.map(tx => {
+        const client = clientMap.get(tx.client_id);
+        const group = groupMap.get(tx.group_id);
+        const branch = branchMap.get(tx.branch_id);
+        const loan = loanMap.get(tx.loan_id);
+
+        const mcbu = toNumber(tx.mcbu_amount);
+        const csf = toNumber(tx.csf_amount);
+
+        const clientName =
+            client?.fullName ||
+            [
+                client?.firstName,
+                client?.lastName
+            ]
+                .filter(Boolean)
+                .join(' ') ||
+            '-';
+
+        return {
+            _id: tx._id,
+
+            sourceType: 'manual',
+
+            cashCollectionId: null,
+            transactionId: tx._id,
+
+            dateOfOffset: tx.entry_date,
+            entryDate: tx.entry_date,
+
+            branchName: branch?.name || '-',
+            groupName: group?.name || '-',
+            slotNo: loan?.slotNo ?? '-',
+            clientName,
+
+            amountRelease: 0,
+            loanBalance: 0,
+
+            mcbu,
+            csf,
+
+            unclaimedAmount: roundMoney(mcbu + csf),
+
+            status: tx.status,
+
+            dateClaimed: tx.date_added || null,
+            documentUrl: tx.document_url || null,
+
+            clientId: tx.client_id,
+            groupId: tx.group_id,
+            branchId: tx.branch_id,
+
+            areaId: tx.area_id,
+            regionId: tx.region_id,
+            divisionId: tx.division_id,
+
+            loanId: tx.loan_id,
+            loId: tx.lo_id,
+
+            remarks: tx.remarks || null
+        };
+    });
+}
+
+async function getClaimedOffsetTransactions(
+    currentUser,
+    filters
+) {
+    const where = {
+        source_type: {
+            _eq: 'offset'
+        },
+
+        status: {
+            _eq: 'claimed'
+        },
+
+        cash_collection_id: {
+            _is_null: false
+        }
+    };
+
+    if (filters.date) {
+        const nextDate = moment(
+            filters.date,
+            'YYYY-MM-DD'
+        )
+            .add(1, 'day')
+            .format('YYYY-MM-DD');
+
+        where.date_added = {
+            _gte: `${filters.date} 00:00:00`,
+            _lt: `${nextDate} 00:00:00`
+        };
+    }
+
+    const transactions = await fetchRows(
+        UNCLAIMED_TRANSACTION_TYPE,
+        'unclaimedTransactions',
+        { where }
+    );
+
+    const cashCollectionIds = uniqueIds(
+        transactions.map(tx => tx.cash_collection_id)
+    );
+
+    if (!cashCollectionIds.length) {
+        return [];
+    }
+
+    const cashCollections = await fetchRows(
+        CASH_COLLECTION_WITH_BRANCH,
+        'cashCollections',
+        {
+            where: {
+                _id: {
+                    _in: cashCollectionIds
+                },
+
+                _and: [
+                    buildRoleScope(currentUser),
+                    buildRequestFilters(filters)
+                ]
+            }
+        }
+    );
+
+    const cashCollectionMap = new Map(
+        cashCollections.map(cc => [cc._id, cc])
+    );
+
+    return transactions
+        .map(tx => {
+            const cc = cashCollectionMap.get(
+                tx.cash_collection_id
+            );
+
+            if (!cc) {
+                return null;
+            }
+
+            return formatOffsetTransaction(cc, tx);
+        })
+        .filter(Boolean);
+}
+
+async function getUnclaimedOffsetTransactions(
+    currentUser,
+    filters,
+    currentSystemDate
+) {
+    const where = {
+        remarks: {
+            _contains: {
+                value: 'offset-unclaimed'
+            }
+        },
+
+        dateAdded: filters.date
+            ? {
+                _eq: filters.date
+            }
+            : {
+                _lt: currentSystemDate
+            },
+
+        _and: [
+            buildRoleScope(currentUser),
+            buildRequestFilters(filters)
+        ]
+    };
+
+    const cashCollections = await fetchRows(
+        CASH_COLLECTION_WITH_BRANCH,
+        'cashCollections',
+        {
+            where,
+            order_by: [
+                { dateAdded: 'desc' }
+            ]
+        }
+    );
+
+    const cashCollectionIds = uniqueIds(
+        cashCollections.map(cc => cc._id)
+    );
+
+    if (!cashCollectionIds.length) {
+        return [];
+    }
+
+    const existingTransactions = await fetchRows(
+        UNCLAIMED_TRANSACTION_TYPE,
+        'unclaimedTransactions',
+        {
+            where: {
+                source_type: {
+                    _eq: 'offset'
+                },
+
+                cash_collection_id: {
+                    _in: cashCollectionIds
+                }
+            }
+        }
+    );
+
+    const existingTxMap = new Map(
+        existingTransactions.map(tx => [
+            tx.cash_collection_id,
+            tx
+        ])
+    );
+
+    return cashCollections
+        .map(cc => {
+            const transaction = existingTxMap.get(cc._id);
+
+            if (transaction?.status === 'claimed') {
+                return null;
+            }
+
+            return formatOffsetTransaction(
+                cc,
+                transaction
+            );
+        })
+        .filter(Boolean);
+}
+
+async function listUnclaimedTransactions(req, res) {
     try {
-        // Get current user for role-based filtering
-        const currentUser = await findUserById(user_id);
-        
+        const userId = req?.auth?.sub;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized'
+            });
+        }
+
+        const currentUser = await findUserById(userId);
+
         if (!currentUser) {
             return res.status(401).json({
                 success: false,
@@ -49,213 +613,84 @@ async function listUnclaimedTransactions(req, res) {
             });
         }
 
-        logger.debug({
-            user_id,
-            page: 'List Unclaimed Transactions',
-            role: currentUser.role.shortCode,
-            status
-        });
+        const {
+            status = 'unclaimed',
+            branchId,
+            loId,
+            groupId,
+            date
+        } = req.query;
 
-        // Build where clause for cash collections with remark 'offset-unclaimed'
-        // remarks is a JSONB field: { "label": "...", "value": "offset-unclaimed" }
-        const currentSystemDate = moment(getSystemDate()).format('YYYY-MM-DD');
-        
-        let cashCollectionWhere = {
-            remarks: {
-                _contains: { value: 'offset-unclaimed' }
-            }
-        };
-
-        // Date filtering:
-        // If specific date provided: filter by that date
-        // If no date provided: show all dates before today
-        if (date) {
-            cashCollectionWhere.dateAdded = { _eq: date };
-        } else {
-            cashCollectionWhere.dateAdded = { _lt: currentSystemDate };
-        }
-
-        // Apply role-based filtering
-        // Priority: Query params > User role-based filtering
-        if (branchId) {
-            cashCollectionWhere.branchId = { _eq: branchId };
-        } else if (loId) {
-            cashCollectionWhere.loId = { _eq: loId };
-        } else if (groupId) {
-            cashCollectionWhere.groupId = { _eq: groupId };
-        } else {
-            // Apply user role-based filtering
-            if (currentUser.role.shortCode === 'deputy_director') {
-                cashCollectionWhere.divisionId = { _eq: currentUser.divisionId };
-            } else if (currentUser.role.shortCode === 'regional_manager') {
-                cashCollectionWhere.regionId = { _eq: currentUser.regionId };
-            } else if (currentUser.role.shortCode === 'area_admin' || currentUser.role.shortCode === 'area_manager') {
-                cashCollectionWhere.areaId = { _eq: currentUser.areaId };
-            } else if (currentUser.role.rep === 3) {
-                // Branch manager
-                cashCollectionWhere.branchId = { _eq: currentUser.designatedBranchId };
-            } else if (currentUser.role.rep === 4) {
-                // Loan officer
-                cashCollectionWhere.loId = { _eq: currentUser._id };
-            }
-        }
-
-        // Different logic for claimed vs unclaimed
-        if (status === 'claimed') {
-            // For claimed transactions, fetch from unclaimed_amount_transactions table first
-            const claimedTransactions = await graph.query(
-                queryQl(UNCLAIMED_TRANSACTION_TYPE, {
-                    where: { status: { _eq: 'claimed' } }
-                })
-            );
-
-            let claimedTxList = claimedTransactions.data?.unclaimedTransactions || [];
-            
-            // Filter by date if provided (filter by date part of date_added)
-            if (date && claimedTxList.length > 0) {
-                claimedTxList = claimedTxList.filter(tx => 
-                    tx.date_added && moment(tx.date_added).format('YYYY-MM-DD') === date
-                );
-            }
-            
-            if (claimedTxList.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    data: [],
-                    total: 0
-                });
-            }
-
-            // Get all cashCollection IDs
-            const cashCollectionIds = claimedTxList.map(tx => tx.cash_collection_id);
-
-            // Fetch the corresponding cashCollections for display data
-            const cashCollections = await graph.query(
-                queryQl(CASH_COLLECTION_WITH_BRANCH, {
-                    where: {
-                        _id: { _in: cashCollectionIds }
-                    }
-                })
-            );
-
-            const cashCollectionsList = cashCollections.data?.cashCollections || [];
-            const ccMap = new Map(cashCollectionsList.map(cc => [cc._id, cc]));
-
-            // Build result from claimed transactions
-            const result = claimedTxList
-                .map(tx => {
-                    const cc = ccMap.get(tx.cash_collection_id);
-                    if (!cc) return null; // Skip if cashCollection not found
-
-                    // Calculate unclaimed amount using correct field names:
-                    // mcbuReturnAmt + csfReturnAmt - paymentCollection
-                    const unclaimedAmount = (cc.mcbuReturnAmt || 0) + (cc.csfReturnAmt || 0) - (cc.paymentCollection || 0);
-
-                    return {
-                        _id: cc._id,
-                        cashCollectionId: cc._id,
-                        dateOfOffset: cc.dateAdded,
-                        branchName: cc.branch?.name || '-',
-                        groupName: cc.groupName || '-',
-                        slotNo: cc.slotNo || '-',
-                        clientName: cc.fullName || '-',
-                        amountRelease: cc.amountRelease || 0,
-                        loanBalance: cc.paymentCollection || 0, // Using paymentCollection
-                        mcbu: cc.mcbuReturnAmt || 0, // Using mcbuReturnAmt
-                        csf: cc.csfReturnAmt || 0, // Using csfReturnAmt
-                        unclaimedAmount: unclaimedAmount,
-                        status: tx.status,
-                        dateClaimed: tx.date_added,
-                        documentUrl: tx.document_url,
-                        transactionId: tx._id,
-                        // Include IDs for reference
-                        clientId: cc.clientId,
-                        groupId: cc.groupId,
-                        branchId: cc.branchId,
-                        areaId: cc.areaId || cc.branch?.areaId || null,
-                        regionId: cc.regionId || cc.branch?.regionId || null,
-                        divisionId: cc.divisionId || cc.branch?.divisionId || null,
-                        loanId: cc.loanId,
-                        loId: cc.loId
-                    };
-                })
-                .filter(Boolean); // Remove nulls
-
-            return res.status(200).json({
-                success: true,
-                data: result,
-                total: result.length
+        if (!['unclaimed', 'claimed'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid transaction status.'
             });
         }
 
-        // For unclaimed transactions, use original logic
-        // Fetch cash collections with offset-unclaimed remark
-        const cashCollections = await graph.query(
-            queryQl(CASH_COLLECTION_WITH_BRANCH, {
-                where: cashCollectionWhere,
-                order_by: [{ dateAdded: 'desc' }]
-            })
-        );
+        if (
+            date &&
+            !moment(date, 'YYYY-MM-DD', true).isValid()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid date.'
+            });
+        }
 
-        const cashCollectionsList = cashCollections.data?.cashCollections || [];
+        const filters = {
+            branchId,
+            loId,
+            groupId,
+            date
+        };
 
-        // Fetch existing unclaimed transactions to filter out claimed ones
-        const existingTransactions = await graph.query(
-            queryQl(UNCLAIMED_TRANSACTION_TYPE, {})
-        );
+        const currentSystemDate = moment(
+            getSystemDate()
+        ).format('YYYY-MM-DD');
 
-        const existingTxMap = new Map(
-            (existingTransactions.data?.unclaimedTransactions || []).map(tx => [
-                tx.cash_collection_id,
-                tx
-            ])
-        );
+        const [
+            offsetTransactions,
+            manualTransactions
+        ] = await Promise.all([
+            status === 'claimed'
+                ? getClaimedOffsetTransactions(
+                    currentUser,
+                    filters
+                )
+                : getUnclaimedOffsetTransactions(
+                    currentUser,
+                    filters,
+                    currentSystemDate
+                ),
 
-        // Process and combine data
-        const result = cashCollectionsList.map(cc => {
-            const existingTx = existingTxMap.get(cc._id);
-            
-            // Skip if already claimed
-            if (existingTx && existingTx.status === 'claimed') {
-                return null;
-            }
-            
-            // Calculate unclaimed amount using correct field names:
-            // mcbuReturnAmt + csfReturnAmt - paymentCollection
-            const unclaimedAmount = (cc.mcbuReturnAmt || 0) + (cc.csfReturnAmt || 0) - (cc.paymentCollection || 0);
+            getManualTransactions(
+                currentUser,
+                filters,
+                status,
+                currentSystemDate
+            )
+        ]);
 
-            return {
-                _id: cc._id,
-                cashCollectionId: cc._id,
-                dateOfOffset: cc.dateAdded,
-                branchName: cc.branch?.name || '-',
-                groupName: cc.groupName || '-',
-                slotNo: cc.slotNo || '-',
-                clientName: cc.fullName || '-',
-                amountRelease: cc.amountRelease || 0,
-                loanBalance: cc.paymentCollection || 0, // Using paymentCollection as loanBalance
-                mcbu: cc.mcbuReturnAmt || 0, // Using mcbuReturnAmt
-                csf: cc.csfReturnAmt || 0, // Using csfReturnAmt
-                unclaimedAmount: unclaimedAmount,
-                status: existingTx?.status || 'unclaimed',
-                dateClaimed: existingTx?.date_added || null,
-                documentUrl: existingTx?.document_url || null,
-                transactionId: existingTx?._id || null,
-                // Include IDs for creating transaction record
-                clientId: cc.clientId,
-                groupId: cc.groupId,
-                branchId: cc.branchId,
-                // Get from cashCollections if available, otherwise from branch
-                areaId: cc.areaId || cc.branch?.areaId || null,
-                regionId: cc.regionId || cc.branch?.regionId || null,
-                divisionId: cc.divisionId || cc.branch?.divisionId || null,
-                loanId: cc.loanId,
-                loId: cc.loId
-            };
-        }).filter(Boolean); // Remove nulls (claimed transactions)
+        const result = [
+            ...offsetTransactions,
+            ...manualTransactions
+        ];
 
-        // No need to filter by status again since we already filtered claimed ones
-        res.status(200).json({
+        result.sort((a, b) => {
+            const dateA = status === 'claimed'
+                ? a.dateClaimed
+                : a.dateOfOffset;
+
+            const dateB = status === 'claimed'
+                ? b.dateClaimed
+                : b.dateOfOffset;
+
+            return String(dateB || '')
+                .localeCompare(String(dateA || ''));
+        });
+
+        return res.status(200).json({
             success: true,
             data: result,
             total: result.length
@@ -265,14 +700,13 @@ async function listUnclaimedTransactions(req, res) {
         logger.error({
             page: 'List Unclaimed Transactions',
             message: 'Error fetching unclaimed transactions',
-            error: error.message,
-            stack: error.stack
+            error: error?.message || error,
+            stack: error?.stack
         });
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: 'Error fetching unclaimed transactions',
-            error: error.message
+            message: 'Error fetching unclaimed transactions'
         });
     }
 }

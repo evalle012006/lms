@@ -1,3 +1,4 @@
+//src/lib/graph.fields.js
 export const USER_FIELDS = `
   _id
   dateAdded
@@ -809,6 +810,12 @@ export const UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS = `
   inserted_date
   modified_by
   modified_date
+  source_type
+  entry_date
+  lo_id
+  mcbu_amount
+  csf_amount
+  remarks
 `;
 
 export const TEMP_LOAN_APP_FIELDS = `

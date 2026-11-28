@@ -33,46 +33,29 @@ const isValidDate = (value) => {
 
     const date = new Date(`${value}T00:00:00Z`);
 
-    return (
-        !Number.isNaN(date.getTime()) &&
-        date.toISOString().slice(0, 10) === value
-    );
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
-const getSingleValue = (value) =>
-    typeof value === 'string' ? value.trim() : '';
+const getSingleValue = (value) => (typeof value === 'string' ? value.trim() : '');
 
-const getPreviousBusinessDate = (dateString) => {
-    const date = new Date(`${dateString}T00:00:00Z`);
-
-    do {
-        date.setUTCDate(date.getUTCDate() - 1);
-    } while (
-        date.getUTCDay() === 0 ||
-        date.getUTCDay() === 6
-    );
-
-    return date.toISOString().slice(0, 10);
-};
-
-const getLatestBeginningBalanceOverride = async (
-    branchId,
-    selectedDate
-) => {
+// Retrieve the effective beginning balance using a single
+// Hasura Native Query.
+//
+// PostgreSQL handles the daily cash movements and
+// carry-forward calculations.
+const calculateEffectiveBeginningBalance = async (branchId, selectedDate) => {
     const response = await graph.apollo.query({
         query: gql`
-            query GetLatestDcsBeginningBalanceOverride(
-                $branchId: String!
-                $selectedDate: date!
-            ) {
+            query GetDcsEffectiveBeginningBalance($branchId: String!, $selectedDate: date!) {
+                get_dcs_effective_beginning_balance(args: { branch_id: $branchId, selected_date: $selectedDate }) {
+                    beginning_balance
+                    source
+                    has_override
+                    carried_from
+                }
+
                 dcs_beginning_balances(
-                    where: {
-                        branch_id: { _eq: $branchId }
-                        balance_date: { _lte: $selectedDate }
-                    }
-                    order_by: {
-                        balance_date: desc
-                    }
+                    where: { branch_id: { _eq: $branchId }, balance_date: { _eq: $selectedDate } }
                     limit: 1
                 ) {
                     id
@@ -92,366 +75,44 @@ const getLatestBeginningBalanceOverride = async (
     });
 
     if (response.errors?.length) {
-        throw new Error(
-            'Failed to retrieve the latest Beginning Balance override.'
-        );
+        console.error('Effective Beginning Balance GraphQL errors:', response.errors);
+
+        throw new Error('Failed to retrieve the effective Beginning Balance.');
     }
 
-    return response.data?.dcs_beginning_balances?.[0] || null;
-};
+    const result = response.data?.get_dcs_effective_beginning_balance?.[0];
 
-const roundMoney = (value) =>
-    Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-
-const getBusinessDatesBetween = (startDate, endDate) => {
-    const dates = [];
-    const date = new Date(`${startDate}T00:00:00Z`);
-
-    date.setUTCDate(date.getUTCDate() + 1);
-
-    while (date.toISOString().slice(0, 10) < endDate) {
-        const day = date.getUTCDay();
-
-        if (day !== 0 && day !== 6) {
-            dates.push(date.toISOString().slice(0, 10));
-        }
-
-        date.setUTCDate(date.getUTCDate() + 1);
+    if (!result) {
+        throw new Error('No effective Beginning Balance was returned.');
     }
 
-    return dates;
-};
+    const source = result.source;
 
-const getBranchDcsTotals = async (branchId, selectedDate) => {
-    const response = await graph.apollo.query({
-        query: gql`
-            query GetBranchDcsTotals(
-                $args: get_daily_collection_sheet_v2_arguments!
-            ) {
-                results: get_daily_collection_sheet_v2(args: $args) {
-                    data
-                }
-            }
-        `,
-        variables: {
-            args: {
-                branch_id: branchId,
-                lo_id: null,
-                selected_date: selectedDate,
-            },
-        },
-        fetchPolicy: 'network-only',
-    });
-
-    if (response.errors?.length) {
-        throw new Error(
-            `Failed to retrieve DCS totals for ${selectedDate}.`
-        );
+    if (!['historical', 'manual', 'carried_forward'].includes(source)) {
+        throw new Error('Invalid Beginning Balance source.');
     }
 
-    const rows = (response.data?.results || []).map(
-        (item) => item.data || item
-    );
+    const beginningBalance =
+        result.beginning_balance === null || result.beginning_balance === undefined
+            ? null
+            : Number(result.beginning_balance);
 
-    const toNumber = (value) => {
-        const number = Number(value ?? 0);
-        return Number.isFinite(number) ? number : 0;
-    };
+    if (beginningBalance !== null && !Number.isFinite(beginningBalance)) {
+        throw new Error('Invalid effective Beginning Balance.');
+    }
 
-    const getValue = (row, keys) => {
-        const nested = row?.data || row;
+    if (source !== 'historical' && beginningBalance === null) {
+        throw new Error('Missing effective Beginning Balance.');
+    }
 
-        for (const key of keys) {
-            const value = row?.[key] ?? nested?.[key];
-
-            if (value !== null && value !== undefined) {
-                return toNumber(value);
-            }
-        }
-
-        return 0;
-    };
-
-    const sum = (...keys) =>
-        rows.reduce(
-            (total, row) => total + getValue(row, keys),
-            0
-        );
+    const record = source === 'manual' ? response.data?.dcs_beginning_balances?.[0] || null : null;
 
     return {
-        mcbuActual: sum(
-            'mcbuActual',
-            'mcbu_actual'
-        ),
-
-        csfCollection: sum(
-            'csf_collection',
-            'csfCollection'
-        ),
-
-        regularLoanActual: sum(
-            'regularLoanActual',
-            'regular_loan_actual'
-        ),
-
-        otherLoanActual: sum(
-            'otherLoanActual',
-            'other_loan_actual'
-        ),
-
-        weekly12Actual: sum(
-            'weekly12Actual',
-            'weekly_12_actual'
-        ),
-
-        mcbuReturnAmount: sum(
-            'mcbuReturnAmount',
-            'mcbu_return_amount'
-        ),
-
-        csfReturnAmount: sum(
-            'csf_return_amount',
-            'csfReturnAmount'
-        ),
-    };
-};
-
-const getBranchDailyCashMovement = async (branchId, selectedDate) => {
-    const [summaryResponse, dcsTotals] = await Promise.all([
-        graph.apollo.query({
-            query: gql`
-                query GetBranchDcsCashMovement(
-                    $args: get_daily_collection_summary_arguments!
-                ) {
-                    results: get_daily_collection_summary(args: $args) {
-                        data
-                    }
-                }
-            `,
-            variables: {
-                args: {
-                    branch_id: branchId,
-                    lo_id: null,
-                    selected_date: selectedDate,
-                },
-            },
-            fetchPolicy: 'network-only',
-        }),
-
-        getBranchDcsTotals(branchId, selectedDate),
-    ]);
-
-    if (summaryResponse.errors?.length) {
-        throw new Error(
-            `Failed to retrieve branch cash movements for ${selectedDate}.`
-        );
-    }
-
-    const raw = summaryResponse.data?.results?.[0]?.data;
-
-    if (!raw) {
-        throw new Error(
-            `No DCS summary was returned for ${selectedDate}.`
-        );
-    }
-
-    const toNumber = (value) => {
-        const number = Number(value ?? 0);
-
-        if (!Number.isFinite(number)) {
-            throw new Error(
-                `Invalid cash movement amount for ${selectedDate}.`
-            );
-        }
-
-        return number;
-    };
-
-    const getSummaryValue = (...keys) => {
-        for (const key of keys) {
-            if (raw[key] !== null && raw[key] !== undefined) {
-                return toNumber(raw[key]);
-            }
-        }
-
-        return 0;
-    };
-
-    // ORIGINAL SUMMARY TOTALS
-    const originalReceipts = toNumber(raw.total_receipts);
-    const originalPayments = toNumber(raw.total_payments);
-
-    // ORIGINAL SUMMARY COLLECTIONS
-    const originalMcbu = getSummaryValue(
-        'rcpt_mcbu',
-        'rcptMcbu'
-    );
-
-    const originalCsf = getSummaryValue(
-        'rcpt_csf',
-        'rcptCsf'
-    );
-
-    const originalRegularLoan = getSummaryValue(
-        'rcpt_regular_loan',
-        'rcptRegularLoan'
-    );
-
-    const originalOtherLoan = getSummaryValue(
-        'rcpt_other_loan',
-        'rcptOtherLoan'
-    );
-
-    // ORIGINAL SUMMARY RETURNS
-    const originalMcbuReturn = getSummaryValue(
-        'pay_mcbu_return',
-        'payMcbuReturn'
-    );
-
-    const originalCsfReturn = getSummaryValue(
-        'pay_csf_return',
-        'payCsfReturn'
-    );
-
-    // DCS COLLECTION ADJUSTMENTS
-    const mcbuDifference =
-        dcsTotals.mcbuActual - originalMcbu;
-
-    const csfDifference =
-        dcsTotals.csfCollection - originalCsf;
-
-    const regularLoanDifference =
-        dcsTotals.regularLoanActual - originalRegularLoan;
-
-    const otherLoanDifference =
-        (
-            dcsTotals.otherLoanActual +
-            dcsTotals.weekly12Actual
-        ) - originalOtherLoan;
-
-    // DCS PAYMENT ADJUSTMENTS
-    const mcbuReturnDifference =
-        dcsTotals.mcbuReturnAmount - originalMcbuReturn;
-
-    const csfReturnDifference =
-        dcsTotals.csfReturnAmount - originalCsfReturn;
-
-    const totalCollectionDifference =
-        mcbuDifference +
-        csfDifference +
-        regularLoanDifference +
-        otherLoanDifference;
-
-    const totalPaymentDifference =
-        mcbuReturnDifference +
-        csfReturnDifference;
-
-    const receipts = roundMoney(
-        originalReceipts + totalCollectionDifference
-    );
-
-    const payments = roundMoney(
-        originalPayments + totalPaymentDifference
-    );
-
-    if (
-        selectedDate === "2026-11-03" ||
-        selectedDate === "2026-11-04"
-    ) {
-        console.log("[DCS BEGINNING BALANCE DEBUG]", {
-            branchId,
-            selectedDate,
-
-            originalReceipts,
-            originalPayments,
-
-            originalMcbu,
-            originalCsf,
-            originalRegularLoan,
-            originalOtherLoan,
-
-            originalMcbuReturn,
-            originalCsfReturn,
-
-            dcsTotals,
-
-            totalCollectionDifference,
-            totalPaymentDifference,
-
-            calculatedReceipts: receipts,
-            calculatedPayments: payments,
-
-            netCashMovement: roundMoney(
-                receipts - payments
-            ),
-        });
-    }
-
-    return {
-        receipts,
-        payments,
-    };
-};
-
-const calculateEffectiveBeginningBalance = async (
-    branchId,
-    selectedDate
-) => {
-    const latestOverride =
-        await getLatestBeginningBalanceOverride(
-            branchId,
-            selectedDate
-        );
-
-    if (!latestOverride) {
-        return {
-            source: 'historical',
-            hasOverride: false,
-            beginningBalance: null,
-            record: null,
-        };
-    }
-
-    const overrideDate = latestOverride.balance_date;
-
-    if (overrideDate === selectedDate) {
-        return {
-            source: 'manual',
-            hasOverride: true,
-            beginningBalance: Number(
-                latestOverride.beginning_balance
-            ),
-            record: latestOverride,
-        };
-    }
-
-    const dates = getBusinessDatesBetween(
-        overrideDate,
-        selectedDate
-    );
-
-    const movements = await Promise.all(
-        [overrideDate, ...dates].map((date) =>
-            getBranchDailyCashMovement(branchId, date)
-        )
-    );
-
-    const carriedBalance = movements.reduce(
-        (balance, movement) =>
-            roundMoney(
-                balance +
-                movement.receipts -
-                movement.payments
-            ),
-        Number(latestOverride.beginning_balance)
-    );
-
-    return {
-        source: 'carried_forward',
-        hasOverride: false,
-        beginningBalance: roundMoney(carriedBalance),
-        record: null,
-        carriedFrom: overrideDate,
+        source,
+        hasOverride: Boolean(result.has_override),
+        beginningBalance,
+        record,
+        ...(source === 'carried_forward' ? { carriedFrom: result.carried_from } : {}),
     };
 };
 
@@ -501,10 +162,7 @@ const checkBranchAccess = async (user, branchId, requireEdit = false) => {
     }
 
     if (isBranchManager || isLoanOfficer) {
-        return (
-            Boolean(user.designatedBranchId) &&
-            String(user.designatedBranchId) === String(branchId)
-        );
+        return Boolean(user.designatedBranchId) && String(user.designatedBranchId) === String(branchId);
     }
 
     if (isAreaManager) {
@@ -523,10 +181,7 @@ const checkBranchAccess = async (user, branchId, requireEdit = false) => {
 
         const branch = response.data?.branches?.[0];
 
-        return (
-            Boolean(branch) &&
-            String(branch.areaId) === String(user.areaId)
-        );
+        return Boolean(branch) && String(branch.areaId) === String(user.areaId);
     }
 
     return false;
@@ -558,10 +213,7 @@ async function getBeginningBalance(req, res) {
             });
         }
 
-        const allowed = await checkBranchAccess(
-            currentUser,
-            branchId
-        );
+        const allowed = await checkBranchAccess(currentUser, branchId);
 
         if (!allowed) {
             return res.status(403).json({
@@ -570,10 +222,7 @@ async function getBeginningBalance(req, res) {
             });
         }
 
-        const result = await calculateEffectiveBeginningBalance(
-            branchId,
-            selectedDate
-        );
+        const result = await calculateEffectiveBeginningBalance(branchId, selectedDate);
 
         return res.status(200).json({
             success: true,
@@ -602,12 +251,7 @@ async function saveBeginningBalance(req, res) {
             });
         }
 
-        if (
-            rawBalance === null ||
-            rawBalance === undefined ||
-            rawBalance === '' ||
-            typeof rawBalance === 'boolean'
-        ) {
+        if (rawBalance === null || rawBalance === undefined || rawBalance === '' || typeof rawBalance === 'boolean') {
             return res.status(400).json({
                 success: false,
                 message: 'Beginning Balance is required.',
@@ -625,11 +269,7 @@ async function saveBeginningBalance(req, res) {
 
         const beginningBalance = Number(balanceString);
 
-        if (
-            !Number.isFinite(beginningBalance) ||
-            beginningBalance < 0 ||
-            beginningBalance > 99999999999999.99
-        ) {
+        if (!Number.isFinite(beginningBalance) || beginningBalance < 0 || beginningBalance > 99999999999999.99) {
             return res.status(400).json({
                 success: false,
                 message: 'Enter a valid non-negative Beginning Balance.',
@@ -645,11 +285,7 @@ async function saveBeginningBalance(req, res) {
             });
         }
 
-        const allowed = await checkBranchAccess(
-            currentUser,
-            branchId,
-            true
-        );
+        const allowed = await checkBranchAccess(currentUser, branchId, true);
 
         if (!allowed) {
             return res.status(403).json({
@@ -675,10 +311,7 @@ async function saveBeginningBalance(req, res) {
                         }
                         on_conflict: {
                             constraint: dcs_beginning_balances_branch_date_unique
-                            update_columns: [
-                                beginning_balance
-                                updated_by
-                            ]
+                            update_columns: [beginning_balance, updated_by]
                         }
                     ) {
                         id
@@ -699,10 +332,7 @@ async function saveBeginningBalance(req, res) {
         });
 
         if (response.errors?.length) {
-            console.error(
-                'Beginning Balance GraphQL mutation errors:',
-                response.errors
-            );
+            console.error('Beginning Balance GraphQL mutation errors:', response.errors);
 
             return res.status(500).json({
                 success: false,
@@ -710,8 +340,7 @@ async function saveBeginningBalance(req, res) {
             });
         }
 
-        const record =
-            response.data?.insert_dcs_beginning_balances_one;
+        const record = response.data?.insert_dcs_beginning_balances_one;
 
         if (!record) {
             return res.status(500).json({

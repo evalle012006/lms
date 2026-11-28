@@ -31,12 +31,19 @@ const USER_TYPE = createGraphType(
 
 const ALLOWED_TYPES = [
     "staff_loan_collection",
+    "staff_loan_interest",
     "staff_cbu_collection",
     "staff_cashbond_collection",
     "staff_sbf_utility_collection",
     "mpl_contribution",
     "sss_contribution",
     "ap_payroll",
+    "overstated_management_expenses",
+    "salary_advance",
+    "motorcycle_loan",
+    "cash_advance",
+    "special_advance",
+    "bad_debt_collection",
 ];
 
 export default apiHandler({

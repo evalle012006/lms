@@ -1,6 +1,6 @@
-//src/pages/api/v2/transactions/unclaimed-transactions/claim.js
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
+import { calculateOffsetAmounts } from "@/lib/unclaimed-calculations";
 import { createGraphType, insertQl, updateQl, queryQl } from '@/lib/graph/graph.util';
 import { UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS } from '@/lib/graph.fields';
 import { findUserById } from '@/lib/graph.functions';
@@ -24,26 +24,142 @@ const s3Client = new S3Client({
 });
 
 const UNCLAIMED_TRANSACTION_TYPE = createGraphType(
-    'unclaimed_amount_transactions', 
+    'unclaimed_amount_transactions',
     UNCLAIMED_AMOUNT_TRANSACTIONS_FIELDS
 )('transaction');
+
+const CASH_COLLECTION_TYPE = createGraphType(
+    'cashCollections',
+    `
+        _id
+        clientId
+        groupId
+        branchId
+        loanId
+        loId
+        dateAdded
+        mcbuReturnAmt
+        csfReturnAmt
+        paymentCollection
+        remarks
+
+        branch {
+            _id
+            areaId
+            regionId
+            divisionId
+        }
+    `
+)('cashCollections');
 
 export default apiHandler({
     post: claimTransaction
 });
 
-/**
- * Claim unclaimed transaction(s) with document upload
- * Supports both single and batch mode
- */
+const toNumber = (value) => {
+    const amount = Number(value ?? 0);
+
+    return Number.isFinite(amount)
+        ? amount
+        : 0;
+};
+
+const roundMoney = (value) =>
+    Math.round(toNumber(value) * 100) / 100;
+
+const checkGraphResult = (result) => {
+    if (result?.errors?.length) {
+        throw new Error(result.errors[0].message);
+    }
+
+    return result;
+};
+
+function failure(message, statusCode = 400) {
+    return {
+        success: false,
+        error: true,
+        statusCode,
+        message
+    };
+}
+
+function canClaimTransaction(currentUser, transaction) {
+    const role = currentUser.role || {};
+    const roleRep = Number(role.rep);
+
+    const shortCode = String(
+        role.shortCode || ''
+    ).toLowerCase();
+
+    if (roleRep === 1) {
+        return true;
+    }
+
+    if (roleRep === 3) {
+        return Boolean(
+            currentUser.designatedBranchId &&
+            transaction.branch_id &&
+            String(currentUser.designatedBranchId) ===
+            String(transaction.branch_id)
+        );
+    }
+
+    if (
+        shortCode === 'area_admin' ||
+        shortCode === 'area_manager'
+    ) {
+        return Boolean(
+            currentUser.areaId &&
+            transaction.area_id &&
+            String(currentUser.areaId) ===
+            String(transaction.area_id)
+        );
+    }
+
+    if (shortCode === 'regional_manager') {
+        return Boolean(
+            currentUser.regionId &&
+            transaction.region_id &&
+            String(currentUser.regionId) ===
+            String(transaction.region_id)
+        );
+    }
+
+    if (shortCode === 'deputy_director') {
+        return Boolean(
+            currentUser.divisionId &&
+            transaction.division_id &&
+            String(currentUser.divisionId) ===
+            String(transaction.division_id)
+        );
+    }
+
+    if (roleRep === 4) {
+        return Boolean(
+            currentUser._id &&
+            transaction.lo_id &&
+            String(currentUser._id) ===
+            String(transaction.lo_id)
+        );
+    }
+
+    return false;
+}
+
 async function claimTransaction(req, res) {
-    const user_id = req?.auth?.sub;
-    const { mode = 'single', transactions } = req.body;
+    const userId = req?.auth?.sub;
 
     try {
-        // Get current user
-        const currentUser = await findUserById(user_id);
-        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized'
+            });
+        }
+
+        const currentUser = await findUserById(userId);
+
         if (!currentUser) {
             return res.status(401).json({
                 success: false,
@@ -51,63 +167,58 @@ async function claimTransaction(req, res) {
             });
         }
 
-        // Batch mode - process multiple transactions
-        if (mode === 'batch' && transactions && Array.isArray(transactions)) {
-            logger.debug({
-                user_id,
-                page: 'Claim Unclaimed Transaction (Batch)',
-                message: `Processing ${transactions.length} transactions`
+        const {
+            mode = 'single',
+            transactions
+        } = req.body || {};
+
+        if (!['single', 'batch'].includes(mode)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid claim mode.'
             });
+        }
+
+        if (mode === 'batch') {
+            if (
+                !Array.isArray(transactions) ||
+                transactions.length === 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No transactions selected.'
+                });
+            }
 
             let successCount = 0;
             let errorCount = 0;
+
             const results = [];
 
             for (const tx of transactions) {
-                try {
-                    const result = await processSingleClaim(tx, user_id);
-                    
-                    if (result.success) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                    }
-                    
-                    results.push({
-                        cashCollectionId: tx.cashCollectionId,
-                        clientName: tx.clientName,
-                        ...result
-                    });
-                } catch (error) {
+                const result = await processSingleClaim(
+                    tx,
+                    currentUser,
+                    userId
+                );
+
+                if (result.success) {
+                    successCount++;
+                } else {
                     errorCount++;
-                    logger.error({
-                        user_id,
-                        page: 'Claim Unclaimed Transaction (Batch)',
-                        message: `Error processing transaction ${tx.cashCollectionId}`,
-                        error: error.message
-                    });
-                    
-                    results.push({
-                        cashCollectionId: tx.cashCollectionId,
-                        clientName: tx.clientName,
-                        success: false,
-                        error: true,
-                        message: error.message
-                    });
                 }
+
+                results.push({
+                    cashCollectionId: tx?.cashCollectionId || null,
+                    transactionId: tx?.transactionId || null,
+                    sourceType: tx?.sourceType || 'offset',
+                    clientName: tx?.clientName || '',
+                    ...result
+                });
             }
 
-            logger.info({
-                user_id,
-                page: 'Claim Unclaimed Transaction (Batch)',
-                message: 'Batch processing completed',
-                total: transactions.length,
-                success: successCount,
-                errors: errorCount
-            });
-
             return res.status(200).json({
-                success: true,
+                success: errorCount === 0,
                 mode: 'batch',
                 total: transactions.length,
                 successCount,
@@ -116,37 +227,21 @@ async function claimTransaction(req, res) {
             });
         }
 
-        // Single mode - process one transaction
-        const {
-            cashCollectionId,
-            clientId,
-            groupId,
-            branchId,
-            areaId,
-            regionId,
-            divisionId,
-            loanId
-        } = req.body;
+        const result = await processSingleClaim(
+            req.body,
+            currentUser,
+            userId
+        );
 
-        // Validate required fields for single mode
-        if (!cashCollectionId || !clientId || resolveDocumentValue(req.body) === null) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing required fields: cashCollectionId, clientId, and at least one document are required'
-            });
-        }
-
-        const result = await processSingleClaim(req.body, user_id);
-
-        if (result.success) {
-            return res.status(200).json(result);
-        } else {
-            return res.status(500).json(result);
-        }
+        return res.status(
+            result.success
+                ? 200
+                : result.statusCode || 500
+        ).json(result);
 
     } catch (error) {
         logger.error({
-            user_id,
+            userId,
             page: 'Claim Unclaimed Transaction',
             message: 'Error in claim handler',
             error: error.message,
@@ -155,211 +250,468 @@ async function claimTransaction(req, res) {
 
         return res.status(500).json({
             success: false,
-            message: 'Error claiming transaction',
-            error: error.message
+            message: 'Error claiming transaction.'
         });
     }
 }
 
 const MAX_DOCUMENTS = 10;
 
-/**
- * Delete files that were attached to `existing` before this claim and are not
- * part of the new document set. Runs only after the update succeeded.
- * Best-effort: failures are logged, never thrown (the claim is already saved).
- * A key still referenced by any OTHER row is kept (batch claims share files).
- */
-async function deleteReplacedDocuments(existing, newDocumentValue, user_id) {
+async function deleteReplacedDocuments(existing, newDocumentValue, userId) {
     try {
         const toKey = (v) => {
             const k = extractKeyFromValue(v);
             if (!k) return null;
-            try { return decodeURIComponent(k); } catch { return k; }
+
+            try {
+                return decodeURIComponent(k);
+            } catch {
+                return k;
+            }
         };
-        const newKeys = new Set(parseDocumentKeys(newDocumentValue).map(toKey).filter(Boolean));
-        const allowedPrefix = `${process.env.SPACES_ROOT}/unclaimed-transactions/`;
+
+        const newKeys = new Set(
+            parseDocumentKeys(newDocumentValue)
+                .map(toKey)
+                .filter(Boolean)
+        );
+
+        const allowedPrefix =
+            `${process.env.SPACES_ROOT}/unclaimed-transactions/`;
 
         const oldKeys = parseDocumentKeys(existing?.document_url)
             .map(toKey)
-            .filter(k => k && !newKeys.has(k) && k.startsWith(allowedPrefix) && !k.includes('..'));
+            .filter(k =>
+                k &&
+                !newKeys.has(k) &&
+                k.startsWith(allowedPrefix) &&
+                !k.includes('..')
+            );
 
         for (const key of oldKeys) {
-            const ref = await graph.query(
-                queryQl(UNCLAIMED_TRANSACTION_TYPE, {
-                    where: {
-                        _id: { _neq: existing._id },
-                        document_url: { _like: `%${key}%` }
-                    },
-                    limit: 1
-                })
+            const ref = checkGraphResult(
+                await graph.query(
+                    queryQl(UNCLAIMED_TRANSACTION_TYPE, {
+                        where: {
+                            _id: { _neq: existing._id },
+                            document_url: { _like: `%${key}%` }
+                        },
+                        limit: 1
+                    })
+                )
             );
+
             if (ref.data?.transaction?.length > 0) continue;
 
-            await s3Client.send(new DeleteObjectCommand({
-                Bucket: process.env.SPACES_BUCKET,
-                Key: key,
-            }));
+            await s3Client.send(
+                new DeleteObjectCommand({
+                    Bucket: process.env.SPACES_BUCKET,
+                    Key: key
+                })
+            );
         }
     } catch (error) {
         logger.error({
-            user_id,
+            user_id: userId,
             page: 'Delete Replaced Unclaimed Documents',
-            message: 'Failed to delete replaced files (claim already saved)',
+            message: 'Failed to delete replaced files',
             error: error.message
         });
     }
 }
 
-/**
- * Normalise the document payload into the value stored in document_url.
- * Accepts `documentUrls` (array of keys) or legacy `documentUrl` (string).
- * Returns null when no usable document is supplied.
- */
 function resolveDocumentValue(data) {
     const list = Array.isArray(data?.documentUrls)
         ? data.documentUrls
         : (data?.documentUrl ? [data.documentUrl] : []);
-    return serializeDocumentKeys(list.slice(0, MAX_DOCUMENTS));
+
+    return serializeDocumentKeys(
+        list.slice(0, MAX_DOCUMENTS)
+    );
 }
 
-/**
- * Process a single claim transaction
- * @param {Object} transactionData - Transaction data
- * @param {string} user_id - User ID
- * @returns {Promise<Object>} Result object
- */
-async function processSingleClaim(transactionData, user_id) {
-    const {
-        cashCollectionId,
-        clientId,
-        groupId,
-        branchId,
-        areaId,
-        regionId,
-        divisionId,
-        loanId
-    } = transactionData;
-
-    // Accept documentUrls (array) or legacy documentUrl (string)
-    const documentUrl = resolveDocumentValue(transactionData);
-
+async function processSingleClaim(
+    transactionData,
+    currentUser,
+    userId
+) {
     try {
-        if (documentUrl === null) {
-            return {
-                success: false,
-                error: true,
-                message: 'At least one document is required'
-            };
+        const {
+            sourceType,
+            transactionId,
+            cashCollectionId
+        } = transactionData || {};
+
+        const documentUrl = resolveDocumentValue(transactionData);
+
+        if (
+            typeof documentUrl !== 'string' ||
+            !documentUrl.trim()
+        ) {
+            return failure(
+                'At least one claim document is required.'
+            );
         }
 
-        logger.debug({
-            user_id,
-            page: 'Process Single Claim',
+        const isManual =
+            sourceType === 'manual' ||
+            (!cashCollectionId && transactionId);
+
+        if (isManual) {
+            if (!transactionId) {
+                return failure(
+                    'Manual transaction ID is required.'
+                );
+            }
+
+            return await claimManualTransaction(
+                transactionId,
+                documentUrl,
+                currentUser,
+                userId
+            );
+        }
+
+        if (!cashCollectionId) {
+            return failure(
+                'Cash Collection ID is required.'
+            );
+        }
+
+        return await claimOffsetTransaction(
             cashCollectionId,
-            documentUrl
-        });
-
-        const currentDate = moment(getSystemDate()).format('YYYY-MM-DD HH:mm:ss');
-
-        // Check if transaction already exists
-        const existingTx = await graph.query(
-            queryQl(UNCLAIMED_TRANSACTION_TYPE, {
-                where: {
-                    cash_collection_id: { _eq: cashCollectionId }
-                }
-            })
+            documentUrl,
+            currentUser,
+            userId
         );
-
-        const existing = existingTx.data?.transaction?.[0];
-
-        if (existing) {
-            // Update existing transaction
-            const updateResult = await graph.mutation(
-                updateQl(UNCLAIMED_TRANSACTION_TYPE, {
-                    where: {
-                        _id: { _eq: existing._id }
-                    },
-                    set: {
-                        status: 'claimed',
-                        date_added: currentDate,
-                        document_url: documentUrl,
-                        modified_by: user_id,
-                        modified_date: currentDate
-                    }
-                })
-            );
-
-            // The new documents are saved. Only now remove the files they replace.
-            await deleteReplacedDocuments(existing, documentUrl, user_id);
-
-            logger.info({
-                user_id,
-                page: 'Process Single Claim',
-                message: 'Updated existing transaction',
-                transactionId: existing._id
-            });
-
-            return {
-                success: true,
-                message: 'Transaction claimed successfully',
-                data: updateResult.data?.transaction?.[0],
-                operation: 'update'
-            };
-
-        } else {
-            // Create new transaction record
-            const newTransaction = {
-                _id: generateUUID(),
-                cash_collection_id: cashCollectionId,
-                client_id: clientId,
-                group_id: groupId || null,
-                branch_id: branchId || null,
-                area_id: areaId || null,
-                region_id: regionId || null,
-                division_id: divisionId || null,
-                loan_id: loanId || null,
-                status: 'claimed',
-                date_added: currentDate,
-                document_url: documentUrl,
-                inserted_by: user_id,
-                inserted_date: currentDate
-            };
-
-            const insertResult = await graph.mutation(
-                insertQl(UNCLAIMED_TRANSACTION_TYPE, {
-                    objects: [newTransaction]
-                })
-            );
-
-            logger.info({
-                user_id,
-                page: 'Process Single Claim',
-                message: 'Created new transaction',
-                transactionId: newTransaction._id
-            });
-
-            return {
-                success: true,
-                message: 'Transaction claimed successfully',
-                data: insertResult.data?.transaction?.[0],
-                operation: 'insert'
-            };
-        }
 
     } catch (error) {
         logger.error({
-            user_id,
+            userId,
             page: 'Process Single Claim',
-            message: 'Error processing claim',
-            cashCollectionId,
             error: error.message,
             stack: error.stack
         });
 
+        return failure(
+            'Failed to claim transaction.',
+            500
+        );
+    }
+}
+
+
+async function claimManualTransaction(transactionId, documentUrl, currentUser, userId) {
+    const existingResult = checkGraphResult(
+        await graph.query(
+            queryQl(UNCLAIMED_TRANSACTION_TYPE, {
+                where: {
+                    _id: {_eq: transactionId},
+                    source_type: {_eq: 'manual'}
+                },
+                limit: 1
+            })
+        )
+    );
+
+    const existing = existingResult.data?.transaction?.[0];
+
+    if (!existing) {
+        return failure(
+            'Manual unclaimed transaction not found.',
+            404
+        );
+    }
+
+    if (
+        !canClaimTransaction(
+            currentUser,
+            existing
+        )
+    ) {
+        return failure(
+            'You cannot claim this transaction.',
+            403
+        );
+    }
+
+    if (existing.status !== 'unclaimed') {
+        return failure(
+            'This transaction is no longer unclaimed.',
+            409
+        );
+    }
+
+    const totalAmount = roundMoney(
+        toNumber(existing.mcbu_amount) +
+        toNumber(existing.csf_amount)
+    );
+
+    if (totalAmount <= 0) {
+        return failure(
+            'Unclaimed amount must be greater than zero.'
+        );
+    }
+
+    const currentDate = moment(
+        getSystemDate()
+    ).format('YYYY-MM-DD HH:mm:ss');
+
+    const currentDay = currentDate.slice(0, 10);
+
+    if (
+        !existing.entry_date ||
+        existing.entry_date > currentDay
+    ) {
+        return failure(
+            'Invalid transaction entry date.'
+        );
+    }
+
+    const updateResult = checkGraphResult(
+        await graph.mutation(
+            updateQl(UNCLAIMED_TRANSACTION_TYPE, {
+                where: {
+                    _id: {_eq: existing._id},
+                    source_type: {_eq: 'manual'},
+                    status: {_eq: 'unclaimed'}
+                },
+
+                set: {
+                    status: 'claimed',
+                    date_added: currentDate,
+                    document_url: documentUrl.trim(),
+                    modified_by: userId,
+                    modified_date: currentDate
+                }
+            })
+        )
+    );
+
+    const mutation =
+        updateResult.data?.transaction ||
+        updateResult.data
+            ?.update_unclaimed_amount_transactions;
+
+    const updated = Array.isArray(mutation) ? mutation[0] : mutation?.returning?.[0];
+
+    if (!updated) {
+        return failure(
+            'Transaction was already claimed or could not be updated.',
+            409
+        );
+    }
+
+    await deleteReplacedDocuments(existing, documentUrl, userId);
+
+    return {
+        success: true,
+        message: 'MCBU / CSF claimed successfully.',
+        sourceType: 'manual',
+        transactionId: existing._id,
+        operation: 'update',
+        data: updated,
+        unclaimedAmount: totalAmount
+    };
+}
+
+async function claimOffsetTransaction(
+    cashCollectionId,
+    documentUrl,
+    currentUser,
+    userId
+) {
+    const collectionResult = checkGraphResult(
+        await graph.query(
+            queryQl(CASH_COLLECTION_TYPE, {
+                where: {_id: {_eq: cashCollectionId}, remarks: {_contains: {value: 'offset-unclaimed'}}},
+                limit: 1
+            })
+        )
+    );
+
+    const collection = collectionResult.data?.cashCollections?.[0];
+
+    if (!collection) {
+        return failure(
+            'Unclaimed cash collection not found.',
+            404
+        );
+    }
+
+    const transactionInfo = {
+        client_id: collection.clientId,
+        group_id: collection.groupId || null,
+        branch_id: collection.branchId || null,
+        area_id: collection.branch?.areaId || null,
+        region_id: collection.branch?.regionId || null,
+        division_id: collection.branch?.divisionId || null,
+        loan_id: collection.loanId || null,
+        lo_id: collection.loId || null
+    };
+
+    if (
+        !canClaimTransaction(
+            currentUser,
+            transactionInfo
+        )
+    ) {
+        return failure(
+            'You cannot claim this transaction.',
+            403
+        );
+    }
+
+    const { unclaimedAmount } = calculateOffsetAmounts(collection);
+
+    if (unclaimedAmount <= 0) {
+        return failure(
+            'Unclaimed amount must be greater than zero.'
+        );
+    }
+
+    const currentDate = moment(
+        getSystemDate()
+    ).format('YYYY-MM-DD HH:mm:ss');
+
+    const currentDay = currentDate.slice(0, 10);
+
+    if (
+        !collection.dateAdded ||
+        String(collection.dateAdded).slice(0, 10) >
+            currentDay
+    ) {
+        return failure(
+            'Invalid offset transaction date.'
+        );
+    }
+
+    const existingResult = checkGraphResult(
+        await graph.query(
+            queryQl(UNCLAIMED_TRANSACTION_TYPE, {
+                where: {
+                    source_type: {
+                        _eq: 'offset'
+                    },
+
+                    cash_collection_id: {
+                        _eq: cashCollectionId
+                    }
+                }
+            })
+        )
+    );
+
+    const existingTransactions = existingResult.data?.transaction || [];
+
+    if (existingTransactions.length > 1) {
+        return failure(
+            'Duplicate offset records detected. Please contact the administrator.',
+            409
+        );
+    }
+
+    const existing = existingTransactions[0];
+
+    if (existing) {
+        if (existing.status !== 'unclaimed') {
+            return failure(
+                'This transaction is no longer unclaimed.',
+                409
+            );
+        }
+
+        const updateResult = checkGraphResult(
+            await graph.mutation(
+                updateQl(
+                    UNCLAIMED_TRANSACTION_TYPE,
+                    {
+                        where: {_id: {_eq: existing._id},
+                            source_type: {_eq: 'offset'},
+                            status: {_eq: 'unclaimed'}
+                        },
+
+                        set: {
+                            status: 'claimed',
+                            date_added: currentDate,
+                            document_url: documentUrl.trim(),
+                            modified_by: userId,
+                            modified_date: currentDate
+                        }
+                    }
+                )
+            )
+        );
+
+        const mutation =
+            updateResult.data?.transaction ||
+            updateResult.data
+                ?.update_unclaimed_amount_transactions;
+
+        const updated = Array.isArray(mutation) ? mutation[0] : mutation?.returning?.[0];
+
+        if (!updated) {
+            return failure(
+                'Transaction was already claimed or could not be updated.',
+                409
+            );
+        }
+
+    await deleteReplacedDocuments(existing, documentUrl, userId);
+
         return {
-            success: false,
-            error: true,
-            message: error.message
+            success: true,
+            message: 'Transaction claimed successfully.',
+            sourceType: 'offset',
+            transactionId: existing._id,
+            operation: 'update',
+            data: updated,
+            unclaimedAmount
         };
     }
+
+    const newTransaction = {
+        _id: generateUUID(),
+        source_type: 'offset',
+        cash_collection_id: cashCollectionId,
+
+        ...transactionInfo,
+
+        status: 'claimed',
+        date_added: currentDate,
+        document_url: documentUrl.trim(),
+        inserted_by: userId,
+        inserted_date: currentDate
+    };
+
+    const insertResult = checkGraphResult(
+        await graph.mutation(
+            insertQl(UNCLAIMED_TRANSACTION_TYPE, {
+                objects: [newTransaction]
+            })
+        )
+    );
+
+    const mutation =
+        insertResult.data?.transaction ||
+        insertResult.data
+            ?.insert_unclaimed_amount_transactions;
+
+    const inserted = Array.isArray(mutation) ? mutation[0] : mutation?.returning?.[0];
+
+    if (!inserted) {
+        throw new Error(
+            'Unable to create offset claim record.'
+        );
+    }
+
+    return {
+        success: true,
+        message: 'Transaction claimed successfully.',
+        sourceType: 'offset',
+        transactionId: inserted._id,
+        operation: 'insert',
+        data: inserted,
+        unclaimedAmount
+    };
 }

@@ -5,21 +5,26 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { BookOpen } from 'lucide-react';
 import { formatPricePhp } from '@/lib/utils';
 import { SUMMARY_RECEIPTS, SUMMARY_PAYMENTS, mapSummaryData } from '@/lib/constants';
+import {
+    calculateCashbookReceipts,
+    calculateCashbookPayments,
+    calculateClosingBalance,
+    roundMoney,
+} from '@/lib/dcs-calculations';
 
 const SummaryRow = ({ label, value, bold = false, highlight = false, no = null }) => (
     <tr className={`${highlight ? 'bg-amber-50 font-bold' : ''} ${bold ? 'font-semibold' : ''}`}>
         {no !== null ? (
             <td className="border border-gray-300 px-2 py-1 text-center text-xs text-gray-500 w-8">{no}</td>
         ) : null}
-        <td
-            className="border border-gray-300 px-3 py-1 text-xs"
-            colSpan={no === null ? 2 : 1}
-        >
+        <td className="border border-gray-300 px-3 py-1 text-xs" colSpan={no === null ? 2 : 1}>
             {label}
         </td>
-        <td className={`border border-gray-300 px-3 py-1 text-right text-xs min-w-[100px] ${
-            value < 0 ? 'text-red-600' : value > 0 ? 'text-gray-900' : 'text-gray-400'
-        }`}>
+        <td
+            className={`border border-gray-300 px-3 py-1 text-right text-xs min-w-[100px] ${
+                value < 0 ? 'text-red-600' : value > 0 ? 'text-gray-900' : 'text-gray-400'
+            }`}
+        >
             {value !== 0 ? formatPricePhp(Math.abs(value)) : '—'}
         </td>
     </tr>
@@ -30,6 +35,7 @@ const SummaryPanel = ({
     summaryData: rawData,
     dcsTotals,
     cashbookMcbuIn,
+    cashbookRow = null,
     branchId,
     selectedDate,
     otherIncomeRefreshKey = 0,
@@ -38,15 +44,12 @@ const SummaryPanel = ({
     cashbookBeginningBalance = null,
 }) => {
     const d = mapSummaryData(rawData);
-    console.log("12b Database Other Income:", d?.rcptOtherIncome);
 
     const PICTURE_FEE_PER_RELEASE = 50;
 
-    const totalLoanReleases =
-        Number(d?.payLoanReleaseNo) || 0;
+    const totalLoanReleases = Number(d?.payLoanReleaseNo) || 0;
 
-    const otherIncomePicture =
-        totalLoanReleases * PICTURE_FEE_PER_RELEASE;
+    const otherIncomePicture = totalLoanReleases * PICTURE_FEE_PER_RELEASE;
 
     const [beginningBalanceOverride, setBeginningBalanceOverride] = useState(null);
     const [hasOverride, setHasOverride] = useState(false);
@@ -64,6 +67,7 @@ const SummaryPanel = ({
     const [staffCbuCollection, setStaffCbuCollection] = useState(0);
     const [staffCashbondCollection, setStaffCashbondCollection] = useState(0);
     const [staffLoanCollection, setStaffLoanCollection] = useState(0);
+    const [staffLoanInterest, setStaffLoanInterest] = useState(0);
     const [otherReceiptsCollections, setOtherReceiptsCollections] = useState(0);
 
     useEffect(() => {
@@ -90,9 +94,7 @@ const SummaryPanel = ({
 
                 if (cancelled) return;
 
-                const transactions = Array.isArray(response?.transactions)
-                    ? response.transactions
-                    : [];
+                const transactions = Array.isArray(response?.transactions) ? response.transactions : [];
 
                 let bankDepositTotal = 0;
                 let bankWithdrawalTotal = 0;
@@ -107,21 +109,20 @@ const SummaryPanel = ({
                     }
 
                     switch (transaction.transaction_type) {
-
-                        case "bank_deposit":
+                        case 'bank_deposit':
                             bankDepositTotal += amount;
                             break;
 
-                        case "bank_withdrawal":
+                        case 'bank_withdrawal':
                             bankWithdrawalTotal += amount;
                             break;
 
-                        case "penalty":
-                        case "excess_remittance":
+                        case 'penalty':
+                        case 'excess_remittance':
                             otherIncomeTotal += amount;
                             break;
 
-                        case "passbook":
+                        case 'passbook':
                             passbookTotal += amount;
                             break;
 
@@ -135,7 +136,7 @@ const SummaryPanel = ({
                 setOtherIncomeReceipts(otherIncomeTotal);
                 setOtherIncomePassbook(passbookTotal);
             } catch (error) {
-                console.error("Other Income loading error:", error);
+                console.error('Other Income loading error:', error);
 
                 if (!cancelled) {
                     setOtherIncomeBankDeposit(0);
@@ -158,6 +159,8 @@ const SummaryPanel = ({
             setStaffCbuCollection(0);
             setStaffCashbondCollection(0);
             setStaffLoanCollection(0);
+            setStaffLoanInterest(0);
+            setOtherReceiptsCollections(0);
             return;
         }
 
@@ -176,13 +179,12 @@ const SummaryPanel = ({
 
                 if (cancelled) return;
 
-                const transactions = Array.isArray(response?.transactions)
-                    ? response.transactions
-                    : [];
+                const transactions = Array.isArray(response?.transactions) ? response.transactions : [];
 
                 let cbuTotal = 0;
                 let cashbondTotal = 0;
                 let loanTotal = 0;
+                let staffLoanInterestTotal = 0;
                 let otherReceiptsTotal = 0;
 
                 transactions.forEach((transaction) => {
@@ -193,22 +195,35 @@ const SummaryPanel = ({
                     }
 
                     switch (transaction.transaction_type) {
-                        case "staff_cbu_collection":
+                        case 'staff_cbu_collection':
                             cbuTotal += amount;
                             break;
 
-                        case "staff_cashbond_collection":
+                        case 'staff_cashbond_collection':
                             cashbondTotal += amount;
                             break;
 
-                        case "staff_loan_collection":
+                        // 5 - Staff Principal Loan Collection
+                        case 'staff_loan_collection':
+                        case 'cash_advance':
+                        case 'special_advance':
                             loanTotal += amount;
                             break;
 
-                        case "staff_sbf_utility_collection":
-                        case "mpl_contribution":
-                        case "sss_contribution":
-                        case "ap_payroll":
+                        // Staff Loan Interest
+                        case 'staff_loan_interest':
+                            staffLoanInterestTotal += amount;
+                            break;
+
+                        // 14 - Other Receipts
+                        case 'bad_debt_collection':
+                        case 'salary_advance':
+                        case 'motorcycle_loan':
+                        case 'staff_sbf_utility_collection':
+                        case 'mpl_contribution':
+                        case 'sss_contribution':
+                        case 'ap_payroll':
+                        case 'overstated_management_expenses':
                             otherReceiptsTotal += amount;
                             break;
 
@@ -220,18 +235,16 @@ const SummaryPanel = ({
                 setStaffCbuCollection(cbuTotal);
                 setStaffCashbondCollection(cashbondTotal);
                 setStaffLoanCollection(loanTotal);
+                setStaffLoanInterest(staffLoanInterestTotal);
                 setOtherReceiptsCollections(otherReceiptsTotal);
-
             } catch (error) {
-                console.error(
-                    "Failed to load Other Receipts collections:",
-                    error
-                );
+                console.error('Failed to load Other Receipts collections:', error);
 
                 if (!cancelled) {
                     setStaffCbuCollection(0);
                     setStaffCashbondCollection(0);
                     setStaffLoanCollection(0);
+                    setStaffLoanInterest(0);
                     setOtherReceiptsCollections(0);
                 }
             }
@@ -261,12 +274,10 @@ const SummaryPanel = ({
             try {
                 const params = new URLSearchParams({
                     branch_id: branchId,
-                    selected_date: selectedDate
+                    selected_date: selectedDate,
                 });
 
-                const response = await fetchWrapper.get(
-                    `${getApiBaseUrl()}dcs/beginning-balance?${params.toString()}`
-                );
+                const response = await fetchWrapper.get(`${getApiBaseUrl()}dcs/beginning-balance?${params.toString()}`);
 
                 if (cancelled) return;
 
@@ -279,8 +290,7 @@ const SummaryPanel = ({
                 setBalanceSource(response.source || 'historical');
 
                 setBeginningBalanceOverride(
-                    response.beginningBalance !== null &&
-                    response.beginningBalance !== undefined
+                    response.beginningBalance !== null && response.beginningBalance !== undefined
                         ? Number(response.beginningBalance)
                         : null
                 );
@@ -301,36 +311,36 @@ const SummaryPanel = ({
         };
     }, [branchId, selectedDate]);
 
-    // =========================================================
-    // BEGINNING BALANCE
-    // Use Cashbook calculation for automatic carry-forward.
-    // Preserve manually entered beginning balances.
-    // =========================================================
-
     const effectiveBeginningBalance = (() => {
-        // Manual balance always takes priority.
+        // Use the exact Beginning Balance from the selected Cashbook row.
         if (
-            balanceSource === "manual" &&
-            beginningBalanceOverride !== null
+            cashbookRow &&
+            cashbookRow.beginningBalance !== null &&
+            cashbookRow.beginningBalance !== undefined &&
+            Number.isFinite(Number(cashbookRow.beginningBalance))
         ) {
-            return Number(beginningBalanceOverride);
+            return roundMoney(cashbookRow.beginningBalance);
         }
 
-        // Use the Cashbook's calculated beginning balance.
+        // Fallback while Cashbook data is loading.
         if (
             cashbookBeginningBalance !== null &&
             cashbookBeginningBalance !== undefined &&
             Number.isFinite(Number(cashbookBeginningBalance))
         ) {
-            return Number(cashbookBeginningBalance);
+            return roundMoney(cashbookBeginningBalance);
         }
 
-        // Fallback while Cashbook data is loading.
+        // Preserve saved manual overrides when Cashbook data is unavailable.
+        if (balanceSource === 'manual' && beginningBalanceOverride !== null) {
+            return roundMoney(beginningBalanceOverride);
+        }
+
         if (beginningBalanceOverride !== null) {
-            return Number(beginningBalanceOverride);
+            return roundMoney(beginningBalanceOverride);
         }
 
-        return Number(d?.beginningBalance || 0);
+        return roundMoney(d?.beginningBalance || 0);
     })();
 
     const handleSaveBeginningBalance = async () => {
@@ -342,9 +352,7 @@ const SummaryPanel = ({
         const value = balanceInput.trim();
 
         if (!/^\d+(\.\d{1,2})?$/.test(value)) {
-            setBalanceError(
-                'Enter a valid amount with up to two decimal places.'
-            );
+            setBalanceError('Enter a valid amount with up to two decimal places.');
             return;
         }
 
@@ -352,14 +360,11 @@ const SummaryPanel = ({
         setBalanceError('');
 
         try {
-            const response = await fetchWrapper.post(
-                `${getApiBaseUrl()}dcs/beginning-balance`,
-                {
-                    branch_id: branchId,
-                    selected_date: selectedDate,
-                    beginning_balance: value
-                }
-            );
+            const response = await fetchWrapper.post(`${getApiBaseUrl()}dcs/beginning-balance`, {
+                branch_id: branchId,
+                selected_date: selectedDate,
+                beginning_balance: value,
+            });
 
             if (!response?.success) {
                 throw new Error(response?.message || 'Failed to save Beginning Balance.');
@@ -381,53 +386,34 @@ const SummaryPanel = ({
         }
     };
 
-    if (!d) return (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <BookOpen className="w-10 h-10 mb-2" />
-            <p className="text-sm">No summary data available</p>
-        </div>
-    );
+    if (!d)
+        return (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <BookOpen className="w-10 h-10 mb-2" />
+                <p className="text-sm">No summary data available</p>
+            </div>
+        );
 
-    console.log("12b Other Income Transactions:", otherIncomeReceipts);
+    console.log('SUMMARY MANAGEMENT EXPENSES:', {
+        cashbookRow,
+        cashbookManagementExpenses: cashbookRow?.managementCostExpenses,
+        summaryManagementExpenses: d?.payMngtExpenses,
+    });
+
     const amounts = {
-        rcptMcbu: dcsTotals
-            ? Number(dcsTotals.mcbuActual) || 0
-            : d.rcptMcbu,
+        rcptMcbu: dcsTotals ? Number(dcsTotals.mcbuActual) || 0 : d.rcptMcbu,
 
-        // CSF Collection
-        // Use the same DCS totals as the DCS Table and Cashbook.
-        rcptCsf: dcsTotals
-            ? Number(dcsTotals.csfCollection) || 0
-            : Number(d.rcptCsf) || 0,
+        rcptCsf: dcsTotals ? Number(dcsTotals.csfCollection) || 0 : Number(d.rcptCsf) || 0,
 
-        // Regular Loan Collection (60 Days)
-        rcptRegularLoan: dcsTotals
-            ? Number(dcsTotals.regularLoanActual) || 0
-            : Number(d.rcptRegularLoan) || 0,
+        rcptRegularLoan: dcsTotals ? Number(dcsTotals.regularLoanActual) || 0 : Number(d.rcptRegularLoan) || 0,
 
-        // Weekly Collection (24 Weeks)
-        rcptOtherLoan: dcsTotals
-            ? Number(dcsTotals.otherLoanActual) || 0
-            : Number(d.rcptOtherLoan) || 0,
+        rcptOtherLoan: dcsTotals ? Number(dcsTotals.otherLoanActual) || 0 : Number(d.rcptOtherLoan) || 0,
 
-        // Weekly Collection (12 Weeks)
-        rcptWeekly12: dcsTotals
-            ? Number(dcsTotals.weekly12Actual) || 0
-            : Number(d.rcptWeekly12) || 0,
+        rcptWeekly12: dcsTotals ? Number(dcsTotals.weekly12Actual) || 0 : Number(d.rcptWeekly12) || 0,
 
-        // Weekly Loan Collection (12 Weeks)
-        rcptWeekly12: dcsTotals
-            ? Number(dcsTotals.weekly12Actual) || 0
-            : 0,
+        rcptStaffCbu: Number(d.rcptStaffCbu || 0) + staffCbuCollection + staffCashbondCollection,
 
-        rcptStaffCbu:
-            Number(d.rcptStaffCbu || 0) +
-            staffCbuCollection +
-            staffCashbondCollection,
-
-        rcptStaffPrincipal:
-            Number(d.rcptStaffPrincipal || 0) +
-            staffLoanCollection,
+        rcptStaffPrincipal: Number(d.rcptStaffPrincipal || 0) + staffLoanCollection,
 
         rcptAdminFees: d.rcptAdminFees,
         rcptLrf: d.rcptLrf,
@@ -437,50 +423,41 @@ const SummaryPanel = ({
 
         rcptMcbuUnclaimedIn: Number(d.rcptMcbuUnclaimedIn) || 0,
 
-        rcptOtherIncomePassbook:
-            (Number(dcsTotals?.admissionNo) || 0) * 50 +
-            otherIncomePassbook,
-        rcptOtherIncome:
-            Number(d.rcptOtherIncome || 0) +
-            otherIncomeReceipts,
+        rcptOtherIncomePassbook: (Number(dcsTotals?.admissionNo) || 0) * 50 + otherIncomePassbook,
+        rcptOtherIncome: Number(d.rcptOtherIncome || 0) + otherIncomeReceipts + staffLoanInterest,
         rcptOtherIncomeCsf: d.rcptOtherIncomeCsf,
 
         rcptOtherReceiptsPicture: otherIncomePicture,
 
-        rcptOtherReceiptsGl:
-            Number(d.rcptOtherReceiptsGl || 0) +
-            otherReceiptsCollections,
+        rcptOtherReceiptsGl: Number(d.rcptOtherReceiptsGl || 0) + otherReceiptsCollections,
 
-        rcptFundTransferIn:
-            Number(d.rcptFundTransferIn) || 0,
+        rcptFundTransferIn: Number(d.rcptFundTransferIn) || 0,
 
-        rcptBankWithdrawal:
-            Number(d.rcptBankWithdrawal || 0) +
-            otherIncomeBankWithdrawal,
+        rcptBankWithdrawal: Number(d.rcptBankWithdrawal || 0) + otherIncomeBankWithdrawal,
 
         payLoanRelease: d.payLoanRelease,
         payMcbuWithdrawal: d.payMcbuWithdrawal,
         payCsfWithdrawal: d.payCsfWithdrawal,
-        // MCBU Return - remove the CSF Return included in the total
-        payMcbuReturn: dcsTotals
-            ? (Number(dcsTotals.mcbuReturnAmount) || 0) -
-            (Number(dcsTotals.csfReturnAmount) || 0)
-            : Number(d.payMcbuReturn) || 0,
 
-        // CSF Return - keep its own amount
-        payCsfReturn: dcsTotals
-            ? Number(dcsTotals.csfReturnAmount) || 0
-            : Number(d.payCsfReturn) || 0,
-        payStaffLoanRelease: d.payStaffLoanRelease,
-        payMngtExpenses: d.payMngtExpenses,
-        payCbhbDisbursed: d.payCbhbDisbursed,
+        payMcbuReturn: dcsTotals ? Number(dcsTotals.mcbuReturnAmount) || 0 : Number(d.payMcbuReturn) || 0,
+
+        payCsfReturn: dcsTotals ? Number(dcsTotals.csfReturnAmount) || 0 : Number(d.payCsfReturn) || 0,
+
+        payStaffLoanRelease: cashbookRow
+            ? (Number(cashbookRow.salaryAdvanceRelease) || 0) + (Number(cashbookRow.staffCbuWithdrawal) || 0)
+            : Number(d.payStaffLoanRelease) || 0,
+
+        payMngtExpenses: cashbookRow ? Number(cashbookRow.managementCostExpenses) || 0 : Number(d.payMngtExpenses) || 0,
+
+        payCbhbDisbursed: cashbookRow ? Number(cashbookRow.cbhbDisbursement) || 0 : Number(d.payCbhbDisbursed) || 0,
+
         payMcbuUnclaimedOut: d.payMcbuUnclaimedOut,
         payRebates: d.payRebates,
-        payOtherPayments: d.payOtherPayments,
+
+        payOtherPayments: cashbookRow ? Number(cashbookRow.otherPayment) || 0 : Number(d.payOtherPayments) || 0,
+
         payFundTransferOut: d.payFundTransferOut,
-        payBankDeposits:
-            Number(d.payBankDeposits || 0) +
-            otherIncomeBankDeposit,
+        payBankDeposits: Number(d.payBankDeposits || 0) + otherIncomeBankDeposit,
     };
 
     // ── RECEIPTS DIFFERENCES ─────────────────────────────
@@ -490,13 +467,9 @@ const SummaryPanel = ({
     const regularLoanDifference = amounts.rcptRegularLoan - d.rcptRegularLoan;
     const otherLoanDifference = amounts.rcptOtherLoan - d.rcptOtherLoan;
     const weekly12Difference = amounts.rcptWeekly12 - (Number(d.rcptWeekly12) || 0);
-    const mcbuUnclaimedInDifference =
-        amounts.rcptMcbuUnclaimedIn -
-        d.rcptMcbuUnclaimedIn;
+    const mcbuUnclaimedInDifference = amounts.rcptMcbuUnclaimedIn - d.rcptMcbuUnclaimedIn;
 
-    const fundTransferInDifference =
-        amounts.rcptFundTransferIn -
-        Number(d.rcptFundTransferIn || 0);
+    const fundTransferInDifference = amounts.rcptFundTransferIn - Number(d.rcptFundTransferIn || 0);
 
     const totalCollectionDifference =
         mcbuDifference +
@@ -511,43 +484,40 @@ const SummaryPanel = ({
 
     const mcbuReturnDifference = amounts.payMcbuReturn - d.payMcbuReturn;
     const csfReturnDifference = amounts.payCsfReturn - d.payCsfReturn;
-    const totalPaymentDifference =
-        mcbuReturnDifference +
-        csfReturnDifference;
+    const totalPaymentDifference = mcbuReturnDifference + csfReturnDifference;
 
     // ── UPDATED TOTALS ───────────────────────────────────
 
-    const updatedTotalReceipts =
+    const updatedTotalReceipts = roundMoney(
         effectiveBeginningBalance +
-        Number(d.totalReceipts || 0) +
-        totalCollectionDifference +
-        otherIncomeReceipts +
-        otherIncomeBankWithdrawal +
-        staffCbuCollection +
-        staffCashbondCollection +
-        staffLoanCollection +
-        otherReceiptsCollections +
-        (
-            amounts.rcptOtherIncomePassbook -
-            Number(d.rcptOtherIncomePassbook || 0)
-        ) +
-        (
-            otherIncomePicture -
-            Number(d.rcptOtherReceiptsPicture || 0)
-        );
+            Number(d.totalReceipts || 0) +
+            totalCollectionDifference +
+            otherIncomeReceipts +
+            otherIncomeBankWithdrawal +
+            staffCbuCollection +
+            staffCashbondCollection +
+            staffLoanCollection +
+            staffLoanInterest +
+            otherReceiptsCollections +
+            (amounts.rcptOtherIncomePassbook - Number(d.rcptOtherIncomePassbook || 0)) +
+            (otherIncomePicture - Number(d.rcptOtherReceiptsPicture || 0))
+    );
 
-    const updatedTotalPayments =
-        Number(d.totalPayments || 0) +
-        totalPaymentDifference +
-        otherIncomeBankDeposit;
+    const updatedTotalPayments = roundMoney(
+        Number(d.totalPayments || 0) + totalPaymentDifference + otherIncomeBankDeposit
+    );
 
-    const updatedClosingBalance =
-        Math.round(
-            (
-                updatedTotalReceipts -
-                updatedTotalPayments
-            ) * 100
-        ) / 100;
+    const cashbookBalanceMatches =
+        cashbookRow && roundMoney(cashbookRow.beginningBalance) === roundMoney(effectiveBeginningBalance);
+
+    const finalTotalReceipts = cashbookBalanceMatches ? calculateCashbookReceipts(cashbookRow) : updatedTotalReceipts;
+
+    const finalTotalPayments = cashbookBalanceMatches ? calculateCashbookPayments(cashbookRow) : updatedTotalPayments;
+
+    const updatedClosingBalance = calculateClosingBalance({
+        totalReceipts: finalTotalReceipts,
+        totalPayments: finalTotalPayments,
+    });
 
     return (
         <div className="space-y-4">
@@ -578,15 +548,11 @@ const SummaryPanel = ({
                                 {!editingBalance && (
                                     <>
                                         {hasOverride && (
-                                            <span className="text-[10px] text-orange-600">
-                                                Manual Override
-                                            </span>
+                                            <span className="text-[10px] text-orange-600">Manual Override</span>
                                         )}
 
                                         {balanceSource === 'carried_forward' && (
-                                            <span className="text-[10px] text-green-600">
-                                                Auto Carry-Forward
-                                            </span>
+                                            <span className="text-[10px] text-green-600">Auto Carry-Forward</span>
                                         )}
                                     </>
                                 )}
@@ -627,20 +593,17 @@ const SummaryPanel = ({
                                             </button>
                                         </div>
                                     </div>
+                                ) : balanceLoading ? (
+                                    'Loading...'
                                 ) : (
-                                    balanceLoading
-                                        ? 'Loading...'
-                                        : formatPricePhp(effectiveBeginningBalance)
+                                    formatPricePhp(effectiveBeginningBalance)
                                 )}
                             </td>
                         </tr>
 
                         {balanceError && (
                             <tr>
-                                <td
-                                    colSpan={2}
-                                    className="px-3 py-2 text-xs text-red-600 bg-red-50"
-                                >
+                                <td colSpan={2} className="px-3 py-2 text-xs text-red-600 bg-red-50">
                                     {balanceError}
                                 </td>
                             </tr>
@@ -655,19 +618,10 @@ const SummaryPanel = ({
                 </div>
                 <table className="w-full border-collapse text-sm">
                     <tbody>
-                        {SUMMARY_RECEIPTS.map(item => (
-                            <SummaryRow
-                                key={item.key}
-                                no={item.no}
-                                label={item.label}
-                                value={amounts[item.key] || 0}
-                            />
+                        {SUMMARY_RECEIPTS.map((item) => (
+                            <SummaryRow key={item.key} no={item.no} label={item.label} value={amounts[item.key] || 0} />
                         ))}
-                        <SummaryRow
-                            label="Total Receipts"
-                            value={updatedTotalReceipts}
-                            highlight
-                        />
+                        <SummaryRow label="Total Receipts" value={finalTotalReceipts} highlight />
                     </tbody>
                 </table>
             </div>
@@ -678,25 +632,16 @@ const SummaryPanel = ({
                 </div>
                 <table className="w-full border-collapse text-sm">
                     <tbody>
-                        {SUMMARY_PAYMENTS.map(item => {
+                        {SUMMARY_PAYMENTS.map((item) => {
                             let label = item.label;
                             if (item.key === 'payLoanRelease' && d.payLoanReleaseNo) {
                                 label = `${label} ........ ${d.payLoanReleaseNo}`;
                             }
                             return (
-                                <SummaryRow
-                                    key={item.key}
-                                    no={item.no}
-                                    label={label}
-                                    value={amounts[item.key] || 0}
-                                />
+                                <SummaryRow key={item.key} no={item.no} label={label} value={amounts[item.key] || 0} />
                             );
                         })}
-                        <SummaryRow
-                            label="Total Payments"
-                            value={updatedTotalPayments}
-                            highlight
-                        />
+                        <SummaryRow label="Total Payments" value={finalTotalPayments} highlight />
                     </tbody>
                 </table>
             </div>
@@ -708,9 +653,11 @@ const SummaryPanel = ({
                             <td className="border border-blue-300 px-3 py-2 font-bold text-blue-800 text-sm">
                                 Closing Balance
                             </td>
-                            <td className={`border border-blue-300 px-3 py-2 text-right font-bold text-sm min-w-[110px] ${
-                                updatedClosingBalance < 0 ? 'text-red-600' : 'text-blue-700'
-                            }`}>
+                            <td
+                                className={`border border-blue-300 px-3 py-2 text-right font-bold text-sm min-w-[110px] ${
+                                    updatedClosingBalance < 0 ? 'text-red-600' : 'text-blue-700'
+                                }`}
+                            >
                                 {formatPricePhp(updatedClosingBalance)}
                             </td>
                         </tr>
