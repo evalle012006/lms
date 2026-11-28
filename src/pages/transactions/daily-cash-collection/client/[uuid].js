@@ -4489,7 +4489,7 @@ const CashCollectionDetailsPage = () => {
                                                 </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     {/* { cc.mcbuColStr } */}
-                                                    { ( cc.allowMcbuCollection && editMode && (!cc?._id || cc?.reverted || cc.draft)
+                                                    { ( cc.allowMcbuCollection && !isMaturedPdOffsetRow(cc) && editMode && (!cc?._id || cc?.reverted || cc.draft)
                                                         // !isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode
                                                         // && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
@@ -4513,7 +4513,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && allowCSFCollection && editMode
+                                                    { (!isWeekend && !isHoliday && (!currentBranch?.lockTransaction || isStaging) && currentUser.role.rep > 2 && cc.status === 'active' && allowCSFCollection && !isMaturedPdOffsetRow(cc) && editMode
                                                         && (!cc?._id || cc?.reverted || cc.draft)
                                                      ) ? (
                                                         <React.Fragment>
@@ -4547,7 +4547,7 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !cc.reverted  || (cc.remarks && cc.remarks?.value == 'offset-matured-pd') || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted  || (cc.remarks && cc.remarks?.value == 'offset-matured-pd') || isMaturedPdOffsetRow(cc) || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
