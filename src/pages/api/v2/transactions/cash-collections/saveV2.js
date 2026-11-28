@@ -26,7 +26,7 @@ import { getSystemDate, getNonWorkingReason } from '@/lib/date-utils';
 import { groupLockMessage } from '@/lib/support-lock';
 import { holidayType } from '@/pages/api/v2/settings/holidays/common';
 import { ENFORCE_CSF_CONFIG, findCsfViolations } from '@/lib/csf-utils';
-import { findHardRuleViolations, sanitizeCompletedRow, refreshPayoffHistory } from '@/lib/collection-rules';
+import { findHardRuleViolations, sanitizeCompletedRow, refreshPayoffHistory, isMaturedPdOffsetRow } from '@/lib/collection-rules';
 import { loadCsfEnabled } from '@/lib/csf-config-server';
 import { NON_MISPAY_REMARKS, NON_DRAFT_TRANSACTION_STATUSES } from '@/lib/constants';
 import { resolveMispayment } from '@/lib/mispayment-utils';
@@ -692,6 +692,11 @@ async function executeSave(req, user_id, transactionId, user) {
                 const mispaymentSent = collection.mispayment === true;
                 collection.mispayment = resolveMispayment(collection);
 
+                // Offsetting a matured PD loan clears the past due on the cashCollections row (and on the loan, see updateLoan)
+                if (isMaturedPdOffsetRow(collection)) {
+                    collection.pastDue = 0;
+                }
+
                 // New loans from the tomorrow tab are release-only rows. They are never
                 // part of a draft group save, so never persist draft=true for them.
                 if (NON_DRAFT_TRANSACTION_STATUSES.includes(collection.status)) {
@@ -1305,9 +1310,10 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
             }
             
             loan.amountRelease = 0;
+            // pastDue is always cleared (incl. Offset - Matured PD); only the past-due counter is kept for that remark
+            loan.pastDue = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
-                loan.pastDue = 0;
             }
 
             if (collection.status == 'closed') {

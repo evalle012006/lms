@@ -4,7 +4,6 @@ import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.
 import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
-import { groupLockMessage } from '@/lib/support-lock';
 import { savePendingLoans } from './update-pending-loans';
 import { findGroups, findUserById, findBranches } from '@/lib/graph.functions';
 import { isNotificationEnabled, notifyLoanOffset } from '@/lib/notification-service';
@@ -66,17 +65,6 @@ async function createOffsetNotification(collection, loan, user_id) {
     }
 }
 
-// Advance (reloaner) payoff row: current loan of a client who just fully paid and has a pending reloan.
-// Sent as 'pending' but its loan is still active/completed (the reloan's own release row has a pending loan).
-function isAdvancePayoffRow(collection, loan) {
-    return collection.status === 'pending'
-        && collection.advance === true
-        && !collection.draft
-        && Number(collection.loanBalance) <= 0
-        && !!loan
-        && (loan.status === 'active' || loan.status === 'completed');
-}
-
 async function save(req, res) {
     const user_id = req?.auth?.sub;
     let response = {};
@@ -85,8 +73,6 @@ async function save(req, res) {
     const currentDate = data.currentDate;
     const currentTime = data.currentTime;
     data.collection = JSON.parse(data.collection);
-    const lockMsg = await groupLockMessage(data.collection?.[0]?.groupId, user_id);
-    if (lockMsg) return res.status(200).json({ success: false, error: true, message: lockMsg });
     const overallTotalNetCollection = data.overallTotalNetCollection || 0;
     const isNotificationEnabledFlag = await isNotificationEnabled();
 
@@ -140,6 +126,10 @@ async function save(req, res) {
 
                 if (collection.remarks && (collection.remarks.value === 'offset-matured-pd' || collection.remarks?.value == 'matured-past due')) {
                     collection.maturedPD = true;
+                }
+
+                if (collection.remarks?.value === 'offset-matured-pd') {
+                    collection.pastDue = 0;
                 }
 
                 if (!collection.transferId) {
@@ -205,10 +195,6 @@ async function save(req, res) {
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate)
                     await updateClient(user_id, mutationQl, collection);
-                } else if (isAdvancePayoffRow(collection, loan)) {
-                    // Fully-paid client with a pending reloan is sent as 'pending', which skips updateLoan above;
-                    // savePendingLoans may then only flip the loan status. Apply the payoff now (see saveV2.js).
-                    await updateLoan(user_id, mutationQl, { ...collection, status: 'completed' }, currentDate)
                 }
 
                 // A resubmitted (non-draft) reverted row resolves the revert. updateLoan never writes loans.reverted
@@ -449,9 +435,10 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
             }
             
             loan.amountRelease = 0;
+            // pastDue is always cleared (incl. Offset - Matured PD); only the past-due counter is kept for that remark
+            loan.pastDue = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
-                loan.pastDue = 0;
             }
 
             if (collection.status == 'closed') {

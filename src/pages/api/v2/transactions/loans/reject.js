@@ -64,6 +64,7 @@ async function updateLoan(req, res) {
     delete loan.groupStatus;
     delete loan.selected;
 
+    let rejectTrace = null;   // what the reject actually touched (written to the audit entry)
     let groupData = await findGroups({ _id: { _eq: loan.groupId }});
     if (groupData.length > 0) {
         groupData = groupData[0];
@@ -91,22 +92,36 @@ async function updateLoan(req, res) {
             // in loans, change back the previous loan to completed status and the current one change the loanCycle to 0
             // client status to pending
             if (loan.loanCycle > 1) {
-                let prevLoan = await findLoans({ 
-                  clientId: { _eq: loan.clientId }, 
-                  loanCycle: { _eq: loan.loanCycle - 1 },
-                  groupId: { _eq: loan.groupId }
-                });
+                // Match the previous loan by its link, not by loanCycle - 1: cycles are not unique per
+                // client (cycle 0 on closed/rejected loans, repeated cycles after re-creation).
+                // Read the link from the DB; the request body is not trusted.
+                const storedLoan = (await findLoans({ _id: { _eq: loanId } }))?.[0];
+                let prevLoan = storedLoan?.prevLoanId
+                  ? await findLoans({ _id: { _eq: storedLoan.prevLoanId } })
+                  : await findLoans({
+                      clientId: { _eq: loan.clientId },
+                      loanCycle: { _eq: loan.loanCycle - 1 },
+                      groupId: { _eq: loan.groupId }
+                    });
                 logger.debug({page: `Rejecting Loan: ${loanId}`, message: 'Previous Loan', data: prevLoan});
                 if (prevLoan && prevLoan?.length > 0) {
                     prevLoan = prevLoan[0];
+                    rejectTrace = {
+                        storedLoan: storedLoan ? { status: storedLoan.status, loanCycle: storedLoan.loanCycle, prevLoanId: storedLoan.prevLoanId ?? null } : null,
+                        prevLoanFoundBy: storedLoan?.prevLoanId ? 'prevLoanId' : 'loanCycle',
+                        prevLoanId: prevLoan._id,
+                        prevLoanBefore: { status: prevLoan.status, loanCycle: prevLoan.loanCycle, loanBalance: prevLoan.loanBalance },
+                    };
                     let cashCollection = await findCashCollections({
                       clientId: { _eq: loan.clientId },
                       dateAdded: { _eq: currentDate },
                       groupId: { _eq: loan.groupId },
+                      _or: [{ loanId: { _eq: loanId } }, { prevLoanId: { _eq: prevLoan._id } }],
                     });
                     logger.debug({page: `Rejecting Loan: ${loan._id}`, message: 'Cash Collection Data', data: cashCollection});
                     if (cashCollection.length > 0) {
                         cashCollection = cashCollection[0];
+                        if (rejectTrace) rejectTrace.cashCollection = { _id: cashCollection._id, loanIdBefore: cashCollection.loanId, prevLoanIdBefore: cashCollection.prevLoanId ?? null, statusBefore: cashCollection.status };
                         cashCollection.status = cashCollection.loanBalance <= 0 ? 'completed' : 'active';
                         cashCollection.currentReleaseAmount = 0;
                         cashCollection.loanId = prevLoan._id + "";
@@ -136,6 +151,7 @@ async function updateLoan(req, res) {
                         prevLoan.status = 'active';
                     }
 
+                    if (rejectTrace) rejectTrace.prevLoanStatusAfter = prevLoan.status;
                     delete prevLoan.advance;
                     delete prevLoan.advanceDate;
                     
@@ -192,7 +208,7 @@ async function updateLoan(req, res) {
           branchId: loan.branchId,
           description: `Loan ${loan.status === 'reject' ? 'rejected' : 'approved'} (cycle ${loan.loanCycle}, group ${loan.groupId})`,
           afterData: { status: loan.status, loanCycle: loan.loanCycle, groupId: loan.groupId },
-          metadata: { reloan: loan.loanCycle > 1, loanCycle: loan.loanCycle },
+          metadata: { reloan: loan.loanCycle > 1, loanCycle: loan.loanCycle, ...(rejectTrace ? { trace: { ...rejectTrace, prevLoanStatusAfter: rejectTrace.prevLoanStatusAfter } } : {}) },
         });
 
         response = { success: true };   
