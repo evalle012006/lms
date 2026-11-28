@@ -3,6 +3,7 @@
 // The GROUP is the source of truth for branch / group / loan officer. Nothing here writes anything:
 // issues that have an `expected` value and `repairable: true` can be handed to the normal editor (Repair).
 import { computeLoanReconciliation } from './support-loan-reconcile';
+import { checkLorRowRules, checkLorLoanRules } from './lor-row-rules';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const has = (v) => v !== null && v !== undefined && v !== '';
@@ -112,6 +113,15 @@ export function analyzeTransaction({ row = null, prevRow = null, loan, group = n
             add({ entity: 'loans', id: loan._id, field: it.field, current: it.current, expected: it.suggested, repairable: true, review: it.confidence !== 'high', message: `Loan ${it.field} differs from its collection rows (${it.basis}).` });
         }
     }
+
+    // ── LOR rules (same as the editor's validation, applied to the row as it is now) ──
+    const ALL = new Set(['remarks', 'closeRemarks', 'status', 'loanBalance', 'targetCollection', 'paymentCollection', 'csfCollection', 'mcbuCol', 'mcbuReturnAmt']);
+    if (row && row.draft !== true) {
+        const r = checkLorRowRules({ row: { ...row, occurence: group?.occurence ?? row.occurence }, loan, group, touched: ALL });
+        r.errors.forEach((e) => add({ entity: 'cashCollections', id: row._id, field: e.field, severity: 'error', current: row[e.field] ?? null, expected: null, message: `LOR rule: ${e.message}` }));
+        r.warnings.forEach((w) => add({ entity: 'cashCollections', id: row._id, field: w.field, current: row[w.field] ?? null, expected: null, message: `LOR rule: ${w.message}` }));
+    }
+    checkLorLoanRules({ loan, touched: new Set(['remarks', 'status']) }).warnings.forEach((w) => add({ entity: 'loans', id: loan._id, field: w.field, current: loan[w.field] ?? null, expected: null, message: `LOR rule: ${w.message}` }));
 
     const order = { error: 0, warning: 1, info: 2 };
     issues.sort((a, b) => order[a.severity] - order[b.severity]);

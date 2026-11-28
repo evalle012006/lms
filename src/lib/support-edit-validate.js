@@ -8,6 +8,7 @@
 // `before` is the row as it is in the DB, `after` is before + the proposed changes.
 
 import { ENTITIES, normalizeValue, toNum, remarkValue, remarkOptions } from './support-edit-config';
+import { checkLorRowRules, checkLorLoanRules } from './lor-row-rules';
 
 const TOL = 0.01;
 const eq  = (a, b) => Math.abs(Number(a) - Number(b)) <= TOL;
@@ -150,6 +151,14 @@ export function validateEdit({ entity, before = {}, changes = [], ctx = {} }) {
         if (touched('mcbuWithdrawal', 'mcbu') && n('mcbuWithdrawal') > n('mcbu') + TOL && n('mcbuWithdrawal') > 0) warn('mcbuWithdrawal', 'MCBU withdrawal is more than the MCBU balance on this row.');
         if (touched('draft') && after.draft === true && loan && ['completed', 'closed'].includes(loan.status)) warn('draft', 'Fully paid rows should not stay as draft.');
     }
+
+    // LOR-style rules (mimic the daily/weekly register; see lor-row-rules.js)
+    if (entity === 'cashCollections') {
+        const r = checkLorRowRules({ row: { ...after, occurence: ctx.group?.occurence ?? after.occurence }, loan: ctx.loan, group: ctx.group, touched: changed });
+        r.errors.forEach((e) => err(e.field, e.message));
+        r.warnings.forEach((w) => warn(w.field, w.message));
+    }
+    if (entity === 'loans') checkLorLoanRules({ loan: after, touched: changed }).warnings.forEach((w) => warn(w.field, w.message));
 
     // A full payment date only makes sense on a COMPLETED loan / row.
     if ((entity === 'loans' || entity === 'cashCollections') && has(after.fullPaymentDate) && after.status !== 'completed'

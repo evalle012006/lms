@@ -1,9 +1,9 @@
 import { analyzeTransaction } from '../../src/lib/support-analyze';
 
 const group = { _id: 'g1', branchId: 'b1', loanOfficerId: 'lo1' };
-const loan = { _id: 'l1', clientId: 'c1', groupId: 'g1', branchId: 'b1', loId: 'lo1', status: 'active', amountRelease: 6000, activeLoan: 100, loanTerms: '60', loanBalance: 5000, principalLoan: 5000, slotNo: 1, loanCycle: 2, fullName: 'Ana Cruz', mcbu: 0, csf: 0, noOfPayments: 1, advanceDays: 0, pastDue: 0, mcbuCollection: 0, csfCollection: 0 };
+const loan = { _id: 'l1', clientId: 'c1', groupId: 'g1', branchId: 'b1', loId: 'lo1', status: 'active', amountRelease: 6000, activeLoan: 100, loanTerms: '60', loanBalance: 5000, principalLoan: 5000, slotNo: 1, loanCycle: 2, fullName: 'Ana Cruz', mcbu: 0, csf: 0, noOfPayments: 1, advanceDays: 0, pastDue: 0, mcbuCollection: 15, csfCollection: 0 };
 const client = { _id: 'c1', fullName: 'Ana  Cruz', groupId: 'g1', branchId: 'b1', loId: 'lo1', status: 'active' };
-const row = { _id: 'r1', loanId: 'l1', clientId: 'c1', groupId: 'g1', branchId: 'b1', loId: 'lo1', slotNo: 1, loanCycle: 2, status: 'active', draft: false, paymentCollection: 100, activeLoan: 100, loanBalance: 5000, mcbu: 0, csf: 0, noOfPayments: 1, advanceDays: 0, pastDue: 0, mcbuCol: 0, csfCollection: 0, dateAdded: '2026-11-25' };
+const row = { _id: 'r1', loanId: 'l1', clientId: 'c1', groupId: 'g1', branchId: 'b1', loId: 'lo1', slotNo: 1, loanCycle: 2, status: 'active', draft: false, paymentCollection: 100, activeLoan: 100, loanBalance: 5000, mcbu: 0, csf: 0, noOfPayments: 1, advanceDays: 0, pastDue: 0, mcbuCol: 15, csfCollection: 0, dateAdded: '2026-11-25' };
 const base = { row, loan, group, client, rows: [row], today: '2026-11-25' };
 const fields = (r) => r.issues.map((i) => `${i.entity}.${i.field}`);
 
@@ -57,4 +57,13 @@ test('register-only remarks sit with their related remarks', () => {
     const v = remarkOptions('daily').map((o) => o.value);
     expect(v.indexOf('offset-delinquent')).toBe(v.indexOf('offset-good') + 1);
     expect(v.indexOf('reloaner-wd')).toBe(v.indexOf('reloaner-cont') + 1);
+});
+
+test('analyze flags LOR rule: offset remark on active row/loan', () => {
+  const { analyzeTransaction } = require('@/lib/support-analyze');
+  const row = { _id: 'r1', status: 'active', draft: false, loanBalance: 100, paymentCollection: 0, remarks: { value: 'offset-good', label: 'x' }, closeRemarks: '' };
+  const loan = { _id: 'l1', status: 'active', loanBalance: 100, groupId: 'g' };
+  const r = analyzeTransaction({ row, loan, group: { _id: 'g', occurence: 'weekly' }, today: '2026-11-28' });
+  expect(r.issues.some((i) => i.field === 'closeRemarks' && i.severity === 'error')).toBe(true);
+  expect(r.issues.some((i) => i.field === 'status' && /offset/i.test(i.message))).toBe(true);
 });

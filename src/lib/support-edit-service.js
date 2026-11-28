@@ -17,7 +17,8 @@ import { getSystemDate } from '@/lib/date-utils';
 const graph = new GraphProvider();
 
 const typeFor = (entity, alias = 'rec') => createGraphType(ENTITIES[entity].table, fetchFieldNames(entity).join(' '))(alias);
-const LOAN_CTX_TYPE   = createGraphType('loans', '_id clientId status ldfApproved mcbu csf loanBalance activeLoan amountRelease principalLoan maturedPastDue loanCycle')('ctx_loan');
+const LOAN_CTX_TYPE   = createGraphType('loans', '_id clientId status ldfApproved mcbu csf loanBalance activeLoan amountRelease principalLoan maturedPastDue loanCycle maturedPD pastDue remarks')('ctx_loan');
+const GROUP_CTX_TYPE  = createGraphType('groups', '_id occurence csfEnabled')('ctx_group');
 const CLIENT_CTX_TYPE = createGraphType('client', '_id fullName status')('ctx_client');
 const OPEN_LOANS_TYPE = createGraphType('loans', '_id')('open_loans');
 const SETTINGS_TYPE   = createGraphType('transactionSettings', 'serviceChargeRate lrfRate')('txn_settings');
@@ -49,12 +50,15 @@ export async function loadContext(entity, row) {
     const queries = [];
     if (loanId && entity !== 'loans') queries.push(queryQl(LOAN_CTX_TYPE, { where: { _id: { _eq: loanId } }, limit: 1 }));
     if (clientId && entity !== 'client') queries.push(queryQl(CLIENT_CTX_TYPE, { where: { _id: { _eq: clientId } }, limit: 1 }));
+    const groupId = row.groupId ?? row.group_id ?? null;
+    if (groupId && (entity === 'cashCollections' || entity === 'loans')) queries.push(queryQl(GROUP_CTX_TYPE, { where: { _id: { _eq: groupId } }, limit: 1 }));
     queries.push(queryQl(SETTINGS_TYPE, { limit: 1 }));
     if (clientId) queries.push(queryQl(OPEN_LOANS_TYPE, { where: { clientId: { _eq: clientId }, status: { _in: ['active', 'pending', 'completed'] } } }));
     const data = await graph.query(...queries).then((r) => r.data ?? {});
     return {
         loan: entity === 'loans' ? row : (data.ctx_loan?.[0] ?? null),
         client: data.ctx_client?.[0] ?? null,
+        group: data.ctx_group?.[0] ?? null,
         openLoanCount: data.open_loans?.length ?? 0,
         clientId, loanId,
         serviceChargeRate: data.txn_settings?.[0]?.serviceChargeRate ?? null,
