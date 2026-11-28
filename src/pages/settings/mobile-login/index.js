@@ -10,6 +10,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { KeyRound } from 'lucide-react';
 
+import { isSystemAdmin } from '@/lib/roles';
 const Toggle = ({ checked, onChange }) => (
     <button
         type="button"
@@ -51,7 +52,7 @@ const MobileLoginSettingsPage = () => {
         }
     }
 
-    if (!currentUser?.root) return null;
+    if (!isSystemAdmin(currentUser)) return null;
 
     return (
         <Layout>

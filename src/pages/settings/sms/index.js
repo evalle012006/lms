@@ -10,6 +10,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { MessageSquare, Bell, KeyRound } from 'lucide-react';
 
+import { isSystemAdmin } from '@/lib/roles';
 const Toggle = ({ checked, onChange, disabled }) => (
     <button
         type="button"
@@ -57,7 +58,7 @@ const SmsSettingsPage = () => {
         }
     }
 
-    if (!currentUser?.root) return null;
+    if (!isSystemAdmin(currentUser)) return null;
 
     return (
         <Layout>

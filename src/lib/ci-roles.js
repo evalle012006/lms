@@ -2,10 +2,10 @@
 // Pure helpers (no server imports): API routes AND client components share one definition.
 // Identity is by role.shortCode (same as Nav.js / loan-application-v2-gate.js).
 
-export const getShortCode = (user) => user?.role?.shortCode ?? user?.shortCode ?? null;
-
-export const isSystemAdmin = (user) =>
-    user?.root === true || getShortCode(user) === 'admin';
+import { getShortCode, isRoot, hasRole, ROLE } from './roles';
+// CI keeps a shortCode-based rule (rep alone grants nothing): root, admin or support
+const isSystemAdmin = (user) => isRoot(user) || hasRole(user, ROLE.ADMIN, ROLE.SUPPORT);
+export { getShortCode, isSystemAdmin };
 
 // Who may approve/reject a CI. The same set also claims, promotes, reverts, validates
 // duplicates and adds the loan from the CI banner.

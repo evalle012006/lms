@@ -1,4 +1,5 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
+import { getShortCode } from '@/lib/roles';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
@@ -96,7 +97,7 @@ async function getHierarchy(req, res) {
     const normaliseManagers = (list) =>
         list.map(u => ({
             ...u,
-            shortCode: (typeof u.role === 'string' ? JSON.parse(u.role) : u.role)?.shortCode ?? null
+            shortCode: getShortCode(u)
         }));
 
     res.status(200)

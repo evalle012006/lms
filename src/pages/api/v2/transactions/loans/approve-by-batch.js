@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
 import { logAudit } from "@/lib/audit";
@@ -93,6 +94,7 @@ async function createLoanApprovalNotification(loan, loanId, user_id) {
 }
 
 async function processData(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
   const mutationList = [];
   const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
 

@@ -1,4 +1,5 @@
 import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS, ACCELERATED_WEEKLY_CATEGORIES } from '@/lib/constants';
+import { parseRole } from '@/lib/roles';
 import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
 import { findAreas, findDivisions, findRegions, findUserById, findUsers } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -130,7 +131,10 @@ async function save(req, res) {
             message: `User with the email "${data.email}" already exists`
         };
     } else {
-        const userRole = JSON.parse(data.role);
+        const userRole = parseRole(data.role);
+        if (!userRole?.shortCode) {
+            return res.status(200).json({ error: true, fields: ['role'], message: 'Invalid role.' });
+        }
 
         // ── CHANGED: use buildHierarchyFields instead of raw data values ──
         const hierarchyFields = buildHierarchyFields(userRole, data);
@@ -153,6 +157,7 @@ async function save(req, res) {
             logged: false,
             lastLogin: null,
             dateAdded: data.currentDate,
+            dateModified: data.currentDate,
             password: hashedPassword,
             mustChangePassword: true,
             role: userRole,

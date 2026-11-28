@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -25,6 +26,7 @@ const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { whe
 const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
  
 async function revert(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const user_id = req?.auth?.sub;
     const cashCollections = req.body;
     const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');

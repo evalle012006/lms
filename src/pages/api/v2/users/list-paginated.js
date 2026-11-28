@@ -107,7 +107,7 @@ async function listPaginated(req, res) {
     const statements = [
         queryQl(USER_TYPE, {
             where,
-            order_by: [{ lastName: 'asc' }, { firstName: 'asc' }, { _id: 'asc' }],
+            order_by: [{ dateModified: 'desc_nulls_last' }, { dateAdded: 'desc_nulls_last' }, { _id: 'desc' }],
             limit: limitNum,
             offset,
         }),

@@ -1,5 +1,6 @@
 // src/pages/api/v2/transactions/loans/reject.js
 
+import { lockMessageForBody } from '@/lib/support-lock';
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
 import {
@@ -38,6 +39,7 @@ export default apiHandler({
 });
 
 async function updateLoan(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const mcbuTargetConfig = await getWeeklyMcbuTargetConfig();
 
   const mutationList = [];

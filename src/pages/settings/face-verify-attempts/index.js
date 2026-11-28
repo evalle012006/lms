@@ -11,6 +11,7 @@ import { useBulkSignedUrls } from '@/hooks/useBulkSignedUrls';
 import PhotoComparisonOverlay, { PhotoThumb } from '@/components/shared/PhotoComparisonOverlay';
 import { ExternalLink } from 'lucide-react';
 
+import { isAdminLevel } from '@/lib/roles';
 const PAGE_SIZE = 25;
 const MATCH_FILTERS = [
     { value: '', label: 'All' },
@@ -34,7 +35,7 @@ const FaceVerifyAttemptsPage = () => {
     const [zoomAttempt, setZoomAttempt] = useState(null);
 
     useEffect(() => {
-        if (currentUser && !currentUser.root) router.replace('/');
+        if (currentUser && !isAdminLevel(currentUser)) router.replace('/');
     }, [currentUser, router]);
 
     useEffect(() => {
@@ -63,7 +64,7 @@ const FaceVerifyAttemptsPage = () => {
     const enrollmentKeys = attempts.map(a => a.clientEnrollmentPhotoKey).filter(Boolean);
     const { urlMap } = useBulkSignedUrls([...capturedKeys, ...enrollmentKeys]);
 
-    if (!currentUser?.root) return null;
+    if (!isAdminLevel(currentUser)) return null;
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

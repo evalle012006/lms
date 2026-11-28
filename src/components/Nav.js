@@ -47,6 +47,7 @@ import {
 import { McbuWithdrawalIcon } from '@/lib/ui/icons/mcbu-withdrawal-icon';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { isSystemAdmin, isAdminLevel } from '@/lib/roles';
 
 // Tooltip component for collapsed sidebar items
 const Tooltip = ({ children, content, show = true }) => {
@@ -797,6 +798,18 @@ const MenuItems = [
         roles: []
     },
     {
+        label: "Transaction Editor",
+        url: "/support/transaction-editor",
+        icon: {
+            active: (props) => <Edit {...props} />,
+            notActive: (props) => <Edit {...props} />,
+        },
+        active: false,
+        hasSub: false,
+        hidden: false,
+        roles: ["admin", "support"]
+    },
+    {
         label: "Settings",
         url: "#settings",
         icon: {
@@ -866,7 +879,8 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin"]
+                roles: ["admin"],
+                rootOnly: true
             },
             {
                 label: "Mobile Login Settings",
@@ -878,7 +892,8 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin"]
+                roles: ["admin"],
+                rootOnly: true
             },
             {
                 label: "System",
@@ -890,7 +905,8 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin"]
+                roles: ["admin"],
+                rootOnly: true
             },
             {
                 label: "Migration",
@@ -953,6 +969,8 @@ const isItemVisibleForRole = (item, userShortCode, userRoot, userTransactionType
   
   // Root users can see everything except items specifically excluded
   if (userRoot) {
+    // SMS / Mobile Login / System are for the root user only
+    if (item.rootOnly && userRoot !== 'root') return false;
     // Hide daily/weekly transactions for root users, they use BM transactions
     if (item.label === 'Daily Transactions' || item.label === 'Weekly Transactions') {
       return false;
@@ -1225,7 +1243,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     }
 
     const userShortCode = userState?.role?.shortCode;
-    const userRoot = userState?.root || false;
+    const userRoot = isSystemAdmin(userState) ? 'root' : (isAdminLevel(userState) ? 'admin' : false);
     const userTransactionType = userState?.transactionType;
     const isNotificationEnabled = systemSettings?.enableNotifications !== false;
     console.log('Notification setting:', isNotificationEnabled);

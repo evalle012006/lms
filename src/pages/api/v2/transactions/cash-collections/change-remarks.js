@@ -1,3 +1,4 @@
+import { lockMessageForBody } from '@/lib/support-lock';
 import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -20,6 +21,7 @@ let statusCode = 200;
 let response = {};
 
 async function revert(req, res) {
+    { const __lockMsg = await lockMessageForBody(req.body, req?.auth?.sub); if (__lockMsg) return res.status(200).json({ success: false, error: true, message: __lockMsg }); }
     const cashCollection = req.body;
     logger.debug({page: 'LOR', message: 'Change Remarks', data: cashCollection});
     const loanId = cashCollection.loanId;

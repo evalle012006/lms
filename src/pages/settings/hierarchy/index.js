@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import HierarchyTree from '@/components/hierarchy/HierarchyTree';
 import DetailPanel from '@/components/hierarchy/DetailPanel';
 
+import { isAdminLevel } from '@/lib/roles';
 const HierarchyPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -25,7 +26,7 @@ const HierarchyPage = () => {
     const [detailMode,         setDetailMode]         = useState('view');
 
     useEffect(() => {
-        if (currentUser?.role && currentUser.role.rep !== 1 && !currentUser.root) {
+        if (currentUser?.role && !isAdminLevel(currentUser)) {
             router.push('/');
         }
     }, []);
